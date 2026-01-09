@@ -33,7 +33,6 @@ async function loadPosts() {
           const dtText = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleString("ja-JP");
           return `
             <li class="bbs-post">
-              <div class="bbs-post-title"><strong>${Utils.escapeHtml(p.title)}</strong></div>
               <div class="bbs-post-meta"><small>${Utils.escapeHtml(p.author)} / ${Utils.escapeHtml(dtText)}</small></div>
               <div class="bbs-post-body">${Utils.escapeHtml(p.body).replaceAll("\n", "<br>")}</div>
             </li>
@@ -56,10 +55,9 @@ function setupForm() {
     e.preventDefault();
 
     const author = Utils.$("bbs-author").value.trim();
-    const title = Utils.$("bbs-title").value.trim();
     const body = Utils.$("bbs-body").value.trim();
 
-    if (!author || !title || !body) return;
+    if (!author || !body) return;
 
     btn.disabled = true;
     msg.textContent = "送信中…";
@@ -68,7 +66,7 @@ function setupForm() {
       const res = await fetch(`${API_BASE}/api/post`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ author, title, body }),
+        body: JSON.stringify({ author, body }),
       });
 
       if (!res.ok) {
@@ -79,7 +77,6 @@ function setupForm() {
       }
 
       // 成功
-      Utils.$("bbs-title").value = "";
       Utils.$("bbs-body").value = "";
       msg.textContent = "投稿しました";
 
@@ -98,6 +95,7 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
+
 
 
 

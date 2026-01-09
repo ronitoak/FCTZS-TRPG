@@ -1,5 +1,5 @@
 "use strict";
-
+console.log("bbs.js loaded");
 // ★あなたのWorkersのURLに置き換え
 const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
 
@@ -100,4 +100,5 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
+
 

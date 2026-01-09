@@ -63,7 +63,7 @@ function setupForm() {
     msg.textContent = "送信中…";
 
     try {
-      const res = await fetch(`${API_BASE}/api/post`, {
+      const res = await fetch(`${API_BASE}/api/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ author, body }),
@@ -95,6 +95,7 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
+
 
 
 

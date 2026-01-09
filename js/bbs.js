@@ -1,7 +1,7 @@
 "use strict";
 
 // ★あなたのWorkersのURLに置き換え
-//const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
+const API_BASEURL = "https://fctzs-trpg.daruji65.workers.dev";
 
 function nl2brSafe(text) {
   // escapeしてから <br> にする（XSS防止）
@@ -13,7 +13,7 @@ async function loadPosts() {
   list.textContent = "読み込み中…";
 
   try {
-    const res = await fetch(`${Utils.API_BASE}/api/posts`, { cache: "no-store" });
+    const res = await fetch(`${API_BASEURL}/api/posts`, { cache: "no-store" });
     if (!res.ok) {
       list.innerHTML = `<p>読み込みに失敗しました（${Utils.escapeHtml(res.status)}）</p>`;
       return;
@@ -63,7 +63,7 @@ function setupForm() {
     msg.textContent = "送信中…";
 
     try {
-      const res = await fetch(`${Utils.API_BASE}/api/posts`, {
+      const res = await fetch(`${API_BASEURL}/api/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ author, body }),
@@ -95,6 +95,7 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
+
 
 
 

@@ -1,0 +1,920 @@
+/* ===== 共通 ===== */
+body {
+    font-family: sans-serif;
+    background: #f2f2f2;
+    margin: 0;
+    padding: 20px;
+}
+
+h1, h2 {
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 6px;
+}
+
+a {
+    color: #333;
+    text-decoration: none;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+}
+
+.top-nav {
+  margin-bottom: 20px;
+}
+
+/*
+// ===== character ===== 
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    position: relative;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.card.lost::after {
+  content: "LOST";
+  background: darkred;
+}
+
+.card.lost {
+    background: #2a0f0f; 
+    box-shadow: 0 4px 12px rgba(120, 0, 0, 0.35);
+}
+
+.card.lost .card-name,
+.card.lost .card-meta {
+    color: #e0c0c0;
+}
+
+.card.lost:hover {
+    transform: none;
+}
+
+
+.card.rescued::after {
+  content: "RESCUED";
+  background: darkorange;
+}
+
+.card.rescued {
+    background: #241a38;
+    box-shadow: 0 4px 12px rgba(120, 80, 200, 0.35);
+}
+
+.card.rescued .card-name,
+.card.rescued .card-meta {
+    color: #e6dcff;
+}
+
+
+.card.survived::after {
+  content: "ALIVE";
+  background: darkgreen;
+}
+
+.card::after {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+.card.lost img,
+.card.rescued img {
+    opacity: 0.85;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+}
+
+.card img {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+}
+
+.card-body {
+    padding: 12px;
+}
+
+.card-name {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-meta {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+}
+
+// ===== 個別ページ ===== 
+.section {
+    margin-bottom: 24px;
+}
+
+.portrait {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.portrait img {
+    max-width: 300px;
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.back {
+    text-align: center;
+    margin-top: 20px;
+}
+
+// ===== 基本情報＋ポートレート横並び ===== 
+.profile {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.profile-image img {
+    width: 220px;
+    border-radius: 8px;
+}
+
+.profile-info p {
+    margin: 6px 0;
+}
+
+// 画面が狭いときは縦並び 
+@media (max-width: 700px) {
+    .profile {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+}
+*/
+
+/* ===== Sessions（Run単位カード）追記 ===== */
+.sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.sessions-card {
+  background: #fff;
+  border-radius: 8px;             /* 既存.containerと合わせる */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08); /* 既存.cardと揃える */
+  padding: 16px;
+}
+
+.sessions-card h2 {
+  margin: 0 0 10px;
+  border-bottom: none;            /* 既存 h1,h2 の下線を回避したいなら */
+  padding-bottom: 0;
+}
+
+.sessions-meta {
+  font-size: 14px;
+  color: #666;
+  margin: 6px 0 12px;
+}
+
+.sessions-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.sessions-badge.active { background: darkgreen; }
+.sessions-badge.done { background: #777; }
+
+.sessions-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.sessions-list li {
+  margin: 4px 0;
+}
+
+/* Sessions: cover image */
+.sessions-cover {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 10px;
+  background: #f2f2f2;
+}
+
+/* ===== Scenarios page ===== */
+.scenarios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.scenarios-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.scenarios-title {
+  margin: 0 0 8px;
+}
+
+.scenarios-meta {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Scenarios: cover image */
+.scenarios-cover {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 10px;
+  background: #f2f2f2;
+}
+
+/* ===== Schedule page ===== */
+.schedule-wrap {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.schedule-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.schedule-item {
+  margin: 10px 0;
+}
+
+.schedule-when {
+  margin-bottom: 4px;
+}
+
+.schedule-what small {
+  color: #666;
+}
+
+/* ===== Characters page (追加) ===== */
+.character-controls {
+  margin: 10px 0 16px;
+}
+
+.character-controls input[type="search"] {
+  width: min(420px, 100%);
+  padding: 6px 10px;
+}
+
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.character-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.character-title {
+  margin: 0 0 8px;
+}
+
+.character-title-link {
+  text-decoration: none;
+}
+
+.character-title-link:hover {
+  text-decoration: underline;
+}
+
+.character-meta {
+  font-size: 14px;
+  color: #666;
+}
+
+.character-tags {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.character-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  color: #444;
+  background: #fafafa;
+}
+
+/* Characters: thumbnail */
+.character-thumb {
+  width: 100%;
+  height: 250px;
+  object-fit: scale-down;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 10px;
+  background: #f2f2f2;
+}
+
+.character-thumb--empty {
+  /* 画像がない時のダミー枠 */
+  border: 1px dashed #ddd;
+  background: #685f5f;
+}
+
+/* ===== Characters: card state (ported from .card.*) ===== */
+
+.character-card {
+  position: relative;
+  overflow: hidden; /* バッジをきれいに */
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* バッジ共通（元の .card::after 相当） */
+.character-card::after {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  content: ""; /* 通常は表示しない */
+}
+
+/* hover（元の .card:hover 相当） */
+.character-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+}
+
+/* LOST */
+.character-card.lost::after {
+  content: "LOST";
+  background: darkred;
+}
+.character-card.lost {
+  background: #2a0f0f;
+  box-shadow: 0 4px 12px rgba(120, 0, 0, 0.35);
+}
+.character-card.lost .character-title,
+.character-card.lost .character-meta {
+  color: #e0c0c0;
+}
+.character-card.lost:hover {
+  transform: none; /* “死者は跳ねない”を再現 */
+}
+
+/* RESCUED */
+.character-card.rescued::after {
+  content: "RESCUED";
+  background: darkorange;
+}
+.character-card.rescued {
+  background: #241a38;
+  box-shadow: 0 4px 12px rgba(120, 80, 200, 0.35);
+}
+.character-card.rescued .character-title,
+.character-card.rescued .character-meta {
+  color: #e6dcff;
+}
+
+/* ALIVE */
+.character-card.survived::after {
+  content: "ALIVE";
+  background: darkgreen;
+}
+
+/* 画像の雰囲気（元の .card.lost img / rescued img 相当） */
+.character-card.lost .character-thumb,
+.character-card.rescued .character-thumb {
+  opacity: 0.85;
+}
+
+.character-detail-image {
+  width: 240px;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: outline-block;
+  margin: 10px 0 20px;
+}
+
+/* ===== Character Detail Layout ===== */
+.character-detail-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.character-detail-title {
+  margin: 0;
+}
+
+.character-detail-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  background: #777;
+}
+
+/* 既に state が lost/rescued/survived で運用してるなら色も寄せられる */
+.character-detail-badge.lost { background: darkred; }
+.character-detail-badge.rescued { background: darkorange; }
+.character-detail-badge.survived { background: darkgreen; }
+
+.character-detail-top {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .character-detail-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+.character-detail-h2 {
+  margin: 0 0 10px;
+}
+
+.character-detail-profile {
+  height: 350px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.character-detail-desc {
+  margin: 12px 0 0;
+  color: #444;
+  white-space: pre-wrap;
+}
+
+.character-detail-imagewrap {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.character-detail-image {
+  height: 321px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: scale-down;
+  display: block;
+  background: #f2f2f2;
+}
+
+/* 下部パネル群 */
+.character-detail-bottom {
+  margin-top: 18px;
+}
+
+.character-detail-panels {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 18px;
+}
+
+@media (max-width: 820px) {
+  .character-detail-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.character-detail-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.character-detail-panel--full {
+  grid-column: 1 / -1;
+}
+
+.character-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.character-detail-table th {
+  text-align: left;
+  color: #666;
+  font-weight: 600;
+  padding: 6px 8px;
+  width: 35%;
+  vertical-align: top;
+}
+
+.character-detail-table td {
+  padding: 6px 8px;
+}
+
+.character-detail-table--compact th,
+.character-detail-table--compact td {
+  padding: 5px 8px;
+}
+
+.character-detail-memo {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.character-detail-muted {
+  margin: 0;
+  color: #666;
+}
+
+/* 通過シナリオ（最下部） */
+.character-detail-scenarios {
+  margin-top: 18px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.character-detail-scenario-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+/* ===== Character Detail: chips ===== */
+.character-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.character-detail-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.character-detail-chip-key {
+  color: #555;
+  font-weight: 600;
+}
+
+.character-detail-chip-val {
+  color: #111;
+  font-weight: 700;
+}
+
+/* 技能だけ少し締める（任意） */
+.character-detail-chip--skill {
+  background: #fff;
+}
+
+.character-detail-link {
+  text-decoration: none;
+}
+
+.character-detail-link:hover {
+  text-decoration: underline;
+}
+
+/* ===== Scenario Detail ===== */
+.scenario-detail-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.scenario-detail-title {
+  margin: 0;
+}
+
+.scenario-detail-system {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 12px;
+  color: #444;
+}
+
+.scenario-detail-top {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .scenario-detail-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scenario-detail-imagewrap,
+.scenario-detail-info,
+.scenario-detail-runs {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.scenario-detail-cover {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  background: #f2f2f2;
+}
+
+.scenario-detail-h2 {
+  margin: 0 0 10px;
+}
+
+.scenario-detail-desc {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #444;
+}
+
+.scenario-detail-runs {
+  margin-top: 18px;
+}
+
+.scenario-detail-runs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.scenario-detail-run-card {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.scenario-detail-run-title {
+  margin: 0 0 8px;
+}
+
+.scenario-detail-run-meta {
+  font-size: 14px;
+  color: #666;
+}
+
+.scenario-detail-link {
+  display: inline-block;
+  margin-top: 10px;
+  text-decoration: none;
+}
+
+.scenario-detail-link:hover {
+  text-decoration: underline;
+}
+
+.scenario-detail-muted {
+  margin: 0;
+  color: #666;
+}
+
+.scenarios-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.scenarios-link:hover {
+  text-decoration: underline;
+}
+
+.sessions-section {
+  margin: 16px 0 24px;
+}
+
+.sessions-section-title {
+  margin: 0 0 12px;
+}
+.scenario-detail-h3 {
+  margin: 8px 0 12px;
+}
+
+.scenario-detail-runs-split {
+  display: grid;
+  gap: 18px;
+}
+
+.scenario-detail-runs-block {
+  /* 親が .scenario-detail-runs の白カードなので、ここは余白だけでもOK */
+}
+
+/* ===== Session Detail ===== */
+.session-detail-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.session-detail-title {
+  margin: 0;
+}
+
+.session-detail-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  background: #777;
+}
+
+.session-detail-badge.active { background: darkgreen; }
+.session-detail-badge.done { background: #555; }
+
+.session-detail-top {
+  display: grid;
+  grid-template-columns: 0.75fr 1.25fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .session-detail-top { grid-template-columns: 1fr; }
+}
+
+.session-detail-profile,
+.session-detail-imagewrap,
+.session-detail-log {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+}
+
+.session-detail-h2 { margin: 0 0 10px; }
+.session-detail-h3 { margin: 14px 0 10px; }
+
+.session-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.session-detail-table th {
+  text-align: left;
+  color: #666;
+  font-weight: 600;
+  padding: 6px 8px;
+  width: 28%;
+  vertical-align: top;
+}
+
+.session-detail-table td { padding: 6px 8px; }
+
+.session-detail-cover {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  background: #f2f2f2;
+}
+
+.session-detail-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.session-detail-link:hover { text-decoration: underline; }
+
+.session-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.session-detail-chiplink {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 13px;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.session-detail-chiplink:hover {
+  text-decoration: underline;
+}
+
+.session-detail-log { margin-top: 18px; }
+
+.session-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.session-detail-item {
+  display: grid;
+  grid-template-columns: 190px 1fr 70px;
+  gap: 10px;
+  align-items: baseline;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+@media (max-width: 820px) {
+  .session-detail-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+.session-detail-item-date { color: #555; font-size: 13px; }
+.session-detail-item-title { font-weight: 600; }
+.session-detail-item-state { font-size: 12px; color: #666; }
+.session-detail-item-state.scheduled { color: #0a6; }
+.session-detail-item-state.done { color: #666; }
+
+.session-detail-muted { margin: 0; color: #666; }

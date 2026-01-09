@@ -1,0 +1,177 @@
+[
+  {
+    "id": "se-2025-1212",
+    "runId": "r-001_1",
+    "start": "2025-12-12T19:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part1",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "がのーら",
+      "yossy"
+    ],
+    "page": "/sessions/s-001_1.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2025-1219",
+    "runId": "r-001_1",
+    "start": "2025-12-19T19:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part2",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "がのーら",
+      "yossy"
+    ],
+    "page": "/sessions/s-001_1.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2026-0103",
+    "runId": "r-001_1",
+    "start": "2026-01-03T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part3",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "がのーら",
+      "yossy"
+    ],
+    "page": "/sessions/s-001_1.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2026-0106",
+    "runId": "r-001_1",
+    "start": "2026-01-06T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part4",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "がのーら",
+      "yossy"
+    ],
+    "page": "/sessions/s-001_1.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2026-0116",
+    "runId": "r-001_1",
+    "start": "2026-01-16T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part5",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "がのーら",
+      "yossy"
+    ],
+    "page": "/sessions/s-001_1.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2026-0130",
+    "runId": "r-001_1",
+    "start": "2026-01-30T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part6",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "がのーら",
+      "yossy"
+    ],
+    "page": "/sessions/s-001_1.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2025-1218",
+    "runId": "r-001_2",
+    "start": "2025-12-18T19:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part1",
+    "gm": "だるじ",
+    "players": [
+      "アズレイ",
+      "リズミ",
+      "佳村かえる"
+    ],
+    "page": "/sessions/s-001_2.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2025-1228",
+    "runId": "r-001_2",
+    "start": "2025-12-28T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part2",
+    "gm": "だるじ",
+    "players": [
+      "アズレイ",
+      "リズミ",
+      "佳村かえる"
+    ],
+    "page": "/sessions/s-001_2.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2026-0107",
+    "runId": "r-001_2",
+    "start": "2026-01-07T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part3",
+    "gm": "だるじ",
+    "players": [
+      "アズレイ",
+      "リズミ",
+      "佳村かえる"
+    ],
+    "page": "/sessions/s-001_2.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2026-0117",
+    "runId": "r-001_2",
+    "start": "2026-01-17T20:00:00+09:00",
+    "status": "scheduled",
+    "title": "Part4",
+    "gm": "だるじ",
+    "players": [
+      "アズレイ",
+      "リズミ",
+      "佳村かえる"
+    ],
+    "page": "/sessions/s-001_2.html",
+    "notes": "",
+    "cover": "/img/session/s-001.png"
+  },
+  {
+    "id": "se-2025-0812",
+    "runId": "r-002_1",
+    "start": "2025-08-12T12:00:00+09:00",
+    "status": "done",
+    "title": "Part1",
+    "gm": "だるじ",
+    "players": [
+      "くしかつうまいな",
+      "佳村かえる"
+    ],
+    "page": "/sessions/s-002_1.html",
+    "notes": "",
+    "cover": "/img/session/s-002.png"
+  }
+]

@@ -272,6 +272,7 @@ async function main() {
         <h2 class="character-detail-h2">通過シナリオ</h2>
         ${passedHtml}
       </section>
+      <div id="comments-root"></div>
     `;
 
   } catch (e) {
@@ -281,3 +282,4 @@ async function main() {
 }
 
 main();
+

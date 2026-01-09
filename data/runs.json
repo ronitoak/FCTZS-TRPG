@@ -333,7 +333,7 @@
   {
     "id": "r-014_1",
     "scenarioId": "s-014",
-    "status": "active",
+    "status": "done",
     "title": "無垢の神",
     "gm": "リズミ",
     "players": [
@@ -347,12 +347,12 @@
     ],
     "characters": [
       "c-003",
-      "",
-      "",
-      "",
-      "",
-      "",
-      ""
+      "c-050",
+      "c-051",
+      "c-052",
+      "c-053",
+      "c-054",
+      "c-055"
     ],
     "cover": "/img/scenario/s-014.png",
     "page": "/sessions/s-014_1.html"

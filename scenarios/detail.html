@@ -9,7 +9,7 @@
     <script src="../js/scenario_detail.js" defer></script>
 </head>
 <body>
-  <div class="container">
+    <div class="container">
         <nav class="top-nav">
             <a href="../index.html">Home</a> |
             <a href="../character/index.html">Characters</a> |
@@ -19,14 +19,21 @@
             <a href="../bbs/index.html">BBS</a>
         </nav>
         <hr />
-    <section id="scenario-detail">
-      <p>読み込み中…</p>
-    </section>
+        <section id="scenario-detail">
+          <p>読み込み中…</p>
+        </section>
+        <div id="comments-root"></div>
         <footer>
-                <hr />
-                <small><a href="../scenarios/index.html">Back</a></small>
+            <hr />
+            <small><a href="../scenarios/index.html">Back</a></small>
         </footer>
-     </div>
+    </div>
+    <script src="../js/comments.js"></script>
+    <script>
+        Comments.mount("comments-root", "scenario");
+    </script>
+
 </body>
 </html>
+
 

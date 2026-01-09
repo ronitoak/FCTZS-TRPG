@@ -1,5 +1,7 @@
 "use strict";
 
+const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
+
 (function () {
   // ---------- DOM ----------
   function domReady(fn) {
@@ -37,10 +39,24 @@
 
   // ---------- Fetch ----------
   async function fetchJson(path) {
-    const res = await fetch(path, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Failed to fetch ${path} (${res.status})`);
+    let url = path;
+  
+    // data/*.json を Workers API に変換
+    // 例: ../data/characters.json -> https://.../api/characters
+    const m = String(path).match(/(?:^|\/)data\/([^\/]+)\.json$/);
+    if (m) {
+      const name = m[1]; // characters / scenarios / runs / sessions
+      url = `${API_BASE}/api/${name}`;
+    }
+  
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Failed to fetch ${url} (${res.status}) ${text}`);
+    }
     return res.json();
-  }
+}
+
 
   // ---------- Date ----------
   function toDate(iso) {
@@ -141,3 +157,4 @@
     buildNextAndLastByRunId, getRunScheduleLabel,
   });
 })();
+

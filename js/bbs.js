@@ -1,5 +1,5 @@
 "use strict";
-console.log("bbs.js loaded");
+
 // ★あなたのWorkersのURLに置き換え
 const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
 
@@ -14,17 +14,38 @@ async function loadPosts() {
 
   try {
     const res = await fetch(`${API_BASE}/api/posts`, { cache: "no-store" });
-    const text = await res.text();
+    if (!res.ok) {
+      list.innerHTML = `<p>読み込みに失敗しました（${Utils.escapeHtml(res.status)}）</p>`;
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = `<p><small>投稿がありません</small></p>`;
+      return;
+    }
 
     list.innerHTML = `
-      <p><small>status: ${Utils.escapeHtml(res.status)}</small></p>
-      <pre style="white-space:pre-wrap">${Utils.escapeHtml(text)}</pre>
+      <ul class="bbs-posts">
+        ${data.map(p => {
+          const dt = new Date(p.created_at);
+          const dtText = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleString("ja-JP");
+          return `
+            <li class="bbs-post">
+              <div class="bbs-post-title"><strong>${Utils.escapeHtml(p.title)}</strong></div>
+              <div class="bbs-post-meta"><small>${Utils.escapeHtml(p.author)} / ${Utils.escapeHtml(dtText)}</small></div>
+              <div class="bbs-post-body">${Utils.escapeHtml(p.body).replaceAll("\n", "<br>")}</div>
+            </li>
+          `;
+        }).join("")}
+      </ul>
     `;
   } catch (e) {
-    list.innerHTML = `<p>fetch失敗: ${Utils.escapeHtml(e?.message || e)}</p>`;
+    console.error(e);
+    list.innerHTML = `<p>読み込みに失敗しました</p>`;
   }
 }
-
 
 function setupForm() {
   const form = Utils.$("bbs-form");
@@ -77,6 +98,7 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
+
 
 
 

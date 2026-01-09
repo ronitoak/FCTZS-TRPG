@@ -1,7 +1,7 @@
 "use strict";
 
 // ★あなたのWorkersのURLに置き換え
-const API_BASE = "https://fctzs-trpg.daruji65.workers.dev/";
+const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
 
 function nl2brSafe(text) {
   // escapeしてから <br> にする（XSS防止）
@@ -100,3 +100,4 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
+

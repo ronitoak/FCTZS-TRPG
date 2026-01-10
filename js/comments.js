@@ -38,14 +38,18 @@
   // containerId: どこに差し込むか
   // targetType: character|scenario|session
   // targetId: URLパラメータid
-  async function mount(containerId, targetType) {
-    const targetId = fixedTargetId ?? getParam("id");
+  
+  async function mount(containerId, targetType, fixedTargetId) {
     const root = document.getElementById(containerId);
-    if (!root) throw new Error(`comments mount: #${containerId} not found`);
+    if (!root) return;
+  
+    const targetId = fixedTargetId ?? getParam("id");
     if (!targetId) {
-      root.textContent = "コメント欄: id が見つかりません";
+      root.innerHTML = "<p class='comments-muted'>コメント対象がありません</p>";
       return;
     }
+  }
+
 
     root.innerHTML = `
       <section class="comments">

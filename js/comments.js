@@ -39,7 +39,7 @@
   // targetType: character|scenario|session
   // targetId: URLパラメータid
   async function mount(containerId, targetType) {
-    const targetId = getParam("id");
+    const targetId = fixedTargetId ?? getParam("id");
     const root = document.getElementById(containerId);
     if (!root) throw new Error(`comments mount: #${containerId} not found`);
     if (!targetId) {

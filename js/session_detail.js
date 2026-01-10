@@ -136,6 +136,8 @@ async function main() {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
+  Comments.mount("comments-root", "session", run.id);
 }
 
 main();
+

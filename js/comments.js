@@ -37,19 +37,16 @@
 
   // containerId: どこに差し込むか
   // targetType: character|scenario|session
-  // targetId: URLパラメータid
-  
+  // fixedTargetId: 明示したい場合だけ渡す（省略可）
   async function mount(containerId, targetType, fixedTargetId) {
     const root = document.getElementById(containerId);
     if (!root) return;
-  
+
     const targetId = fixedTargetId ?? getParam("id");
     if (!targetId) {
       root.innerHTML = "<p class='comments-muted'>コメント対象がありません</p>";
       return;
     }
-  }
-
 
     root.innerHTML = `
       <section class="comments">

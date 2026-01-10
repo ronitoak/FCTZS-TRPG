@@ -114,14 +114,18 @@ const SKILL_BASE_BY_SYSTEM = {
 };
 
 function renderMultilineText(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;")
-    .replaceAll("\n", "<br>");
+  // 1) 文字として入ってる \n を本物の改行へ
+  const normalized = String(text)
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\\n", "\n"); // ← ここが重要（バックスラッシュ+n）
+
+  // 2) 安全にエスケープ
+  const escaped = Utils.escapeHtml(normalized);
+
+  // 3) 改行を <br> に
+  return escaped.replaceAll("\n", "<br>");
 }
+
 
 async function main() {
   const root = document.getElementById("character-detail");
@@ -291,6 +295,7 @@ async function main() {
 }
 
 main();
+
 
 
 

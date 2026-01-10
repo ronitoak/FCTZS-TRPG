@@ -111,11 +111,10 @@
               return `
                 <li class="top-comments-item">
                   <div class="top-comments-meta">
-                    <span class="top-comments-type">${esc(labelFor(c.target_type))}</span>
                     <a href="${linkFor(c)}" class="top-comments-target">
                       ${esc(targetName)}
                     </a>
-                    <span class="top-comments-author">${esc(c.author)}</span>
+                    <a href="${linkFor(c)}"  class="top-comments-author">${esc(c.author)}</a>
                     <time>${esc(when)}</time>
                   </div>
                   <div class="top-comments-body">

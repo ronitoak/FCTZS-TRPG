@@ -132,7 +132,7 @@ async function main() {
         }
       </section>
     `;
-      Comments.mount("comments-root", "session", run.id);
+      Comments.mount("comments-root", "session", runId);
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
@@ -140,5 +140,6 @@ async function main() {
 }
 
 main();
+
 
 

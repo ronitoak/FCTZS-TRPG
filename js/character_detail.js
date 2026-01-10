@@ -113,6 +113,16 @@ const SKILL_BASE_BY_SYSTEM = {
   }
 };
 
+function renderMultilineText(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+    .replaceAll("\n", "<br>");
+}
+
 async function main() {
   const root = document.getElementById("character-detail");
   if (!root) return;
@@ -159,7 +169,7 @@ async function main() {
 
     const abilities = c.abilities ?? {};
     const skills = c.skills ?? {};
-    const memo = c.memo ?? c.description ?? "";
+    const memo = c.memo ?? renderMultilineText(c.description) ?? "";
 
     const baseMap = SKILL_BASE_BY_SYSTEM[c.system] ?? null;
 
@@ -281,5 +291,6 @@ async function main() {
 }
 
 main();
+
 
 

@@ -49,7 +49,7 @@ function renderCharacters(root, characters, query) {
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const imgHtml = `
-      <img class="character-image"
+      <img class="character-thumb"
         src="${imagePath}"
         onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';"
         alt="${name}"

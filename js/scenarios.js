@@ -55,7 +55,7 @@ async function main() {
         </h2>
         <div class="scenarios-meta">
           ${system ? `<div>System: ${system}</div>` : ""}
-          <div>Runs: ${Utils.escapeHtml(runsCount)}</div>
+          <div>Runs: ${runsCount}</div>
         </div>
       `;
 

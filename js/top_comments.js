@@ -1,5 +1,4 @@
 (function () {
-  const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
 
   function esc(s) {
     return String(s)
@@ -31,44 +30,35 @@
     }
   }
 
-  async function fetchJson(url) {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Failed: ${url} (${res.status}) ${text}`);
-    }
-    return res.json();
-  }
-
   async function fetchRecent(limit = 10) {
-    return fetchJson(`${API_BASE}/api/comments/recent?limit=${limit}`);
+    return Utils.apiGet("comments/recent", `limit=${encodeURIComponent(limit)}`);
   }
 
   // ★ 追加：id→名前辞書を作る
-  async function fetchNameMaps() {
-    const [characters, scenarios, runs] = await Promise.all([
-      fetchJson(`${API_BASE}/api/characters`),
-      fetchJson(`${API_BASE}/api/scenarios`),
-      fetchJson(`${API_BASE}/api/runs`),
-    ]);
+async function fetchNameMaps() {
+  const [characters, scenarios, runs] = await Promise.all([
+    Utils.apiGet("characters"),
+    Utils.apiGet("scenarios"),
+    Utils.apiGet("runs"),
+  ]);
 
-    const charMap = new Map();
-    for (const c of characters || []) {
-      if (c?.id) charMap.set(String(c.id), String(c.name ?? c.id));
-    }
-
-    const scenarioMap = new Map();
-    for (const s of scenarios || []) {
-      if (s?.id) scenarioMap.set(String(s.id), String(s.title ?? s.name ?? s.id));
-    }
-
-    const runMap = new Map();
-    for (const r of runs || []) {
-      if (r?.id) runMap.set(String(r.id), String(r.title ?? r.id));
-    }
-
-    return { charMap, scenarioMap, runMap };
+  const charMap = new Map();
+  for (const c of characters || []) {
+    if (c?.id) charMap.set(String(c.id), String(c.name ?? c.id));
   }
+
+  const scenarioMap = new Map();
+  for (const s of scenarios || []) {
+    if (s?.id) scenarioMap.set(String(s.id), String(s.title ?? s.name ?? s.id));
+  }
+
+  const runMap = new Map();
+  for (const r of runs || []) {
+    if (r?.id) runMap.set(String(r.id), String(r.title ?? r.id));
+  }
+
+  return { charMap, scenarioMap, runMap };
+}
 
   function resolveTargetName(c, maps) {
     const id = String(c.target_id ?? "");

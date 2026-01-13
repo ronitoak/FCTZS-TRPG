@@ -9,8 +9,8 @@ async function main() {
 
   try {
     const [scenarios, runs] = await Promise.all([
-      Utils.fetchJson("../data/scenarios.json"),
-      Utils.fetchJson("../data/runs.json"),
+      Utils.apiGet("scenarios"),
+      Utils.apiGet("runs"),
     ]);
 
     if (!Array.isArray(scenarios) || scenarios.length === 0) {

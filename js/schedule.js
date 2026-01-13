@@ -6,9 +6,9 @@ async function main() {
 
   try {
     const [scenarios, runs, sessions] = await Promise.all([
-      Utils.fetchJson("../data/scenarios.json"),
-      Utils.fetchJson("../data/runs.json"),
-      Utils.fetchJson("../data/sessions.json"),
+      Utils.apiGet("scenarios"),
+      Utils.apiGet("runs"),
+      Utils.apiGet("sessions"),
     ]);
 
     const scenariosById = new Map((scenarios ?? []).map(s => [s.id, s]));

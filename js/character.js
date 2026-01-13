@@ -87,7 +87,7 @@ if (!root) {
   return;
 }
   try {
-    const characters = await Utils.fetchJson("../data/characters.json");
+    const characters = await Utils.apiGet("characters");
     renderCharacters(root, characters, input ? input.value : "");
 
     if (input) {

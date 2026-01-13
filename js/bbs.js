@@ -1,10 +1,6 @@
 "use strict";
 
-// ★あなたのWorkersのURLに置き換え
-const API_BASEURL = "https://fctzs-trpg.daruji65.workers.dev";
-
 function nl2brSafe(text) {
-  // escapeしてから <br> にする（XSS防止）
   return Utils.escapeHtml(text).replaceAll("\n", "<br>");
 }
 
@@ -13,13 +9,7 @@ async function loadPosts() {
   list.textContent = "読み込み中…";
 
   try {
-    const res = await fetch(`${API_BASEURL}/api/posts`, { cache: "no-store" });
-    if (!res.ok) {
-      list.innerHTML = `<p>読み込みに失敗しました（${Utils.escapeHtml(res.status)}）</p>`;
-      return;
-    }
-
-    const data = await res.json();
+    const data = await Utils.apiGet("posts"); // ★統一
 
     if (!Array.isArray(data) || data.length === 0) {
       list.innerHTML = `<p><small>投稿がありません</small></p>`;
@@ -34,7 +24,7 @@ async function loadPosts() {
           return `
             <li class="bbs-post">
               <div class="bbs-post-meta"><small>${Utils.escapeHtml(p.author)} / ${Utils.escapeHtml(dtText)}</small></div>
-              <div class="bbs-post-body">${Utils.escapeHtml(p.body).replaceAll("\n", "<br>")}</div>
+              <div class="bbs-post-body">${nl2brSafe(p.body)}</div>
             </li>
           `;
         }).join("")}
@@ -56,37 +46,22 @@ function setupForm() {
 
     const author = Utils.$("bbs-author").value.trim();
     const body = Utils.$("bbs-body").value.trim();
-
     if (!author || !body) return;
 
     btn.disabled = true;
     msg.textContent = "送信中…";
 
     try {
-      const res = await fetch(`${API_BASEURL}/api/posts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ author, body }),
-      });
+      await Utils.apiPost("posts", { author, body }); // ★統一（失敗時はthrowされる想定）
 
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        msg.textContent = `投稿に失敗しました（${res.status}）`;
-        console.warn("post failed:", t);
-        return;
-      }
-
-      // 成功
       Utils.$("bbs-body").value = "";
       msg.textContent = "投稿しました";
-
       await loadPosts();
     } catch (err) {
       console.error(err);
       msg.textContent = "投稿に失敗しました";
     } finally {
       btn.disabled = false;
-      // メッセージは少し残してOK。消したいならsetTimeoutで消す
     }
   });
 }
@@ -95,12 +70,3 @@ Utils.domReady(async () => {
   setupForm();
   await loadPosts();
 });
-
-
-
-
-
-
-
-
-

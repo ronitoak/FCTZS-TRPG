@@ -139,8 +139,8 @@ async function main() {
 
   try {
     const [characters, scenarios] = await Promise.all([
-      Utils.fetchJson("../data/characters.json"),
-      Utils.fetchJson("../data/scenarios.json"),
+      Utils.apiGet("characters"),
+      Utils.apiGet("scenarios"),
     ]);
 
     const scenariosById = new Map(

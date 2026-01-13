@@ -1,5 +1,4 @@
 (function () {
-  const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
 
   function esc(s) {
     return String(s)
@@ -14,26 +13,17 @@
     return new URLSearchParams(location.search).get(name);
   }
 
-  async function fetchJson(url, options) {
-    const res = await fetch(url, { cache: "no-store", ...options });
-    const text = await res.text().catch(() => "");
-    if (!res.ok) throw new Error(`${res.status} ${text}`);
-    return text ? JSON.parse(text) : null;
-  }
+    async function loadComments(targetType, targetId) {
+      return Utils.apiGet(
+        "comments",
+        `type=${encodeURIComponent(targetType)}&id=${encodeURIComponent(targetId)}`
+      );
+    }
 
-  async function loadComments(targetType, targetId) {
-    const url = `${API_BASE}/api/comments?type=${encodeURIComponent(targetType)}&id=${encodeURIComponent(targetId)}`;
-    return fetchJson(url);
-  }
+    async function postComment(payload) {
+      return Utils.apiPost("comments", payload);
+    }
 
-  async function postComment(payload) {
-    const url = `${API_BASE}/api/comments`;
-    return fetchJson(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  }
 
   // containerId: どこに差し込むか
   // targetType: character|scenario|session

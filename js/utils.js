@@ -37,26 +37,28 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
       .replaceAll("'", "&#39;");
   }
 
-  // ---------- Fetch ----------
-  async function fetchJson(path) {
-    let url = path;
-  
-    // data/*.json を Workers API に変換
-    // 例: ../data/characters.json -> https://.../api/characters
-    const m = String(path).match(/(?:^|\/)data\/([^\/]+)\.json$/);
-    if (m) {
-      const name = m[1]; // characters / scenarios / runs / sessions
-      url = `${API_BASE}/api/${name}`;
-    }
-  
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Failed to fetch ${url} (${res.status}) ${text}`);
-    }
-    return res.json();
-}
+  // ---------- api ----------
+  async function apiFetchJson(path, options = {}) {
+    const url = path.startsWith("http") ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
 
+    const res = await fetch(url, { cache: "no-store", ...options });
+    const text = await res.text().catch(() => "");
+    if (!res.ok) throw new Error(`${res.status} ${text}`);
+    return text ? JSON.parse(text) : null; // comments.jsの挙動互換
+  }
+
+  async function apiGet(resource, query = "") {
+    const q = query ? `?${query}` : "";
+    return apiFetchJson(`/api/${resource}${q}`);
+  }
+
+  async function apiPost(resource, payload) {
+    return apiFetchJson(`/api/${resource}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
 
   // ---------- Date ----------
   function toDate(iso) {
@@ -148,7 +150,7 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
     // String
     escapeHtml,
     // Fetch
-    fetchJson,
+    apiGet,
     // Date
     toDate, formatDateTime, formatDate,
     // Collections

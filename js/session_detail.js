@@ -14,11 +14,11 @@ async function main() {
 
   try {
     const [runs, scenarios, sessions, characters] = await Promise.all([
-      Utils.fetchJson("../data/runs.json"),
-      Utils.fetchJson("../data/scenarios.json"),
-      Utils.fetchJson("../data/sessions.json"),
+      Utils.apiGet("runs"),
+      Utils.apiGet("scenarios"),
+      Utils.apiGet("sessions"),
       // characters は無くても動くようにしておく（ファイルが無いなら catch で握る設計でもOK）
-      Utils.fetchJson("../data/characters.json").catch(() => []),
+      Utils.apiGet("characters").catch(() => []),
     ]);
 
     const run = (Array.isArray(runs) ? runs : []).find(r => r.id === runId);

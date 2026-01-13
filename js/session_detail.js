@@ -4,8 +4,8 @@ async function main() {
   const root = document.getElementById("session-detail");
   if (!root) return;
 
-  const runId = Utils.getQueryParam("id");
-  if (!runId) {
+  const run_id = Utils.getQueryParam("id");
+  if (!run_id) {
     root.innerHTML = "<p>run ID が指定されていません</p>";
     return;
   }
@@ -21,13 +21,13 @@ async function main() {
       Utils.apiGet("characters").catch(() => []),
     ]);
 
-    const run = (Array.isArray(runs) ? runs : []).find(r => r.id === runId);
+    const run = (Array.isArray(runs) ? runs : []).find(r => r.id === run_id);
     if (!run) {
       root.innerHTML = "<p>卓が見つかりません</p>";
       return;
     }
 
-    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenarioId) ?? null;
+    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
 
     // カバー：run.cover → なければ scenario.cover → なければ default
     const coverPath =
@@ -39,7 +39,7 @@ async function main() {
 
     // このrunの全セッション（過去も未来も）
     const runSessions = (Array.isArray(sessions) ? sessions : [])
-      .filter(s => s?.runId === run.id)
+      .filter(s => s?.run_id === run.id)
       .map(s => ({ ...s, _start: Utils.toDate(s.start) }))
       .filter(s => s._start) // start不正は除外
       .sort((a, b) => a._start.getTime() - b._start.getTime());
@@ -132,7 +132,7 @@ async function main() {
         }
       </section>
     `;
-      Comments.mount("comments-root", "session", runId);
+      Comments.mount("comments-root", "session", run_id);
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";

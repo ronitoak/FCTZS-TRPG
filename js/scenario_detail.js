@@ -32,23 +32,23 @@ async function main() {
 
     // このシナリオのrunだけ
     const relatedRuns = (Array.isArray(runs) ? runs : [])
-      .filter(r => r?.scenarioId === id)
+      .filter(r => r?.scenario_id === id)
     ;
 
     const activeRuns = relatedRuns.filter(r => r?.status === "active");
     const doneRuns = relatedRuns.filter(r => r?.status === "done");
 
-    // runId -> 次回予定（最も近い scheduled&未来）
+    // run_id -> 次回予定（最も近い scheduled&未来）
     const now = new Date();
     const nextByRunId = new Map();
     for (const s of (Array.isArray(sessions) ? sessions : [])) {
-      if (!s?.runId) continue;
+      if (!s?.run_id) continue;
       if (s.status !== "scheduled") continue;
       const d = Utils.toDate(s.start);
       if (!d || d <= now) continue;
 
-      const cur = nextByRunId.get(s.runId);
-      if (!cur || d < cur._start) nextByRunId.set(s.runId, { ...s, _start: d });
+      const cur = nextByRunId.get(s.run_id);
+      if (!cur || d < cur._start) nextByRunId.set(s.run_id, { ...s, _start: d });
     }
 
     // 表示順：進行中→終了、次回予定が近い順

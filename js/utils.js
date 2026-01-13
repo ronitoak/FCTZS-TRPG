@@ -105,26 +105,26 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
   }
 
   // ---------- Sessions helpers ----------
-  // sessionsから runId ごとに「次回（未来scheduled最短）」と「最終（過去最新）」を作る
+  // sessionsから run_id ごとに「次回（未来scheduled最短）」と「最終（過去最新）」を作る
   function buildNextAndLastByRunId(sessions, now = new Date()) {
     const nextByRunId = new Map();
     const lastByRunId = new Map();
 
     for (const s of ensureArray(sessions)) {
-      if (!s?.runId) continue;
+      if (!s?.run_id) continue;
       const d = toDate(s.start);
       if (!d) continue;
 
       // 最終：過去の最新
       if (d <= now) {
-        const cur = lastByRunId.get(s.runId);
-        if (!cur || d > cur._start) lastByRunId.set(s.runId, { ...s, _start: d });
+        const cur = lastByRunId.get(s.run_id);
+        if (!cur || d > cur._start) lastByRunId.set(s.run_id, { ...s, _start: d });
       }
 
       // 次回：未来 scheduled の最短
       if (s.status === "scheduled" && d > now) {
-        const cur = nextByRunId.get(s.runId);
-        if (!cur || d < cur._start) nextByRunId.set(s.runId, { ...s, _start: d });
+        const cur = nextByRunId.get(s.run_id);
+        if (!cur || d < cur._start) nextByRunId.set(s.run_id, { ...s, _start: d });
       }
     }
 

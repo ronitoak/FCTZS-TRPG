@@ -16,7 +16,7 @@
     return "";
   }
 
-  // ★ session は runId を持つ前提なので、リンクも run 詳細（= 今の sessions/detail）へ
+  // ★ session は run_id を持つ前提なので、リンクも run 詳細（= 今の sessions/detail）へ
   function linkFor(c) {
     switch (c.target_type) {
       case "character":
@@ -24,7 +24,7 @@
       case "scenario":
         return `./scenarios/detail.html?id=${encodeURIComponent(c.target_id)}`;
       case "session":
-        return `./sessions/detail.html?id=${encodeURIComponent(c.target_id)}`; // target_id = runId
+        return `./sessions/detail.html?id=${encodeURIComponent(c.target_id)}`; // target_id = run_id
       default:
         return "#";
     }
@@ -67,7 +67,7 @@ async function fetchNameMaps() {
     if (c.target_type === "character") return maps.charMap.get(id) || id;
     if (c.target_type === "scenario") return maps.scenarioMap.get(id) || id;
 
-    // ★ session の target_id は runId
+    // ★ session の target_id は run_id
     if (c.target_type === "session") return maps.runMap.get(id) || id;
 
     return id;

@@ -17,10 +17,10 @@ async function main() {
     const sessionsByRunId = new Map();
 
     for (const s of sessions) {
-      if (!sessionsByRunId.has(s.runId)) {
-        sessionsByRunId.set(s.runId, []);
+      if (!sessionsByRunId.has(s.run_id)) {
+        sessionsByRunId.set(s.run_id, []);
       }
-      sessionsByRunId.get(s.runId).push(s);
+      sessionsByRunId.get(s.run_id).push(s);
     }
 
   // ループの前に一度だけ
@@ -55,7 +55,7 @@ async function main() {
   // run ごとに表示（予定のみ）
   for (const run of runs) {
 
-    const scenario = scenariosById.get(run.scenarioId);
+    const scenario = scenariosById.get(run.scenario_id);
 
     const runSessionsRaw = sessionsByRunId.get(run.id) ?? [];
 

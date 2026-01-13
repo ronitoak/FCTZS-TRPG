@@ -34,8 +34,8 @@ async function main() {
     wrap.appendChild(ul);
 
     for (const s of upcoming) {
-      const run = runsById.get(s.runId);
-      const scenario = run ? scenariosById.get(run.scenarioId) : null;
+      const run = runsById.get(s.run_id);
+      const scenario = run ? scenariosById.get(run.scenario_id) : null;
 
       const dateStr = s._start.toLocaleDateString("ja-JP", {
         year: "numeric",
@@ -49,7 +49,7 @@ async function main() {
       });
 
       const scenarioTitle = Utils.escapeHtml(scenario?.title ?? "（不明なシナリオ）");
-      const runTitle = Utils.escapeHtml(run?.title ?? s.runId ?? "（不明な卓）");
+      const runTitle = Utils.escapeHtml(run?.title ?? s.run_id ?? "（不明な卓）");
       const sessionTitle = Utils.escapeHtml(s.title ?? "");
 
       const li = document.createElement("li");

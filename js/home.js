@@ -10,8 +10,8 @@ function toValidDate(iso) {
 /**
  * Next Session
  * - sessions.json から status==="scheduled" かつ未来のうち最短1件
- * - runId -> runs 参照（卓名）
- * - scenarioId -> scenarios 参照（シナリオ名）
+ * - run_id -> runs 参照（卓名）
+ * - scenario_id -> scenarios 参照（シナリオ名）
  */
 function renderNextSession(container, sessions, runsById, scenariosById) {
   const now = new Date();
@@ -28,8 +28,8 @@ function renderNextSession(container, sessions, runsById, scenariosById) {
   }
 
   const ses = upcoming[0];
-  const runs = runsById.get(ses.runId);
-  const scenario = runs ? scenariosById.get(runs.scenarioId) : null;
+  const runs = runsById.get(ses.run_id);
+  const scenario = runs ? scenariosById.get(runs.scenario_id) : null;
 
   const dateStr = ses._start.toLocaleDateString("ja-JP", {
     year: "numeric",
@@ -79,9 +79,9 @@ function renderOngoing(container, runs, scenariosById, sessionsByRunId) {
   // 表示は最大5件
   const list = activeRuns.slice(0, 5).map(r => {
 
-    const scenario = scenariosById.get(r.scenarioId);
+    const scenario = scenariosById.get(r.scenario_id);
 
-    const scenarioTitle = Utils.escapeHtml(scenario?.title || r.scenarioId || "（不明）");
+    const scenarioTitle = Utils.escapeHtml(scenario?.title || r.scenario_id || "（不明）");
     const runTitle = Utils.escapeHtml(r.title || r.id || "（卓）");
     
     const players = Array.isArray(r.players) ? r.players : [];
@@ -152,9 +152,9 @@ async function main() {
 
     const sessionsByRunId = new Map();
     for (const s of (Array.isArray(sessions) ? sessions : [])) {
-      if (!s || !s.runId) continue;
-      if (!sessionsByRunId.has(s.runId)) sessionsByRunId.set(s.runId, []);
-      sessionsByRunId.get(s.runId).push(s);
+      if (!s || !s.run_id) continue;
+      if (!sessionsByRunId.has(s.run_id)) sessionsByRunId.set(s.run_id, []);
+      sessionsByRunId.get(s.run_id).push(s);
     }
 
 

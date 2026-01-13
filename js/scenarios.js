@@ -18,13 +18,13 @@ async function main() {
       return;
     }
 
-    // scenarioId -> run数
+    // scenario_id -> run数
     const runCountByScenarioId = new Map();
     for (const r of (Array.isArray(runs) ? runs : [])) {
-      if (!r?.scenarioId) continue;
+      if (!r?.scenario_id) continue;
       runCountByScenarioId.set(
-        r.scenarioId,
-        (runCountByScenarioId.get(r.scenarioId) ?? 0) + 1
+        r.scenario_id,
+        (runCountByScenarioId.get(r.scenario_id) ?? 0) + 1
       );
     }
 

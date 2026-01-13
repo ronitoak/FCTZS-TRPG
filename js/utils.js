@@ -27,19 +27,29 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
     return new URLSearchParams(location.search).get(name);
   }
 
-  function getCharacterImagePath(characterId) {
-    return `/img/character/${encodeURIComponent(String(characterId))}.png`;
+  function getBasePath() {
+    // 例: /FCTZS-TRPG/character/index.html -> /FCTZS-TRPG
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    return parts.length > 0 ? `/${parts[0]}` : "";
   }
+
+  function assetPath(rel) {
+    const base = getBasePath();
+    return `${base}/${rel}`.replace(/\/+/g, "/");
+  }
+
+  function getCharacterImagePath(id) {
+    return assetPath(`img/character/${encodeURIComponent(String(id))}.png`);
+  }
+
+  const DEFAULT_CHARACTER_IMAGE = assetPath("img/character/default.png");
 
   function getScenarioCoverPath(scenarioId) {
-    return `/img/scenario/${encodeURIComponent(String(scenarioId))}.png`;
+    return assetPath(`img/scenario/${encodeURIComponent(String(scenarioId))}.png`);
   }
 
-  // 画像が存在しない時のフォールバック先
-  const DEFAULT_CHARACTER_IMAGE = "/img/character/default.png";
-
   // シナリオの default.png が無いなら、存在している s-000.png を使うのがおすすめ
-  const DEFAULT_SCENARIO_COVER = "/img/scenario/s-000.png";
+  const DEFAULT_SCENARIO_COVER = assetPath("img/scenario/s-000.png");
 
   // ---------- String / HTML ----------
   function escapeHtml(value) {
@@ -160,7 +170,7 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
     // DOM
     domReady, $, el,
     // URL
-    getQueryParam, getCharacterImagePath, getScenarioCoverPath,
+    getQueryParam, getBasePath, assetPath, getCharacterImagePath, getScenarioCoverPath,
     DEFAULT_CHARACTER_IMAGE, DEFAULT_SCENARIO_COVER,
     // String
     escapeHtml,

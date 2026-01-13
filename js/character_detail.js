@@ -155,10 +155,8 @@ async function main() {
     }
 
     // 画像フォールバックは一覧と同じ方針で
-    const DEFAULT_IMAGE = "/img/character/default.png";
-    const img = (typeof c.image === "string" && c.image.trim() !== "")
-      ? `..${c.image}`
-      : `../${DEFAULT_IMAGE}`;
+    const src = Utils.getCharacterImagePath(c.id);
+    const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const profileRows = [
       ["職業", c.job],
@@ -218,10 +216,11 @@ async function main() {
       <section class="character-detail-top">
         <div class="character-detail-imagewrap">
           <img class="character-detail-image"
-              src="${img}"
-              alt="${Utils.escapeHtml(c.name)}"
-              loading="lazy"
-              onerror="this.onerror=null; this.src='../${DEFAULT_IMAGE}'">
+            src="${src}"
+            onerror="this.onerror=null; this.src='${fallback}';"
+            alt="${Utils.escapeHtml(c.name ?? c.id ?? '')}"
+            loading="lazy"
+          >
         </div>
 
         <div class="character-detail-profile">

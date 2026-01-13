@@ -3,7 +3,9 @@
 async function main() {
   const now = new Date();
 
-  const DEFAULT_SESSION_COVER = "/img/session/default.png";
+  const scenario = scenariosById.get(run.scenario_id);
+  const coverPath = Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown");
+  const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
   try {
     const [scenarios, runs, sessions] = await Promise.all([
@@ -74,10 +76,6 @@ async function main() {
     const stateJa = run.status === "active" ? "進行中" : "終了済み";
     const badgeClass = run.status === "active" ? "active" : "done";
     const badgeText = run.status === "active" ? "Active" : "Done";
-    const coverPath =
-    typeof run.cover === "string" && run.cover.trim() !== ""
-      ? run.cover
-      : DEFAULT_SESSION_COVER;
 
     const card = document.createElement("article");
     card.className = "sessions-card";
@@ -85,10 +83,10 @@ async function main() {
     card.innerHTML = `
       <img
         class="sessions-cover"
-        src="..${coverPath}"
+        src="${coverPath}"
+        onerror="this.onerror=null; this.src='${fallback}';"
         alt="${Utils.escapeHtml(run.title)}"
         loading="lazy"
-        onerror="this.onerror=null; this.src='../${DEFAULT_SESSION_COVER}'"
       >
 
       <h2 class="sessions-title">

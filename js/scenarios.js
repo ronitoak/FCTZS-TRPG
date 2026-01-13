@@ -5,7 +5,8 @@ async function main() {
   if (!root) return;
   root.innerHTML = "";
 
-  const DEFAULT_COVER = "/img/scenario/default.png";
+  const coverPath = Utils.getScenarioCoverPath(s.id);
+  const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
   try {
     const [scenarios, runs] = await Promise.all([
@@ -46,12 +47,11 @@ async function main() {
       card.className = "scenarios-card";
 
       card.innerHTML = `
-        <img
-          class="scenarios-cover"
-          src="..${coverPath}"
+        <img class="scenarios-cover"
+          src="${coverPath}"
+          onerror="this.onerror=null; this.src='${fallback}';"
           alt="${title}"
           loading="lazy"
-          onerror="this.onerror=null; this.src='../${DEFAULT_COVER}'"
         >
         <h2 class="scenarios-title">
           <a class="scenarios-link" href="./detail.html?id=${encodeURIComponent(s.id)}">

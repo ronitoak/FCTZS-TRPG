@@ -33,8 +33,6 @@ function renderCharacters(root, characters, query) {
     const player = Utils.escapeHtml(c.player ?? "");
     const system = Utils.escapeHtml(c.system ?? "");
 
-    // 詳細ページがある場合だけリンク化
-    const page = typeof c.page === "string" ? c.page : "/character/detail.html";
     const titleHtml = `
       <a class="character-title-link"
         href="./detail.html?id=${encodeURIComponent(c.id)}">
@@ -47,17 +45,13 @@ function renderCharacters(root, characters, query) {
     const state = typeof c.state === "string" ? c.state : ""; // "lost" | "rescued" | "survived"
     card.className = `character-card ${state}`.trim();
 
-    const DEFAULT_IMAGE = "/img/character/default.png";
-
-    const imagePath =
-      typeof c.image === "string" && c.image.trim() !== ""
-        ? c.image
-        : DEFAULT_IMAGE;
+    const imagePath = Utils.getCharacterImagePath(c.id);
+    const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const imgHtml = `
-      <img
-        class="character-thumb"
-        src="..${imagePath}"
+      <img class="character-image"
+        src="${imagePath}"
+        onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';"
         alt="${name}"
         loading="lazy"
       >

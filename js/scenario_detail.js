@@ -10,7 +10,8 @@ async function main() {
     return;
   }
 
-  const DEFAULT_COVER = "/img/scenario/default.png";
+  const coverPath = Utils.getScenarioCoverPath(scenario.id);
+  const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
   try {
     const [scenarios, runs, sessions] = await Promise.all([
@@ -80,13 +81,11 @@ async function main() {
 
       <section class="scenario-detail-top">
         <div class="scenario-detail-imagewrap">
-          <img
-            class="scenario-detail-cover"
-            src="..${coverPath}"
+          <img class="scenario-detail-cover"
+            src="${coverPath}"
+            onerror="this.onerror=null; this.src='${fallback}';"
             alt="${Utils.escapeHtml(scenario.title ?? scenario.id)}"
-            loading="lazy"
-            onerror="this.onerror=null; this.src='../${DEFAULT_COVER}'"
-          >
+            loading="lazy">
         </div>
 
         <div class="scenario-detail-info">
@@ -121,11 +120,10 @@ async function main() {
                       <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
                       <div>次回: ${Utils.escapeHtml(nextText)}</div>
                     </div>
-                    ${
-                      r.page
-                        ? `<a class="scenario-detail-link" href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">セッション詳細へ</a>`
-                        : ""
-                    }
+                    <a class="scenario-detail-link"
+                      href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
+                      セッション詳細へ
+                    </a>
                   </article>
                 `;
               }).join("")}
@@ -152,7 +150,7 @@ async function main() {
                           <div><small>完結済</small></div>
                         </div>
                         ${
-                          r.page
+                          r.run_id
                             ? `<a class="scenario-detail-link" href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">セッション詳細へ</a>`
                             : ""
                         }

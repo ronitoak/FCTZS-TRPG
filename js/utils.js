@@ -27,6 +27,20 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
     return new URLSearchParams(location.search).get(name);
   }
 
+  function getCharacterImagePath(characterId) {
+    return `/img/character/${encodeURIComponent(String(characterId))}.png`;
+  }
+
+  function getScenarioCoverPath(scenarioId) {
+    return `/img/scenario/${encodeURIComponent(String(scenarioId))}.png`;
+  }
+
+  // 画像が存在しない時のフォールバック先
+  const DEFAULT_CHARACTER_IMAGE = "/img/character/default.png";
+
+  // シナリオの default.png が無いなら、存在している s-000.png を使うのがおすすめ
+  const DEFAULT_SCENARIO_COVER = "/img/scenario/s-000.png";
+
   // ---------- String / HTML ----------
   function escapeHtml(value) {
     return String(value ?? "")
@@ -146,7 +160,8 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
     // DOM
     domReady, $, el,
     // URL
-    getQueryParam,
+    getQueryParam, getCharacterImagePath, getScenarioCoverPath,
+    DEFAULT_CHARACTER_IMAGE, DEFAULT_SCENARIO_COVER,
     // String
     escapeHtml,
     // Fetch

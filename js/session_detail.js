@@ -10,7 +10,10 @@ async function main() {
     return;
   }
 
-  const DEFAULT_COVER = "/img/session/default.png";
+  const scenarioId = run?.scenario_id;
+  const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
+  const fallback = Utils.DEFAULT_SCENARIO_COVER;
+
 
   try {
     const [runs, scenarios, sessions, characters] = await Promise.all([
@@ -28,14 +31,6 @@ async function main() {
     }
 
     const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
-
-    // カバー：run.cover → なければ scenario.cover → なければ default
-    const coverPath =
-      (typeof run.cover === "string" && run.cover.trim() !== "")
-        ? run.cover
-        : ((typeof scenario?.cover === "string" && scenario.cover.trim() !== "")
-            ? scenario.cover
-            : DEFAULT_COVER);
 
     // このrunの全セッション（過去も未来も）
     const runSessions = (Array.isArray(sessions) ? sessions : [])
@@ -67,10 +62,10 @@ async function main() {
         <div class="session-detail-imagewrap">
           <img
             class="session-detail-cover"
-            src="..${coverPath}"
+            src="${coverPath}"
+            onerror="this.onerror=null; this.src='${fallback}';"
             alt="${Utils.escapeHtml(scenario?.title ?? run.title ?? run.id)}"
             loading="lazy"
-            onerror="this.onerror=null; this.src='../${DEFAULT_COVER}'"
           >
         </div>
         

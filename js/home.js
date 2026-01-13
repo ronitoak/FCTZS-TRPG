@@ -158,8 +158,18 @@ async function main() {
     }
 
 
+    try {
     renderNextSession(nextEl, sessions, runsById, scenariosById);
+  } catch (e) {
+    nextEl.innerHTML = `<p>Next Session表示でエラー：${Utils.escapeHtml(e?.message || "")}</p>`;
+  }
+
+  try {
     renderOngoing(ongoingEl, runs, scenariosById, sessionsByRunId);
+  } catch (e) {
+    ongoingEl.innerHTML = `<p>進行中表示でエラー：${Utils.escapeHtml(e?.message || "")}</p>`;
+  }
+
   } catch (err) {
     const msg = Utils.escapeHtml(err?.message || "読み込みエラー");
     nextEl.innerHTML = `<p>Next Sessionの読み込みに失敗しました：${msg}</p>`;

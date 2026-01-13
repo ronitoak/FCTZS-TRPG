@@ -114,18 +114,17 @@ const SKILL_BASE_BY_SYSTEM = {
 };
 
 function renderMultilineText(text) {
-  // 1) 文字として入ってる \n を本物の改行へ
   const normalized = String(text)
     .replaceAll("\r\n", "\n")
-    .replaceAll("\\n", "\n"); // ← ここが重要（バックスラッシュ+n）
-
-  // 2) 安全にエスケープ
+    .replaceAll("\\n", "\n");
   const escaped = Utils.escapeHtml(normalized);
-
-  // 3) 改行を <br> に
   return escaped.replaceAll("\n", "<br>");
 }
 
+function toIntOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
 async function main() {
   const root = document.getElementById("character-detail");
@@ -138,28 +137,34 @@ async function main() {
   }
 
   try {
-    const [characters, scenarios, runs] = await Promise.all([
+    const [characters, scenarios, runs, scenarioIds, skillRows] = await Promise.all([
       Utils.apiGet("characters"),
       Utils.apiGet("scenarios"),
+      // フォールバック用（character_scenarios が未整備でも通過シナリオ表示できる）
       Utils.apiGet("runs"),
+      // 正規化：キャラ→シナリオ（無ければ空に）
+      Utils.apiGet(`character_scenarios?character_id=${encodeURIComponent(id)}`).catch(() => []),
+      // 正規化：キャラ技能（無ければ空に）
+      Utils.apiGet(`character_skills?character_id=${encodeURIComponent(id)}`).catch(() => []),
     ]);
 
+    const charactersSafe = Array.isArray(characters) ? characters : [];
+    const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
+    const runsSafe = Array.isArray(runs) ? runs : [];
 
-    const scenariosById = new Map(
-      (Array.isArray(scenarios) ? scenarios : []).map(s => [s.id, s])
-    );
+    const scenariosById = new Map(scenariosSafe.map(s => [s.id, s]));
 
-    const c = characters.find(ch => ch.id === id);
-
+    const c = charactersSafe.find(ch => ch?.id === id);
     if (!c) {
       root.innerHTML = "<p>キャラクターが見つかりません</p>";
       return;
     }
 
-    // 画像フォールバックは一覧と同じ方針で
+    // 画像（規約生成）
     const src = Utils.getCharacterImagePath(c.id);
     const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
 
+    // プロフィール（columns）
     const profileRows = [
       ["職業", c.job],
       ["年齢", c.age],
@@ -171,44 +176,66 @@ async function main() {
       ["システム", c.system],
     ].filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
 
-    const abilities = c.abilities ?? {};
-    const skills = c.skills ?? {};
+    // 能力値（ability_* columns -> object）
+    const abilities = {
+      STR: toIntOrNull(c.ability_str),
+      CON: toIntOrNull(c.ability_con),
+      POW: toIntOrNull(c.ability_pow),
+      DEX: toIntOrNull(c.ability_dex),
+      APP: toIntOrNull(c.ability_app),
+      SIZ: toIntOrNull(c.ability_siz),
+      INT: toIntOrNull(c.ability_int),
+      EDU: toIntOrNull(c.ability_edu),
+    };
+    for (const k of Object.keys(abilities)) {
+      if (abilities[k] === null) delete abilities[k];
+    }
+
+    // 技能（character_skills rows -> object）
+    const skills = {};
+    for (const row of (Array.isArray(skillRows) ? skillRows : [])) {
+      const name = row?.name;
+      const v = toIntOrNull(row?.value);
+      if (!name || v === null) continue;
+      skills[String(name)] = v;
+    }
+
     const memo = c.memo ?? "";
 
     const baseMap = SKILL_BASE_BY_SYSTEM[c.system] ?? null;
 
-    const skillEntries = Object.entries(skills ?? {})
+    const skillEntries = Object.entries(skills)
       .map(([k, v]) => [k, Number(v)])
       .filter(([, v]) => Number.isFinite(v))
       .filter(([k, v]) => {
-        if (!baseMap) return true;                 // 未対応システムは消さない
+        if (!baseMap) return true;
         const base = baseMap[k];
-        if (typeof base !== "number") return true; // 辞書外技能は消さない
-        return v > base;                           // 初期値より上だけ表示
+        if (typeof base !== "number") return true;
+        return v > base;
       })
       .sort((a, b) => b[1] - a[1]);
 
-      // runs から「このキャラが参加した卓」を逆引きして scenario_id を集める
-      const relatedRuns = (Array.isArray(runs) ? runs : [])
+    // 通過シナリオ：character_scenarios が優先。空なら runs逆引きにフォールバック
+    let passedScenarioIds = Array.isArray(scenarioIds) ? scenarioIds : [];
+    if (passedScenarioIds.length === 0) {
+      const relatedRuns = runsSafe
         .filter(r => Array.isArray(r?.characters) && r.characters.includes(c.id));
+      passedScenarioIds = [...new Set(relatedRuns.map(r => r?.scenario_id).filter(Boolean))];
+    }
 
-      const scenarioIds = [...new Set(relatedRuns.map(r => r.scenario_id).filter(Boolean))];
-
-      const passedHtml = scenarioIds.length
-        ? `<ul class="character-detail-scenario-list">
-            ${scenarioIds.map(sid => {
-              const s = scenariosById.get(sid);
-              const title = s?.title ?? sid;
-              return `<li>
-                <a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(sid)}">
-                  ${Utils.escapeHtml(title)}
-                </a>
-              </li>`;
-            }).join("")}
-          </ul>`
-        : `<p class="character-detail-muted">なし</p>`;
-
-
+    const passedHtml = passedScenarioIds.length
+      ? `<ul class="character-detail-scenario-list">
+          ${passedScenarioIds.map(sid => {
+            const s = scenariosById.get(sid);
+            const title = s?.title ?? sid;
+            return `<li>
+              <a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(sid)}">
+                ${Utils.escapeHtml(title)}
+              </a>
+            </li>`;
+          }).join("")}
+        </ul>`
+      : `<p class="character-detail-muted">なし</p>`;
 
     root.innerHTML = `
       <header class="character-detail-header">
@@ -221,7 +248,7 @@ async function main() {
           <img class="character-detail-image"
             src="${src}"
             onerror="this.onerror=null; this.src='${fallback}';"
-            alt="${Utils.escapeHtml(c.name ?? c.id ?? '')}"
+            alt="${Utils.escapeHtml(c.name ?? c.id ?? "")}"
             loading="lazy"
           >
         </div>
@@ -234,14 +261,12 @@ async function main() {
               ${profileRows.map(([k, v]) => `
                 <tr>
                   <th>${Utils.escapeHtml(k)}</th>
-                  <td>${Utils.escapeHtml(v)}</td>
+                  <td>${Utils.escapeHtml(String(v))}</td>
                 </tr>
               `).join("")}
             </tbody>
           </table>
         </div>
-
-
       </section>
 
       <section class="character-detail-bottom">
@@ -253,12 +278,11 @@ async function main() {
                 ${Object.entries(abilities).map(([k, v]) => `
                   <span class="character-detail-chip">
                     <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                    <span class="character-detail-chip-val">${Utils.escapeHtml(v)}</span>
+                    <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
                   </span>
                 `).join("")}
               </div>
             ` : `<p class="character-detail-muted">未登録</p>`}
-
           </article>
 
           <article class="character-detail-panel">
@@ -268,13 +292,11 @@ async function main() {
                 ${skillEntries.map(([k, v]) => `
                   <span class="character-detail-chip character-detail-chip--skill">
                     <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                    <span class="character-detail-chip-val">${Utils.escapeHtml(v)}</span>
+                    <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
                   </span>
                 `).join("")}
               </div>
             ` : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`}
-
-
           </article>
 
           <article class="character-detail-panel character-detail-panel--full">
@@ -291,7 +313,6 @@ async function main() {
         ${passedHtml}
       </section>
     `;
-
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
@@ -299,8 +320,3 @@ async function main() {
 }
 
 main();
-
-
-
-
-

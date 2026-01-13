@@ -47,7 +47,7 @@ function renderNextSession(container, sessions, runsById, scenariosById) {
     : "";
 
   const scenarioTitle = Utils.escapeHtml(scenario?.title || "（シナリオ未設定）");
-  const runTitle = Utils.escapeHtml(runs?.title || runs.id || "（卓未設定）");
+  const runTitle = Utils.escapeHtml(runs?.title || runs?.id || "（卓未設定）");
   const sessionTitle = Utils.escapeHtml(ses.title || "");
 
 
@@ -168,3 +168,4 @@ async function main() {
 }
 
 document.addEventListener("DOMContentLoaded", main);
+

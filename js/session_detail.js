@@ -10,11 +10,6 @@ async function main() {
     return;
   }
 
-  const scenarioId = run?.scenario_id;
-  const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
-  const fallback = Utils.DEFAULT_SCENARIO_COVER;
-
-
   try {
     const [runs, scenarios, sessions, characters] = await Promise.all([
       Utils.apiGet("runs"),
@@ -30,6 +25,9 @@ async function main() {
       return;
     }
 
+    const scenarioId = run?.scenario_id;
+    const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
+    const fallback = Utils.DEFAULT_SCENARIO_COVER;
     const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
 
     // このrunの全セッション（過去も未来も）

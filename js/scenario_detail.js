@@ -10,9 +10,6 @@ async function main() {
     return;
   }
 
-  const coverPath = Utils.getScenarioCoverPath(scenario.id);
-  const fallback = Utils.DEFAULT_SCENARIO_COVER;
-
   try {
     const [scenarios, runs, sessions] = await Promise.all([
       Utils.apiGet("scenarios"),
@@ -26,10 +23,8 @@ async function main() {
       return;
     }
 
-    const coverPath =
-      typeof scenario.cover === "string" && scenario.cover.trim() !== ""
-        ? scenario.cover
-        : DEFAULT_COVER;
+    const coverPath = Utils.getScenarioCoverPath(scenario.id);
+    const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
     // このシナリオのrunだけ
     const relatedRuns = (Array.isArray(runs) ? runs : [])
@@ -149,11 +144,7 @@ async function main() {
                           <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
                           <div><small>完結済</small></div>
                         </div>
-                        ${
-                          r.run_id
-                            ? `<a class="scenario-detail-link" href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">セッション詳細へ</a>`
-                            : ""
-                        }
+                        <a class="scenario-detail-link" href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">セッション詳細へ</a>
                       </article>
                     `;
                   }).join("")}

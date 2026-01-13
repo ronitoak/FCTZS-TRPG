@@ -138,10 +138,12 @@ async function main() {
   }
 
   try {
-    const [characters, scenarios] = await Promise.all([
+    const [characters, scenarios, runs] = await Promise.all([
       Utils.apiGet("characters"),
       Utils.apiGet("scenarios"),
+      Utils.apiGet("runs"),
     ]);
+
 
     const scenariosById = new Map(
       (Array.isArray(scenarios) ? scenarios : []).map(s => [s.id, s])
@@ -186,25 +188,26 @@ async function main() {
       })
       .sort((a, b) => b[1] - a[1]);
 
-      const ids = Array.isArray(c.scenarioIds) ? c.scenarioIds : [];
-      const names = Array.isArray(c.scenarios) ? c.scenarios : []; // 旧：名前配列（fallback用）
+      // runs から「このキャラが参加した卓」を逆引きして scenario_id を集める
+      const relatedRuns = (Array.isArray(runs) ? runs : [])
+        .filter(r => Array.isArray(r?.characters) && r.characters.includes(c.id));
 
-      const passedHtml = ids.length
+      const scenarioIds = [...new Set(relatedRuns.map(r => r.scenario_id).filter(Boolean))];
+
+      const passedHtml = scenarioIds.length
         ? `<ul class="character-detail-scenario-list">
-            ${ids.map((id, i) => {
-              const s = scenariosById.get(id);
-              const title =
-                s?.title
-                  ? s.title
-                  : (names[i] ?? id); // 名前配列が同じ順で並んでいる前提でfallback
+            ${scenarioIds.map(sid => {
+              const s = scenariosById.get(sid);
+              const title = s?.title ?? sid;
               return `<li>
-                <a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(id)}">
+                <a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(sid)}">
                   ${Utils.escapeHtml(title)}
                 </a>
               </li>`;
             }).join("")}
           </ul>`
         : `<p class="character-detail-muted">なし</p>`;
+
 
 
     root.innerHTML = `

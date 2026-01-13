@@ -173,7 +173,7 @@ async function main() {
 
     const abilities = c.abilities ?? {};
     const skills = c.skills ?? {};
-    const memo = c.description ?? {};
+    const memo = c.memo ?? "";
 
     const baseMap = SKILL_BASE_BY_SYSTEM[c.system] ?? null;
 
@@ -279,7 +279,9 @@ async function main() {
 
           <article class="character-detail-panel character-detail-panel--full">
             <h2 class="character-detail-h2">メモ</h2>
-            ${memo ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>` : `<p class="character-detail-muted">未登録</p>`}
+            ${memo && String(memo).trim() !== ""
+              ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>`
+              : `<p class="character-detail-muted">未登録</p>`}
           </article>
         </div>
       </section>

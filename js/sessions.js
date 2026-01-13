@@ -3,10 +3,6 @@
 async function main() {
   const now = new Date();
 
-  const scenario = scenariosById.get(run.scenario_id);
-  const coverPath = Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown");
-  const fallback = Utils.DEFAULT_SCENARIO_COVER;
-
   try {
     const [scenarios, runs, sessions] = await Promise.all([
       Utils.apiGet("scenarios"),
@@ -17,6 +13,10 @@ async function main() {
     // lookup 用 Map
     const scenariosById = new Map(scenarios.map(s => [s.id, s]));
     const sessionsByRunId = new Map();
+    
+    const scenario = scenariosById.get(run.scenario_id);
+    const coverPath = Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown");
+    const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
     for (const s of sessions) {
       if (!sessionsByRunId.has(s.run_id)) {

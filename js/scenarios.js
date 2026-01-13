@@ -5,9 +5,6 @@ async function main() {
   if (!root) return;
   root.innerHTML = "";
 
-  const coverPath = Utils.getScenarioCoverPath(s.id);
-  const fallback = Utils.DEFAULT_SCENARIO_COVER;
-
   try {
     const [scenarios, runs] = await Promise.all([
       Utils.apiGet("scenarios"),
@@ -34,11 +31,9 @@ async function main() {
     root.appendChild(grid);
 
     for (const s of scenarios) {
-      const coverPath =
-        typeof s.cover === "string" && s.cover.trim() !== ""
-          ? s.cover
-          : DEFAULT_COVER;
 
+      const coverPath = Utils.getScenarioCoverPath(s.id);
+      const fallback = Utils.DEFAULT_SCENARIO_COVER;
       const title = Utils.escapeHtml(s.title ?? s.id ?? "（無題）");
       const system = Utils.escapeHtml(s.system ?? "");
       const runsCount = runCountByScenarioId.get(s.id) ?? 0;

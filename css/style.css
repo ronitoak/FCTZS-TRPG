@@ -778,10 +778,6 @@ th, td {
   gap: 18px;
 }
 
-.scenario-detail-runs-block {
-  /* 親が .scenario-detail-runs の白カードなので、ここは余白だけでもOK */
-}
-
 /* ===== Session Detail ===== */
 .session-detail-header {
   display: flex;

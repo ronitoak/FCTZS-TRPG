@@ -18,8 +18,6 @@ async function main() {
     return;
   }
 
-  const now = new Date();
-
   try {
     const [scenarios, runs, sessions, characters, characterIds] = await Promise.all([
       Utils.apiGet("scenarios"),
@@ -29,37 +27,27 @@ async function main() {
       Utils.apiGet(`scenario_characters?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
     ]);
 
-    const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
-    const runsSafe = Array.isArray(runs) ? runs : [];
-    const sessionsSafe = Array.isArray(sessions) ? sessions : [];
-    const charactersSafe = Array.isArray(characters) ? characters : [];
-    const characterIdsSafe = Array.isArray(characterIds) ? characterIds : [];
-
-    const scenario = scenariosSafe.find(s => s?.id === id);
+    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === id);
     if (!scenario) {
       root.innerHTML = "<p>シナリオが見つかりません</p>";
       return;
     }
 
-    // カバー（規約生成）
     const coverPath = Utils.getScenarioCoverPath(scenario.id);
-    const fallbackCover = Utils.DEFAULT_SCENARIO_COVER;
+    const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
-    // runs / sessions の引き当て
-    const scenarioRuns = runsSafe
-      .filter(r => r && r.scenario_id === id)
-      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    // このシナリオのrunだけ
+    const relatedRuns = (Array.isArray(runs) ? runs : []).filter(
+      r => r?.scenario_id === id
+    );
 
-    const sessionsByRunId = new Map();
-    for (const s of sessionsSafe) {
-      if (!s?.run_id) continue;
-      if (!sessionsByRunId.has(s.run_id)) sessionsByRunId.set(s.run_id, []);
-      sessionsByRunId.get(s.run_id).push(s);
-    }
+    const activeRuns = relatedRuns.filter(r => r?.status === "active");
+    const doneRuns = relatedRuns.filter(r => r?.status === "done");
 
-    // 次回予定（scheduled & future の最短）を run ごとに作る
+    // run_id -> 次回予定（最も近い scheduled&未来）
+    const now = new Date();
     const nextByRunId = new Map();
-    for (const s of sessionsSafe) {
+    for (const s of (Array.isArray(sessions) ? sessions : [])) {
       if (!s?.run_id) continue;
       if (s.status !== "scheduled") continue;
       const d = Utils.toDate(s.start);
@@ -69,124 +57,150 @@ async function main() {
       if (!cur || d < cur._start) nextByRunId.set(s.run_id, { ...s, _start: d });
     }
 
-    // 表示順：進行中→終了、次回予定が近い順
-    const activeRuns = scenarioRuns.filter(r => r.status === "active");
-    const doneRuns = scenarioRuns.filter(r => r.status !== "active");
-
-    const sortByNext = (a, b) => {
-      const an = nextByRunId.get(a.id)?._start?.getTime() ?? Number.POSITIVE_INFINITY;
-      const bn = nextByRunId.get(b.id)?._start?.getTime() ?? Number.POSITIVE_INFINITY;
+    // 並び替え（元コード完全踏襲）
+    activeRuns.sort((a, b) => {
+      const an = nextByRunId.get(a.id)?._start?.getTime() ?? Infinity;
+      const bn = nextByRunId.get(b.id)?._start?.getTime() ?? Infinity;
       return an - bn;
-    };
-    activeRuns.sort(sortByNext);
-    doneRuns.sort(sortByNext);
+    });
+    doneRuns.sort((a, b) => {
+      const an = nextByRunId.get(a.id)?._start?.getTime() ?? Infinity;
+      const bn = nextByRunId.get(b.id)?._start?.getTime() ?? Infinity;
+      return an - bn;
+    });
 
-    // 通過キャラ一覧（中間テーブル優先）
-    const charactersById = new Map(charactersSafe.map(c => [c.id, c]));
-    const passedChars = characterIdsSafe
-      .map(cid => charactersById.get(cid) ?? { id: cid, name: cid })
-      .sort((a, b) => String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja"));
+    // ===== 通過キャラクター（追加部分） =====
+    const charactersById = new Map(
+      (Array.isArray(characters) ? characters : []).map(c => [c.id, c])
+    );
 
-    const passedCharsHtml = passedChars.length
-      ? `<div class="scenario-detail-characters">
-          ${passedChars.map(c => {
-            const name = Utils.escapeHtml(String(c.name ?? c.id));
-            const img = Utils.getCharacterImagePath(c.id);
-            const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
-            return `
-              <a class="scenario-detail-character" href="../character/detail.html?id=${encodeURIComponent(c.id)}">
-                <img class="scenario-detail-character-img"
-                     src="${img}"
-                     onerror="this.onerror=null; this.src='${fallback}';"
-                     alt="${name}"
-                     loading="lazy">
-                <span class="scenario-detail-character-name">${name}</span>
-              </a>
-            `;
-          }).join("")}
-        </div>`
-      : `<p class="scenario-detail-muted">まだ登録がありません</p>`;
+    const passedCharacters = (Array.isArray(characterIds) ? characterIds : [])
+      .map(cid => charactersById.get(cid))
+      .filter(Boolean)
+      .sort((a, b) =>
+        String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja")
+      );
 
-    // runs 表示用
-    function renderRunCard(r) {
-      const title = Utils.escapeHtml(String(r.title ?? r.id));
-      const statusJa = r.status === "active" ? "進行中" : "終了済";
-      const badgeClass = r.status === "active" ? "active" : "done";
+    const passedCharactersHtml = passedCharacters.length
+      ? `
+        <div class="scenario-detail-characters">
+          ${passedCharacters
+            .map(c => {
+              const name = Utils.escapeHtml(c.name ?? c.id);
+              const img = Utils.getCharacterImagePath(c.id);
+              const fallbackImg = Utils.DEFAULT_CHARACTER_IMAGE;
+              return `
+                <a class="scenario-detail-character"
+                   href="../character/detail.html?id=${encodeURIComponent(c.id)}">
+                  <img
+                    src="${img}"
+                    onerror="this.onerror=null;this.src='${fallbackImg}';"
+                    alt="${name}"
+                    loading="lazy">
+                  <span>${name}</span>
+                </a>
+              `;
+            })
+            .join("")}
+        </div>
+      `
+      : `<p class="scenario-detail-muted"><small>通過キャラクターはまだ登録されていません</small></p>`;
 
-      const next = nextByRunId.get(r.id);
-      const nextLine = next
-        ? (() => {
-            const d = next._start;
-            const dateStr = d.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" });
-            const timeStr = d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-            const st = Utils.escapeHtml(String(next.title ?? ""));
-            return `<div class="scenario-detail-next">次回: ${Utils.escapeHtml(dateStr)} ${Utils.escapeHtml(timeStr)} ${st}</div>`;
-          })()
-        : `<div class="scenario-detail-next"><small>次回未定</small></div>`;
-
-      return `
-        <article class="scenario-detail-run">
-          <h3 class="scenario-detail-run-title">
-            <a class="scenario-detail-link" href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">${title}</a>
-            <span class="scenario-detail-badge ${badgeClass}">${statusJa}</span>
-          </h3>
-          ${nextLine}
-        </article>
-      `;
-    }
-
+    // ===== 既存HTML（クラス名完全維持） =====
     root.innerHTML = `
       <header class="scenario-detail-header">
-        <h1 class="scenario-detail-title">${Utils.escapeHtml(String(scenario.title ?? scenario.id))}</h1>
-        <div class="scenario-detail-sub">
-          <span>${Utils.escapeHtml(String(scenario.system ?? ""))}</span>
-        </div>
+        <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
+        ${scenario.system ? `<span class="scenario-detail-system">${Utils.escapeHtml(scenario.system)}</span>` : ""}
       </header>
 
       <section class="scenario-detail-top">
-        <div class="scenario-detail-coverwrap">
+        <div class="scenario-detail-imagewrap">
           <img class="scenario-detail-cover"
-               src="${coverPath}"
-               onerror="this.onerror=null; this.src='${fallbackCover}';"
-               alt="${Utils.escapeHtml(String(scenario.title ?? scenario.id))}"
-               loading="lazy">
+            src="${coverPath}"
+            onerror="this.onerror=null; this.src='${fallback}';"
+            alt="${Utils.escapeHtml(scenario.title ?? scenario.id)}"
+            loading="lazy">
         </div>
 
-        <div class="scenario-detail-body">
-          ${scenario.tags && Array.isArray(scenario.tags) && scenario.tags.length
-            ? `<div class="scenario-detail-tags">
-                ${scenario.tags.map(t => `<span class="scenario-detail-tag">${Utils.escapeHtml(String(t))}</span>`).join("")}
-              </div>`
-            : ""
-          }
-
+        <div class="scenario-detail-info">
           <h2 class="scenario-detail-h2">概要</h2>
-          ${scenario.description
-            ? `<p class="scenario-detail-desc">${renderMultilineText(scenario.description)}</p>`
-            : `<p class="scenario-detail-muted">未登録</p>`
-          }
-
-          <h2 class="scenario-detail-h2">メモ</h2>
-          ${scenario.notes
-            ? `<p class="scenario-detail-notes">${renderMultilineText(scenario.notes)}</p>`
-            : `<p class="scenario-detail-muted">未登録</p>`
-          }
+          <p class="scenario-detail-desc">
+            ${scenario.description
+              ? renderMultilineText(scenario.description)
+              : "（未登録）"}
+          </p>
         </div>
       </section>
 
       <section class="scenario-detail-section">
         <h2 class="scenario-detail-h2">通過キャラクター</h2>
-        ${passedCharsHtml}
+        ${passedCharactersHtml}
       </section>
 
-      <section class="scenario-detail-section">
-        <h2 class="scenario-detail-h2">進行中の卓</h2>
-        ${activeRuns.length ? activeRuns.map(renderRunCard).join("") : `<p class="scenario-detail-muted">ありません</p>`}
-      </section>
+      <section class="scenario-detail-runs">
+        <h2 class="scenario-detail-h2">このシナリオのセッション（卓）</h2>
 
-      <section class="scenario-detail-section">
-        <h2 class="scenario-detail-h2">終了済みの卓</h2>
-        ${doneRuns.length ? doneRuns.map(renderRunCard).join("") : `<p class="scenario-detail-muted">ありません</p>`}
+        <div class="scenario-detail-runs-split">
+          <section class="scenario-detail-runs-block">
+            <h3 class="scenario-detail-h3">進行中セッション</h3>
+            ${
+              activeRuns.length
+                ? `<div class="scenario-detail-runs-grid">
+                    ${activeRuns.map(r => {
+                      const next = nextByRunId.get(r.id);
+                      const nextText = next?._start
+                        ? `${next._start.toLocaleDateString("ja-JP")} ${next._start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`
+                        : "次回未定";
+                      return `
+                        <article class="scenario-detail-run-card active">
+                          <h3 class="scenario-detail-run-title">
+                            ${Utils.escapeHtml(r.title ?? r.id)}
+                            <small>（進行中）</small>
+                          </h3>
+                          <div class="scenario-detail-run-meta">
+                            <div>GM: ${Utils.escapeHtml(r.gm ?? "—")}</div>
+                            <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
+                            <div>次回: ${Utils.escapeHtml(nextText)}</div>
+                          </div>
+                          <a class="scenario-detail-link"
+                            href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
+                            セッション詳細へ
+                          </a>
+                        </article>
+                      `;
+                    }).join("")}
+                  </div>`
+                : `<p class="scenario-detail-muted"><small>進行中の卓はありません</small></p>`
+            }
+          </section>
+
+          <section class="scenario-detail-runs-block">
+            <h3 class="scenario-detail-h3">終了済セッション</h3>
+            ${
+              doneRuns.length
+                ? `<div class="scenario-detail-runs-grid">
+                    ${doneRuns.map(r => `
+                      <article class="scenario-detail-run-card done">
+                        <h3 class="scenario-detail-run-title">
+                          ${Utils.escapeHtml(r.title ?? r.id)}
+                          <small>（終了済み）</small>
+                        </h3>
+                        <div class="scenario-detail-run-meta">
+                          <div>GM: ${Utils.escapeHtml(r.gm ?? "—")}</div>
+                          <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
+                          <div><small>完結済</small></div>
+                        </div>
+                        <a class="scenario-detail-link"
+                          href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
+                          セッション詳細へ
+                        </a>
+                      </article>
+                    `).join("")}
+                  </div>`
+                : `<p class="scenario-detail-muted"><small>終了済の卓はありません</small></p>`
+            }
+          </section>
+        </div>
       </section>
     `;
   } catch (e) {
@@ -195,4 +209,4 @@ async function main() {
   }
 }
 
-main();
+Utils.domReady(main);

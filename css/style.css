@@ -918,3 +918,25 @@ th, td {
 .session-detail-item-state.done { color: #666; }
 
 .session-detail-muted { margin: 0; color: #666; }
+
+.scenario-detail-characters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+.scenario-detail-character {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 10px;
+  align-items: center;
+  text-decoration: none;
+}
+.scenario-detail-character-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.scenario-detail-character-name {
+  font-weight: 600;
+}

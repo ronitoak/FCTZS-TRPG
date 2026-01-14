@@ -96,6 +96,7 @@ async function main() {
                     src="${img}"
                     onerror="this.onerror=null;this.src='${fallbackImg}';"
                     alt="${name}"
+                    class="scenario-detail-character-img"
                     loading="lazy">
                   <span>${name}</span>
                 </a>

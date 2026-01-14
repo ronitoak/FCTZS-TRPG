@@ -915,6 +915,16 @@ th, td {
 
 .session-detail-muted { margin: 0; color: #666; }
 
+/* Session Detail: participant character icon */
+.session-detail-character-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f2f2f2;
+  flex: 0 0 auto;
+}
+
 .scenario-detail-characters {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

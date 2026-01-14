@@ -94,11 +94,24 @@ async function main() {
             runChars.length
               ? `<h3 class="session-detail-h3">参加キャラクター</h3>
                  <div class="session-detail-chips">
-                   ${runChars.map(c => `
-                     <a class="session-detail-chiplink" href="../character/detail.html?id=${encodeURIComponent(c.id)}">
-                       ${Utils.escapeHtml(c.name ?? c.id)}
-                     </a>
-                   `).join("")}
+                   ${runChars.map(c => {
+                      const name = Utils.escapeHtml(c.name ?? c.id);
+                      const img = Utils.getCharacterImagePath(c.id);
+                      const fallbackImg = Utils.DEFAULT_CHARACTER_IMAGE;
+                      return `
+                        <a class="session-detail-chiplink" href="../character/detail.html?id=${encodeURIComponent(c.id)}">
+                          <img
+                            class="session-detail-character-img"
+                            src="${img}"
+                            onerror="this.onerror=null; this.src='${fallbackImg}';"
+                            alt="${name}"
+                            loading="lazy"
+                          >
+                          <span class="session-detail-character-name">${name}</span>
+                        </a>
+                      `;
+                    }).join("")}
+
                  </div>`
               : ""
           }

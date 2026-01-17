@@ -175,7 +175,7 @@ const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
     // String
     escapeHtml,
     // Fetch
-    apiGet,
+    apiGet, apiPost,
     // Date
     toDate, formatDateTime, formatDate,
     // Collections

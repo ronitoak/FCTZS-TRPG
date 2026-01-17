@@ -33,6 +33,10 @@ async function main() {
     activeSection.className = "sessions-section";
     activeSection.innerHTML = `<h2 class="sessions-section-title">進行中セッション</h2>`;
 
+    const planningSection = document.createElement("section");
+    planningSection.className = "sessions-section";
+    planningSection.innerHTML = `<h2 class="sessions-section-title">計画中セッション</h2>`;
+
     const doneSection = document.createElement("section");
     doneSection.className = "sessions-section";
     doneSection.innerHTML = `<h2 class="sessions-section-title">終了済セッション</h2>`;
@@ -40,14 +44,25 @@ async function main() {
     const activeGrid = document.createElement("div");
     activeGrid.className = "sessions-grid";
 
+    const planningGrid = document.createElement("div");
+    planningGrid.className = "sessions-grid";
+
     const doneGrid = document.createElement("div");
     doneGrid.className = "sessions-grid";
 
     activeSection.appendChild(activeGrid);
+    planningSection.appendChild(planningGrid);
     doneSection.appendChild(doneGrid);
 
     listRoot.appendChild(activeSection);
+    listRoot.appendChild(planningSection);
     listRoot.appendChild(doneSection);
+
+    const statusMap = {
+      active: "進行中",
+      planning: "計画中",
+      done: "終了済み",
+    };
 
     // run ごとに表示
     for (const run of runsSafe) {
@@ -67,9 +82,9 @@ async function main() {
         .filter(s => s && s.status === "scheduled" && s._start && s._start > now)
         .sort((a, b) => a._start - b._start);
 
-      const stateJa = run.status === "active" ? "進行中" : "終了済み";
-      const badgeClass = run.status === "active" ? "active" : "done";
-      const badgeText = run.status === "active" ? "Active" : "Done";
+      const stateJa = statusMap[run.status] || "不明";
+      const badgeClass = run.status === "active" ? "active" : run.status === "planning" ? "planning" : "done";
+      const badgeText = statusMap[run.status] || "不明";
 
       const card = document.createElement("article");
       card.className = "sessions-card";
@@ -128,6 +143,9 @@ async function main() {
 
     if (activeGrid.children.length === 0) {
       activeGrid.innerHTML = "<p><small>進行中の卓はありません</small></p>";
+    }
+    if (planningGrid.children.length === 0) {
+      planningGrid.innerHTML = "<p><small>計画中の卓はありません</small></p>";
     }
     if (doneGrid.children.length === 0) {
       doneGrid.innerHTML = "<p><small>終了済の卓はありません</small></p>";

@@ -41,8 +41,14 @@ async function main() {
     const upcoming = runSessions.filter(s => s.status === "scheduled" && s._start > now);
     const lastDone = [...runSessions].reverse().find(s => s.status === "done") ?? null;
 
-    const statusJa = run.status === "active" ? "進行中" : "終了済み";
-    const statusClass = run.status === "active" ? "active" : "done";
+    const statusMap = {
+      active: "進行中",
+      planning: "計画中",
+      done: "終了済み",
+    };
+
+    const statusJa = statusMap[run.status] || "不明";
+    const statusClass = run.status === "active" ? "active" : run.status === "planning" ? "planning" : "done";
 
     // 参加キャラ（任意）
     const charsById = new Map((Array.isArray(characters) ? characters : []).map(c => [c.id, c]));

@@ -7,7 +7,7 @@ async function main() {
 
   try {
     const [scenarios, runs] = await Promise.all([
-      Utils.apiGet("scenarios"),
+      Utils.apiGet("scenario_list"),
       Utils.apiGet("runs"),
     ]);
 

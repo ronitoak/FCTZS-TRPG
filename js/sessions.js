@@ -11,7 +11,7 @@ async function main() {
     const [scenarios, runs, sessions] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
-      Utils.apiGet("sessions"),
+      Utils.apiGet("session_list"),
     ]);
 
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];

@@ -69,7 +69,7 @@ function renderOngoing(container, runs, scenariosById, sessionsByRunId) {
   const now = new Date();
 
   const activeRuns = (Array.isArray(runs) ? runs : [])
-    .filter(r => r && r.status === "active");
+    .filter(r => r && r.status !== "done");
 
   if (activeRuns.length === 0) {
     container.innerHTML = `<p>進行中のシナリオはありません</p>`;

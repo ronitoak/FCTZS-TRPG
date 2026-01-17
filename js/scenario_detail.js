@@ -41,6 +41,7 @@ async function main() {
       r => r?.scenario_id === id
     );
 
+    const planningRuns = relatedRuns.filter(r => r?.status === "planning");
     const activeRuns = relatedRuns.filter(r => r?.status === "active");
     const doneRuns = relatedRuns.filter(r => r?.status === "done");
 
@@ -59,6 +60,11 @@ async function main() {
 
     // 並び替え（元コード完全踏襲）
     activeRuns.sort((a, b) => {
+      const an = nextByRunId.get(a.id)?._start?.getTime() ?? Infinity;
+      const bn = nextByRunId.get(b.id)?._start?.getTime() ?? Infinity;
+      return an - bn;
+    });
+    planningRuns.sort((a, b) => {
       const an = nextByRunId.get(a.id)?._start?.getTime() ?? Infinity;
       const bn = nextByRunId.get(b.id)?._start?.getTime() ?? Infinity;
       return an - bn;
@@ -172,6 +178,33 @@ async function main() {
                     }).join("")}
                   </div>`
                 : `<p class="scenario-detail-muted"><small>進行中の卓はありません</small></p>`
+            }
+          </section>
+
+          <section class="scenario-detail-runs-block">
+            <h3 class="scenario-detail-h3">計画中セッション</h3>
+            ${
+              planningRuns.length
+                ? `<div class="scenario-detail-runs-grid">
+                    ${planningRuns.map(r => `
+                      <article class="scenario-detail-run-card planning">
+                        <h3 class="scenario-detail-run-title">
+                          ${Utils.escapeHtml(r.title ?? r.id)}
+                          <small>（計画中）</small>
+                        </h3>
+                        <div class="scenario-detail-run-meta">
+                          <div>GM: ${Utils.escapeHtml(r.gm ?? "—")}</div>
+                          <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
+                          <div><small>計画中</small></div>
+                        </div>
+                        <a class="scenario-detail-link"
+                          href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
+                          セッション詳細へ
+                        </a>
+                      </article>
+                    `).join("")}
+                  </div>`
+                : `<p class="scenario-detail-muted"><small>計画中の卓はありません</small></p>`
             }
           </section>
 

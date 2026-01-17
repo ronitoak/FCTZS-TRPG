@@ -222,7 +222,7 @@ th, td {
   color: #fff;
 }
 
-.sessions-badge.active { background: rgb(0, 88, 100); }
+.sessions-badge.active { background: rightgreen; }
 .sessions-badge.planning { background: rgba(8, 177, 255); }
 .sessions-badge.done { background: #777; }
 

@@ -136,6 +136,8 @@ async function main() {
 
       if (run.status === "active") {
         activeGrid.appendChild(card);
+      } else if (run.status === "planning") {
+        planningGrid.appendChild(card);
       } else {
         doneGrid.appendChild(card);
       }

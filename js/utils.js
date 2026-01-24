@@ -173,6 +173,8 @@ const statusMap = {
 
   // ---------- Export ----------
   window.Utils = Object.freeze({
+    // Constants
+    statusMap,
     // DOM
     domReady, $, el,
     // URL

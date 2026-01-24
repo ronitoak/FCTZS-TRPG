@@ -58,12 +58,6 @@ async function main() {
     listRoot.appendChild(planningSection);
     listRoot.appendChild(doneSection);
 
-    const statusMap = {
-      active: "進行中",
-      planning: "計画中",
-      done: "終了済み",
-    };
-
     // run ごとに表示
     for (const run of runsSafe) {
       if (!run?.id) continue;
@@ -82,9 +76,9 @@ async function main() {
         .filter(s => s && s.status === "scheduled" && s._start && s._start > now)
         .sort((a, b) => a._start - b._start);
 
-      const stateJa = statusMap[run.status] || "不明";
+      const stateJa = Utils.statusMap[run.status] || "不明";
       const badgeClass = run.status === "active" ? "active" : run.status === "planning" ? "planning" : "done";
-      const badgeText = statusMap[run.status] || "不明";
+      const badgeText = Utils.statusMap[run.status] || "不明";
 
       const card = document.createElement("article");
       card.className = "sessions-card";

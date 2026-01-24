@@ -2,6 +2,12 @@
 
 const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
 
+const statusMap = {
+  active: "進行中",
+  planning: "計画中",
+  done: "終了済み",
+};
+
 (function () {
   // ---------- DOM ----------
   function domReady(fn) {

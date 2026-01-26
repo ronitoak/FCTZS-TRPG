@@ -545,8 +545,8 @@ th, td {
   align-items: start;
 }
 
-.character-detail-panels > * {
-  min-width: 0;
+.character-detail-panels > :nth-child(2):last-child {
+  grid-column: span 2;
 }
 
 /* タブレット：2列 */
@@ -578,11 +578,6 @@ th, td {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-/* チップ自体も横幅いっぱい使う */
-.character-detail-emotions .character-detail-chip {
-  width: 100%;
 }
 
 /* ラベルと本文の間に余白を出す（読みやすさ） */

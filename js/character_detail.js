@@ -282,55 +282,57 @@ async function main() {
 
       <section class="character-detail-bottom">
         <div class="character-detail-panels">
-          <article class="character-detail-panel">
-            <h2 class="character-detail-h2">能力値</h2>
+          <div class="character-detail-tripanel">
+            <article class="character-detail-panel">
+              <h2 class="character-detail-h2">能力値</h2>
 
-            ${hasGeneric
-              ? renderGenericIntAttributes(c.system, sysDefsSafe, attrMap)
-              : (
-                Object.keys(abilities).length
-                  ? `
-                    <div class="character-detail-chips">
-                      ${Object.entries(abilities).map(([k, v]) => `
-                        <span class="character-detail-chip">
-                          <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                          <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
-                        </span>
-                      `).join("")}
-                    </div>
-                  `
-                  : `<p class="character-detail-muted">未登録</p>`
-              )
-            }
-          </article>
-
-          ${hasGeneric && c.system === "エモクロアTRPG" ? `
-            <article class="character-detail-panel character-detail-emotions">
-              <h2 class="character-detail-h2">共鳴感情</h2>
-              ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
+              ${hasGeneric
+                ? renderGenericIntAttributes(c.system, sysDefsSafe, attrMap)
+                : (
+                  Object.keys(abilities).length
+                    ? `
+                      <div class="character-detail-chips">
+                        ${Object.entries(abilities).map(([k, v]) => `
+                          <span class="character-detail-chip">
+                            <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
+                            <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
+                          </span>
+                        `).join("")}
+                      </div>
+                    `
+                    : `<p class="character-detail-muted">未登録</p>`
+                )
+              }
             </article>
-          ` : ``}
 
-          <article class="character-detail-panel">
-            <h2 class="character-detail-h2">技能</h2>
-            ${skillEntries.length ? `
-              <div class="character-detail-chips">
-                ${skillEntries.map(([k, v]) => `
-                  <span class="character-detail-chip character-detail-chip--skill">
-                    <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                    <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
-                  </span>
-                `).join("")}
-              </div>
-            ` : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`}
-          </article>
+            ${hasGeneric && c.system === "エモクロアTRPG" ? `
+              <article class="character-detail-panel character-detail-emotions">
+                <h2 class="character-detail-h2">共鳴感情</h2>
+                ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
+              </article>
+            ` : ``}
 
-          <article class="character-detail-panel character-detail-panel--full">
-            <h2 class="character-detail-h2">メモ</h2>
-            ${memo && String(memo).trim() !== ""
-              ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>`
-              : `<p class="character-detail-muted">未登録</p>`}
-          </article>
+            <article class="character-detail-panel">
+              <h2 class="character-detail-h2">技能</h2>
+              ${skillEntries.length ? `
+                <div class="character-detail-chips">
+                  ${skillEntries.map(([k, v]) => `
+                    <span class="character-detail-chip character-detail-chip--skill">
+                      <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
+                      <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
+                    </span>
+                  `).join("")}
+                </div>
+              ` : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`}
+            </article>
+
+            <article class="character-detail-panel character-detail-panel--full">
+              <h2 class="character-detail-h2">メモ</h2>
+              ${memo && String(memo).trim() !== ""
+                ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>`
+                : `<p class="character-detail-muted">未登録</p>`}
+            </article>
+          </div>
         </div>
       </section>
 

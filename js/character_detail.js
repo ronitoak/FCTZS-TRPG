@@ -325,14 +325,14 @@ async function main() {
                 </div>
               ` : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`}
             </article>
-
-            <article class="character-detail-panel character-detail-panel--full">
-              <h2 class="character-detail-h2">メモ</h2>
-              ${memo && String(memo).trim() !== ""
-                ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>`
-                : `<p class="character-detail-muted">未登録</p>`}
-            </article>
           </div>
+          <article class="character-detail-panel character-detail-panel--full">
+            <h2 class="character-detail-h2">メモ</h2>
+            ${memo && String(memo).trim() !== ""
+              ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>`
+              : `<p class="character-detail-muted">未登録</p>`}
+          </article>
+
         </div>
       </section>
 

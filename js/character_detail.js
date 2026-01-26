@@ -160,6 +160,17 @@ async function main() {
       return;
     }
 
+    // ここから汎用属性（system_attributes / character_attributes）
+    const [systemAttrDefs, characterAttrRows] = await Promise.all([
+      Utils.apiGet(`system_attributes?system=${encodeURIComponent(c.system ?? "")}`).catch(() => []),
+      Utils.apiGet(`character_attributes?character_id=${encodeURIComponent(id)}`).catch(() => []),
+    ]);
+
+    const sysDefsSafe = Array.isArray(systemAttrDefs) ? systemAttrDefs : [];
+    const attrMap = buildCharacterAttributeMap(characterAttrRows);
+
+    const hasGeneric = sysDefsSafe.length > 0;
+
     // 画像（規約生成）
     const src = Utils.getCharacterImagePath(c.id);
     const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
@@ -273,16 +284,24 @@ async function main() {
         <div class="character-detail-panels">
           <article class="character-detail-panel">
             <h2 class="character-detail-h2">能力値</h2>
-            ${Object.keys(abilities).length ? `
-              <div class="character-detail-chips">
-                ${Object.entries(abilities).map(([k, v]) => `
-                  <span class="character-detail-chip">
-                    <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                    <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
-                  </span>
-                `).join("")}
-              </div>
-            ` : `<p class="character-detail-muted">未登録</p>`}
+
+            ${hasGeneric
+              ? renderGenericAttributes(c.system, sysDefsSafe, attrMap)
+              : (
+                Object.keys(abilities).length
+                  ? `
+                    <div class="character-detail-chips">
+                      ${Object.entries(abilities).map(([k, v]) => `
+                        <span class="character-detail-chip">
+                          <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
+                          <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
+                        </span>
+                      `).join("")}
+                    </div>
+                  `
+                  : `<p class="character-detail-muted">未登録</p>`
+              )
+            }
           </article>
 
           <article class="character-detail-panel">
@@ -317,6 +336,80 @@ async function main() {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
+}
+
+function buildCharacterAttributeMap(rows) {
+  const map = new Map();
+  for (const r of (Array.isArray(rows) ? rows : [])) {
+    const key = r?.key;
+    if (!key) continue;
+    map.set(String(key), {
+      value_int: r?.value_int ?? null,
+      value_emotion: r?.value_emotion ?? null,
+    });
+  }
+  return map;
+}
+
+function renderGenericAttributes(system, defs, attrMap) {
+  const safeDefs = (Array.isArray(defs) ? defs : [])
+    .slice()
+    .sort((a, b) => (Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0)));
+
+  // int / emotion に分ける
+  const intDefs = safeDefs.filter(d => d?.kind === "int");
+  const emoDefs = safeDefs.filter(d => d?.kind === "emotion");
+
+  const chips = [];
+
+  // 派生値（エモクロアTRPGのみ）
+  if (system === "エモクロアTRPG") {
+    const body = Number(attrMap.get("body")?.value_int);
+    const spirit = Number(attrMap.get("spirit")?.value_int);
+    const intellect = Number(attrMap.get("intellect")?.value_int);
+
+    if (Number.isFinite(body)) {
+      chips.push(["HP", String(body + 10)]);
+    }
+    if (Number.isFinite(spirit) && Number.isFinite(intellect)) {
+      chips.push(["MP", String(spirit + intellect)]);
+    }
+  }
+
+  const pushFromDefs = (defsArr) => {
+    for (const d of defsArr) {
+      const key = String(d.key);
+      const label = d.label ?? key;
+      const v = attrMap.get(key);
+
+      let display = "—";
+      if (d.kind === "int") {
+        const n = Number(v?.value_int);
+        if (Number.isFinite(n)) display = String(n);
+      } else if (d.kind === "emotion") {
+        const e = v?.value_emotion;
+        if (e !== null && e !== undefined && String(e).trim() !== "") display = String(e);
+      }
+
+      chips.push([label, display]);
+    }
+  };
+
+  pushFromDefs(intDefs);
+  pushFromDefs(emoDefs);
+
+  if (chips.length === 0) return `<p class="character-detail-muted">未登録</p>`;
+
+  return `
+    <div class="character-detail-chips">
+      ${chips.map(([k, v]) => `
+        <span class="character-detail-chip">
+          <span class="character-detail-chip-key">${Utils.escapeHtml(String(k))}</span>
+          <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
+        </span>
+      `).join("")}
+    </div>
+  `;
 }
 
 main();

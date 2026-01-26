@@ -305,7 +305,7 @@ async function main() {
           </article>
 
           ${hasGeneric && c.system === "エモクロアTRPG" ? `
-            <article class="character-detail-panel">
+            <article class="character-detail-panel character-detail-emotions">
               <h2 class="character-detail-h2">共鳴感情</h2>
               ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
             </article>

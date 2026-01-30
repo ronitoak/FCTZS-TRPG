@@ -8,6 +8,15 @@ function renderMultilineText(text) {
   return escaped.replaceAll("\n", "<br>");
 }
 
+function renderLink(url, label) {
+  const u = String(url ?? "").trim();
+  if (!u) return "";
+  // https:// などを想定。escapeHtmlして属性に入れる
+  const safe = Utils.escapeHtml(u);
+  const text = Utils.escapeHtml(label ?? u);
+  return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+}
+
 function toIntOrNull(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -118,8 +127,7 @@ async function main() {
 
     // ▼表示ポリシー（デフォ：初期値から上がってる技能だけ＝overrideがあるもの）
     // 「全部表示」にしたいなら、この filter を消す（または別UIで切替）
-    const skillEntries = skillList
-      .filter(s => s.override_value !== null);
+    const skillEntries = skillList;
 
     // 通過シナリオ：character_scenarios が優先。空なら runs逆引きにフォールバック
     let passedScenarioIds = Array.isArray(scenarioIds) ? scenarioIds : [];
@@ -128,6 +136,14 @@ async function main() {
         .filter(r => Array.isArray(r?.characters) && r.characters.includes(c.id));
       passedScenarioIds = [...new Set(relatedRuns.map(r => r?.scenario_id).filter(Boolean))];
     }
+
+    const iacharaLinkHtml = c.iachara_url
+      ? `<div class="character-detail-links">
+          <ul>
+            <li>${renderLink(c.iachara_url, "開く")}</li>
+          </ul>
+        </div>`
+      : "";
 
     const passedHtml = passedScenarioIds.length
       ? `<ul class="character-detail-scenario-list">
@@ -234,6 +250,11 @@ async function main() {
       <section class="character-detail-scenarios">
         <h2 class="character-detail-h2">通過シナリオ</h2>
         ${passedHtml}
+      </section>
+
+      <section class="character-detail-url">
+        <h2 class="character-detail-h2">キャラシート</h2>
+        ${iacharaLinkHtml}
       </section>
     `;
   } catch (e) {

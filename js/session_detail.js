@@ -1,5 +1,13 @@
 "use strict";
 
+function renderLink(url, label) {
+  const u = String(url ?? "").trim();
+  if (!u) return "";
+  const safe = Utils.escapeHtml(u);
+  const text = Utils.escapeHtml(label ?? u);
+  return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+}
+
 async function main() {
   const root = document.getElementById("session-detail");
   if (!root) return;
@@ -48,6 +56,13 @@ async function main() {
     const charsById = new Map((Array.isArray(characters) ? characters : []).map(c => [c.id, c]));
     const runCharIds = Array.isArray(run.characters) ? run.characters : [];
     const runChars = runCharIds.map(id => charsById.get(id)).filter(Boolean);
+
+    const linksHtml = (s.replay_url || s.stream_url) ? `
+      <div class="session-links">
+        ${s.replay_url ? `🎬 ${renderLink(s.replay_url, "リプレイ")}` : ""}
+        ${s.stream_url ? `📡 ${renderLink(s.stream_url, "リプレイ")}` : ""}
+      </div>
+    ` : "";
 
     root.innerHTML = `
       <header class="session-detail-header">
@@ -130,6 +145,7 @@ async function main() {
                   return `<li class="session-detail-item">
                     <span class="session-detail-item-date">${Utils.escapeHtml(dateText)}</span>
                     <span class="session-detail-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
+                    <span class="session-detail-item-url"> ${Utils.escapeHtml(linksHtml) ?? ""} </span>
                     <span class="session-detail-item-state ${Utils.escapeHtml(s.status)}">${Utils.escapeHtml(stateJa)}</span>
                   </li>`;
                 }).join("")}

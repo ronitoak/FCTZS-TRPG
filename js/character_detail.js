@@ -119,8 +119,7 @@ async function main() {
     // ▼表示ポリシー（デフォ：初期値から上がってる技能だけ＝overrideがあるもの）
     // 「全部表示」にしたいなら、この filter を消す（または別UIで切替）
     const skillEntries = skillList
-      .filter(s => s.override_value !== null) // ←ここが「振った技能だけ」
-      .sort((a, b) => b.display_value - a.display_value);
+      .filter(s => s.override_value !== null);
 
     // 通過シナリオ：character_scenarios が優先。空なら runs逆引きにフォールバック
     let passedScenarioIds = Array.isArray(scenarioIds) ? scenarioIds : [];

@@ -138,11 +138,12 @@ async function main() {
     }
 
     const iacharaLinkHtml = c.iachara_url
-      ? `<div class="character-detail-links">
+      ? `<section class="character-detail-url">
+        <h2 class="character-detail-h2">キャラシート</h2>
           <ul>
             <li>${renderLink(c.iachara_url, "開く")}</li>
           </ul>
-        </div>`
+        </section>`
       : "";
 
     const passedHtml = passedScenarioIds.length
@@ -252,10 +253,9 @@ async function main() {
         ${passedHtml}
       </section>
 
-      <section class="character-detail-url">
-        <h2 class="character-detail-h2">キャラシート</h2>
+      
         ${iacharaLinkHtml}
-      </section>
+      
     `;
   } catch (e) {
     console.error(e);

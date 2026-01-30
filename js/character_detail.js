@@ -89,29 +89,38 @@ async function main() {
       if (abilities[k] === null) delete abilities[k];
     }
 
-    // 技能（character_skills rows -> object）
-    const skills = {};
-    for (const row of (Array.isArray(skillRows) ? skillRows : [])) {
-      const name = row?.name;
-      const v = toIntOrNull(row?.value);
-      if (!name || v === null) continue;
-      skills[String(name)] = v;
-    }
-
     const memo = c.memo ?? "";
 
-    const baseMap = SKILL_BASE_BY_SYSTEM[c.system] ?? null;
+    // 技能（DBの view: character_skill_list を前提）
+    // 想定カラム: name, base_value, override_value, display_value
+    const skillList = (Array.isArray(skillRows) ? skillRows : [])
+      .map(r => {
+        const name = r?.name;
+        if (!name) return null;
 
-    const skillEntries = Object.entries(skills)
-      .map(([k, v]) => [k, Number(v)])
-      .filter(([, v]) => Number.isFinite(v))
-      .filter(([k, v]) => {
-        if (!baseMap) return true;
-        const base = baseMap[k];
-        if (typeof base !== "number") return true;
-        return v > base;
+        const base = toIntOrNull(r?.base_value);
+        const override = toIntOrNull(r?.override_value);
+        const display = toIntOrNull(r?.display_value);
+
+        // display_value が無い/壊れてる場合の最終フォールバック
+        const finalValue = display ?? override ?? base;
+
+        if (finalValue === null) return null;
+
+        return {
+          name: String(name),
+          base_value: base,
+          override_value: override,
+          display_value: finalValue,
+        };
       })
-      .sort((a, b) => b[1] - a[1]);
+      .filter(Boolean);
+
+    // ▼表示ポリシー（デフォ：初期値から上がってる技能だけ＝overrideがあるもの）
+    // 「全部表示」にしたいなら、この filter を消す（または別UIで切替）
+    const skillEntries = skillList
+      .filter(s => s.override_value !== null) // ←ここが「振った技能だけ」
+      .sort((a, b) => b.display_value - a.display_value);
 
     // 通過シナリオ：character_scenarios が優先。空なら runs逆引きにフォールバック
     let passedScenarioIds = Array.isArray(scenarioIds) ? scenarioIds : [];
@@ -203,10 +212,10 @@ async function main() {
               <h2 class="character-detail-h2">技能</h2>
               ${skillEntries.length ? `
                 <div class="character-detail-chips">
-                  ${skillEntries.map(([k, v]) => `
+                  ${skillEntries.map(s => `
                     <span class="character-detail-chip character-detail-chip--skill">
-                      <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                      <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
+                      <span class="character-detail-chip-key">${Utils.escapeHtml(s.name)}</span>
+                      <span class="character-detail-chip-val">${Utils.escapeHtml(String(s.display_value))}</span>
                     </span>
                   `).join("")}
                 </div>

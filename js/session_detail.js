@@ -57,13 +57,6 @@ async function main() {
     const runCharIds = Array.isArray(run.characters) ? run.characters : [];
     const runChars = runCharIds.map(id => charsById.get(id)).filter(Boolean);
 
-    const linksHtml = (s.replay_url || s.stream_url) ? `
-      <div class="session-links">
-        ${s.replay_url ? `🎬 ${renderLink(s.replay_url, "リプレイ")}` : ""}
-        ${s.stream_url ? `📡 ${renderLink(s.stream_url, "リプレイ")}` : ""}
-      </div>
-    ` : "";
-
     root.innerHTML = `
       <header class="session-detail-header">
         <h1 class="session-detail-title">${Utils.escapeHtml(run.title ?? run.id)}</h1>
@@ -142,13 +135,28 @@ async function main() {
                 ${runSessions.map(s => {
                   const stateJa = s.status === "scheduled" ? "予定" : "終了";
                   const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
-                  return `<li class="session-detail-item">
-                    <span class="session-detail-item-date">${Utils.escapeHtml(dateText)}</span>
-                    <span class="session-detail-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
-                    <span class="session-detail-item-url"> ${Utils.escapeHtml(linksHtml) ?? ""} </span>
-                    <span class="session-detail-item-state ${Utils.escapeHtml(s.status)}">${Utils.escapeHtml(stateJa)}</span>
-                  </li>`;
+
+                  const linksHtml = (s.replay_url || s.stream_url)
+                    ? `
+                      <div class="session-links">
+                        ${s.replay_url ? `🎬 ${renderLink(s.replay_url, "リプレイ")}` : ""}
+                        ${s.stream_url ? `📡 ${renderLink(s.stream_url, "配信")}` : ""}
+                      </div>
+                    `
+                    : "";
+
+                  return `
+                    <li class="session-detail-item">
+                      <span class="session-detail-item-date">${Utils.escapeHtml(dateText)}</span>
+                      <span class="session-detail-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
+                      <span class="session-detail-item-url">${linksHtml}</span>
+                      <span class="session-detail-item-state ${Utils.escapeHtml(s.status)}">
+                        ${Utils.escapeHtml(stateJa)}
+                      </span>
+                    </li>
+                  `;
                 }).join("")}
+
               </ul>`
             : `<p class="session-detail-muted">この卓のセッションがありません</p>`
         }

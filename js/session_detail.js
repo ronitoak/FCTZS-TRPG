@@ -139,8 +139,8 @@ async function main() {
                   const linksHtml = (s.replay_url || s.stream_url)
                     ? `
                       <div class="session-links">
-                        ${s.replay_url ? `🎬 ${renderLink(s.replay_url, "リプレイ")}` : ""}
-                        ${s.stream_url ? `📡 ${renderLink(s.stream_url, "配信")}` : ""}
+                        ${s.replay_url ? `${renderLink(s.replay_url, "リプレイ")}` : ""}
+                        ${s.stream_url ? `${renderLink(s.stream_url, "リプレイ")}` : ""}
                       </div>
                     `
                     : "";

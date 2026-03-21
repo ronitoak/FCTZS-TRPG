@@ -120,21 +120,23 @@ Utils.domReady(() => {
                 systemSelect.value = data.profile.system;
                 systemSelect.dispatchEvent(new Event('change'));
                 
-                // 要素が生成されるのを待つ（少し長めに設定）
-                await new Promise(resolve => setTimeout(resolve, 1500)); 
+                // 描画が終わるまでしっかり待つ（1.5秒）
+                await new Promise(resolve => setTimeout(resolve, 800));
             }
 
-            // C. 能力値の反映 (生成された要素から探す)
+            // --- 能力値の反映 ---
             for (const [key, val] of Object.entries(data.attributes)) {
-                // 1. name属性で直接指定して探す
-                const input = dynamicContainer.querySelector(`input[name="attr_${key}"]`);
+                // パース結果のキーを小文字にして探す
+                const lowerKey = key.toLowerCase();
+                const input = dynamicContainer.querySelector(`input[name="attr_${lowerKey}"]`);
                 
                 if (input) {
                     input.value = val;
-                    console.log(`成功: ${key} に ${val} をセットしました`);
+                    console.log(`成功: attr_${lowerKey} に ${val} を入力しました`); [cite: 1]
                 } else {
-                    // 見つからない場合はコンソールに出す（これで原因がわかります）
-                    console.warn(`失敗: name="attr_${key}" の入力欄が見つかりません。現在のHTMLを確認してください。`);
+                    // デバッグ用：現在 dynamicContainer にどんな input があるか出力
+                    const allInputs = Array.from(dynamicContainer.querySelectorAll('input')).map(i => i.name);
+                    console.error(`失敗: attr_${lowerKey} が見つかりません。存在するname一覧:`, allInputs); [cite: 1]
                 }
             }
 

@@ -143,6 +143,28 @@ Utils.domReady(() => {
         const jobMatch = text.match(/職業:\s*(.+)/);
         if (jobMatch) result.profile.job = jobMatch[1].trim();
 
+        const ageMatch = text.match(/年齢:\s*(.+)/);
+        if (ageMatch) result.profile.age = parseInt(ageMatch[1].trim()) || null;
+
+        const genderMatch = text.match(/性別:\s*(.+)/);
+        if (genderMatch) result.profile.gender = genderMatch[1].trim();
+
+        const heightMatch = text.match(/身長:\s*(.+)/);
+        if (heightMatch) result.profile.height = parseInt(heightMatch[1].trim()) || null;
+
+        const weightMatch = text.match(/体重:\s*(.+)/);
+        if (weightMatch) result.profile.weight = parseInt(weightMatch[1].trim()) || null;
+
+        const originMatch = text.match(/出身:\s*(.+)/);
+        if (originMatch) result.profile.origin = originMatch[1].trim();
+
+        const systemMatch = text.match(/いあきゃらテキスト \s*(.+)/);
+        if (systemMatch === "6版 v2.0.1") {
+            result.profile.system = "CoC6";
+        } else if (systemMatch === "7版 v2.0.1") {
+            result.profile.system = "CoC7";
+        }
+
         // 能力値の抽出 (現在値を取得) 
         // 例: STR         10      10
         const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];

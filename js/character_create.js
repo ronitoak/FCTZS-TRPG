@@ -46,6 +46,21 @@ Utils.domReady(() => {
                 result.profile.memo = data.memo || "";
                 result.profile.system = "エモクロアTRPG";
 
+                const emotionFields = {
+                    "共鳴感情・表": "emotion_front",
+                    "共鳴感情・裏": "emotion_back",
+                    "共鳴感情・ルーツ": "emotion_root"
+                };
+
+                for (const [label, key] of Object.entries(emotionFields)) {
+                    const reg = new RegExp(`${label}:\\s*([^\\n]+)`);
+                    const m = data.memo.match(reg);
+                    if (m) {
+                        // 例: "好奇心(欲望)" をそのまま select の value に入れる
+                        result.attributes[key] = m[1].trim();
+                    }
+                }
+
                 // B. 能力値 (params配列から抽出)
                 const emoAttrMap = {
                     "精神":"power","五感":"senses","身体":"strength","社会":"social","運勢":"luck","知力":"intellect","器用":"dexterity","魅力":"appearance","共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
@@ -145,7 +160,7 @@ Utils.domReady(() => {
             if (data.profile.system) {
                 systemSelect.value = data.profile.system;
                 systemSelect.dispatchEvent(new Event('change'));
-                await new Promise(resolve => setTimeout(resolve, 1200)); // 描画待ち
+                await new Promise(resolve => setTimeout(resolve, 800)); // 描画待ち
             }
 
             // 能力値反映

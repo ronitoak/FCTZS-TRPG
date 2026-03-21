@@ -1,6 +1,6 @@
 "use strict";
 
-// 既存の取得処理の中で currentRunData などの変数に現在のデータを保持している前提
+// 1. グローバル変数として定義
 let currentRunData = null;
 
 function renderLink(url, label) {
@@ -26,7 +26,6 @@ async function main() {
       Utils.apiGet("runs"),
       Utils.apiGet("scenarios"),
       Utils.apiGet("sessions"),
-      // characters は無くても動くようにしておく（ファイルが無いなら catch で握る設計でもOK）
       Utils.apiGet("characters").catch(() => []),
     ]);
 
@@ -36,6 +35,8 @@ async function main() {
       return;
     }
 
+    // ★重要: ここで取得したデータを外の変数に代入する
+    currentRunData = run;
     const scenarioId = run?.scenario_id;
     const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
@@ -185,24 +186,32 @@ async function loadDetail() {
 
 // 送信処理の登録
 Utils.domReady(() => {
+    // まず main を実行
+    main();
+
     const subForm = document.getElementById("sub-session-form");
     if (!subForm) return;
 
     subForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         
-        if (!currentRunData) return;
+        // currentRunData がセットされるまで待つためのチェック
+        if (!currentRunData) {
+            alert("データの読み込みが完了していません。");
+            return;
+        }
 
         const dateVal = subForm.date.value; // YYYY-MM-DD
         const titleVal = subForm.title.value;
         const notesVal = subForm.notes.value;
 
-        // 採番規則: se-YYYY-MMDD
-        const idDate = dateVal.replace(/-/g, ""); // YYYYMMDD
+        // 採番規則: se-YYYYMMDD
+        const idDate = dateVal.replace(/-/g, ""); 
         const newSessionId = `se-${idDate}`;
         
         // start (timestamp with time zone) の作成
-        const startTimestamp = new Date(dateVal).toISOString();
+        // その日の 21:00 開始とするなどのデフォルトを持たせると便利です
+        const startTimestamp = new Date(`${dateVal}T21:00:00+09:00`).toISOString();
 
         const payload = {
             id: newSessionId,
@@ -211,7 +220,7 @@ Utils.domReady(() => {
             start: startTimestamp,
             title: titleVal,
             notes: notesVal,
-            status: 'scheduled' // デフォルト
+            status: 'scheduled'
         };
 
         const submitBtn = subForm.querySelector("button[type=submit]");
@@ -220,7 +229,7 @@ Utils.domReady(() => {
         try {
             await Utils.apiPost("sessions", payload);
             alert("セッション記録を保存しました");
-            location.reload(); // 画面を更新して履歴を表示
+            location.reload(); 
         } catch (err) {
             console.error(err);
             alert("保存失敗: " + err.message);
@@ -228,8 +237,6 @@ Utils.domReady(() => {
         }
     });
 });
-
-main();
 
 
 

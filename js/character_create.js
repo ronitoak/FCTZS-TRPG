@@ -66,10 +66,24 @@ Utils.domReady(() => {
 
         // 能力値の抽出 (行頭の名称 + 空白 + 最初の数字)
         const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
+
         attrNames.forEach(attr => {
-            const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
+            // 修正ポイント:
+            // 1. 行頭(^)にこだわらず、テキスト全体から探す
+            // 2. 名称の後に「空白またはタブ」が1つ以上あることを想定 (\s+)
+            // 3. 最初に現れる数字をキャプチャする ([0-9]+)
+            // 4. 'g'フラグは使わず、最初の1致を狙う。'i'で大文字小文字を無視。
+            const reg = new RegExp(`${attr}\\s+([0-9]+)`, 'i'); 
             const m = text.match(reg);
-            if (m) result.attributes[attr.toLowerCase()] = m[1];
+            
+            if (m) {
+                // m[1] が数値部分
+                result.attributes[attr.toLowerCase()] = m[1];
+                console.log(`${attr}の抽出に成功しました: ${m[1]}`);
+            } else {
+                // まだ見つからない場合は、デバッグ用にテキストの1行を出す
+                console.warn(`${attr}が見つかりませんでした。正規表現を再確認してください。`);
+            }
         });
 
         // 技能の抽出 (技能名 + 合計値)

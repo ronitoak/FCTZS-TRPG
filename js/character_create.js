@@ -33,6 +33,42 @@ Utils.domReady(() => {
     // --- 2. いあきゃらテキスト解析関数 (精度向上版) ---
     function parseIachara(text) {
         const result = { profile: {}, attributes: {}, skills: {} };
+        const trimmedText = text.trim();
+
+        // --- JSON形式（エモクロア等）の判定と解析 ---
+        if (trimmedText.startsWith('{')) {
+            try {
+                const json = JSON.parse(trimmedText);
+                const data = json.data || {};
+
+                // A. プロフィール
+                result.profile.name = data.name || "";
+                result.profile.memo = data.memo || "";
+                result.profile.system = "エモクロアTRPG";
+
+                // B. 能力値 (params配列から抽出)
+                if (Array.isArray(data.params)) {
+                    data.params.forEach(p => {
+                        // "身体" -> "body" のようにDBのキーに変換が必要な場合はここでマッピング
+                        // 簡易的にラベルを小文字にして格納
+                        result.attributes[p.label] = p.value;
+                    });
+                }
+
+                // C. 技能 (commandsの文字列から 〈〉 に囲まれたものを抽出)
+                if (data.commands) {
+                    const skillRegex = /(\d+)DM<=(\d+)\s*〈(.+?)〉/g;
+                    let match;
+                    while ((match = skillRegex.exec(data.commands)) !== null) {
+                        const skillName = match[3].replace('＊', ''); // 共通技能の＊を除去
+                        result.skills[skillName] = match[2]; // 成功値を格納
+                    }
+                }
+                return result;
+            } catch (e) {
+                console.error("JSON解析失敗、テキストとして続行します", e);
+            }
+        }
 
         // A. プロフィール抽出 (否定文字クラス [^/]+ を活用)
         const profileFields = {

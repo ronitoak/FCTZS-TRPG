@@ -1,58 +1,93 @@
 "use strict";
+
 Utils.domReady(() => {
-    function toNull(v) {
-        if (v == null) return null;
-        const s = String(v).trim();
-        return s === "" ? null : s;
-    }
-
-    function toNumberOrNull(v) {
-        if (v === "" || v == null) return null;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : null;
-    }
-
     const form = document.getElementById("character-form");
+    const systemSelect = document.getElementById("system-select");
+    const dynamicContainer = document.getElementById("dynamic-fields-container");
 
+    // --- システム選択時の動的生成 ---
+    systemSelect.addEventListener("change", async () => {
+        const system = systemSelect.value;
+        dynamicContainer.innerHTML = "<p>読み込み中...</p>";
+        if (!system) { dynamicContainer.innerHTML = ""; return; }
+
+        try {
+            // 属性定義と初期技能を並列取得 [cite: 1]
+            const [attrDefs, skillBases] = await Promise.all([
+                Utils.apiGet(`system_attributes?system=${encodeURIComponent(system)}`),
+                Utils.apiGet(`system_skill_bases?system=${encodeURIComponent(system)}`)
+            ]);
+
+            renderDynamicFields(attrDefs, skillBases);
+        } catch (err) {
+            console.error(err);
+            dynamicContainer.innerHTML = "<p>データの取得に失敗しました</p>";
+        }
+    });
+
+    function renderDynamicFields(attrs, skills) {
+        let html = `<h3>能力値</h3><div class="attr-grid">`;
+        attrs.forEach(a => {
+            html += `
+                <div class="form-group">
+                    <label>${Utils.escapeHtml(a.label)}</label>
+                    <input type="number" name="attr_${a.key}" placeholder="0">
+                </div>`;
+        });
+        html += `</div><h3>初期技能</h3><div class="skill-grid">`;
+        skills.forEach(s => {
+            html += `
+                <label class="skill-item">
+                    <input type="checkbox" name="skill_check" value="${Utils.escapeHtml(s.name)}" data-base="${s.base_value}">
+                    ${Utils.escapeHtml(s.name)} (${s.base_value})
+                </label>`;
+        });
+        html += `</div>`;
+        dynamicContainer.innerHTML = html;
+    }
+
+    // --- 送信処理 ---
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
-
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
-        const data = {
-            name: toNull(form.name.value),
-            player: toNull(form.player.value),
-            system: toNull(form.system.value),
-            job: toNull(form.job.value),
-            age: toNumberOrNull(form.age.value),
-            gender: toNull(form.gender.value),
-            height: toNumberOrNull(form.height.value),
-            weight: toNumberOrNull(form.weight.value),
-            origin: toNull(form.origin.value),
-            memo: toNull(form.memo.value),
+        // 基本データ構築
+        const payload = {
+            character: {
+                name: form.name.value,
+                player: form.player.value,
+                system: systemSelect.value,
+                job: form.job.value,
+                memo: form.memo.value
+                // ...他のプロフィール項目
+            },
+            attributes: [],
+            skills: []
         };
 
-        if (!data.name) {
-            alert("名前は必須");
-            submitBtn.disabled = false;
-            return;
-        }
+        // 動的属性の収集
+        const attrInputs = dynamicContainer.querySelectorAll('input[name^="attr_"]');
+        attrInputs.forEach(input => {
+            const key = input.name.replace("attr_", "");
+            if (input.value) {
+                payload.attributes.push({ key, value_int: parseInt(input.value, 10) });
+            }
+        });
+
+        // 選択された技能の収集
+        const skillChecks = dynamicContainer.querySelectorAll('input[name="skill_check"]:checked');
+        skillChecks.forEach(check => {
+            payload.skills.push({
+                name: check.value,
+                base_value: parseInt(check.dataset.base, 10)
+            });
+        });
 
         try {
-            const result = await Utils.apiPost("character", data);
-
-            const row = Array.isArray(result) ? result[0] : result;
-
-            if (!row?.id) {
-                console.error("invalid response", result);
-                alert("作成成功したがID取得失敗");
-                submitBtn.disabled = false;
-                return;
-            }
-
-            location.href = `detail.html?id=${row.id}`;
-
+            // 一括POST（Worker側の修正が必要）
+            const result = await Utils.apiPost("character_full", payload);
+            location.href = `detail.html?id=${result.id}`;
         } catch (err) {
             console.error(err);
             alert("作成失敗");

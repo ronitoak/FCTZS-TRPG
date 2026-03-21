@@ -106,14 +106,22 @@ Utils.domReady(() => {
                 systemSelect.value = data.profile.system;
                 systemSelect.dispatchEvent(new Event('change'));
                 
-                // ★重要: APIからの入力欄生成を待つ (環境に合わせて調整)
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // 要素が生成されるのを待つ（少し長めに設定）
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
             }
 
             // C. 能力値の反映 (生成された要素から探す)
             for (const [key, val] of Object.entries(data.attributes)) {
+                // 1. name属性で直接指定して探す
                 const input = dynamicContainer.querySelector(`input[name="attr_${key}"]`);
-                if (input) input.value = val;
+                
+                if (input) {
+                    input.value = val;
+                    console.log(`成功: ${key} に ${val} をセットしました`);
+                } else {
+                    // 見つからない場合はコンソールに出す（これで原因がわかります）
+                    console.warn(`失敗: name="attr_${key}" の入力欄が見つかりません。現在のHTMLを確認してください。`);
+                }
             }
 
             // D. 技能の反映 (部分一致で流し込み)

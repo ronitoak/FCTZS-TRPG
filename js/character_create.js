@@ -27,9 +27,20 @@ Utils.domReady(() => {
 
     // --- 技能入力欄の生成ロジック (renderDynamicFields内) ---
     function renderDynamicFields(attrs, skills) {
-        let html = `<h3>能力値</h3><div class="attr-grid">`;
-        // ...能力値の生成...
+        let html = "";
+    
+        // 能力値セクション
+        html += `<h3>能力値</h3><div class="attr-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">`;
+        (attrs || []).forEach(a => {
+            html += `
+                <div class="form-group">
+                    <label>${Utils.escapeHtml(a.label)}</label>
+                    <input type="number" name="attr_${a.key}" placeholder="0" class="form-control">
+                </div>`;
+        });
+        html += `</div>`;   
 
+        // 技能セクション
         html += `</div><h3>技能</h3><div class="skill-grid">`;
         (skills || []).forEach(s => {
             // placeholderに初期値を表示し、未入力時はこの値が採用されるようにする
@@ -44,7 +55,10 @@ Utils.domReady(() => {
                 </div>`;
         });
         html += `</div>`;
-        dynamicContainer.innerHTML = html;
+        const dynamicContainer = document.getElementById("dynamic-fields-container");
+        if (dynamicContainer) {
+            dynamicContainer.innerHTML = html;
+        }
     }
 
     // --- 送信時の収集ロジック (submitイベント内) ---
@@ -61,51 +75,61 @@ Utils.domReady(() => {
         });
     });
 
-    // --- 送信処理 ---
+    // --- 修正版: 送信処理 ---
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
-        // 基本データ構築
+        // フォームから直接値を取得
         const payload = {
             character: {
                 name: form.name.value,
                 player: form.player.value,
-                system: systemSelect.value,
+                system: document.getElementById("system-select").value,
                 job: form.job.value,
-                memo: form.memo.value
-                // ...他のプロフィール項目
+                age: parseInt(form.age.value, 10) || null,
+                gender: form.gender.value || null,
+                height: parseInt(form.height.value, 10) || null,
+                weight: parseInt(form.weight.value, 10) || null,
+                origin: form.origin.value || null,
+                memo: form.memo.value || null
             },
             attributes: [],
             skills: []
         };
 
         // 動的属性の収集
-        const attrInputs = dynamicContainer.querySelectorAll('input[name^="attr_"]');
-        attrInputs.forEach(input => {
+        document.querySelectorAll('input[name^="attr_"]').forEach(input => {
             const key = input.name.replace("attr_", "");
-            if (input.value) {
-                payload.attributes.push({ key, value_int: parseInt(input.value, 10) });
+            if (input.value !== "") {
+                payload.attributes.push({ 
+                    key: key, 
+                    value_int: parseInt(input.value, 10) 
+                });
             }
         });
 
-        // 選択された技能の収集
-        const skillChecks = dynamicContainer.querySelectorAll('input[name="skill_check"]:checked');
-        skillChecks.forEach(check => {
+        // 技能の収集（全件）
+        document.querySelectorAll('input[name="skill_val"]').forEach(input => {
+            const base = parseInt(input.dataset.base, 10);
+            const finalVal = input.value === "" ? base : parseInt(input.value, 10);
             payload.skills.push({
-                name: check.value,
-                base_value: parseInt(check.dataset.base, 10)
+                name: input.dataset.name,
+                base_value: base,
+                value: finalVal
             });
         });
 
         try {
-            // 一括POST（Worker側の修正が必要）
             const result = await Utils.apiPost("character_full", payload);
-            location.href = `detail.html?id=${result.id}`;
+            const row = Array.isArray(result) ? result[0] : result;
+            if (row && row.id) {
+                location.href = `detail.html?id=${row.id}`;
+            }
         } catch (err) {
-            console.error(err);
-            alert("作成失敗");
+            console.error("送信エラー:", err);
+            alert("作成失敗: " + err.message);
             submitBtn.disabled = false;
         }
     });

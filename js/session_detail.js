@@ -1,5 +1,8 @@
 "use strict";
 
+// 既存の取得処理の中で currentRunData などの変数に現在のデータを保持している前提
+let currentRunData = null;
+
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
   if (!u) return "";
@@ -168,6 +171,63 @@ async function main() {
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
 }
+
+async function loadDetail() {
+    const params = new URLSearchParams(location.search);
+    const runId = params.get("id");
+    
+    // APIからRunの詳細を取得
+    const run = await Utils.apiGet(`sessions?id=eq.${runId}`); // ※既存のAPIパスに合わせてください
+    currentRunData = Array.isArray(run) ? run[0] : run;
+    
+    // ... 既存のレンダリング処理 ...
+}
+
+// 送信処理の登録
+Utils.domReady(() => {
+    const subForm = document.getElementById("sub-session-form");
+    if (!subForm) return;
+
+    subForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        if (!currentRunData) return;
+
+        const dateVal = subForm.date.value; // YYYY-MM-DD
+        const titleVal = subForm.title.value;
+        const notesVal = subForm.notes.value;
+
+        // 採番規則: se-YYYY-MMDD
+        const idDate = dateVal.replace(/-/g, ""); // YYYYMMDD
+        const newSessionId = `se-${idDate}`;
+        
+        // start (timestamp with time zone) の作成
+        const startTimestamp = new Date(dateVal).toISOString();
+
+        const payload = {
+            id: newSessionId,
+            run_id: currentRunData.id,
+            gm: currentRunData.gm,
+            start: startTimestamp,
+            title: titleVal,
+            notes: notesVal,
+            status: 'scheduled' // デフォルト
+        };
+
+        const submitBtn = subForm.querySelector("button[type=submit]");
+        submitBtn.disabled = true;
+
+        try {
+            await Utils.apiPost("sessions", payload);
+            alert("セッション記録を保存しました");
+            location.reload(); // 画面を更新して履歴を表示
+        } catch (err) {
+            console.error(err);
+            alert("保存失敗: " + err.message);
+            submitBtn.disabled = false;
+        }
+    });
+});
 
 main();
 

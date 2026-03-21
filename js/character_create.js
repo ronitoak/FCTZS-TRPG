@@ -206,14 +206,14 @@ Utils.domReady(() => {
         const emotions = ["自己顕示(欲望)", "所有(欲望)", "本能(欲望)", "破壊(欲望)", "優越感(欲望)", "怠惰(欲望)", "逃避(欲望)", "好奇心(欲望)", "スリル(欲望)","喜び(情念)", "怒り(情念)", "哀しみ(情念)", "幸福(情念)", "不安(情念)", "嫌悪(情念)", "恐怖(情念)", "嫉妬(情念)", "恨み(情念)","正義(理想)", "崇拝(理想)", "善悪(理想)", "希望(理想)", "向上(理想)", "理性(理想)", "勝利(理想)", "秩序(理想)", "憧憬(理想)", "無我(理想)","友情(関係)", "愛(関係)", "恋(関係)", "依存(関係)", "尊敬(関係)", "軽蔑(関係)", "庇護(関係)", "支配(関係)", "奉仕(関係)", "甘え(関係)","後悔(傷)", "孤独(傷)", "諦観(傷)", "絶望(傷)", "否定(傷)", "疑念(傷)", "罪悪感(傷)", "狂気(傷)", "劣等感(傷)"];
         let html = `<fieldset class="form-section"><legend>能力値</legend><div class="attr-grid">`;
         (attrs || []).forEach(a => {
+            // a.key を小文字に変換して name にセット
+            const safeKey = a.key.toLowerCase(); 
             html += `<div class="attr-input-item"><label>${Utils.escapeHtml(a.label)}</label>`;
+            
             if (a.kind === 'emotion') {
-                html += `<select name="attr_${a.key}" class="form-control" data-kind="emotion">
-                            <option value="">--</option>
-                            ${emotions.map(e => `<option value="${e}">${e}</option>`).join('')}
-                        </select>`;
+                html += `<select name="attr_${safeKey}" class="form-control" data-kind="emotion">...`;
             } else {
-                html += `<input type="number" name="attr_${a.key}" placeholder="0" class="form-control" data-kind="int">`;
+                html += `<input type="number" name="attr_${safeKey}" placeholder="0" class="form-control" data-kind="int">`;
             }
             html += `</div>`;
         });

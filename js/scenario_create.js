@@ -9,21 +9,18 @@ Utils.domReady(() => {
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
-        // テーブル定義に基づいたペイロード
-        // js/scenario_create.js の一部
         const payload = {
             title: form.title.value,
             system: form.system.value,
-            author: form.author.value || null, // 直接authorカラムへ
+            author: form.author.value || null,
             description: form.description.value || null,
             notes: form.notes.value || null
         };
 
         try {
-            const result = await Utils.apiPost("scenarios", payload);
+            await Utils.apiPost("scenarios", payload);
             alert("シナリオを登録しました");
-            // 登録後はトップまたは一覧へ
-            location.href = "../index.html"; 
+            location.href = "index.html"; // シナリオ一覧へ
         } catch (err) {
             console.error(err);
             alert("登録失敗: " + err.message);

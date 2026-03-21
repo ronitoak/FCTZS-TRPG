@@ -43,6 +43,7 @@ document.getElementById("character-form").addEventListener("submit", async (e) =
 
   let result;
     try {
+    console.log("RAW RESPONSE:", text);
     result = JSON.parse(text);
     } catch (e) {
     console.error("parse error:", text);

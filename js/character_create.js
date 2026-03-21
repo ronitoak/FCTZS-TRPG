@@ -131,7 +131,10 @@ Utils.domReady(() => {
             html += `<div class="attr-input-item"><label>${Utils.escapeHtml(a.label)}</label>`;
             
             if (a.kind === 'emotion') {
-                html += `<select name="attr_${safeKey}" class="form-control" data-kind="emotion">...`;
+                html += `<select name="attr_${safeKey}" class="form-control" data-kind="emotion">
+                            <option value="">--</option>
+                            ${emotions.map(e => `<option value="${e}">${e}</option>`).join('')}
+                        </select>`;
             } else {
                 html += `<input type="number" name="attr_${safeKey}" placeholder="0" class="form-control" data-kind="int">`;
             }

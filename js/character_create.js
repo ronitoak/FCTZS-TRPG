@@ -119,7 +119,6 @@ Utils.domReady(() => {
                     if (input.dataset.name.includes(sName)) input.value = sVal;
                 });
             }
-            alert("インポートが完了しました！");
         });
     }
 

@@ -132,11 +132,9 @@ Utils.domReady(() => {
                 
                 if (input) {
                     input.value = val;
-                    console.log(`成功: attr_${lowerKey} に ${val} を入力しました`); [cite: 1]
                 } else {
                     // デバッグ用：現在 dynamicContainer にどんな input があるか出力
                     const allInputs = Array.from(dynamicContainer.querySelectorAll('input')).map(i => i.name);
-                    console.error(`失敗: attr_${lowerKey} が見つかりません。存在するname一覧:`, allInputs); [cite: 1]
                 }
             }
 

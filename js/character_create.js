@@ -25,13 +25,14 @@ Utils.domReady(() => {
         }
     });
 
+    // --- 技能入力欄の生成ロジック (renderDynamicFields内) ---
     function renderDynamicFields(attrs, skills) {
         let html = `<h3>能力値</h3><div class="attr-grid">`;
-        // ...能力値の生成は変更なし...
+        // ...能力値の生成...
 
         html += `</div><h3>技能</h3><div class="skill-grid">`;
         (skills || []).forEach(s => {
-            // 全技能を入力欄として生成。空欄なら初期値(base_value)として扱う
+            // placeholderに初期値を表示し、未入力時はこの値が採用されるようにする
             html += `
                 <div class="form-group skill-input-item">
                     <label>${Utils.escapeHtml(s.name)} <small>(初期値: ${s.base_value})</small></label>
@@ -46,16 +47,17 @@ Utils.domReady(() => {
         dynamicContainer.innerHTML = html;
     }
 
-    // 送信時の収集ロジック
+    // --- 送信時の収集ロジック (submitイベント内) ---
     const skillInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
     skillInputs.forEach(input => {
         const base = parseInt(input.dataset.base, 10);
-        const val = input.value === "" ? base : parseInt(input.value, 10);
+        // 入力が空なら初期値、入力があればその値を数値として取得
+        const finalVal = input.value === "" ? base : parseInt(input.value, 10);
         
         payload.skills.push({
             name: input.dataset.name,
             base_value: base,
-            value: val // Viewの定義に合わせて 'value' とする
+            value: finalVal // Viewの定義に合わせて'value'カラムに送る
         });
     });
 

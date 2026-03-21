@@ -48,7 +48,7 @@ Utils.domReady(() => {
 
                 // B. 能力値 (params配列から抽出)
                 const emoAttrMap = {
-                    "精神":"power","五感":"senses","身体":"strength","社会":"social","運勢":"luck","知力":"intellect","器用":"dexterity","魅力":"appearance"
+                    "精神":"power","五感":"senses","身体":"strength","社会":"social","運勢":"luck","知力":"intellect","器用":"dexterity","魅力":"appearance","共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
                 };
 
                 if (Array.isArray(data.params)) {
@@ -58,13 +58,16 @@ Utils.domReady(() => {
                     });
                 }
 
-                // C. 技能 (commandsの文字列から 〈〉 に囲まれたものを抽出)
+                // C. 技能の抽出 (xDM<=y 〈技能名〉 から x を抽出)
                 if (data.commands) {
-                    const skillRegex = /(\d+)DM<=(\d+)\s*〈(.+?)〉/g;
+                    const skillRegex = /(\d+)DM<=\d+\s*〈(.+?)〉/g;
                     let match;
                     while ((match = skillRegex.exec(data.commands)) !== null) {
-                        const skillName = match[3].replace('＊', ''); // 共通技能の＊を除去
-                        result.skills[skillName] = match[2]; // 成功値を格納
+                        const diceNum = match[1]; // "2DM" の "2"
+                        const skillName = match[2].replace('＊', ''); // 共通技能の＊を除去
+                        
+                        // 技能レベル (ダイス数) を格納
+                        result.skills[skillName] = diceNum;
                     }
                 }
                 return result;

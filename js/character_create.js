@@ -37,20 +37,17 @@ Utils.domReady(() => {
         
         (attrs || []).forEach(a => {
             html += `<div class="form-group"><label>${Utils.escapeHtml(a.label)}</label>`;
-            
             if (a.kind === 'emotion') {
-                // 共鳴感情（enum）用のプルダウン
-                html += `<select name="attr_${a.key}" class="form-control">
+                // data-kind を付与して送信時に判別可能にする
+                html += `<select name="attr_${a.key}" class="form-control" data-kind="emotion">
                             <option value="">選択してください</option>
                             ${emotions.map(e => `<option value="${e}">${e}</option>`).join('')}
                         </select>`;
             } else {
-                // 通常の数値入力
-                html += `<input type="number" name="attr_${a.key}" placeholder="0" class="form-control">`;
+                html += `<input type="number" name="attr_${a.key}" placeholder="0" class="form-control" data-kind="int">`;
             }
             html += `</div>`;
         });
-        html += `</div>`;
 
         // --- 技能セクション（前回提示の専門指定対応を含む） ---
         html += `<h3>技能</h3><div class="skill-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">`;
@@ -131,26 +128,21 @@ Utils.domReady(() => {
             });
         });
 
-        // --- 修正版: 送信時のデータ収集ロジック (form submit内) ---
-        // attributesの収集
-        const attributes = [];
-        // attributesマスタ（attrs）をループして値を取得
-        currentSystemAttrs.forEach(a => {
-            const input = document.querySelector(`[name="attr_${a.key}"]`);
-            if (!input) return;
+        // 送信(submit)イベント内
+        const attrElements = dynamicContainer.querySelectorAll('[name^="attr_"]');
+        attrElements.forEach(el => {
+            const key = el.name.replace("attr_", "");
+            const kind = el.dataset.kind;
 
-            if (a.kind === 'emotion') {
-                attributes.push({
-                    key: a.key,
-                    value_int: null,
-                    value_emotion: input.value || null
-                });
+            if (kind === 'emotion') {
+                if (el.value) {
+                    payload.attributes.push({ key, value_int: null, value_emotion: el.value });
+                }
             } else {
-                attributes.push({
-                    key: a.key,
-                    value_int: input.value === "" ? 0 : parseInt(input.value, 10),
-                    value_emotion: null
-                });
+                const val = parseInt(el.value, 10);
+                if (!isNaN(val)) {
+                    payload.attributes.push({ key, value_int: val, value_emotion: null });
+                }
             }
         });
 

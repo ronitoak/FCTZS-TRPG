@@ -57,9 +57,9 @@ Utils.domReady(() => {
 
         // システム判定 (HTMLの <option value="..."> と完全に一致させること)
         if (text.includes("6版 v2.0.1")) {
-            result.profile.system = "クトゥルフ神話TRPG"; 
+            result.profile.system = "CoC6"; // DB側の値に合わせる
         } else if (text.includes("7版 v2.0.1")) {
-            result.profile.system = "クトゥルフ神話TRPG（第7版）";
+            result.profile.system = "CoC7"; // DB側の値に合わせる
         } else if (text.includes("エモクロアTRPG")) {
             result.profile.system = "エモクロアTRPG";
         }
@@ -127,7 +127,7 @@ Utils.domReady(() => {
                 });
             }
 
-            alert("データを反映しました。反映されなかった項目は手動で調整してください。");
+            alert("データを反映しました。俺は頑張ったからこれ以上は手動で調整してください。");
         });
     }
 

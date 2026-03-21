@@ -981,3 +981,94 @@ th, td {
 .scenario-detail-character-name {
   font-weight: 600;
 }
+
+/* セクションの区切り */
+.form-section {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+}
+
+.form-section legend {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #2d3748;
+    padding: 0 10px;
+}
+
+/* プロフィール部分（詳細画面の右側パネル風） */
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #edf2f7;
+}
+
+/* 能力値（チップ状の入力欄） */
+.attr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 1rem;
+}
+
+.attr-input-item {
+    display: flex;
+    flex-direction: column;
+    background: #edf2f7;
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.attr-input-item label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #4a5568;
+    margin-bottom: 4px;
+}
+
+/* 技能（詳細画面のリスト風） */
+.skill-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.skill-input-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    transition: background 0.2s;
+}
+
+.skill-input-item:hover {
+    background: #f7fafc;
+}
+
+.skill-input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 5px;
+}
+
+/* 数値入力の微調整 */
+input[type="number"] {
+    text-align: right;
+}
+
+/* メモエリア */
+textarea[name="memo"] {
+    width: 100%;
+    min-height: 150px;
+    line-height: 1.6;
+}

@@ -147,8 +147,6 @@ Utils.domReady(() => {
                     }
                 });
             }
-
-            alert("データを反映しました。俺は頑張ったからこれ以上は手動で調整してください。");
         });
     }
 
@@ -351,9 +349,8 @@ Utils.domReady(() => {
             if (m) {
                 // m[1] が「現在値」の列の数字になります
                 result.attributes[attr.toLowerCase()] = m[1];
-                console.log(`${attr}を抽出成功: ${m[1]}`); // デバッグ用
             } else {
-                console.warn(`${attr}が見つかりませんでした`);
+
             }
         });
 

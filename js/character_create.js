@@ -95,6 +95,14 @@ Utils.domReady(() => {
             }
         });
 
+        // 【メモ】という文字以降のすべての文字（改行含む）を抽出
+        // . は通常改行に一致しませんが、sフラグを使うことで一致するようになります
+        const memoMatch = text.match(/【メモ】\s*([\s\S]*)/);
+        if (memoMatch) {
+            // 前後の余計な空白を消して格納
+            result.profile.memo = memoMatch[1].trim();
+        }
+
         return result;
     }
 
@@ -114,6 +122,11 @@ Utils.domReady(() => {
             if (data.profile.height) form.height.value = data.profile.height;
             if (data.profile.weight) form.weight.value = data.profile.weight;
             if (data.profile.origin) form.origin.value = data.profile.origin;
+
+            // メモ欄の反映を追加
+            if (data.profile.memo) {
+                form.memo.value = data.profile.memo;
+            }
 
             // B. システムの自動切り替え
             if (data.profile.system) {

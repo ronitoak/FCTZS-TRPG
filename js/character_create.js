@@ -34,9 +34,9 @@ Utils.domReady(() => {
     function parseIachara(text) {
         const result = { profile: {}, attributes: {}, skills: {} };
 
-        // プロフィール項目の抽出 (否定文字クラス [^/]+ を使用して / までを取得)
+        // A. プロフィール抽出 (否定文字クラス [^/]+ を活用)
         const profileFields = {
-            name: /名前:\s*([^/(\n]+)/, // 名前は ( や 改行の手前まで
+            name: /名前:\s*([^/(\n]+)/,
             job: /職業:\s*([^/(\n]+)/,
             age: /年齢:\s*([^/]+)/,
             gender: /性別:\s*([^/]+)/,
@@ -49,64 +49,38 @@ Utils.domReady(() => {
             const m = text.match(regex);
             if (m) {
                 const val = m[1].trim();
-                // 数値項目は数値化、それ以外は文字列として保持
-                result.profile[key] = (key === 'name' || key === 'job' || key === 'gender' || key === 'origin') 
+                result.profile[key] = (['name', 'job', 'gender', 'origin'].includes(key)) 
                     ? val : (parseInt(val) || null);
             }
         }
 
-        // システム判定 (HTMLの <option value="..."> と完全に一致させること)
-        if (text.includes("6版 v2.0.1")) {
-            result.profile.system = "CoC6"; // DB側の値に合わせる
-        } else if (text.includes("7版 v2.0.1")) {
-            result.profile.system = "CoC7"; // DB側の値に合わせる
-        } else if (text.includes("エモクロアTRPG")) {
-            result.profile.system = "エモクロアTRPG";
-        }
+        // B. システム判定
+        if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
+        else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
+        else if (text.includes("エモクロアTRPG")) result.profile.system = "エモクロアTRPG";
 
-        // 能力値の抽出 (行頭の名称 + 空白 + 最初の数字)
+        // C. 能力値の抽出 (行頭にこだわらず柔軟に取得)
         const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
-
         attrNames.forEach(attr => {
-            // 修正ポイント:
-            // 1. 行頭(^)にこだわらず、テキスト全体から探す
-            // 2. 名称の後に「空白またはタブ」が1つ以上あることを想定 (\s+)
-            // 3. 最初に現れる数字をキャプチャする ([0-9]+)
-            // 4. 'g'フラグは使わず、最初の1致を狙う。'i'で大文字小文字を無視。
             const reg = new RegExp(`${attr}\\s+([0-9]+)`, 'i'); 
             const m = text.match(reg);
-            
-            if (m) {
-                // m[1] が数値部分
-                result.attributes[attr.toLowerCase()] = m[1];
-                console.log(`${attr}の抽出に成功しました: ${m[1]}`);
-            } else {
-                // まだ見つからない場合は、デバッグ用にテキストの1行を出す
-                console.warn(`${attr}が見つかりませんでした。正規表現を再確認してください。`);
-            }
+            if (m) result.attributes[attr.toLowerCase()] = m[1];
         });
 
-        // 技能の抽出 (技能名 + 合計値)
-        const lines = text.split('\n');
-        lines.forEach(line => {
+        // D. 技能の抽出
+        text.split('\n').forEach(line => {
             const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
-            if (skillMatch) {
-                result.skills[skillMatch[1]] = skillMatch[2];
-            }
+            if (skillMatch) result.skills[skillMatch[1]] = skillMatch[2];
         });
 
-        // 【メモ】という文字以降のすべての文字（改行含む）を抽出
-        // . は通常改行に一致しませんが、sフラグを使うことで一致するようになります
+        // E. メモ欄の抽出 (【メモ】以降すべて)
         const memoMatch = text.match(/【メモ】\s*([\s\S]*)/);
-        if (memoMatch) {
-            // 前後の余計な空白を消して格納
-            result.profile.memo = memoMatch[1].trim();
-        }
+        if (memoMatch) result.profile.memo = memoMatch[1].trim();
 
         return result;
     }
 
-    // --- 3. インポート実行イベント (一本化・非同期版) ---
+    // --- 3. インポート実行イベント (完全版) ---
     if (btnImport && importArea) {
         btnImport.addEventListener('click', async () => {
             const text = importArea.value;
@@ -114,7 +88,7 @@ Utils.domReady(() => {
 
             const data = parseIachara(text);
 
-            // A. プロフィール項目の反映
+            // プロフィールとメモの反映
             if (data.profile.name) form.name.value = data.profile.name;
             if (data.profile.job) form.job.value = data.profile.job;
             if (data.profile.age) form.age.value = data.profile.age;
@@ -122,95 +96,31 @@ Utils.domReady(() => {
             if (data.profile.height) form.height.value = data.profile.height;
             if (data.profile.weight) form.weight.value = data.profile.weight;
             if (data.profile.origin) form.origin.value = data.profile.origin;
+            if (data.profile.memo) form.memo.value = data.profile.memo;
 
-            // メモ欄の反映を追加
-            if (data.profile.memo) {
-                form.memo.value = data.profile.memo;
-            }
-
-            // B. システムの自動切り替え
+            // システム切り替えと待機
             if (data.profile.system) {
                 systemSelect.value = data.profile.system;
                 systemSelect.dispatchEvent(new Event('change'));
-                
-                // 描画が終わるまでしっかり待つ（1.5秒）
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 1200)); // 描画待ち
             }
 
-            // --- 能力値の反映 ---
+            // 能力値反映 (lowerKeyを使用して確実に繋ぐ)
             for (const [key, val] of Object.entries(data.attributes)) {
-                // パース結果のキーを小文字にして探す
                 const lowerKey = key.toLowerCase();
                 const input = dynamicContainer.querySelector(`input[name="attr_${lowerKey}"]`);
-                
-                if (input) {
-                    input.value = val;
-                } else {
-                    // デバッグ用：現在 dynamicContainer にどんな input があるか出力
-                    const allInputs = Array.from(dynamicContainer.querySelectorAll('input')).map(i => i.name);
-                }
+                if (input) input.value = val;
             }
 
-            // D. 技能の反映 (部分一致で流し込み)
+            // 技能反映 (部分一致)
             for (const [sName, sVal] of Object.entries(data.skills)) {
                 const inputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
                 inputs.forEach(input => {
-                    if (input.dataset.name.includes(sName)) {
-                        input.value = sVal;
-                    }
+                    if (input.dataset.name.includes(sName)) input.value = sVal;
                 });
             }
+            alert("インポートが完了しました！");
         });
-    }
-
-    // --- 4. 解析関数 (正規表現の精度を統一) ---
-    function parseIachara(text) {
-        const result = { profile: {}, attributes: {}, skills: {} };
-
-        // プロフィール項目の抽出 (スラッシュ / の手前までを取得)
-        const profileMap = {
-            name: /名前:\s*([^/(\n]+)/,
-            job: /職業:\s*([^/(\n]+)/,
-            age: /年齢:\s*([^/]+)/,
-            gender: /性別:\s*([^/]+)/,
-            height: /身長:\s*([^/]+)/,
-            weight: /体重:\s*([^/]+)/,
-            origin: /出身:\s*([^/]+)/
-        };
-
-        for (const [key, regex] of Object.entries(profileMap)) {
-            const m = text.match(regex);
-            if (m) {
-                const val = m[1].trim();
-                result.profile[key] = (key === 'gender' || key === 'origin' || key === 'name' || key === 'job') 
-                    ? val : (parseInt(val) || null);
-            }
-        }
-
-        // システム判定
-        if (text.includes("6版 v2.0.1")) {
-            result.profile.system = "CoC6"; 
-        } else if (text.includes("7版 v2.0.1")) {
-            result.profile.system = "CoC7";
-        }
-
-        // 能力値の抽出
-        const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
-        attrNames.forEach(attr => {
-            const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
-            const m = text.match(reg);
-            if (m) result.attributes[attr.toLowerCase()] = m[1];
-        });
-
-        // 技能の抽出
-        text.split('\n').forEach(line => {
-            const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
-            if (skillMatch) {
-                result.skills[skillMatch[1]] = skillMatch[2];
-            }
-        });
-
-        return result;
     }
 
     function renderDynamicFields(attrs, skills) {
@@ -312,71 +222,5 @@ Utils.domReady(() => {
         }
     });
 
-    // いあきゃらのテキストを解析する関数
-    function parseIachara(text) {
-        const lines = text.split('\n');
-        const result = { profile: {}, attributes: {}, skills: {} };
 
-        // 名前・職業などの基本情報 
-        const nameMatch = text.match(/名前:\s*(.+)/);
-        if (nameMatch) result.profile.name = nameMatch[1].split('(')[0].trim();
-
-        const jobMatch = text.match(/職業:\s*(.+)/);
-        if (jobMatch) result.profile.job = jobMatch[1].trim();
-
-        const ageMatch = text.match(/年齢:\s*([^/]+)/);
-        if (ageMatch) result.profile.age = parseInt(ageMatch[1].trim()) || null;
-
-        const genderMatch = text.match(/性別:\s*([^/]+)/);
-        if (genderMatch) {
-            result.profile.gender = genderMatch[1].trim(); 
-        }
-
-        const heightMatch = text.match(/身長:\s*(.+)/);
-        if (heightMatch) result.profile.height = parseInt(heightMatch[1].trim()) || null;
-
-        const weightMatch = text.match(/体重:\s*([^/]+)/);
-        if (weightMatch) result.profile.weight = parseInt(weightMatch[1].trim()) || null;
-
-        const originMatch = text.match(/出身:\s*(.+)/);
-        if (originMatch) result.profile.origin = originMatch[1].trim();
-
-        const systemMatch = text.match(/いあきゃらテキスト \s*(.+)/);
-        // システム判定の修正（文字列が含まれているかチェック）
-        if (text.includes("6版 v2.0.1")) {
-            result.profile.system = "CoC6"; // DB側の値に合わせる
-        } else if (text.includes("7版 v2.0.1")) {
-            result.profile.system = "CoC7"; // DB側の値に合わせる
-        }
-
-        // 能力値の抽出 (現在値を取得) 
-        // 例: STR         10      10
-        const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
-        attrNames.forEach(attr => {
-            // 1. 行の先頭(^)にある能力値名を探す
-            // 2. その後に続く「空白」をすべて飛ばす (\s+)
-            // 3. 最初に現れる「数字」をキャプチャする (\d+)
-            const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
-            const m = text.match(reg);
-            
-            if (m) {
-                // m[1] が「現在値」の列の数字になります
-                result.attributes[attr.toLowerCase()] = m[1];
-            } else {
-
-            }
-        });
-
-        // 技能の抽出 (技能名と合計値) 
-        // 合計値は「技能名」のあとの最初の数字を狙う
-        lines.forEach(line => {
-            // 技能名 合計 初期値 職業P ... の並びを想定
-            const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
-            if (skillMatch) {
-                result.skills[skillMatch[1]] = skillMatch[2];
-            }
-        });
-
-        return result;
-    }
 });

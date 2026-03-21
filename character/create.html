@@ -10,48 +10,38 @@
     <h1>キャラクター新規作成</h1>
 
     <form id="character-form">
-        <label>名前</label>
-        <input name="name" required>
-
-        <label>プレイヤー</label>
-        <input name="player">
-
-        <div class="form-group"></div>
-            <label>システム</label>
-            <select name="system" id="system-select" required>
-                <option value="">選択してください</option>
-                <option value="CoC6">クトゥルフ神話TRPG(6版)</option>
-                <option value="CoC7">新クトゥルフ神話TRPG(7版)</option>
-                <option value="エモクロアTRPG">エモクロアTRPG</option>
-            </select>
+    <fieldset class="form-section">
+        <legend>プロフィール</legend>
+        <div class="form-group"><label>名前</label><input type="text" name="name" required></div>
+        <div class="form-group"><label>職業</label><input type="text" name="job"></div>
+        <div class="form-group"><label>年齢</label><input type="number" name="age"></div>
+        <div class="form-group"><label>性別</label><input type="text" name="gender"></div>
+        <div class="form-group"><label>身長</label><input type="number" name="height"></div>
+        <div class="form-group"><label>体重</label><input type="number" name="weight"></div>
+        <div class="form-group"><label>出身</label><input type="text" name="origin"></div>
+        <div class="form-group"><label>プレイヤー</label><input type="text" name="player"></div>
+        <div class="form-group">
+        <label>システム</label>
+        <select name="system" id="system-select" required>
+            <option value="CoC6">クトゥルフ神話TRPG(6版)</option>
+            <option value="CoC7">新クトゥルフ神話TRPG(7版)</option>
+            <option value="エモクロアTRPG">エモクロアTRPG</option>
+        </select>
         </div>
+    </fieldset>
 
-        <div id="dynamic-fields-container"></div>
+    <div id="dynamic-fields-container"></div>
 
-        <label>職業</label>
-        <input name="job">
-
-        <label>年齢</label>
-        <input name="age" type="number">
-
-        <label>性別</label>
-        <input name="gender">
-
-        <label>身長</label>
-        <input name="height" type="number">
-
-        <label>体重</label>
-        <input name="weight" type="number">
-
-        <label>出身</label>
-        <input name="origin">
-
+    <fieldset class="form-section">
+        <div class="form-group">
         <label>メモ</label>
-        <textarea name="memo"></textarea>
+        <textarea name="memo" rows="5"></textarea>
+        </div>
+    </fieldset>
 
-
-        <button type="submit">作成</button>
+    <button type="submit">キャラクターを作成</button>
     </form>
+
     <footer>
             <hr />
             <small><a href="../character/index.html">Back</a></small>

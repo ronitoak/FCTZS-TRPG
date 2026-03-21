@@ -4,10 +4,12 @@ Utils.domReady(() => {
     const form = document.getElementById("character-form");
     const systemSelect = document.getElementById("system-select");
     const dynamicContainer = document.getElementById("dynamic-fields-container");
+    const btnImport = document.getElementById('btn-import');
+    const importArea = document.getElementById('import-text');
 
     if (!form || !systemSelect || !dynamicContainer) return;
 
-    // --- システム選択時の動的生成 ---
+    // --- 1. システム選択時の動的生成 (既存ロジック) ---
     systemSelect.addEventListener("change", async () => {
         const system = systemSelect.value;
         if (!system) {
@@ -27,6 +29,107 @@ Utils.domReady(() => {
             dynamicContainer.innerHTML = "<p>データの取得に失敗しました</p>";
         }
     });
+
+    // --- 2. いあきゃらテキスト解析関数 (精度向上版) ---
+    function parseIachara(text) {
+        const result = { profile: {}, attributes: {}, skills: {} };
+
+        // プロフィール項目の抽出 (否定文字クラス [^/]+ を使用して / までを取得)
+        const profileFields = {
+            name: /名前:\s*([^/(\n]+)/, // 名前は ( や 改行の手前まで
+            job: /職業:\s*([^/(\n]+)/,
+            age: /年齢:\s*([^/]+)/,
+            gender: /性別:\s*([^/]+)/,
+            height: /身長:\s*([^/]+)/,
+            weight: /体重:\s*([^/]+)/,
+            origin: /出身:\s*([^/]+)/
+        };
+
+        for (const [key, regex] of Object.entries(profileFields)) {
+            const m = text.match(regex);
+            if (m) {
+                const val = m[1].trim();
+                // 数値項目は数値化、それ以外は文字列として保持
+                result.profile[key] = (key === 'name' || key === 'job' || key === 'gender' || key === 'origin') 
+                    ? val : (parseInt(val) || null);
+            }
+        }
+
+        // システム判定 (HTMLの <option value="..."> と完全に一致させること)
+        if (text.includes("6版 v2.0.1")) {
+            result.profile.system = "クトゥルフ神話TRPG"; 
+        } else if (text.includes("7版 v2.0.1")) {
+            result.profile.system = "クトゥルフ神話TRPG（第7版）";
+        } else if (text.includes("エモクロアTRPG")) {
+            result.profile.system = "エモクロアTRPG";
+        }
+
+        // 能力値の抽出 (行頭の名称 + 空白 + 最初の数字)
+        const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
+        attrNames.forEach(attr => {
+            const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
+            const m = text.match(reg);
+            if (m) result.attributes[attr.toLowerCase()] = m[1];
+        });
+
+        // 技能の抽出 (技能名 + 合計値)
+        const lines = text.split('\n');
+        lines.forEach(line => {
+            const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
+            if (skillMatch) {
+                result.skills[skillMatch[1]] = skillMatch[2];
+            }
+        });
+
+        return result;
+    }
+
+    // --- 3. インポート実行イベント (一本化) ---
+    if (btnImport && importArea) {
+        btnImport.addEventListener('click', async () => {
+            const text = importArea.value;
+            if (!text) return alert("テキストを貼り付けてください");
+
+            const data = parseIachara(text);
+
+            // プロフィールの反映
+            if (data.profile.name) form.name.value = data.profile.name;
+            if (data.profile.job) form.job.value = data.profile.job;
+            if (data.profile.age) form.age.value = data.profile.age;
+            if (data.profile.gender) form.gender.value = data.profile.gender;
+            if (data.profile.height) form.height.value = data.profile.height;
+            if (data.profile.weight) form.weight.value = data.profile.weight;
+            if (data.profile.origin) form.origin.value = data.profile.origin;
+
+            // システムの自動切り替え
+            if (data.profile.system) {
+                systemSelect.value = data.profile.system;
+                systemSelect.dispatchEvent(new Event('change'));
+                
+                // 動的フィールドの生成(API取得)を待つ
+                // 本来は MutationObserver 等が理想ですが、簡略化のため待機時間を設けます
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+
+            // 能力値の反映 (生成された dynamicContainer 内から探す)
+            for (const [key, val] of Object.entries(data.attributes)) {
+                const input = dynamicContainer.querySelector(`input[name="attr_${key}"]`);
+                if (input) input.value = val;
+            }
+
+            // 技能の反映 (部分一致で流し込み)
+            for (const [sName, sVal] of Object.entries(data.skills)) {
+                const inputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
+                inputs.forEach(input => {
+                    if (input.dataset.name.includes(sName)) {
+                        input.value = sVal;
+                    }
+                });
+            }
+
+            alert("データを反映しました。反映されなかった項目は手動で調整してください。");
+        });
+    }
 
     function renderDynamicFields(attrs, skills) {
         const emotions = ["自己顕示(欲望)", "所有(欲望)", "本能(欲望)", "破壊(欲望)", "優越感(欲望)", "怠惰(欲望)", "逃避(欲望)", "好奇心(欲望)", "スリル(欲望)","喜び(情念)", "怒り(情念)", "哀しみ(情念)", "幸福(情念)", "不安(情念)", "嫌悪(情念)", "恐怖(情念)", "嫉妬(情念)", "恨み(情念)","正義(理想)", "崇拝(理想)", "善悪(理想)", "希望(理想)", "向上(理想)", "理性(理想)", "勝利(理想)", "秩序(理想)", "憧憬(理想)", "無我(理想)","友情(関係)", "愛(関係)", "恋(関係)", "依存(関係)", "尊敬(関係)", "軽蔑(関係)", "庇護(関係)", "支配(関係)", "奉仕(関係)", "甘え(関係)","後悔(傷)", "孤独(傷)", "諦観(傷)", "絶望(傷)", "否定(傷)", "疑念(傷)", "罪悪感(傷)", "狂気(傷)", "劣等感(傷)"];
@@ -139,7 +242,7 @@ Utils.domReady(() => {
         const jobMatch = text.match(/職業:\s*(.+)/);
         if (jobMatch) result.profile.job = jobMatch[1].trim();
 
-        const ageMatch = text.match(/年齢:\s*(.+)/);
+        const ageMatch = text.match(/年齢:\s*([^/]+)/);
         if (ageMatch) result.profile.age = parseInt(ageMatch[1].trim()) || null;
 
         const genderMatch = text.match(/性別:\s*([^/]+)/);
@@ -150,7 +253,7 @@ Utils.domReady(() => {
         const heightMatch = text.match(/身長:\s*(.+)/);
         if (heightMatch) result.profile.height = parseInt(heightMatch[1].trim()) || null;
 
-        const weightMatch = text.match(/体重:\s*(.+)/);
+        const weightMatch = text.match(/体重:\s*([^/]+)/);
         if (weightMatch) result.profile.weight = parseInt(weightMatch[1].trim()) || null;
 
         const originMatch = text.match(/出身:\s*(.+)/);
@@ -194,57 +297,6 @@ Utils.domReady(() => {
         });
 
         return result;
-    }
-
-    const btnImport = document.getElementById('btn-import');
-    const importArea = document.getElementById('import-text'); // HTMLのIDに合わせてください
-
-    if (btnImport && importArea) {
-        btnImport.addEventListener('click', async () => {
-            const text = importArea.value;
-            if (!text) return alert("テキストを貼り付けてください");
-
-            const data = parseIachara(text);
-
-            // 1. プロフィールの反映（HTMLのname属性を使用）
-            if (data.profile.name) form.name.value = data.profile.name;
-            if (data.profile.job) form.job.value = data.profile.job;
-            if (data.profile.age) form.age.value = data.profile.age;
-            if (data.profile.gender) form.gender.value = data.profile.gender;
-            if (data.profile.height) form.height.value = data.profile.height;
-            if (data.profile.weight) form.weight.value = data.profile.weight;
-            if (data.profile.origin) form.origin.value = data.profile.origin;
-
-            // 2. システムの自動切り替え
-            if (data.profile.system) {
-                systemSelect.value = data.profile.system;
-                // 手動で change イベントを発火させて入力欄を生成させる
-                systemSelect.dispatchEvent(new Event('change'));
-                
-                // API取得とレンダリングを待つための簡易的な待機
-                // 本来は Promise で管理するのが理想ですが、学習用として1秒待ちます
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-
-            // 3. 能力値の反映
-            for (const [key, val] of Object.entries(data.attributes)) {
-                const input = dynamicContainer.querySelector(`input[name="attr_${key}"]`);
-                if (input) input.value = val;
-            }
-
-            // 4. 技能の反映
-            for (const [sName, sVal] of Object.entries(data.skills)) {
-                const inputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
-                inputs.forEach(input => {
-                    // 技能名が部分一致、またはデータ名に含まれる場合
-                    if (input.dataset.name.includes(sName)) {
-                        input.value = sVal;
-                    }
-                });
-            }
-
-            alert("データを反映しました。俺も頑張ったけど無理だったのでこれ以上は手動で調整してください。");
-        });
     }
 
     document.getElementById('btn-import').addEventListener('click', () => {

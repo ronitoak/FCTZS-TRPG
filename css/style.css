@@ -997,17 +997,39 @@ th, td {
     padding: 0 10px;
 }
 
-/* プロフィール部分（詳細画面の右側パネル風） */
+/* プロフィールセクションのグリッドレイアウト修正 */
 .profile-grid {
     display: grid;
-    /* 画面幅に合わせて、最小200pxの列を自動で作る（横並び） */
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
+    /* 1列あたりの幅を「最小150px〜最大1fr」に設定 */
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px 20px; /* 縦の隙間を少し詰め、横の隙間を確保 */
     background: #f8fafc;
     padding: 20px;
     border-radius: 8px;
     border: 1px solid #edf2f7;
     margin-bottom: 20px;
+}
+
+/* 入力ボックス個別の幅制限 */
+.profile-grid .form-control {
+    max-width: 200px; /* 全体的に小さく抑える */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 名前やシステムなど、少し長めでも良い項目だけ個別に微調整する場合 */
+.profile-grid .form-group:first-child .form-control, /* 名前 */
+.profile-grid select.form-control {                /* システム選択 */
+    max-width: 250px;
+}
+
+/* ラベルの微調整 */
+.profile-grid label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #4a5568;
+    margin-bottom: 4px;
 }
 
 /* 能力値（チップ状の入力欄） */

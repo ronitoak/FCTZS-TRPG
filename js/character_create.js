@@ -142,8 +142,10 @@ Utils.domReady(() => {
         const ageMatch = text.match(/年齢:\s*(.+)/);
         if (ageMatch) result.profile.age = parseInt(ageMatch[1].trim()) || null;
 
-        const genderMatch = text.match(/性別:\s*(.+)/);
-        if (genderMatch) result.profile.gender = genderMatch[1].trim();
+        const genderMatch = text.match(/性別:\s*([^/]+)/);
+        if (genderMatch) {
+            result.profile.gender = genderMatch[1].trim(); 
+        }
 
         const heightMatch = text.match(/身長:\s*(.+)/);
         if (heightMatch) result.profile.height = parseInt(heightMatch[1].trim()) || null;
@@ -166,9 +168,19 @@ Utils.domReady(() => {
         // 例: STR         10      10
         const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
         attrNames.forEach(attr => {
+            // 1. 行の先頭(^)にある能力値名を探す
+            // 2. その後に続く「空白」をすべて飛ばす (\s+)
+            // 3. 最初に現れる「数字」をキャプチャする (\d+)
             const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
             const m = text.match(reg);
-            if (m) result.attributes[attr.toLowerCase()] = m[1];
+            
+            if (m) {
+                // m[1] が「現在値」の列の数字になります
+                result.attributes[attr.toLowerCase()] = m[1];
+                console.log(`${attr}を抽出成功: ${m[1]}`); // デバッグ用
+            } else {
+                console.warn(`${attr}が見つかりませんでした`);
+            }
         });
 
         // 技能の抽出 (技能名と合計値) 

@@ -47,11 +47,14 @@ Utils.domReady(() => {
                 result.profile.system = "エモクロアTRPG";
 
                 // B. 能力値 (params配列から抽出)
+                const emoAttrMap = {
+                    "精神":"power","五感":"senses","身体":"strength","社会":"social","運勢":"luck","知力":"intellect","器用":"dexterity","魅力":"appearance"
+                };
+
                 if (Array.isArray(data.params)) {
                     data.params.forEach(p => {
-                        // "身体" -> "body" のようにDBのキーに変換が必要な場合はここでマッピング
-                        // 簡易的にラベルを小文字にして格納
-                        result.attributes[p.label] = p.value;
+                        const key = emoAttrMap[p.label] || p.label;
+                        result.attributes[key.toLowerCase()] = p.value;
                     });
                 }
 
@@ -68,52 +71,53 @@ Utils.domReady(() => {
             } catch (e) {
                 console.error("JSON解析失敗、テキストとして続行します", e);
             }
-        }
+        } else if (trimmedText.startsWith('いあきゃら')) {
 
-        // A. プロフィール抽出 (否定文字クラス [^/]+ を活用)
-        const profileFields = {
-            name: /名前:\s*([^/(\n]+)/,
-            job: /職業:\s*([^/(\n]+)/,
-            age: /年齢:\s*([^/]+)/,
-            gender: /性別:\s*([^/]+)/,
-            height: /身長:\s*([^/]+)/,
-            weight: /体重:\s*([^/]+)/,
-            origin: /出身:\s*([^/]+)/
-        };
+            // A. プロフィール抽出 (否定文字クラス [^/]+ を活用)
+            const profileFields = {
+                name: /名前:\s*([^/(\n]+)/,
+                job: /職業:\s*([^/(\n]+)/,
+                age: /年齢:\s*([^/]+)/,
+                gender: /性別:\s*([^/]+)/,
+                height: /身長:\s*([^/]+)/,
+                weight: /体重:\s*([^/]+)/,
+                origin: /出身:\s*([^/]+)/
+            };
 
-        for (const [key, regex] of Object.entries(profileFields)) {
-            const m = text.match(regex);
-            if (m) {
-                const val = m[1].trim();
-                result.profile[key] = (['name', 'job', 'gender', 'origin'].includes(key)) 
-                    ? val : (parseInt(val) || null);
+            for (const [key, regex] of Object.entries(profileFields)) {
+                const m = text.match(regex);
+                if (m) {
+                    const val = m[1].trim();
+                    result.profile[key] = (['name', 'job', 'gender', 'origin'].includes(key)) 
+                        ? val : (parseInt(val) || null);
+                }
             }
+
+            // B. システム判定
+            if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
+            else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
+            else if (text.includes("エモクロアTRPG")) result.profile.system = "エモクロアTRPG";
+
+            // C. 能力値の抽出 (行頭にこだわらず柔軟に取得)
+            const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
+            attrNames.forEach(attr => {
+                const reg = new RegExp(`${attr}\\s+([0-9]+)`, 'i'); 
+                const m = text.match(reg);
+                if (m) result.attributes[attr.toLowerCase()] = m[1];
+            });
+
+            // D. 技能の抽出
+            text.split('\n').forEach(line => {
+                const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
+                if (skillMatch) result.skills[skillMatch[1]] = skillMatch[2];
+            });
+
+            // E. メモ欄の抽出 (【メモ】以降すべて)
+            const memoMatch = text.match(/【メモ】\s*([\s\S]*)/);
+            if (memoMatch) result.profile.memo = memoMatch[1].trim();
+
+            return result;
         }
-
-        // B. システム判定
-        if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
-        else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
-        else if (text.includes("エモクロアTRPG")) result.profile.system = "エモクロアTRPG";
-
-        // C. 能力値の抽出 (行頭にこだわらず柔軟に取得)
-        const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
-        attrNames.forEach(attr => {
-            const reg = new RegExp(`${attr}\\s+([0-9]+)`, 'i'); 
-            const m = text.match(reg);
-            if (m) result.attributes[attr.toLowerCase()] = m[1];
-        });
-
-        // D. 技能の抽出
-        text.split('\n').forEach(line => {
-            const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
-            if (skillMatch) result.skills[skillMatch[1]] = skillMatch[2];
-        });
-
-        // E. メモ欄の抽出 (【メモ】以降すべて)
-        const memoMatch = text.match(/【メモ】\s*([\s\S]*)/);
-        if (memoMatch) result.profile.memo = memoMatch[1].trim();
-
-        return result;
     }
 
     // --- 3. インポート実行イベント (完全版) ---
@@ -141,11 +145,14 @@ Utils.domReady(() => {
                 await new Promise(resolve => setTimeout(resolve, 1200)); // 描画待ち
             }
 
-            // 能力値反映 (lowerKeyを使用して確実に繋ぐ)
+            // 能力値反映
             for (const [key, val] of Object.entries(data.attributes)) {
                 const lowerKey = key.toLowerCase();
-                const input = dynamicContainer.querySelector(`input[name="attr_${lowerKey}"]`);
-                if (input) input.value = val;
+                // input か select のいずれか、name属性が一致するものを探す
+                const el = dynamicContainer.querySelector(`[name="attr_${lowerKey}"]`);
+                if (el) {
+                    el.value = val;
+                }
             }
 
             // 技能反映 (部分一致)

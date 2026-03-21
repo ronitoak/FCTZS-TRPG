@@ -22,8 +22,8 @@ document.getElementById("character-form").addEventListener("submit", async (e) =
     job: toNull(form.job.value),
     age: toNumberOrNull(form.age.value),
     gender: toNull(form.gender.value),
-    height: toNull(form.height.value),
-    weight: toNull(form.weight.value),
+    height: toNumberOrNull(form.height.value),
+    weight: toNumberOrNull(form.weight.value),
     origin: toNull(form.origin.value),
     memo: toNull(form.memo.value),
   };
@@ -42,19 +42,28 @@ document.getElementById("character-form").addEventListener("submit", async (e) =
   const text = await res.text();
 
   let result;
-  try {
+    try {
     result = JSON.parse(text);
-  } catch {
-    alert("レスポンス不正");
-    console.error(text);
+    } catch (e) {
+    console.error("parse error:", text);
+    alert("サーバーから不正なレスポンス");
     return;
-  }
+    }
 
-  if (!res.ok) {
-    alert("作成失敗");
+    if (!res.ok) {
     console.error(result);
+    alert("作成失敗");
     return;
-  }
+    }
 
-  location.href = `/character/detail.html?id=${result[0].id}`;
+    // 配列じゃない場合も考慮
+    const row = Array.isArray(result) ? result[0] : result;
+
+    if (!row?.id) {
+    console.error("invalid response:", result);
+    alert("ID取得失敗");
+    return;
+    }
+
+    location.href = `/character/detail.html?id=${row.id}`;
 });

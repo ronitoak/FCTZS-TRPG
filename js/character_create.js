@@ -1,0 +1,60 @@
+function toNull(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
+function toNumberOrNull(v) {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+document.getElementById("character-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+
+  const data = {
+    name: toNull(form.name.value),
+    player: toNull(form.player.value),
+    system: toNull(form.system.value),
+    job: toNull(form.job.value),
+    age: toNumberOrNull(form.age.value),
+    gender: toNull(form.gender.value),
+    height: toNull(form.height.value),
+    weight: toNull(form.weight.value),
+    origin: toNull(form.origin.value),
+    memo: toNull(form.memo.value),
+  };
+
+  if (!data.name) {
+    alert("名前は必須");
+    return;
+  }
+
+  const res = await fetch("/api/character", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  const text = await res.text();
+
+  let result;
+  try {
+    result = JSON.parse(text);
+  } catch {
+    alert("レスポンス不正");
+    console.error(text);
+    return;
+  }
+
+  if (!res.ok) {
+    alert("作成失敗");
+    console.error(result);
+    return;
+  }
+
+  location.href = `/character/detail.html?id=${result[0].id}`;
+});

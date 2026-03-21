@@ -1000,12 +1000,14 @@ th, td {
 /* プロフィール部分（詳細画面の右側パネル風） */
 .profile-grid {
     display: grid;
+    /* 画面幅に合わせて、最小200pxの列を自動で作る（横並び） */
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 15px;
     background: #f8fafc;
     padding: 20px;
     border-radius: 8px;
     border: 1px solid #edf2f7;
+    margin-bottom: 20px;
 }
 
 /* 能力値（チップ状の入力欄） */
@@ -1043,11 +1045,13 @@ th, td {
 .skill-input-item {
     display: flex;
     flex-direction: column;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     background: #fff;
-    transition: background 0.2s;
+    /* 箱のサイズ計算を内側（padding含）にする */
+    box-sizing: border-box; 
+    min-height: 80px;
 }
 
 .skill-input-item:hover {
@@ -1059,6 +1063,23 @@ th, td {
     gap: 8px;
     align-items: center;
     margin-top: 5px;
+    /* 要素が入り切らない場合は折り返す（はみ出し防止） */
+    flex-wrap: wrap; 
+}
+
+/* 詳細テキスト入力の幅調整 */
+.skill-input-container input[type="text"] {
+    flex: 2;
+    min-width: 120px; /* 極端に狭くならないように */
+    box-sizing: border-box;
+}
+
+/* 技能値入力の幅調整 */
+.skill-input-container input[type="number"] {
+    flex: 1;
+    min-width: 60px;
+    text-align: right;
+    box-sizing: border-box;
 }
 
 /* 数値入力の微調整 */

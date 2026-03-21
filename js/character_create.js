@@ -48,12 +48,17 @@ Utils.domReady(() => {
         (skills || []).forEach(s => {
             const isDetailRequired = s.name.includes("（）");
             const displayName = isDetailRequired ? s.name.replace("（）", "") : s.name;
+            
             html += `
                 <div class="skill-input-item">
-                    <label style="font-size: 0.85rem; font-weight: bold;">${Utils.escapeHtml(displayName)} <small>(初期値: ${s.base_value})</small></label>
+                    <label style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">
+                        ${Utils.escapeHtml(displayName)} <small style="font-weight: normal; color: #718096;">(初期値: ${s.base_value})</small>
+                    </label>
                     <div class="skill-input-container">
-                        ${isDetailRequired ? `<input type="text" name="skill_label" placeholder="詳細" class="form-control" style="flex: 2;" data-base-name="${Utils.escapeHtml(displayName)}">` : ""}
-                        <input type="number" name="skill_val" data-name="${Utils.escapeHtml(s.name)}" data-base="${s.base_value}" placeholder="${s.base_value}" class="form-control" style="flex: 1;">
+                        ${isDetailRequired ? `
+                            <input type="text" name="skill_label" placeholder="詳細" class="form-control" data-base-name="${Utils.escapeHtml(displayName)}">
+                        ` : ""}
+                        <input type="number" name="skill_val" data-name="${Utils.escapeHtml(s.name)}" data-base="${s.base_value}" placeholder="${s.base_value}" class="form-control">
                     </div>
                 </div>`;
         });

@@ -27,24 +27,37 @@ Utils.domReady(() => {
 
     function renderDynamicFields(attrs, skills) {
         let html = `<h3>能力値</h3><div class="attr-grid">`;
-        attrs.forEach(a => {
+        // ...能力値の生成は変更なし...
+
+        html += `</div><h3>技能</h3><div class="skill-grid">`;
+        (skills || []).forEach(s => {
+            // 全技能を入力欄として生成。空欄なら初期値(base_value)として扱う
             html += `
-                <div class="form-group">
-                    <label>${Utils.escapeHtml(a.label)}</label>
-                    <input type="number" name="attr_${a.key}" placeholder="0">
+                <div class="form-group skill-input-item">
+                    <label>${Utils.escapeHtml(s.name)} <small>(初期値: ${s.base_value})</small></label>
+                    <input type="number" 
+                        name="skill_val" 
+                        data-name="${Utils.escapeHtml(s.name)}" 
+                        data-base="${s.base_value}" 
+                        placeholder="${s.base_value}">
                 </div>`;
-        });
-        html += `</div><h3>初期技能</h3><div class="skill-grid">`;
-        skills.forEach(s => {
-            html += `
-                <label class="skill-item">
-                    <input type="checkbox" name="skill_check" value="${Utils.escapeHtml(s.name)}" data-base="${s.base_value}">
-                    ${Utils.escapeHtml(s.name)} (${s.base_value})
-                </label>`;
         });
         html += `</div>`;
         dynamicContainer.innerHTML = html;
     }
+
+    // 送信時の収集ロジック
+    const skillInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
+    skillInputs.forEach(input => {
+        const base = parseInt(input.dataset.base, 10);
+        const val = input.value === "" ? base : parseInt(input.value, 10);
+        
+        payload.skills.push({
+            name: input.dataset.name,
+            base_value: base,
+            value: val // Viewの定義に合わせて 'value' とする
+        });
+    });
 
     // --- 送信処理 ---
     form.addEventListener("submit", async (e) => {

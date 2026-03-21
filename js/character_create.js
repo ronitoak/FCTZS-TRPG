@@ -61,19 +61,17 @@ Utils.domReady(() => {
         }
     }
 
-    // --- 送信時の収集ロジック (submitイベント内) ---
-    const skillInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
-    skillInputs.forEach(input => {
-        const base = parseInt(input.dataset.base, 10);
-        // 入力が空なら初期値、入力があればその値を数値として取得
-        const finalVal = input.value === "" ? base : parseInt(input.value, 10);
-        
-        payload.skills.push({
-            name: input.dataset.name,
-            base_value: base,
-            value: finalVal // Viewの定義に合わせて'value'カラムに送る
-        });
+    // 技能の収集（全件）
+    document.querySelectorAll('input[name="skill_val"]').forEach(input => {
+    const base = parseInt(input.dataset.base, 10);
+    // 未入力なら初期値、入力があればその値を採用
+    const finalVal = input.value === "" ? base : parseInt(input.value, 10);
+    
+    payload.skills.push({
+        name: input.dataset.name,
+        value: finalVal // 'override_value' ではなく 'value' に統一
     });
+});
 
     // --- 修正版: 送信処理 ---
     form.addEventListener("submit", async (e) => {

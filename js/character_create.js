@@ -84,7 +84,7 @@ Utils.domReady(() => {
         return result;
     }
 
-    // --- 3. インポート実行イベント (一本化) ---
+    // --- 3. インポート実行イベント (一本化・非同期版) ---
     if (btnImport && importArea) {
         btnImport.addEventListener('click', async () => {
             const text = importArea.value;
@@ -92,7 +92,7 @@ Utils.domReady(() => {
 
             const data = parseIachara(text);
 
-            // プロフィールの反映
+            // A. プロフィール項目の反映
             if (data.profile.name) form.name.value = data.profile.name;
             if (data.profile.job) form.job.value = data.profile.job;
             if (data.profile.age) form.age.value = data.profile.age;
@@ -101,23 +101,22 @@ Utils.domReady(() => {
             if (data.profile.weight) form.weight.value = data.profile.weight;
             if (data.profile.origin) form.origin.value = data.profile.origin;
 
-            // システムの自動切り替え
+            // B. システムの自動切り替え
             if (data.profile.system) {
                 systemSelect.value = data.profile.system;
                 systemSelect.dispatchEvent(new Event('change'));
                 
-                // 動的フィールドの生成(API取得)を待つ
-                // 本来は MutationObserver 等が理想ですが、簡略化のため待機時間を設けます
-                await new Promise(resolve => setTimeout(resolve, 800));
+                // ★重要: APIからの入力欄生成を待つ (環境に合わせて調整)
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            // 能力値の反映 (生成された dynamicContainer 内から探す)
+            // C. 能力値の反映 (生成された要素から探す)
             for (const [key, val] of Object.entries(data.attributes)) {
                 const input = dynamicContainer.querySelector(`input[name="attr_${key}"]`);
                 if (input) input.value = val;
             }
 
-            // 技能の反映 (部分一致で流し込み)
+            // D. 技能の反映 (部分一致で流し込み)
             for (const [sName, sVal] of Object.entries(data.skills)) {
                 const inputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
                 inputs.forEach(input => {
@@ -129,6 +128,56 @@ Utils.domReady(() => {
 
             alert("データを反映しました。俺は頑張ったからこれ以上は手動で調整してください。");
         });
+    }
+
+    // --- 4. 解析関数 (正規表現の精度を統一) ---
+    function parseIachara(text) {
+        const result = { profile: {}, attributes: {}, skills: {} };
+
+        // プロフィール項目の抽出 (スラッシュ / の手前までを取得)
+        const profileMap = {
+            name: /名前:\s*([^/(\n]+)/,
+            job: /職業:\s*([^/(\n]+)/,
+            age: /年齢:\s*([^/]+)/,
+            gender: /性別:\s*([^/]+)/,
+            height: /身長:\s*([^/]+)/,
+            weight: /体重:\s*([^/]+)/,
+            origin: /出身:\s*([^/]+)/
+        };
+
+        for (const [key, regex] of Object.entries(profileMap)) {
+            const m = text.match(regex);
+            if (m) {
+                const val = m[1].trim();
+                result.profile[key] = (key === 'gender' || key === 'origin' || key === 'name' || key === 'job') 
+                    ? val : (parseInt(val) || null);
+            }
+        }
+
+        // システム判定
+        if (text.includes("6版 v2.0.1")) {
+            result.profile.system = "CoC6"; 
+        } else if (text.includes("7版 v2.0.1")) {
+            result.profile.system = "CoC7";
+        }
+
+        // 能力値の抽出
+        const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
+        attrNames.forEach(attr => {
+            const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
+            const m = text.match(reg);
+            if (m) result.attributes[attr.toLowerCase()] = m[1];
+        });
+
+        // 技能の抽出
+        text.split('\n').forEach(line => {
+            const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
+            if (skillMatch) {
+                result.skills[skillMatch[1]] = skillMatch[2];
+            }
+        });
+
+        return result;
     }
 
     function renderDynamicFields(attrs, skills) {
@@ -298,34 +347,4 @@ Utils.domReady(() => {
 
         return result;
     }
-
-    document.getElementById('btn-import').addEventListener('click', () => {
-        const text = document.getElementById('import-text').value;
-        if (!text) return alert("テキストを貼り付けてください");
-
-        const data = parseIachara(text);
-
-        // プロフィールの反映
-        if (data.profile.name) document.querySelector('input[name="name"]').value = data.profile.name;
-        if (data.profile.job) document.querySelector('input[name="job"]').value = data.profile.job;
-
-        // 能力値の反映 (システム切り替え後に実行される想定)
-        for (const [key, val] of Object.entries(data.attributes)) {
-            const input = document.querySelector(`input[name="attr_${key}"]`);
-            if (input) input.value = val;
-        }
-
-        // 技能の反映
-        for (const [sName, sVal] of Object.entries(data.skills)) {
-            // 技能名が部分一致する入力欄を探す
-            const inputs = document.querySelectorAll('input[name="skill_val"]');
-            inputs.forEach(input => {
-                if (input.dataset.name.includes(sName)) {
-                    input.value = sVal;
-                }
-            });
-        }
-
-        alert("データを反映しました。内容を確認してください。");
-    });
 });

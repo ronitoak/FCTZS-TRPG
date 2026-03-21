@@ -21,8 +21,16 @@
 
         <form id="character-form">
         <fieldset class="form-section">
+            <legend>外部データインポート（いあきゃらのテキスト出力）</legend>
+            <div class="form-group">
+                <textarea id="import-text" class="form-control" rows="5" placeholder="いあきゃらのテキスト出力をここに貼り付けてください"></textarea>
+                <button type="button" id="btn-import" class="btn-secondary" style="margin-top: 10px;">データを反映する</button>
+            </div>
+        </fieldset>
+        <fieldset class="form-section">
             <legend>プロフィール</legend>
             <div class="profile-grid">
+                
                 <div class="form-group"><label>名前</label><input type="text" name="name" required class="form-control"></div>
                 <div class="form-group"><label>職業</label><input type="text" name="job" class="form-control"></div>
                 <div class="form-group"><label>年齢</label><input type="number" name="age" class="form-control"></div>

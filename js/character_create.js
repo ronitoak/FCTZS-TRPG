@@ -126,4 +126,86 @@ Utils.domReady(() => {
             submitBtn.disabled = false;
         }
     });
+
+    // いあきゃらのテキストを解析する関数
+    function parseIachara(text) {
+        const lines = text.split('\n');
+        const result = {
+            profile: {},
+            attributes: {},
+            skills: {}
+        };
+
+        // 名前・職業などの基本情報 
+        const nameMatch = text.match(/名前:\s*(.+)/);
+        if (nameMatch) result.profile.name = nameMatch[1].split('(')[0].trim();
+
+        const jobMatch = text.match(/職業:\s*(.+)/);
+        if (jobMatch) result.profile.job = jobMatch[1].trim();
+
+        // 能力値の抽出 (現在値を取得) 
+        // 例: STR         10      10
+        const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
+        attrNames.forEach(attr => {
+            const reg = new RegExp(`^${attr}\\s+(\\d+)`, 'm');
+            const m = text.match(reg);
+            if (m) result.attributes[attr.toLowerCase()] = m[1];
+        });
+
+        // 技能の抽出 (技能名と合計値) 
+        // 合計値は「技能名」のあとの最初の数字を狙う
+        lines.forEach(line => {
+            // 技能名 合計 初期値 職業P ... の並びを想定
+            const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
+            if (skillMatch) {
+                result.skills[skillMatch[1]] = skillMatch[2];
+            }
+        });
+
+        return result;
+    }
+
+    // --- ボタンクリック時の処理 ---
+    async function handleImport() {
+        const text = document.getElementById("import-textarea").value;
+        const charData = parseIacharaText(text);
+
+        // プロフィール入力欄にセット
+        form.name.value = charData.profile.name || "";
+        form.job.value = charData.profile.job || "";
+        // ... 他の項目も同様
+
+        // 能力値・技能は、現在選択されているシステムに合わせて
+        // dynamicContainer 内の input に値をセットする処理を書く
+    }
+
+    document.getElementById('btn-import').addEventListener('click', () => {
+        const text = document.getElementById('import-text').value;
+        if (!text) return alert("テキストを貼り付けてください");
+
+        const data = parseIachara(text);
+
+        // プロフィールの反映
+        if (data.profile.name) document.querySelector('input[name="name"]').value = data.profile.name;
+        if (data.profile.job) document.querySelector('input[name="job"]').value = data.profile.job;
+
+        // 能力値の反映 (システム切り替え後に実行される想定)
+        for (const [key, val] of Object.entries(data.attributes)) {
+            const input = document.querySelector(`input[name="attr_${key}"]`);
+            if (input) input.value = val;
+        }
+
+        // 技能の反映
+        for (const [sName, sVal] of Object.entries(data.skills)) {
+            // 技能名が部分一致する入力欄を探す
+            const inputs = document.querySelectorAll('input[name="skill_val"]');
+            inputs.forEach(input => {
+                if (input.dataset.name.includes(sName)) {
+                    input.value = sVal;
+                }
+            });
+        }
+
+        alert("データを反映しました。内容を確認してください。");
+    });
 });

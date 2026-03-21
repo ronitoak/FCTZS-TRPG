@@ -25,53 +25,78 @@ Utils.domReady(() => {
         }
     });
 
-    // --- 技能入力欄の生成ロジック (renderDynamicFields内) ---
-    function renderDynamicFields(attrs, skills) {
-        let html = "";
-    
-        // 能力値セクション
-        html += `<h3>能力値</h3><div class="attr-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">`;
-        (attrs || []).forEach(a => {
-            html += `
-                <div class="form-group">
-                    <label>${Utils.escapeHtml(a.label)}</label>
-                    <input type="number" name="attr_${a.key}" placeholder="0" class="form-control">
-                </div>`;
-        });
-        html += `</div>`;   
+    // --- 修正版: renderDynamicFields ---
+function renderDynamicFields(attrs, skills) {
+    let html = `<h3>能力値</h3><div class="attr-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">`;
+    (attrs || []).forEach(a => {
+        html += `
+            <div class="form-group">
+                <label>${Utils.escapeHtml(a.label)}</label>
+                <input type="number" name="attr_${a.key}" placeholder="0" class="form-control">
+            </div>`;
+    });
+    html += `</div>`;
 
-        // 技能セクション
-        html += `</div><h3>技能</h3><div class="skill-grid">`;
-        (skills || []).forEach(s => {
-            // placeholderに初期値を表示し、未入力時はこの値が採用されるようにする
-            html += `
-                <div class="form-group skill-input-item">
-                    <label>${Utils.escapeHtml(s.name)} <small>(初期値: ${s.base_value})</small></label>
+    html += `<h3>技能</h3><div class="skill-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">`;
+    
+    (skills || []).forEach(s => {
+        // 「芸術（）」のように（）が含まれるものは詳細入力ありとみなす
+        const isDetailRequired = s.name.includes("（）");
+        const displayName = isDetailRequired ? s.name.replace("（）", "") : s.name;
+
+        html += `
+            <div class="form-group skill-input-item" style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">
+                    ${Utils.escapeHtml(displayName)} <small>(初期値: ${s.base_value})</small>
+                </label>
+                
+                <div style="display: flex; gap: 5px;">
+                    ${isDetailRequired ? `
+                        <input type="text" 
+                            name="skill_label" 
+                            placeholder="専門（例: 写真）" 
+                            style="flex: 2;"
+                            data-base-name="${Utils.escapeHtml(displayName)}">
+                    ` : ""}
                     <input type="number" 
                         name="skill_val" 
                         data-name="${Utils.escapeHtml(s.name)}" 
                         data-base="${s.base_value}" 
-                        placeholder="${s.base_value}">
-                </div>`;
-        });
-        html += `</div>`;
-        const dynamicContainer = document.getElementById("dynamic-fields-container");
-        if (dynamicContainer) {
-            dynamicContainer.innerHTML = html;
-        }
-    }
-
-    // 技能の収集（全件）
-    document.querySelectorAll('input[name="skill_val"]').forEach(input => {
-    const base = parseInt(input.dataset.base, 10);
-    // 未入力なら初期値、入力があればその値を採用
-    const finalVal = input.value === "" ? base : parseInt(input.value, 10);
-    
-    payload.skills.push({
-        name: input.dataset.name,
-        value: finalVal // 'override_value' ではなく 'value' に統一
+                        placeholder="${s.base_value}"
+                        style="flex: 1;"
+                        class="form-control">
+                </div>
+            </div>`;
     });
-});
+    
+    // オリジナル技能追加枠（必要であればここに追加ボタンを実装可能ですが、まずはマスタ分を優先）
+    html += `</div>`;
+    
+    const dynamicContainer = document.getElementById("dynamic-fields-container");
+    if (dynamicContainer) dynamicContainer.innerHTML = html;
+    } 
+
+    // --- 修正版: 送信時の収集ロジック ---
+    // form.addEventListener("submit", ...) の中で以下のように収集します
+    const skillItems = document.querySelectorAll('.skill-input-item');
+    skillItems.forEach(item => {
+        const valInput = item.querySelector('input[name="skill_val"]');
+        const labelInput = item.querySelector('input[name="skill_label"]');
+        
+        const base = parseInt(valInput.dataset.base, 10);
+        const finalVal = valInput.value === "" ? base : parseInt(valInput.value, 10);
+        let finalName = valInput.dataset.name;
+
+        // 専門指定（例: 芸術 + 写真 -> 芸術（写真））の構築
+        if (labelInput && labelInput.value.trim() !== "") {
+            finalName = `${labelInput.dataset.baseName}（${labelInput.value.trim()}）`;
+        }
+
+        payload.skills.push({
+            name: finalName,
+            value: finalVal
+        });
+    });
 
     // --- 修正版: 送信処理 ---
     form.addEventListener("submit", async (e) => {

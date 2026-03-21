@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>新規作成 | FCTZS TRPG部</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+   <div class="container">
+        <nav class="top-nav">
+            <a href="../index.html">Home</a> |
+            <a href="../character/index.html">Characters</a> |
+            <a href="../sessions/index.html">Sessions</a> |
+            <a href="../scenarios/index.html">Scenarios</a> |
+            <a href="../schedule/index.html">Schedule</a> |
+            <a href="../bbs/index.html">BBS</a>
+        </nav>
+        <hr />
+        <h1>セッション新規作成</h1>
+
+        <form id="session-form">
+        <fieldset class="form-section">
+            <legend>セッション基本情報</legend>
+            <div class="profile-grid">
+            <div class="form-group">
+                <label>卓名</label>
+                <input type="text" name="title" required class="form-control" placeholder="例：第1回、平日夜卓">
+            </div>
+            <div class="form-group">
+                <label>シナリオ</label>
+                <select name="scenario_id" id="scenario-select" required class="form-control">
+                <option value="">読み込み中...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>GM</label>
+                <input type="text" name="gm" class="form-control" placeholder="GM名">
+            </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+            <legend>参加キャラクター選択</legend>
+            <div id="character-selection-grid" class="skill-grid">
+            <p>読み込み中...</p>
+            </div>
+        </fieldset>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">セッションを登録</button>
+        </div>
+        </form>
+
+        <footer>
+                <hr />
+                <small><a href="../sessions/index.html">Back</a></small>
+        </footer>
+    </div>
+    <script src="../js/utils.js"></script>
+    <script src="../js/session_create.js"></script>
+
+</body>
+</html>        

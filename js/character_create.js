@@ -130,11 +130,7 @@ Utils.domReady(() => {
     // いあきゃらのテキストを解析する関数
     function parseIachara(text) {
         const lines = text.split('\n');
-        const result = {
-            profile: {},
-            attributes: {},
-            skills: {}
-        };
+        const result = { profile: {}, attributes: {}, skills: {} };
 
         // 名前・職業などの基本情報 
         const nameMatch = text.match(/名前:\s*(.+)/);
@@ -159,10 +155,11 @@ Utils.domReady(() => {
         if (originMatch) result.profile.origin = originMatch[1].trim();
 
         const systemMatch = text.match(/いあきゃらテキスト \s*(.+)/);
-        if (systemMatch === "6版 v2.0.1") {
-            result.profile.system = "CoC6";
-        } else if (systemMatch === "7版 v2.0.1") {
-            result.profile.system = "CoC7";
+        // システム判定の修正（文字列が含まれているかチェック）
+        if (text.includes("6版 v2.0.1")) {
+            result.profile.system = "CoC6"; // DB側の値に合わせる
+        } else if (text.includes("7版 v2.0.1")) {
+            result.profile.system = "CoC7"; // DB側の値に合わせる
         }
 
         // 能力値の抽出 (現在値を取得) 
@@ -187,18 +184,55 @@ Utils.domReady(() => {
         return result;
     }
 
-    // --- ボタンクリック時の処理 ---
-    async function handleImport() {
-        const text = document.getElementById("import-textarea").value;
-        const charData = parseIacharaText(text);
+    const btnImport = document.getElementById('btn-import');
+    const importArea = document.getElementById('import-text'); // HTMLのIDに合わせてください
 
-        // プロフィール入力欄にセット
-        form.name.value = charData.profile.name || "";
-        form.job.value = charData.profile.job || "";
-        // ... 他の項目も同様
+    if (btnImport && importArea) {
+        btnImport.addEventListener('click', async () => {
+            const text = importArea.value;
+            if (!text) return alert("テキストを貼り付けてください");
 
-        // 能力値・技能は、現在選択されているシステムに合わせて
-        // dynamicContainer 内の input に値をセットする処理を書く
+            const data = parseIachara(text);
+
+            // 1. プロフィールの反映（HTMLのname属性を使用）
+            if (data.profile.name) form.name.value = data.profile.name;
+            if (data.profile.job) form.job.value = data.profile.job;
+            if (data.profile.age) form.age.value = data.profile.age;
+            if (data.profile.gender) form.gender.value = data.profile.gender;
+            if (data.profile.height) form.height.value = data.profile.height;
+            if (data.profile.weight) form.weight.value = data.profile.weight;
+            if (data.profile.origin) form.origin.value = data.profile.origin;
+
+            // 2. システムの自動切り替え
+            if (data.profile.system) {
+                systemSelect.value = data.profile.system;
+                // 手動で change イベントを発火させて入力欄を生成させる
+                systemSelect.dispatchEvent(new Event('change'));
+                
+                // API取得とレンダリングを待つための簡易的な待機
+                // 本来は Promise で管理するのが理想ですが、学習用として1秒待ちます
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // 3. 能力値の反映
+            for (const [key, val] of Object.entries(data.attributes)) {
+                const input = dynamicContainer.querySelector(`input[name="attr_${key}"]`);
+                if (input) input.value = val;
+            }
+
+            // 4. 技能の反映
+            for (const [sName, sVal] of Object.entries(data.skills)) {
+                const inputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
+                inputs.forEach(input => {
+                    // 技能名が部分一致、またはデータ名に含まれる場合
+                    if (input.dataset.name.includes(sName)) {
+                        input.value = sVal;
+                    }
+                });
+            }
+
+            alert("データを反映しました。システムが異なる場合は手動で調整してください。");
+        });
     }
 
     document.getElementById('btn-import').addEventListener('click', () => {

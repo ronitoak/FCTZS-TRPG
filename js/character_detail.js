@@ -278,7 +278,7 @@ async function main() {
           // フォームに値をセット
           form.name.value = currentCharData.name || "";
           form.player.value = currentCharData.player || "";
-          form.state.value = currentCharData.state || "alive";
+          form.state.value = currentCharData.state || "survived";
           form.job.value = currentCharData.job || "";
           form.age.value = currentCharData.age || "";
           form.gender.value = currentCharData.gender || "";

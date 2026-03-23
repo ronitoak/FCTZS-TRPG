@@ -37,7 +37,7 @@ async function main() {
 
     // ★重要: ここで取得したデータを外の変数に代入する
     currentRunData = run;
-    const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="margin-left: 10px; padding: 2px 8px; font-size: 0.8rem;">卓情報を編集 📝</button>`;
+    const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">卓情報を編集 📝</button>`;
     const scenarioId = run?.scenario_id;
     const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
     const fallback = Utils.DEFAULT_SCENARIO_COVER;

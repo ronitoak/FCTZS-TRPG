@@ -37,7 +37,7 @@ async function main() {
 
     // ★重要: ここで取得したデータを外の変数に代入する
     currentRunData = run;
-    const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">卓情報を編集 📝</button>`;
+    const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const scenarioId = run?.scenario_id;
     const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
@@ -310,7 +310,6 @@ Utils.domReady(() => {
         
         // 現在の値をセット
         form.gm.value = currentRunData.gm || "";
-        form.notes.value = currentRunData.notes || "";
         
         modal.style.display = 'block';
     }
@@ -336,7 +335,6 @@ Utils.domReady(() => {
 
     const payload = {
         gm: e.target.gm.value,
-        notes: e.target.notes.value
     };
 
     try {

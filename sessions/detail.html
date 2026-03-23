@@ -55,6 +55,14 @@
               <label>開催日時</label>
               <input type="datetime-local" name="start" class="form-control" required>
             </div>
+            <div class="form-group">
+              <label>ステータス</label>
+              <select name="status" class="form-control">
+                <option value="scheduled">予定</option>
+                <option value="done">終了</option>
+                <option value="cancelled">中止</option>
+              </select>
+            </div>
             <div class="modal-actions">
               <button type="submit" class="btn-primary">更新</button>
               <button type="button" id="btn-close-edit" class="btn-secondary">キャンセル</button>

@@ -962,29 +962,30 @@ th, td {
 .session-detail-item {
   list-style: none;
   border-bottom: 1px solid #eee;
-  padding: 10px 0;
+  padding: 12px 0;
+  display: block; /* grid設定を解除 */
 }
 
 .session-item-row {
   display: flex;
-  align-items: center; 
+  align-items: center;
   gap: 12px;
-  width: 100%; /* 親要素いっぱいに広げる */
+  width: 100%;
 }
 
 /* 1. ステータスバッジの調整 */
 .session-item-state {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: 4px;
   min-width: 50px;
   text-align: center;
-  flex-shrink: 0; /* 縮ませない */
+  flex-shrink: 0;
 }
 
-.session-item-state.scheduled { background: #e2e8f0; color: #4a5568; } /* 予定：グレー */
-.session-item-state.done { background: #c6f6d5; color: #2f855a; }      /* 終了：緑 */
-.session-item-state.cancelled { background: #fed7d7; color: #9b2c2c; } /* 中止：薄赤 */
+.session-item-state.scheduled { background: #e2e8f0; color: #4a5568; }
+.session-item-state.done { background: #c6f6d5; color: #2f855a; }
+.session-item-state.cancelled { background: #fed7d7; color: #9b2c2c; }
 
 /* キャンセルされた行全体のスタイル */
 .session-detail-item.is-cancelled {
@@ -1001,12 +1002,13 @@ th, td {
   font-family: monospace;
   color: #718096;
   flex-shrink: 0;
+  font-size: 0.9rem;
 }
 
 /* 3. タイトル（ここを可変にする） */
 .session-item-title {
   font-weight: bold;
-  flex-grow: 1; /* ★重要：余ったスペースをすべて占有する */
+  flex-grow: 1; /* 余白をすべて占有 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1016,7 +1018,7 @@ th, td {
 .session-item-links {
   display: flex;
   gap: 8px;
-  flex-shrink: 0; /* 勝手に縮まないようにする */
+  flex-shrink: 0;
 }
 
 /* 5. 編集ボタン */
@@ -1026,10 +1028,7 @@ th, td {
   border-radius: 4px;
   cursor: pointer;
   padding: 4px 8px;
-  font-size: 0.9rem;
-  line-height: 1;
-  transition: all 0.2s;
-  flex-shrink: 0; /* ボタンの形を維持 */
+  flex-shrink: 0;
 }
 
 .btn-edit-session:hover {

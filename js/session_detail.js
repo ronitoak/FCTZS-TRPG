@@ -155,10 +155,10 @@ async function main() {
                     : "";
 
                   return `
-                    <li class="session-detail-item" ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
+                    <li class="session-detail-item ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
                       <div class="session-item-row">
                         <span class="session-item-state ${Utils.escapeHtml(s.status)}">
-                          ${stateJa}
+                          ${Utils.escapeHtml(stateJa)}
                         </span>
                         
                         <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>
@@ -170,12 +170,14 @@ async function main() {
                         <button class="btn-edit-session" 
                                 data-id="${s.id}" 
                                 data-title="${Utils.escapeHtml(s.title ?? "")}" 
-                                data-start="${s.start}">
+                                data-start="${s.start}"
+                                data-status="${s.status}">
                           📝
                         </button>
                       </div>
                     </li>
                   `;
+                  
                 }).join("")}
 
               </ul>`
@@ -277,7 +279,8 @@ Utils.domReady(() => {
         form.start.value = localTime;
       }
 
-      modal.style.display = 'block'; // ここで表示！
+      form.status.value = btn.dataset.status;
+      modal.style.display = 'block';
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
@@ -299,8 +302,9 @@ Utils.domReady(() => {
       const sessionId = form.session_id.value;
       
       const payload = {
-          title: form.title.value,
-          start: new Date(form.start.value).toISOString()
+        title: form.title.value,
+        start: new Date(form.start.value).toISOString(),
+        status: form.status.value // 追加
       };
 
       try {

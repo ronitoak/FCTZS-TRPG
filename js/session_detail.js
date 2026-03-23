@@ -81,7 +81,7 @@ async function main() {
         </div>
         
         <div class="session-detail-profile">
-          <h2 class="session-detail-h2">卓情報</h2>
+          <h2 class="session-detail-h2">卓情報</h2> ${editRunBtn}
 
           <table class="session-detail-table">
             <tbody>

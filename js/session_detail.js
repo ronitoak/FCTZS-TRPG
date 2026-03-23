@@ -37,6 +37,7 @@ async function main() {
 
     // ★重要: ここで取得したデータを外の変数に代入する
     currentRunData = run;
+    const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="margin-left: 10px; padding: 2px 8px; font-size: 0.8rem;">卓情報を編集 📝</button>`;
     const scenarioId = run?.scenario_id;
     const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
@@ -296,6 +297,46 @@ Utils.domReady(() => {
     document.getElementById('edit-session-modal').style.display = 'none';
   });
 
+  // 卓編集モーダルを開く
+  document.getElementById('btn-open-run-edit')?.addEventListener('click', () => {
+      const modal = document.getElementById('edit-run-modal');
+      const form = document.getElementById('edit-run-form');
+      
+      if (!currentRunData) return;
+      
+      // 現在の値をセット
+      form.gm.value = currentRunData.gm || "";
+      form.notes.value = currentRunData.notes || "";
+      
+      modal.style.display = 'block';
+  });
+
+  // キャンセル
+  document.getElementById('btn-close-run-edit')?.addEventListener('click', () => {
+      document.getElementById('edit-run-modal').style.display = 'none';
+  });
+
+  // 更新実行
+  document.getElementById('edit-run-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentRunData) return;
+
+      const payload = {
+          gm: e.target.gm.value,
+          notes: e.target.notes.value
+      };
+
+      try {
+          // Utils.apiPatch を使用して runs テーブルを更新
+          await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
+          alert("卓情報を更新しました");
+          location.reload();
+      } catch (err) {
+          console.error(err);
+          alert("更新に失敗しました: " + err.message);
+      }
+  });
+  
   // 編集フォームの送信
   document.getElementById('edit-session-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();

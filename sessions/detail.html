@@ -71,6 +71,29 @@
         </div>
       </div>
 
+      <div id="edit-run-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>卓情報の編集</h3>
+          <form id="edit-run-form">
+            <div class="form-group">
+              <label>GM</label>
+              <input type="text" name="gm" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>備考</label>
+              <textarea name="notes" rows="3" class="form-control"></textarea>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+              ※シナリオや参加キャラクターの変更は、整合性維持のため今後のアップデートで対応予定です。
+            </p>
+            <div class="modal-actions">
+              <button type="submit" class="btn-primary">更新</button>
+              <button type="button" id="btn-close-run-edit" class="btn-secondary">キャンセル</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <div id="comments-root"></div>
 
       <footer>

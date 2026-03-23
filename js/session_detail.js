@@ -244,31 +244,37 @@ Utils.domReady(() => {
 
   // 編集ボタンのクリックイベント（デリゲーション）
   document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-edit-session');
-      if (!btn) return;
-
+    // 編集アイコン 📝 をクリックしたとき
+    const btn = e.target.closest('.btn-edit-session');
+    if (btn) {
       const modal = document.getElementById('edit-session-modal');
       const form = document.getElementById('edit-session-form');
-      
-      // 現在の値をフォームにセット
+
+      // データのセット
       form.session_id.value = btn.dataset.id;
       form.title.value = btn.dataset.title;
       
-      // start時間は ISO形式から datetime-local形式 (YYYY-MM-DDTHH:mm) に変換
+      // 日時の変換処理 (ISO -> local datetime)
       if (btn.dataset.start) {
-          const d = new Date(btn.dataset.start);
-          // 日本時間にオフセット調整して文字列化
-          const tzOffset = d.getTimezoneOffset() * 60000;
-          const localISOTime = new Date(d - tzOffset).toISOString().slice(0, 16);
-          form.start.value = localISOTime;
+        const d = new Date(btn.dataset.start);
+        const offset = d.getTimezoneOffset() * 60000;
+        const localTime = new Date(d - offset).toISOString().slice(0, 16);
+        form.start.value = localTime;
       }
 
-      modal.style.display = 'block';
+      modal.style.display = 'block'; // ここで表示！
+    }
+
+    // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
+    const modal = document.getElementById('edit-session-modal');
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
   });
 
-  // キャンセルボタン
+  // キャンセルボタンで閉じる
   document.getElementById('btn-close-edit')?.addEventListener('click', () => {
-      document.getElementById('edit-session-modal').style.display = 'none';
+    document.getElementById('edit-session-modal').style.display = 'none';
   });
 
   // 編集フォームの送信

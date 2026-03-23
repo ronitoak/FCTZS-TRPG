@@ -210,9 +210,10 @@ async function loadDetail() {
 function renderCompletionGuide(allSessions, run) {
     // 最後のセッションを取得
     const lastSession = allSessions[allSessions.length - 1];
+    const isLastSessionFinished = lastSession && (lastSession.status === 'done' || lastSession.status === 'cancelled');
 
     // 条件：最新セッションが終了済み 且つ 卓がまだ進行中(active)
-    if (lastSession && lastSession.status === 'done' && run.status === 'active') {
+    if (isLastSessionFinished && run.status === 'active') {
         const guideArea = document.createElement('div');
         guideArea.id = 'completion-guide';
         guideArea.className = 'session-detail-log'; // スタイルを合わせる

@@ -90,6 +90,15 @@ const statusMap = {
     });
   }
 
+  async function apiPatch(resource, payload, query = "") {
+  const q = query ? `?${query}` : "";
+  return apiFetchJson(`/api/${resource}${q}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
   // ---------- Date ----------
   function toDate(iso) {
     const d = new Date(iso);
@@ -183,7 +192,7 @@ const statusMap = {
     // String
     escapeHtml,
     // Fetch
-    apiGet, apiPost,
+    apiGet, apiPost, apiPatch,
     // Date
     toDate, formatDateTime, formatDate,
     // Collections

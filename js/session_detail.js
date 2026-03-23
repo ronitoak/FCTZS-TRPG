@@ -201,10 +201,10 @@ function renderCompletionGuide(allSessions, run) {
         guideArea.className = 'session-detail-log'; // スタイルを合わせる
         guideArea.innerHTML = `
             <div class="alert-completion" style="background: #f0fff4; border: 1px solid #c6f6d5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                <p style="margin: 0 0 10px 0; color: #2f855a; font-weight: bold; font-size: 1.1rem;">🎉 全ての予定セッションが完了しました！</p>
-                <p style="font-size: 0.9rem; margin-bottom: 15px; color: #4a5568;">この卓の物語は完結しましたか？ステータスを『完結（done）』に更新できます。</p>
+                <p style="margin: 0 0 10px 0; color: #2f855a; font-weight: bold; font-size: 1.1rem;">🎉 全ての予定セッションが完了しています</p>
+                <p style="font-size: 0.9rem; margin-bottom: 15px; color: #4a5568;">この物語は完結しましたか？</p>
                 <button id="btn-complete-run" class="btn-primary" style="background-color: #38a169; border: none; padding: 10px 20px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">
-                    卓を完結状態にする
+                    物語が完結した
                 </button>
             </div>
         `;
@@ -217,10 +217,10 @@ function renderCompletionGuide(allSessions, run) {
 
         // ボタンのイベント
         document.getElementById('btn-complete-run').addEventListener('click', async () => {
-            if (!confirm("ステータスを『完結』に変更します。よろしいですか？")) return;
+            if (!confirm("物語を完結させます。よろしいですか？")) return;
             try {
                 // Workers経由でステータスのみ更新（PATCH）
-                await Utils.apiPatch(`runs?id=eq.${run.id}`, { status: 'done' });
+                await Utils.apiPatch("runs", { status: 'done' }, `id=eq.${run.id}`);
                 alert("物語が完結しました。お疲れ様でした。");
                 location.reload();
             } catch (e) {

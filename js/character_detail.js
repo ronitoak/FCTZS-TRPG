@@ -260,6 +260,62 @@ async function main() {
         ${iacharaLinkHtml}
       
     `;
+
+    // --- 編集モーダルを開く処理 ---
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'btn-open-char-edit') {
+            const modal = document.getElementById('edit-character-modal');
+            const form = document.getElementById('edit-character-form');
+            
+            if (!currentCharData) return;
+            
+            // 既存データの値をセット
+            form.name.value = currentCharData.name || "";
+            form.player.value = currentCharData.player || "";
+            form.state.value = currentCharData.state || "alive";
+            form.job.value = currentCharData.job || "";
+            form.age.value = currentCharData.age || "";
+            form.gender.value = currentCharData.gender || "";
+            form.height.value = currentCharData.height || "";
+            form.weight.value = currentCharData.weight || "";
+            form.origin.value = currentCharData.origin || "";
+            form.iachara_url.value = currentCharData.iachara_url || "";
+            form.memo.value = currentCharData.memo || "";
+            
+            modal.style.display = 'block';
+        }
+    });
+
+    // --- 更新実行処理 ---
+    document.getElementById('edit-character-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        
+        // 全項目をpayloadにまとめる
+        const payload = {
+            name: fd.get("name"),
+            player: fd.get("player"),
+            state: fd.get("state"),
+            job: fd.get("job"),
+            age: toIntOrNull(fd.get("age")),
+            gender: fd.get("gender"),
+            height: toIntOrNull(fd.get("height")),
+            weight: toIntOrNull(fd.get("weight")),
+            origin: fd.get("origin"),
+            iachara_url: fd.get("iachara_url"),
+            memo: fd.get("memo")
+        };
+
+        try {
+            await Utils.apiPatch("characters", payload, `id=eq.${currentCharData.id}`);
+            alert("キャラクター情報を更新しました");
+            location.reload();
+        } catch (err) {
+            console.error(err);
+            alert("更新に失敗しました: " + err.message);
+        }
+    });
+
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
@@ -352,60 +408,5 @@ function renderGenericEmotionAttributes(defs, attrMap) {
     </div>
   `;
 }
-
-// --- 編集モーダルを開く処理 ---
-document.addEventListener('click', (e) => {
-    if (e.target.id === 'btn-open-char-edit') {
-        const modal = document.getElementById('edit-character-modal');
-        const form = document.getElementById('edit-character-form');
-        
-        if (!currentCharData) return;
-        
-        // 既存データの値をセット
-        form.name.value = currentCharData.name || "";
-        form.player.value = currentCharData.player || "";
-        form.state.value = currentCharData.state || "alive";
-        form.job.value = currentCharData.job || "";
-        form.age.value = currentCharData.age || "";
-        form.gender.value = currentCharData.gender || "";
-        form.height.value = currentCharData.height || "";
-        form.weight.value = currentCharData.weight || "";
-        form.origin.value = currentCharData.origin || "";
-        form.iachara_url.value = currentCharData.iachara_url || "";
-        form.memo.value = currentCharData.memo || "";
-        
-        modal.style.display = 'block';
-    }
-});
-
-// --- 更新実行処理 ---
-document.getElementById('edit-character-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    
-    // 全項目をpayloadにまとめる
-    const payload = {
-        name: fd.get("name"),
-        player: fd.get("player"),
-        state: fd.get("state"),
-        job: fd.get("job"),
-        age: fd.get("age"),
-        gender: fd.get("gender"),
-        height: fd.get("height"),
-        weight: fd.get("weight"),
-        origin: fd.get("origin"),
-        iachara_url: fd.get("iachara_url"),
-        memo: fd.get("memo")
-    };
-
-    try {
-        await Utils.apiPatch("characters", payload, `id=eq.${currentCharData.id}`);
-        alert("キャラクター情報を更新しました");
-        location.reload();
-    } catch (err) {
-        console.error(err);
-        alert("更新に失敗しました: " + err.message);
-    }
-});
 
 main();

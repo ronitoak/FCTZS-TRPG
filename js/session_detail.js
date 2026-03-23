@@ -166,7 +166,10 @@ async function main() {
         }
       </section>
     `;
-      Comments.mount("comments-root", "session", run_id);
+
+    renderCompletionGuide(runSessions, run);
+
+    Comments.mount("comments-root", "session", run_id);
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
@@ -182,6 +185,50 @@ async function loadDetail() {
     currentRunData = Array.isArray(run) ? run[0] : run;
     
     // ... 既存のレンダリング処理 ...
+}
+
+/**
+ * 全セッション完了時に完結を促すガイドを表示する
+ */
+function renderCompletionGuide(allSessions, run) {
+    // 最後のセッションを取得
+    const lastSession = allSessions[allSessions.length - 1];
+
+    // 条件：最新セッションが終了済み 且つ 卓がまだ進行中(active)
+    if (lastSession && lastSession.status === 'done' && run.status === 'active') {
+        const guideArea = document.createElement('div');
+        guideArea.id = 'completion-guide';
+        guideArea.className = 'session-detail-log'; // スタイルを合わせる
+        guideArea.innerHTML = `
+            <div class="alert-completion" style="background: #f0fff4; border: 1px solid #c6f6d5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <p style="margin: 0 0 10px 0; color: #2f855a; font-weight: bold; font-size: 1.1rem;">🎉 全ての予定セッションが完了しました！</p>
+                <p style="font-size: 0.9rem; margin-bottom: 15px; color: #4a5568;">この卓の物語は完結しましたか？ステータスを『完結（done）』に更新できます。</p>
+                <button id="btn-complete-run" class="btn-primary" style="background-color: #38a169; border: none; padding: 10px 20px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">
+                    卓を完結状態にする
+                </button>
+            </div>
+        `;
+
+        // セッション履歴セクションの前か後に挿入（今回は履歴の後に挿入）
+        const logSection = document.querySelector('.session-detail-log');
+        if (logSection) {
+            logSection.parentNode.insertBefore(guideArea, logSection.nextSibling);
+        }
+
+        // ボタンのイベント
+        document.getElementById('btn-complete-run').addEventListener('click', async () => {
+            if (!confirm("ステータスを『完結』に変更します。よろしいですか？")) return;
+            try {
+                // Workers経由でステータスのみ更新（PATCH）
+                await Utils.apiPatch(`runs?id=eq.${run.id}`, { status: 'done' });
+                alert("物語が完結しました。お疲れ様でした。");
+                location.reload();
+            } catch (e) {
+                console.error(e);
+                alert("更新に失敗しました。");
+            }
+        });
+    }
 }
 
 // 送信処理の登録
@@ -222,13 +269,13 @@ Utils.domReady(() => {
       const startTimestamp = new Date(startVal).toISOString();
 
       const payload = {
-          id: newSessionId,
-          run_id: currentRunData.id,
-          gm: currentRunData.gm,
-          start: startTimestamp, // ユーザーが選択した日時
-          title: titleVal,
-          notes: notesVal,
-          status: 'scheduled'
+        // id: は含めない（DBのトリガーで自動採番される）
+        run_id: currentRunData.id,
+        gm: currentRunData.gm,
+        start: startTimestamp,
+        title: titleVal,
+        notes: notesVal,
+        status: 'scheduled'
       };
 
       const submitBtn = subForm.querySelector("button[type=submit]");
@@ -236,7 +283,6 @@ Utils.domReady(() => {
 
       try {
           await Utils.apiPost("sessions", payload);
-          alert("セッション記録を保存しました");
           location.reload(); 
       } catch (err) {
           console.error(err);

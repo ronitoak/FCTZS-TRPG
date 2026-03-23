@@ -354,7 +354,7 @@ async function main() {
             container.innerHTML = '';
             
             // 現在の技能データを回して入力欄を作成
-            currentSkillRows.forEach(s => addSkillInputRow(s.name, s.value));
+            currentSkillRows.forEach(s => addSkillInputRow(s.name, s.display_value));
             
             modal.style.display = 'block';
         }

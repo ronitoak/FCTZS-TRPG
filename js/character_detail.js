@@ -1,5 +1,7 @@
 "use strict";
 
+let currentCharData = null;
+
 function renderMultilineText(text) {
   const normalized = String(text)
     .replaceAll("\r\n", "\n")

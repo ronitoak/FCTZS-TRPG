@@ -12,10 +12,16 @@ Utils.domReady(() => {
     // --- 1. システム選択時の動的生成 (既存ロジック) ---
     systemSelect.addEventListener("change", async () => {
         const system = systemSelect.value;
+        const customSkillActions = document.getElementById('custom-skill-actions');
         if (!system) {
             dynamicContainer.innerHTML = "";
+            if (customSkillActions) customSkillActions.style.display = "none"; // 非表示 
             return;
         }
+
+        // システムが選択されたらボタンを表示
+        if (customSkillActions) customSkillActions.style.display = "block"; // 表示
+
         dynamicContainer.innerHTML = "<p>読み込み中...</p>";
 
         try {
@@ -240,25 +246,26 @@ Utils.domReady(() => {
     }
 
     function addCustomSkillRow(name = "", value = "") {
-        const skillGrid = document.querySelector('.skill-grid');
+        // 技能セクションが生成されているか確認
+        const skillGrid = dynamicContainer.querySelector('.skill-grid'); 
         if (!skillGrid) return;
 
         const row = document.createElement('div');
         row.className = 'skill-input-item custom-skill';
         row.innerHTML = `
             <div class="skill-input-container">
-                <input type="text" name="skill_label_custom" placeholder="技能名（例：芸術：料理）" 
+                <input type="text" name="skill_label_custom" placeholder="技能名" 
                     value="${Utils.escapeHtml(name)}" class="form-control" style="flex: 2;">
                 <input type="number" name="skill_val" value="${value}" 
                     placeholder="値" class="form-control" style="flex: 1;">
                 <button type="button" class="btn-remove-skill" 
-                        style="background:none; border:none; color:red; cursor:pointer;">×</button>
+                        style="background:none; border:none; color:#e53e3e; cursor:pointer; padding: 0 10px;">×</button>
             </div>
         `;
 
         // 削除ボタンのイベント
         row.querySelector('.btn-remove-skill').addEventListener('click', () => row.remove());
-        skillGrid.appendChild(row);
+        skillGrid.appendChild(row); 
     }
 
     // ボタンへのイベント登録

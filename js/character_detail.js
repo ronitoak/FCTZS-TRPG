@@ -61,6 +61,7 @@ async function main() {
     }
 
     currentCharData = c; // 編集モーダルで使用するためグローバルに保持
+    currentSkillRows = Array.isArray(skillRows) ? skillRows : []; // 技能編集モーダル用
 
     // ここから汎用属性（system_attributes / character_attributes）
     const [systemAttrDefs, characterAttrRows] = await Promise.all([

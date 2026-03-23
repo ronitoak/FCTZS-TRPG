@@ -314,6 +314,12 @@ Utils.domReady(() => {
         
         modal.style.display = 'block';
     }
+
+    // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
+    const modal = document.getElementById('edit-run-modal');
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
   });
 
   // キャンセルボタン

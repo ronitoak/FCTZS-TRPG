@@ -110,10 +110,11 @@ async function main() {
                       const name = Utils.escapeHtml(c.name ?? c.id);
                       const img = Utils.getCharacterImagePath(c.id);
                       const fallbackImg = Utils.DEFAULT_CHARACTER_IMAGE;
+
                       return `
                         <a class="session-detail-chiplink" href="../character/detail.html?id=${encodeURIComponent(c.id)}">
                           <img
-                            class="session-detail-character-img"
+                            class="session-detail-character-img" 
                             src="${img}"
                             onerror="this.onerror=null; this.src='${fallbackImg}';"
                             alt="${name}"

@@ -26,6 +26,12 @@
     --color-planning: rgb(8, 177, 255);
 }
 
+img {
+    max-width: 100%;
+    height: auto;
+    vertical-align: middle;
+}
+
 body {
     font-family: sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
     background: var(--bg-color);
@@ -203,13 +209,22 @@ a { color: inherit; text-decoration: none; }
 
 .character-detail-image, .scenario-detail-cover, .session-detail-cover {
     width: 100%;
+    max-width: 400px; /* 必要以上に巨大化するのを防ぐ */
     border-radius: var(--radius);
     background: #f2f2f2;
     display: block;
+    object-fit: contain; /* 枠に合わせて全体を表示 */
 }
 .character-detail-image { aspect-ratio: 1/1; height: 321px; object-fit: scale-down; }
 .scenario-detail-cover, .session-detail-cover { height: 240px; object-fit: cover; }
-
+.session-detail-character-img {
+    width: 80px;      /* 以前の見た目に合わせる場合はサイズを指定 */
+    height: 80px;
+    object-fit: cover; /* 正方形に切り抜き */
+    border-radius: 4px;
+    display: block;
+    margin: 0 auto 5px; /* 中央寄せと名前との余白 */
+}
 /* Tri-panel Layout */
 .character-detail-tripanel {
     display: grid;

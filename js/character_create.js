@@ -174,11 +174,26 @@ Utils.domReady(() => {
             }
 
             // 技能反映 (部分一致)
+            const existingInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
+            const matchedSkills = new Set();
+
             for (const [sName, sVal] of Object.entries(data.skills)) {
-                const inputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
-                inputs.forEach(input => {
-                    if (input.dataset.name.includes(sName)) input.value = sVal;
+                let found = false;
+                
+                existingInputs.forEach(input => {
+                    const dataName = input.dataset.name || "";
+                    // 既存リストにその技能名が含まれているかチェック
+                    if (dataName.includes(sName)) {
+                        input.value = sVal;
+                        matchedSkills.add(sName);
+                        found = true;
+                    }
                 });
+
+                // 2. 既存リストに見つからなかった場合、オリジナル技能として行を追加
+                if (!found) {
+                    addCustomSkillRow(sName, sVal);
+                }
             }
         });
     }
@@ -224,6 +239,31 @@ Utils.domReady(() => {
         dynamicContainer.innerHTML = html;
     }
 
+    function addCustomSkillRow(name = "", value = "") {
+        const skillGrid = document.querySelector('.skill-grid');
+        if (!skillGrid) return;
+
+        const row = document.createElement('div');
+        row.className = 'skill-input-item custom-skill';
+        row.innerHTML = `
+            <div class="skill-input-container">
+                <input type="text" name="skill_label_custom" placeholder="技能名（例：芸術：料理）" 
+                    value="${Utils.escapeHtml(name)}" class="form-control" style="flex: 2;">
+                <input type="number" name="skill_val" value="${value}" 
+                    placeholder="値" class="form-control" style="flex: 1;">
+                <button type="button" class="btn-remove-skill" 
+                        style="background:none; border:none; color:red; cursor:pointer;">×</button>
+            </div>
+        `;
+
+        // 削除ボタンのイベント
+        row.querySelector('.btn-remove-skill').addEventListener('click', () => row.remove());
+        skillGrid.appendChild(row);
+    }
+
+    // ボタンへのイベント登録
+    document.getElementById('btn-add-custom-skill').addEventListener('click', () => addCustomSkillRow());
+
     // --- 送信処理（一本化） ---
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -259,19 +299,33 @@ Utils.domReady(() => {
         });
 
         // 技能の収集
+        // --- form.submit 内の技能収集ロジック ---
+        // 既存の固定技能 + カスタム技能の両方をループ
         dynamicContainer.querySelectorAll('.skill-input-item').forEach(item => {
             const valInput = item.querySelector('input[name="skill_val"]');
-            const labelInput = item.querySelector('input[name="skill_label"]');
+            const labelInput = item.querySelector('input[name="skill_label"]'); // 既存の（）付き
+            const customLabelInput = item.querySelector('input[name="skill_label_custom"]'); // 新設
+            
             if (!valInput) return;
 
-            const base = parseInt(valInput.dataset.base, 10);
+            const base = parseInt(valInput.dataset.base, 10) || 0;
             const finalVal = valInput.value === "" ? base : parseInt(valInput.value, 10);
-            let finalName = valInput.dataset.name;
-
-            if (labelInput && labelInput.value.trim() !== "") {
+            
+            let finalName = "";
+            if (customLabelInput) {
+                // オリジナル技能の場合
+                finalName = customLabelInput.value.trim();
+            } else if (labelInput && labelInput.value.trim() !== "") {
+                // 既存の「製作（）」などの場合
                 finalName = `${labelInput.dataset.baseName}（${labelInput.value.trim()}）`;
+            } else {
+                // 通常技能
+                finalName = valInput.dataset.name;
             }
-            payload.skills.push({ name: finalName, value: finalVal });
+
+            if (finalName) {
+                payload.skills.push({ name: finalName, value: finalVal });
+            }
         });
 
         try {

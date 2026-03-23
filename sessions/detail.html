@@ -42,10 +42,29 @@
         </form>
       </section>
 
-<div id="comments-root"></div>
-
+      <div id="edit-session-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>セッション情報の編集</h3>
+          <form id="edit-session-form">
+            <input type="hidden" name="session_id">
+            <div class="form-group">
+              <label>タイトル</label>
+              <input type="text" name="title" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>開催日時</label>
+              <input type="datetime-local" name="start" class="form-control" required>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" class="btn-primary">更新</button>
+              <button type="button" id="btn-close-edit" class="btn-secondary">キャンセル</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <div id="comments-root"></div>
+
       <footer>
         <hr />
         <small><a href="../sessions/index.html">Back</a></small>

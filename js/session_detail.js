@@ -157,6 +157,9 @@ async function main() {
                       <span class="session-detail-item-state ${Utils.escapeHtml(s.status)}">
                         ${Utils.escapeHtml(stateJa)}
                       </span>
+                      <button class="btn-edit-session" data-id="${s.id}" data-title="${Utils.escapeHtml(s.title ?? "")}" data-start="${s.start}">
+                        📝
+                      </button>
                     </li>
                   `;
                 }).join("")}
@@ -238,6 +241,58 @@ Utils.domReady(() => {
 
   const subForm = document.getElementById("sub-session-form");
   if (!subForm) return;
+
+  // 編集ボタンのクリックイベント（デリゲーション）
+  document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-edit-session');
+      if (!btn) return;
+
+      const modal = document.getElementById('edit-session-modal');
+      const form = document.getElementById('edit-session-form');
+      
+      // 現在の値をフォームにセット
+      form.session_id.value = btn.dataset.id;
+      form.title.value = btn.dataset.title;
+      
+      // start時間は ISO形式から datetime-local形式 (YYYY-MM-DDTHH:mm) に変換
+      if (btn.dataset.start) {
+          const d = new Date(btn.dataset.start);
+          // 日本時間にオフセット調整して文字列化
+          const tzOffset = d.getTimezoneOffset() * 60000;
+          const localISOTime = new Date(d - tzOffset).toISOString().slice(0, 16);
+          form.start.value = localISOTime;
+      }
+
+      modal.style.display = 'block';
+  });
+
+  // キャンセルボタン
+  document.getElementById('btn-close-edit')?.addEventListener('click', () => {
+      document.getElementById('edit-session-modal').style.display = 'none';
+  });
+
+  // 編集フォームの送信
+  document.getElementById('edit-session-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const sessionId = form.session_id.value;
+      
+      const payload = {
+          title: form.title.value,
+          start: new Date(form.start.value).toISOString()
+      };
+
+      try {
+          // 先ほど作成した apiPatch を使用
+          // セッションIDは不変（se-XXX_Y_Z）なので、これをキーに更新
+          await Utils.apiPatch("sessions", payload, `id=eq.${sessionId}`);
+          alert("セッション情報を更新しました");
+          location.reload();
+      } catch (err) {
+          console.error(err);
+          alert("更新に失敗しました: " + err.message);
+      }
+  });
 
   subForm.addEventListener("submit", async (e) => {
       e.preventDefault();

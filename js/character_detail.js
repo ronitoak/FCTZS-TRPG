@@ -47,6 +47,7 @@ async function main() {
     ]);
 
     const editBtn = `<button id="btn-open-char-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
+    const skillsEditBtn = `<button id="btn-open-skills-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const charactersSafe = Array.isArray(characters) ? characters : [];
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
     const runsSafe = Array.isArray(runs) ? runs : [];
@@ -324,6 +325,70 @@ async function main() {
         } catch (err) {
             console.error(err);
             alert("更新に失敗しました: " + err.message);
+        }
+    });
+
+    // 技能行を追加する補助関数
+    function addSkillInputRow(name = "", value = 0) {
+        const container = document.getElementById('edit-skills-container');
+        const div = document.createElement('div');
+        div.className = 'skill-edit-item';
+        div.style = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+        div.innerHTML = `
+            <input type="text" name="skill_name" class="form-control" value="${Utils.escapeHtml(name)}" placeholder="技能名" style="flex: 2;">
+            <input type="number" name="skill_value" class="form-control" value="${value}" style="flex: 1;">
+            <button type="button" class="btn-delete-skill" style="background:none; border:none; color:var(--danger-color); cursor:pointer; font-size:1.2rem;">×</button>
+        `;
+        div.querySelector('.btn-delete-skill').onclick = () => div.remove();
+        container.appendChild(div);
+    }
+
+    // イベントリスナー
+    document.addEventListener('click', (e) => {
+        // モーダルを開く
+        if (e.target.id === 'btn-open-skills-edit') {
+            const modal = document.getElementById('edit-skills-modal');
+            const container = document.getElementById('edit-skills-container');
+            container.innerHTML = '';
+            
+            // 現在の技能データを回して入力欄を作成
+            currentSkillRows.forEach(s => addSkillInputRow(s.name, s.value));
+            
+            modal.style.display = 'block';
+        }
+
+        // キャンセル
+        if (e.target.id === 'btn-close-skills-edit') {
+            document.getElementById('edit-skills-modal').style.display = 'none';
+        }
+    });
+
+    // 技能追加ボタン
+    document.getElementById('btn-add-skill-row')?.addEventListener('click', () => {
+        addSkillInputRow("", 0);
+    });
+
+    // 技能保存実行
+    document.getElementById('edit-skills-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const names = fd.getAll("skill_name");
+        const values = fd.getAll("skill_value");
+
+        const skillsPayload = names.map((name, i) => ({
+            character_id: currentCharData.id,
+            name: name.trim(),
+            value: parseInt(values[i], 10) || 0
+        })).filter(s => s.name !== "");
+
+        try {
+            // Worker経由でUpsert実行
+            await Utils.apiPost("character_skills", skillsPayload);
+            alert("技能値を更新しました");
+            location.reload();
+        } catch (err) {
+            console.error(err);
+            alert("更新に失敗しました");
         }
     });
 

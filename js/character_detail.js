@@ -263,27 +263,36 @@ async function main() {
 
     // --- 編集モーダルを開く処理 ---
     document.addEventListener('click', (e) => {
-        if (e.target.id === 'btn-open-char-edit') {
-            const modal = document.getElementById('edit-character-modal');
-            const form = document.getElementById('edit-character-form');
-            
-            if (!currentCharData) return;
-            
-            // 既存データの値をセット
-            form.name.value = currentCharData.name || "";
-            form.player.value = currentCharData.player || "";
-            form.state.value = currentCharData.state || "alive";
-            form.job.value = currentCharData.job || "";
-            form.age.value = currentCharData.age || "";
-            form.gender.value = currentCharData.gender || "";
-            form.height.value = currentCharData.height || "";
-            form.weight.value = currentCharData.weight || "";
-            form.origin.value = currentCharData.origin || "";
-            form.iachara_url.value = currentCharData.iachara_url || "";
-            form.memo.value = currentCharData.memo || "";
-            
-            modal.style.display = 'block';
-        }
+      // クリックされた要素のIDが 'btn-open-char-edit' かどうか判定
+      if (e.target && e.target.id === 'btn-open-char-edit') {
+          const modal = document.getElementById('edit-character-modal');
+          const form = document.getElementById('edit-character-form');
+          
+          if (!currentCharData) {
+              alert("データの読み込みが完了していません。リロードしてください。");
+              return;
+          }
+          
+          // フォームに値をセット
+          form.name.value = currentCharData.name || "";
+          form.player.value = currentCharData.player || "";
+          form.state.value = currentCharData.state || "alive";
+          form.job.value = currentCharData.job || "";
+          form.age.value = currentCharData.age || "";
+          form.gender.value = currentCharData.gender || "";
+          form.height.value = currentCharData.height || "";
+          form.weight.value = currentCharData.weight || "";
+          form.origin.value = currentCharData.origin || "";
+          form.iachara_url.value = currentCharData.iachara_url || "";
+          form.memo.value = currentCharData.memo || "";
+          
+          modal.style.display = 'block';
+      }
+
+      // キャンセルボタンの判定
+      if (e.target && e.target.id === 'btn-close-char-edit') {
+          document.getElementById('edit-character-modal').style.display = 'none';
+      }
     });
 
     // --- 更新実行処理 ---

@@ -81,7 +81,7 @@ async function main() {
         </div>
         
         <div class="session-detail-profile">
-          <h2 class="session-detail-h2">卓情報</h2> ${editRunBtn}
+          <h2 class="session-detail-h2">卓情報${editRunBtn}</h2> 
 
           <table class="session-detail-table">
             <tbody>
@@ -298,43 +298,49 @@ Utils.domReady(() => {
   });
 
   // 卓編集モーダルを開く
-  document.getElementById('btn-open-run-edit')?.addEventListener('click', () => {
-      const modal = document.getElementById('edit-run-modal');
-      const form = document.getElementById('edit-run-form');
-      
-      if (!currentRunData) return;
-      
-      // 現在の値をセット
-      form.gm.value = currentRunData.gm || "";
-      form.notes.value = currentRunData.notes || "";
-      
-      modal.style.display = 'block';
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'btn-open-run-edit') {
+        const modal = document.getElementById('edit-run-modal');
+        const form = document.getElementById('edit-run-form');
+        
+        if (!currentRunData) {
+            alert("データの読み込みが完了していません。");
+            return;
+        }
+        
+        // 現在の値をセット
+        form.gm.value = currentRunData.gm || "";
+        form.notes.value = currentRunData.notes || "";
+        
+        modal.style.display = 'block';
+    }
   });
 
-  // キャンセル
-  document.getElementById('btn-close-run-edit')?.addEventListener('click', () => {
-      document.getElementById('edit-run-modal').style.display = 'none';
+  // キャンセルボタン
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'btn-close-run-edit') {
+        document.getElementById('edit-run-modal').style.display = 'none';
+    }
   });
 
-  // 更新実行
+  // 卓情報の更新実行
   document.getElementById('edit-run-form')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentRunData) return;
+    e.preventDefault();
+    if (!currentRunData) return;
 
-      const payload = {
-          gm: e.target.gm.value,
-          notes: e.target.notes.value
-      };
+    const payload = {
+        gm: e.target.gm.value,
+        notes: e.target.notes.value
+    };
 
-      try {
-          // Utils.apiPatch を使用して runs テーブルを更新
-          await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
-          alert("卓情報を更新しました");
-          location.reload();
-      } catch (err) {
-          console.error(err);
-          alert("更新に失敗しました: " + err.message);
-      }
+    try {
+        await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
+        alert("卓情報を更新しました");
+        location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("更新に失敗しました: " + err.message);
+    }
   });
   
   // 編集フォームの送信

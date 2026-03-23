@@ -967,9 +967,9 @@ th, td {
 
 .session-item-row {
   display: flex;
-  align-items: center; /* 垂直方向中央揃え */
-  gap: 15px; /* 要素間の余白 */
-  flex-wrap: nowrap; /* 折り返さない */
+  align-items: center; 
+  gap: 12px;
+  width: 100%; /* 親要素いっぱいに広げる */
 }
 
 /* 1. ステータスバッジの調整 */
@@ -995,32 +995,35 @@ th, td {
 /* 3. タイトル（ここを可変にする） */
 .session-item-title {
   font-weight: bold;
-  flex-grow: 1; /* 余白をすべて埋める */
+  flex-grow: 1; /* ★重要：余ったスペースをすべて占有する */
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis; /* 長すぎる場合は「...」にする */
+  text-overflow: ellipsis;
 }
 
 /* 4. リンク（リプレイ等） */
 .session-item-links {
   display: flex;
   gap: 8px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* 勝手に縮まないようにする */
 }
 
 /* 5. 編集ボタン */
 .btn-edit-session {
-  background: none;
+  background: #fff;
   border: 1px solid #cbd5e0;
   border-radius: 4px;
   cursor: pointer;
-  padding: 2px 6px;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: all 0.2s;
+  flex-shrink: 0; /* ボタンの形を維持 */
 }
 
 .btn-edit-session:hover {
   background-color: #edf2f7;
+  border-color: #a0aec0;
 }
 
 .scenario-detail-characters {

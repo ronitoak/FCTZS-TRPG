@@ -1,6 +1,7 @@
 "use strict";
 
 let currentCharData = null;
+let currentSkillRows = null;
 
 function renderMultilineText(text) {
   const normalized = String(text)

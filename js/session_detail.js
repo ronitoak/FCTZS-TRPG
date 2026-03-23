@@ -186,54 +186,62 @@ async function loadDetail() {
 
 // 送信処理の登録
 Utils.domReady(() => {
-    // まず main を実行
-    main();
+  // まず main を実行
+  main();
 
-    const subForm = document.getElementById("sub-session-form");
-    if (!subForm) return;
+  const subForm = document.getElementById("sub-session-form");
+  if (!subForm) return;
 
-    subForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        
-        // currentRunData がセットされるまで待つためのチェック
-        if (!currentRunData) {
-            alert("データの読み込みが完了していません。");
-            return;
-        }
+  subForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      // currentRunData がセットされるまで待つためのチェック
+      if (!currentRunData) {
+          alert("データの読み込みが完了していません。");
+          return;
+      }
 
-        const dateVal = subForm.date.value; // YYYY-MM-DD
-        const titleVal = subForm.title.value;
-        const notesVal = subForm.notes.value;
+      // datetime-local から値を取得 (例: "2026-03-23T20:00")
+      const startVal = subForm.start.value; 
+      const titleVal = subForm.title.value;
+      const notesVal = subForm.notes.value;
 
-        // 採番規則: se-YYYYMMDD
-        const idDate = dateVal.replace(/-/g, ""); 
-        const newSessionId = `se-${idDate}`;
-        
-        // start (timestamp with time zone) の作成
-        // その日の 21:00 開始とするなどのデフォルトを持たせると便利です
-        const startTimestamp = new Date(`${dateVal}T21:00:00+09:00`).toISOString();
+      if (!startVal) {
+          alert("日時を選択してください。");
+          return;
+      }
 
-        const payload = {
-            id: newSessionId,
-            run_id: currentRunData.id,
-            gm: currentRunData.gm,
-            start: startTimestamp,
-            title: titleVal,
-            notes: notesVal,
-            status: 'scheduled'
-        };
+      // 採番規則: se-YYYYMMDD (ハイフンを除去)
+      // startValの "T" より前の日付部分を取得して加工
+      const datePart = startVal.split('T')[0];
+      const idDate = datePart.replace(/-/g, ""); 
+      const newSessionId = `se-${idDate}`;
+      
+      // start (timestamp with time zone) の作成
+      // datetime-local の文字列をそのまま Date オブジェクトに渡して ISO形式に変換
+      const startTimestamp = new Date(startVal).toISOString();
 
-        const submitBtn = subForm.querySelector("button[type=submit]");
-        submitBtn.disabled = true;
+      const payload = {
+          id: newSessionId,
+          run_id: currentRunData.id,
+          gm: currentRunData.gm,
+          start: startTimestamp, // ユーザーが選択した日時
+          title: titleVal,
+          notes: notesVal,
+          status: 'scheduled'
+      };
 
-        try {
-            await Utils.apiPost("sessions", payload);
-            alert("セッション記録を保存しました");
-            location.reload(); 
-        } catch (err) {
-            console.error(err);
-            alert("保存失敗: " + err.message);
-            submitBtn.disabled = false;
-        }
-    });
+      const submitBtn = subForm.querySelector("button[type=submit]");
+      submitBtn.disabled = true;
+
+      try {
+          await Utils.apiPost("sessions", payload);
+          alert("セッション記録を保存しました");
+          location.reload(); 
+      } catch (err) {
+          console.error(err);
+          alert("保存失敗: " + err.message);
+          submitBtn.disabled = false;
+      }
+  });
 });

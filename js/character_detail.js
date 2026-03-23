@@ -231,7 +231,7 @@ async function main() {
             ` : ``}
 
             <article class="character-detail-panel">
-              <h2 class="character-detail-h2">技能</h2>
+              <h2 class="session-detail-h2">技能${skillsEditBtn}</h2>
               ${skillEntries.length ? `
                 <div class="character-detail-chips">
                   ${skillEntries.map(s => `

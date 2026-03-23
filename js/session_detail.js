@@ -151,15 +151,24 @@ async function main() {
 
                   return `
                     <li class="session-detail-item">
-                      <span class="session-detail-item-date">${Utils.escapeHtml(dateText)}</span>
-                      <span class="session-detail-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
-                      <span class="session-detail-item-url">${linksHtml}</span>
-                      <span class="session-detail-item-state ${Utils.escapeHtml(s.status)}">
-                        ${Utils.escapeHtml(stateJa)}
-                      </span>
-                      <button class="btn-edit-session" data-id="${s.id}" data-title="${Utils.escapeHtml(s.title ?? "")}" data-start="${s.start}">
-                        📝
-                      </button>
+                      <div class="session-item-row">
+                        <span class="session-item-state ${Utils.escapeHtml(s.status)}">
+                          ${s.status === "scheduled" ? "予定" : "終了"}
+                        </span>
+                        
+                        <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>
+                        
+                        <span class="session-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
+                        
+                        <span class="session-item-links">${linksHtml}</span>
+
+                        <button class="btn-edit-session" 
+                                data-id="${s.id}" 
+                                data-title="${Utils.escapeHtml(s.title ?? "")}" 
+                                data-start="${s.start}">
+                          📝
+                        </button>
+                      </div>
                     </li>
                   `;
                 }).join("")}

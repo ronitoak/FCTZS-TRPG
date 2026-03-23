@@ -90,14 +90,16 @@ const statusMap = {
     });
   }
 
+  // js/Utils.js
   async function apiPatch(resource, payload, query = "") {
-  const q = query ? `?${query}` : "";
-  return apiFetchJson(`/api/${resource}${q}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
+    const q = query ? `?${query}` : "";
+    // /api/sessions?id=eq.xxx のような形で fetch される
+    return apiFetchJson(`/api/${resource}${q}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
 
   // ---------- Date ----------
   function toDate(iso) {

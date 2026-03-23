@@ -958,6 +958,71 @@ th, td {
   flex: 0 0 auto;
 }
 
+/* セッションリストの各行 */
+.session-detail-item {
+  list-style: none;
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.session-item-row {
+  display: flex;
+  align-items: center; /* 垂直方向中央揃え */
+  gap: 15px; /* 要素間の余白 */
+  flex-wrap: nowrap; /* 折り返さない */
+}
+
+/* 1. ステータスバッジの調整 */
+.session-item-state {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  min-width: 50px;
+  text-align: center;
+  flex-shrink: 0; /* 縮ませない */
+}
+
+.session-item-state.scheduled { background: #e2e8f0; color: #4a5568; } /* 予定：グレー */
+.session-item-state.done { background: #c6f6d5; color: #2f855a; }      /* 終了：緑 */
+
+/* 2. 日時 */
+.session-item-date {
+  font-family: monospace;
+  color: #718096;
+  flex-shrink: 0;
+}
+
+/* 3. タイトル（ここを可変にする） */
+.session-item-title {
+  font-weight: bold;
+  flex-grow: 1; /* 余白をすべて埋める */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* 長すぎる場合は「...」にする */
+}
+
+/* 4. リンク（リプレイ等） */
+.session-item-links {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 5. 編集ボタン */
+.btn-edit-session {
+  background: none;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-edit-session:hover {
+  background-color: #edf2f7;
+}
+
 .scenario-detail-characters {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

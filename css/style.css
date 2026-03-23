@@ -984,6 +984,17 @@ th, td {
 
 .session-item-state.scheduled { background: #e2e8f0; color: #4a5568; } /* 予定：グレー */
 .session-item-state.done { background: #c6f6d5; color: #2f855a; }      /* 終了：緑 */
+.session-item-state.cancelled { background: #fed7d7; color: #9b2c2c; } /* 中止：薄赤 */
+
+/* キャンセルされた行全体のスタイル */
+.session-detail-item.is-cancelled {
+  opacity: 0.6; /* 全体を少し薄くする */
+}
+
+.session-detail-item.is-cancelled .session-item-title {
+  text-decoration: line-through; /* タイトルに打ち消し線を入れる */
+  color: #a0aec0;
+}
 
 /* 2. 日時 */
 .session-item-date {

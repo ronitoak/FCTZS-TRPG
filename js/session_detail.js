@@ -137,7 +137,12 @@ async function main() {
           runSessions.length
             ? `<ul class="session-detail-list">
                 ${runSessions.map(s => {
-                  const stateJa = s.status === "scheduled" ? "予定" : "終了";
+                  const stateLabels = {
+                    "scheduled": "予定",
+                    "done": "終了",
+                    "cancelled": "中止" // 追加
+                  };
+                  const stateJa = stateLabels[s.status] || "不明";
                   const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
 
                   const linksHtml = (s.replay_url || s.stream_url)
@@ -150,10 +155,10 @@ async function main() {
                     : "";
 
                   return `
-                    <li class="session-detail-item">
+                    <li class="session-detail-item" ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
                       <div class="session-item-row">
                         <span class="session-item-state ${Utils.escapeHtml(s.status)}">
-                          ${s.status === "scheduled" ? "予定" : "終了"}
+                          ${stateJa}
                         </span>
                         
                         <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>

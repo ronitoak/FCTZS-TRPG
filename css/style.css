@@ -208,10 +208,14 @@ a { color: inherit; text-decoration: none; }
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 20px;
+    overflow: visible; /* 見切れ防止 */
 }
 
 /* style.css固有の高さ設定を維持 */
-.character-detail-profile { height: 350px; }
+.character-detail-profile {
+    height: auto;
+    min-height: 321px; /* 左側の画像(321px)と高さを揃えるための最低値 */
+}
 
 .character-detail-image, .scenario-detail-cover, .session-detail-cover {
     width: 100%;

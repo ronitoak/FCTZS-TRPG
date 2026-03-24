@@ -94,11 +94,15 @@ async function main() {
     );
 
     const passedCharacters = (Array.isArray(characterIds) ? characterIds : [])
-      .map(cid => charactersById.get(cid))
-      .filter(Boolean)
-      .sort((a, b) =>
-        String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja")
-      );
+    .map(row => {
+      // APIから返る行データ(row)から character_id を抽出して Map から検索
+      const id = row?.character_id; 
+      return charactersById.get(id);
+    })
+    .filter(Boolean) // Mapに見つからなかった場合(null)を除外
+    .sort((a, b) =>
+      String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja")
+    );
 
     const passedCharactersHtml = passedCharacters.length
       ? `

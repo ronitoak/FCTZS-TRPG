@@ -167,18 +167,22 @@ async function main() {
       : "";
 
     const passedHtml = passedScenarioIds.length
-      ? `<ul class="character-detail-scenario-list">
-          ${passedScenarioIds.map(sid => {
-            const s = scenariosById.get(sid);
-            const title = s?.title ?? sid;
-            return `<li>
-              <a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(sid)}">
-                ${Utils.escapeHtml(title)}
-              </a>
-            </li>`;
-          }).join("")}
-        </ul>`
-      : `<p class="character-detail-muted">なし</p>`;
+    ? `<ul class="character-detail-scenario-list">
+        ${passedScenarioIds.map(row => {
+          // row がオブジェクトなら scenario_id を、文字列ならそのまま ID として扱う
+          const sid = (typeof row === 'object' && row !== null) ? row.scenario_id : row;
+          if (!sid) return ""; // IDが取れない場合はスキップ
+
+          const s = scenariosById.get(sid);
+          const title = s?.title ?? sid;
+          return `<li>
+            <a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(sid)}">
+              ${Utils.escapeHtml(title)}
+            </a>
+          </li>`;
+        }).join("")}
+      </ul>`
+    : `<p class="character-detail-muted">なし</p>`;
 
     root.innerHTML = `
       <header class="character-detail-header">

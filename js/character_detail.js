@@ -51,7 +51,8 @@ async function main() {
 
     const editBtn = `<button id="btn-open-char-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const skillsEditBtn = `<button id="btn-open-skills-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
-    const attrEditBtn = `<button id="btn-open-attr-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
+    const paramsEditBtn = `<button id="btn-open-params-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
+    const emotionsEditBtn = `<button id="btn-open-emotions-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const charactersSafe = Array.isArray(characters) ? characters : [];
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
     const runsSafe = Array.isArray(runs) ? runs : [];
@@ -298,6 +299,11 @@ async function main() {
           
           modal.style.display = 'block';
       }
+        // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
+        const modal = document.getElementById('edit-character-modal');
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
 
       // キャンセルボタンの判定
       if (e.target && e.target.id === 'btn-close-char-edit') {
@@ -364,6 +370,12 @@ async function main() {
             modal.style.display = 'block';
         }
 
+        // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
+        const modal = document.getElementById('edit-skills-modal');
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+
         // キャンセル
         if (e.target.id === 'btn-close-skills-edit') {
             document.getElementById('edit-skills-modal').style.display = 'none';
@@ -406,75 +418,90 @@ async function main() {
 }
 
 document.addEventListener('click', (e) => {
-    if (e.target.id === 'btn-open-attr-edit') {
-        const modal = document.getElementById('edit-attributes-modal');
-        const container = document.getElementById('edit-attributes-container');
+    // --- 能力値（数値）モーダルを開く ---
+    if (e.target.id === 'btn-open-params-edit') {
+        const container = document.getElementById('edit-params-container');
         container.innerHTML = '';
-
-        // システム定義（身体・精神・知力・共鳴感情など）をループ
-        currentSystemAttrs.forEach(def => {
+        currentSystemAttrs.filter(d => d.kind !== 'emotion').forEach(def => {
             const attr = currentCharAttrsMap.get(def.key) || {};
-            const div = document.createElement('div');
-            div.className = 'form-group';
-            div.style.marginBottom = '10px';
-
-            if (def.kind === 'emotion') {
-                // 共鳴感情用（テキスト入力）
-                div.innerHTML = `
-                    <label>${Utils.escapeHtml(def.label)}</label>
-                    <input type="hidden" name="attr_key" value="${def.key}">
-                    <input type="hidden" name="attr_kind" value="emotion">
-                    <input type="text" name="attr_value" class="form-control" value="${Utils.escapeHtml(attr.value_emotion || '')}">
-                `;
-            } else {
-                // 通常能力値（数値入力）
-                div.innerHTML = `
-                    <label>${Utils.escapeHtml(def.label)}</label>
-                    <input type="hidden" name="attr_key" value="${def.key}">
-                    <input type="hidden" name="attr_kind" value="int">
-                    <input type="number" name="attr_value" class="form-control" value="${attr.value_int ?? 0}">
-                `;
-            }
-            container.appendChild(div);
+            appendAttrInput(container, def, attr.value_int ?? 0, 'number', 'attr_value');
         });
-
-        modal.style.display = 'block';
+        document.getElementById('edit-params-modal').style.display = 'block';
     }
 
-    if (e.target.id === 'btn-close-attributes-edit') {
-        document.getElementById('edit-attributes-modal').style.display = 'none';
+    // --- 共鳴感情モーダルを開く ---
+    if (e.target.id === 'btn-open-emotions-edit') {
+        const container = document.getElementById('edit-emotions-container');
+        container.innerHTML = '';
+        currentSystemAttrs.filter(d => d.kind === 'emotion').forEach(def => {
+            const attr = currentCharAttrsMap.get(def.key) || {};
+            appendAttrInput(container, def, attr.value_emotion || '', 'text', 'attr_value_emo');
+        });
+        document.getElementById('edit-emotions-modal').style.display = 'block';
     }
+
+    // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
+    const modal = document.getElementById('edit-skills-modal');
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+
+    // キャンセルボタン
+    if (e.target.id === 'btn-close-params-edit') document.getElementById('edit-params-modal').style.display = 'none';
+    if (e.target.id === 'btn-close-emotions-edit') document.getElementById('edit-emotions-modal').style.display = 'none';
 });
 
-// 保存処理
-document.getElementById('edit-attributes-form')?.addEventListener('submit', async (e) => {
+// 入力行を生成する共通補助関数
+function appendAttrInput(container, def, value, inputType, inputName) {
+    const div = document.createElement('div');
+    div.className = 'form-group';
+    div.style.marginBottom = '12px';
+    div.innerHTML = `
+        <label style="display:block; margin-bottom:4px; font-weight:bold;">${Utils.escapeHtml(def.label)}</label>
+        <input type="hidden" name="attr_key" value="${def.key}">
+        <input type="${inputType}" name="${inputName}" class="form-control" value="${Utils.escapeHtml(String(value))}">
+    `;
+    container.appendChild(div);
+}
+
+// 能力値（数値）保存
+document.getElementById('edit-params-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const keys = fd.getAll("attr_key");
-    const kinds = fd.getAll("attr_kind");
-    const values = fd.getAll("attr_value");
+    const vals = fd.getAll("attr_value");
+    const payload = keys.map((key, i) => ({
+        character_id: currentCharData.id,
+        key: key,
+        value_int: parseInt(vals[i], 10) || 0
+    }));
+    await saveAttributes(payload);
+});
 
-    const payload = keys.map((key, i) => {
-        const item = { character_id: currentCharData.id, key: key };
-        if (kinds[i] === "emotion") {
-            item.value_emotion = values[i];
-        } else {
-            item.value_int = parseInt(values[i], 10) || 0;
-        }
-        return item;
-    });
+// 共鳴感情保存
+document.getElementById('edit-emotions-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const keys = fd.getAll("attr_key");
+    const vals = fd.getAll("attr_value_emo");
+    const payload = keys.map((key, i) => ({
+        character_id: currentCharData.id,
+        key: key,
+        value_emotion: vals[i]
+    }));
+    await saveAttributes(payload);
+});
 
+async function saveAttributes(payload) {
     try {
-        // character_skillsと同様にUpsertが必要なので、WorkerのPATCH許可リストに character_attributes を追加済みか要確認
-        // 今回は apiPost (POST + merge-duplicates) を使います
         await Utils.apiPost("character_attributes", payload);
-        alert("能力値を更新しました");
+        alert("更新しました");
         location.reload();
     } catch (err) {
         console.error(err);
         alert("更新に失敗しました");
     }
-});
+}
 
 function buildCharacterAttributeMap(rows) {
   const map = new Map();

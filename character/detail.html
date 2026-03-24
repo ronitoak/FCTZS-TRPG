@@ -101,15 +101,27 @@
       </div>
     </div>
 
-    <div id="edit-attributes-modal" class="modal" style="display:none;">
-      <div class="modal-content" style="max-width: 500px;">
+    <div id="edit-params-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 450px;">
         <h3>能力値の編集</h3>
-        <form id="edit-attributes-form">
-          <div id="edit-attributes-container">
-            </div>
+        <form id="edit-params-form">
+          <div id="edit-params-container"></div>
           <div class="modal-actions" style="margin-top: 20px;">
             <button type="submit" class="btn-primary">保存</button>
-            <button type="button" id="btn-close-attributes-edit" class="btn-secondary">キャンセル</button>
+            <button type="button" id="btn-close-params-edit" class="btn-secondary">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-emotions-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3>共鳴感情の編集</h3>
+        <form id="edit-emotions-form">
+          <div id="edit-emotions-container"></div>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">保存</button>
+            <button type="button" id="btn-close-emotions-edit" class="btn-secondary">キャンセル</button>
           </div>
         </form>
       </div>

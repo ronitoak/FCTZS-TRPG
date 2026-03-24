@@ -130,7 +130,6 @@ async function main() {
     root.innerHTML = `
       <header class="scenario-detail-header">
         <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
-        ${scenario.system ? `<span class="scenario-detail-system">${Utils.escapeHtml(scenario.system)}</span>` : ""}
       </header>
 
       <section class="scenario-detail-top">
@@ -144,16 +143,14 @@ async function main() {
 
         <div class="scenario-detail-info">
           <h2 class="scenario-detail-h2">シナリオ情報${editBtn}</h2>
-          <table class="scenario-detail-table">
-            <tbody>
-              ${infoRows.map(([k, v]) => `
-                <tr>
-                  <th>${Utils.escapeHtml(k)}</th>
-                  <td>${Utils.escapeHtml(String(v))}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+          <div class="scenario-info-meta">
+            ${scenario.title ? `<div><strong>タイトル:</strong> ${Utils.escapeHtml(scenario.title)}</div>` : ""}
+            ${scenario.system ? `<div><strong>システム:</strong> ${Utils.escapeHtml(scenario.system)}</div>` : ""}
+            ${scenario.author ? `<div><strong>作者:</strong> ${Utils.escapeHtml(scenario.author)}</div>` : ""}
+          </div>
+          <div class="scenario-base-info">
+            ${scenario.notes ? `<div><strong>基本情報:</strong><br>${renderMultilineText(scenario.notes)}</div>` : ""}
+          </div>
           <p class="scenario-detail-desc">
             ${scenario.description
               ? renderMultilineText(scenario.description)

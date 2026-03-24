@@ -27,6 +27,7 @@ async function main() {
       Utils.apiGet(`scenario_characters?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
     ]);
 
+    const editBtn = `<button id="btn-open-scenario-edit" class="btn-secondary btn-edit-small">📝</button>`;
     const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === id);
     if (!scenario) {
       root.innerHTML = "<p>シナリオが見つかりません</p>";
@@ -130,7 +131,7 @@ async function main() {
         </div>
 
         <div class="scenario-detail-info">
-          <h2 class="scenario-detail-h2">概要</h2>
+          <h2 class="scenario-detail-h2">シナリオ情報${editBtn}</h2>
           <p class="scenario-detail-desc">
             ${scenario.description
               ? renderMultilineText(scenario.description)
@@ -242,5 +243,22 @@ async function main() {
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
 }
+
+// 更新実行処理
+document.getElementById('edit-scenario-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = Object.fromEntries(fd.entries());
+
+    try {
+        // scenarios テーブルを PATCH
+        await Utils.apiPatch("scenarios", payload, `id=eq.${currentScenarioId}`);
+        alert("シナリオ情報を更新しました");
+        location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("更新に失敗しました");
+    }
+});
 
 Utils.domReady(main);

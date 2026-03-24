@@ -1,5 +1,7 @@
 "use strict";
 
+let currentScenarioId = null;
+
 function renderMultilineText(text) {
   const normalized = String(text ?? "")
     .replaceAll("\r\n", "\n")
@@ -34,8 +36,19 @@ async function main() {
       return;
     }
 
+    currentScenarioId = scenario.id; // IDを保持
+
     const coverPath = Utils.getScenarioCoverPath(scenario.id);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
+
+       // プロフィール（columns）
+    const infoRows = [
+      ["タイトル", scenario.title],
+      ["システム", scenario.system],
+      ["作者", scenario.author],
+      ["概要", scenario.description],
+      ["備考", scenario.notes],
+    ].filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
 
     // このシナリオのrunだけ
     const relatedRuns = (Array.isArray(runs) ? runs : []).filter(
@@ -132,6 +145,16 @@ async function main() {
 
         <div class="scenario-detail-info">
           <h2 class="scenario-detail-h2">シナリオ情報${editBtn}</h2>
+          <table class="scenario-detail-table">
+            <tbody>
+              ${infoRows.map(([k, v]) => `
+                <tr>
+                  <th>${Utils.escapeHtml(k)}</th>
+                  <td>${Utils.escapeHtml(String(v))}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
           <p class="scenario-detail-desc">
             ${scenario.description
               ? renderMultilineText(scenario.description)
@@ -238,11 +261,56 @@ async function main() {
         </div>
       </section>
     `;
+    document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'btn-open-scenario-edit') {
+      const modal = document.getElementById('edit-scenario-modal');
+      const form = document.getElementById('edit-scenario-form');
+      
+      if (!modal || !form) return;
+
+      // フォームに現在の値をセット
+      form.title.value = scenario.title || "";
+      form.system.value = scenario.system || "";
+      form.author.value = scenario.author || "";
+      form.description.value = scenario.description || "";
+      form.notes.value = scenario.notes || "";
+
+      modal.style.display = 'block';
+    }
+
+    // キャンセルボタンまたはモーダル外クリックで閉じる
+    if (e.target && e.target.id === 'btn-close-scenario-edit') {
+      document.getElementById('edit-scenario-modal').style.display = 'none';
+    }
+    const modal = document.getElementById('edit-scenario-modal');
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
 }
+
+document.getElementById('edit-scenario-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = Object.fromEntries(fd.entries());
+
+    if (!currentScenarioId) return;
+
+    try {
+        // Utils.apiPatch を使用して更新
+        await Utils.apiPatch("scenarios", payload, `id=eq.${currentScenarioId}`);
+        alert("シナリオ情報を更新しました");
+        location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("更新に失敗しました: " + err.message);
+    }
+});
 
 // 更新実行処理
 document.getElementById('edit-scenario-form')?.addEventListener('submit', async (e) => {

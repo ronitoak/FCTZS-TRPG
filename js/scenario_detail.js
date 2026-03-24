@@ -114,14 +114,14 @@ async function main() {
               const fallbackImg = Utils.DEFAULT_CHARACTER_IMAGE;
               return `
                 <a class="scenario-detail-character"
-                   href="../character/detail.html?id=${encodeURIComponent(c.id)}">
+                   href="../character/detail.html?id=${encodeURIComponent(c.id)}" class="character-chip">
                   <img
                     src="${img}"
                     onerror="this.onerror=null;this.src='${fallbackImg}';"
                     alt="${name}"
-                    class="scenario-detail-character-img"
+                    class="character-chip-icon"
                     loading="lazy">
-                  <span>${name}</span>
+                  <spanclass="character-chip-name">${name}</span>
                 </a>
               `;
             })

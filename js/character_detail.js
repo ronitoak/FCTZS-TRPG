@@ -269,7 +269,7 @@ async function main() {
       </section>
 
       <section class="character-detail-scenarios">
-        <h2 class="character-detail-h2">通過シナリオ</h2>
+        <h2 class="character-detail-h2">通過シナリオ${scenarioEditBtn}</h2>
         ${passedHtml}
       </section>
 

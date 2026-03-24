@@ -210,7 +210,7 @@ async function main() {
         <div class="character-detail-panels">
           <div class="character-detail-tripanel">
             <article class="character-detail-panel">
-              <h2 class="character-detail-h2">能力値${attrEditBtn}</h2>
+              <h2 class="character-detail-h2">能力値${paramsEditBtn}</h2>
 
               ${hasGeneric
                 ? renderGenericIntAttributes(c.system, sysDefsSafe, attrMap)
@@ -233,7 +233,7 @@ async function main() {
 
             ${hasGeneric && c.system === "エモクロアTRPG" ? `
               <article class="character-detail-panel character-detail-emotions">
-                <h2 class="character-detail-h2">共鳴感情</h2>
+                <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
                 ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
               </article>
             ` : ``}

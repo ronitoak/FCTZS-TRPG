@@ -43,33 +43,29 @@ function renderCharacters(root, characters, query, lastByCharId) {
     const job = Utils.escapeHtml(c.job ?? "");
     const player = Utils.escapeHtml(c.player ?? "");
     const system = Utils.escapeHtml(c.system ?? "");
-
-    const titleHtml = `
-      <a class="character-title-link"
-        href="./detail.html?id=${encodeURIComponent(c.id)}">
-        ${name}
-      </a>
-    `;
-
-    const card = document.createElement("article");
-    const state = typeof c.state === "string" ? c.state : ""; // "lost" | "rescued" | "survived"
-    card.className = `character-card ${state}`.trim();
-
+    const state = typeof c.state === "string" ? c.state : "";
     const imagePath = Utils.getCharacterImagePath(c.id);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
-    const imgHtml = `
+    // カード全体を <a> で包む
+    const cardLink = document.createElement("a");
+    cardLink.href = `./detail.html?id=${encodeURIComponent(c.id)}`;
+    cardLink.className = "character-card-wrapper"; // スタイル調整用のクラス
+    cardLink.style.textDecoration = "none";
+    cardLink.style.color = "inherit";
+    cardLink.style.display = "block";
+
+    const card = document.createElement("article");
+    card.className = `character-card ${state}`.trim();
+
+    card.innerHTML = `
       <img class="character-thumb"
         src="${imagePath}"
         onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';"
         alt="${name}"
         loading="lazy"
       >
-    `;
-
-    card.innerHTML = `
-        ${imgHtml}
-        <h2 class="character-title">${titleHtml}</h2>
+      <h2 class="character-title">${name}</h2>
         <div class="character-meta">
             <div>職業: ${job || "—"}</div>
             <div>PL: ${player || "—"}</div>
@@ -77,7 +73,8 @@ function renderCharacters(root, characters, query, lastByCharId) {
         </div>
     `;
 
-    grid.appendChild(card);
+    cardLink.appendChild(card);
+    grid.appendChild(cardLink);
   }
 }
 

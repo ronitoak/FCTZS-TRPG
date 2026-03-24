@@ -26,7 +26,7 @@ async function main() {
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
       Utils.apiGet("characters"),
-      Utils.apiGet(`scenario_characters?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
+      Utils.apiGet(`character_scenarios?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
     ]);
 
     const editBtn = `<button id="btn-open-scenario-edit" class="btn-secondary btn-edit-small">📝</button>`;

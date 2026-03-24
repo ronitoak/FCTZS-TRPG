@@ -196,7 +196,7 @@ async function main() {
           >
         </div>
 
-        <div class="character-detail-profile">
+        <article class="character-detail-panel character-detail-profile">
           <h2 class="character-detail-h2">プロフィール${editBtn}</h2>
 
           <table class="character-detail-table">
@@ -209,7 +209,7 @@ async function main() {
               `).join("")}
             </tbody>
           </table>
-        </div>
+        </article>
       </section>
 
       <section class="character-detail-bottom">
@@ -245,7 +245,7 @@ async function main() {
             ` : ``}
 
             <article class="character-detail-panel">
-              <h2 class="session-detail-h2">技能${skillsEditBtn}</h2>
+              <h2 class="character-detail-h2">技能${skillsEditBtn}</h2>
               ${skillEntries.length ? `
                 <div class="character-detail-chips">
                   ${skillEntries.map(s => `

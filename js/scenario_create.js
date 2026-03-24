@@ -9,12 +9,14 @@ Utils.domReady(() => {
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
+        // FormDataを使えば、HTMLに存在しない要素を読もうとしてもエラーにならず null を返します
+        const fd = new FormData(form);
         const payload = {
-            title: form.title.value,
-            system: form.system.value,
-            author: form.author.value || null,
-            description: form.description.value || null,
-            notes: form.notes.value || null
+            title: fd.get("title"),
+            system: fd.get("system"),
+            author: fd.get("author") || null,
+            description: fd.get("description") || null,
+            notes: fd.get("notes") || null
         };
 
         try {

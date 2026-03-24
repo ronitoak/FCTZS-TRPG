@@ -4,6 +4,8 @@ let currentCharData = null;
 let currentSkillRows = null;
 let currentSystemAttrs = []; 
 let currentCharAttrsMap = new Map();
+let allScenarios = []; // 全シナリオマスタ
+let currentCharacterScenarios = []; // このキャラが通過済みのIDリスト
 
 function renderMultilineText(text) {
   const normalized = String(text)
@@ -53,6 +55,7 @@ async function main() {
     const skillsEditBtn = `<button id="btn-open-skills-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const paramsEditBtn = `<button id="btn-open-params-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const emotionsEditBtn = `<button id="btn-open-emotions-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
+    const scenarioEditBtn = `<button id="btn-open-scenarios-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const charactersSafe = Array.isArray(characters) ? characters : [];
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
     const runsSafe = Array.isArray(runs) ? runs : [];
@@ -150,6 +153,9 @@ async function main() {
         .filter(r => Array.isArray(r?.characters) && r.characters.includes(c.id));
       passedScenarioIds = [...new Set(relatedRuns.map(r => r?.scenario_id).filter(Boolean))];
     }
+
+    allScenarios = scenariosById; // 編集モーダルで使用するためグローバルに保持
+    currentCharacterScenarios = passedScenarioIds; // 編集モーダルで使用するためグローバルに保持
 
     const iacharaLinkHtml = c.iachara_url
       ? `<section class="character-detail-url">
@@ -430,7 +436,6 @@ document.addEventListener('click', (e) => {
     }
 
     // --- 共鳴感情モーダルを開く ---
-    // --- 共鳴感情モーダルを開く ---
     if (e.target.id === 'btn-open-emotions-edit') {
         const container = document.getElementById('edit-emotions-container');
         container.innerHTML = '';
@@ -457,6 +462,55 @@ document.addEventListener('click', (e) => {
     // キャンセルボタン
     if (e.target.id === 'btn-close-params-edit') document.getElementById('edit-params-modal').style.display = 'none';
     if (e.target.id === 'btn-close-emotions-edit') document.getElementById('edit-emotions-modal').style.display = 'none';
+});
+
+// イベントリスナー
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'btn-open-scenarios-edit') {
+        const container = document.getElementById('edit-scenarios-container');
+        container.innerHTML = '';
+        
+        // 現在の通過シナリオを表示
+        if (currentCharacterScenarios.length > 0) {
+            currentCharacterScenarios.forEach(id => addScenarioInputRow(id));
+        } else {
+            addScenarioInputRow(); // 空の行を1つ出す
+        }
+        document.getElementById('edit-scenarios-modal').style.display = 'block';
+    }
+
+    const scenariosModal = document.getElementById('edit-scenarios-modal');
+    if (e.target === scenariosModal) {
+      scenariosModal.style.display = 'none';
+    }
+
+    if (e.target.id === 'btn-close-scenarios-edit') {
+        document.getElementById('edit-scenarios-modal').style.display = 'none';
+    }
+});
+
+document.getElementById('btn-add-scenario-row')?.addEventListener('click', () => addScenarioInputRow());
+
+// 保存処理
+document.getElementById('edit-scenarios-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const ids = fd.getAll("scenario_id").filter(id => id !== "");
+
+    const payload = ids.map(id => ({
+        character_id: currentCharData.id,
+        scenario_id: id
+    }));
+
+    try {
+        // ※ character_scenariosへのPOST (Upsert) を実行
+        await Utils.apiPost("character_scenarios", payload);
+        alert("通過シナリオを更新しました");
+        location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("更新に失敗しました");
+    }
 });
 
 // 入力行を生成する共通補助関数（select対応版）
@@ -487,6 +541,29 @@ function appendAttrInput(container, def, value, inputType, inputName) {
         <input type="hidden" name="attr_key" value="${def.key}">
         ${inputHtml}
     `;
+    container.appendChild(div);
+}
+
+// シナリオ入力行を追加する関数
+function addScenarioInputRow(selectedId = "") {
+    const container = document.getElementById('edit-scenarios-container');
+    const div = document.createElement('div');
+    div.className = 'scenario-edit-item';
+    div.style = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+    
+    const options = allScenarios.map(s => {
+        const selected = (s.id === selectedId) ? 'selected' : '';
+        return `<option value="${s.id}" ${selected}>${Utils.escapeHtml(s.title)}</option>`;
+    }).join("");
+
+    div.innerHTML = `
+        <select name="scenario_id" class="form-control" style="flex: 1;">
+            <option value="">-- シナリオを選択 --</option>
+            ${options}
+        </select>
+        <button type="button" class="btn-delete-row" style="background:none; border:none; color:var(--danger-color); cursor:pointer;">×</button>
+    `;
+    div.querySelector('.btn-delete-row').onclick = () => div.remove();
     container.appendChild(div);
 }
 

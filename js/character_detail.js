@@ -551,9 +551,14 @@ function addScenarioInputRow(selectedId = "") {
     div.className = 'scenario-edit-item';
     div.style = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
     
-    const options = allScenarios.map(s => {
-        const selected = (s.id === selectedId) ? 'selected' : '';
-        return `<option value="${s.id}" ${selected}>${Utils.escapeHtml(s.title)}</option>`;
+    // --- 修正ポイント：Mapから配列に変換してループする ---
+    const scenariosArray = (allScenarios instanceof Map) 
+        ? Array.from(allScenarios.values()) 
+        : (Array.isArray(allScenarios) ? allScenarios : []);
+
+    const options = scenariosArray.map(s => {
+        const selected = (String(s.id) === String(selectedId)) ? 'selected' : '';
+        return `<option value="${Utils.escapeHtml(String(s.id))}" ${selected}>${Utils.escapeHtml(s.title)}</option>`;
     }).join("");
 
     div.innerHTML = `

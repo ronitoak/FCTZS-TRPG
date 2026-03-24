@@ -430,36 +430,62 @@ document.addEventListener('click', (e) => {
     }
 
     // --- 共鳴感情モーダルを開く ---
+    // --- 共鳴感情モーダルを開く ---
     if (e.target.id === 'btn-open-emotions-edit') {
         const container = document.getElementById('edit-emotions-container');
         container.innerHTML = '';
+        
+        // 感情(emotion)属性のみをフィルタリング
         currentSystemAttrs.filter(d => d.kind === 'emotion').forEach(def => {
             const attr = currentCharAttrsMap.get(def.key) || {};
-            appendAttrInput(container, def, attr.value_emotion || '', 'text', 'attr_value_emo');
+            // 第4引数を 'select' に変更
+            appendAttrInput(container, def, attr.value_emotion || '', 'select', 'attr_value_emo');
         });
+        
         document.getElementById('edit-emotions-modal').style.display = 'block';
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
-    const modal = document.getElementById('edit-skills-modal');
-    if (e.target === modal) {
-      modal.style.display = 'none';
+    const paramsModal = document.getElementById('edit-params-modal');
+    if (e.target === paramsModal) {
+      paramsModal.style.display = 'none';
     }
-
+    const emotionsModal = document.getElementById('edit-emotions-modal');
+    if (e.target === emotionsModal) {
+      emotionsModal.style.display = 'none';
+    }
     // キャンセルボタン
     if (e.target.id === 'btn-close-params-edit') document.getElementById('edit-params-modal').style.display = 'none';
     if (e.target.id === 'btn-close-emotions-edit') document.getElementById('edit-emotions-modal').style.display = 'none';
 });
 
-// 入力行を生成する共通補助関数
+// 入力行を生成する共通補助関数（select対応版）
 function appendAttrInput(container, def, value, inputType, inputName) {
     const div = document.createElement('div');
     div.className = 'form-group';
     div.style.marginBottom = '12px';
+
+    let inputHtml = "";
+    if (inputType === 'select') {
+        // Utils.emotions をループして option を作成
+        const options = Utils.emotions.map(emo => {
+            const selected = (emo === value) ? 'selected' : '';
+            return `<option value="${Utils.escapeHtml(emo)}" ${selected}>${Utils.escapeHtml(emo)}</option>`;
+        }).join("");
+        
+        inputHtml = `
+            <select name="${inputName}" class="form-control">
+                <option value="">-- 選択してください --</option>
+                ${options}
+            </select>`;
+    } else {
+        inputHtml = `<input type="${inputType}" name="${inputName}" class="form-control" value="${Utils.escapeHtml(String(value))}">`;
+    }
+
     div.innerHTML = `
         <label style="display:block; margin-bottom:4px; font-weight:bold;">${Utils.escapeHtml(def.label)}</label>
         <input type="hidden" name="attr_key" value="${def.key}">
-        <input type="${inputType}" name="${inputName}" class="form-control" value="${Utils.escapeHtml(String(value))}">
+        ${inputHtml}
     `;
     container.appendChild(div);
 }

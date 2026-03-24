@@ -212,7 +212,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* style.css固有の高さ設定を維持 */
-.character-detail-profile {
+.character-detail-profile, .scenario-detail-info {
     height: auto;
     min-height: 321px; /* 左側の画像(321px)と高さを揃えるための最低値 */
 }
@@ -356,6 +356,70 @@ a { color: inherit; text-decoration: none; }
   border-radius: 8px;
   object-fit: scale-down;
   background: #f2f2f2;
+}
+
+/* タイトル、システム、作者のメタ情報エリア */
+.scenario-info-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+}
+
+.scenario-info-meta strong {
+    color: var(--text-muted);
+    margin-right: 8px;
+    display: inline-block;
+    width: 80px; /* ラベルの幅を揃える */
+}
+
+/* 基本情報のテキストエリア */
+.scenario-base-info {
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+/* 2. 独立したイントロダクションカード */
+.scenario-detail-intro-card {
+    margin-top: 24px; /* 上の画像/基本情報との間隔 */
+    margin-bottom: 24px;
+    background: var(--container-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+}
+
+.scenario-detail-desc {
+    margin-top: 15px;
+    line-height: 1.9; /* 長文を読みやすく */
+    color: var(--text-main);
+    font-size: 1rem;
+    white-space: normal; /* renderMultilineTextの<br>を活かす */
+}
+
+/* 4. 通過キャラクターセクションの調整 */
+.scenario-detail-section {
+    margin-top: 32px;
+    padding: 20px;
+    background: var(--container-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+/* レスポンシブ：画面が狭いときは縦に並べる */
+@media (max-width: 820px) {
+    .scenario-detail-info {
+        min-height: auto;
+    }
+    .scenario-detail-top {
+        grid-template-columns: 1fr;
+    }
+    .scenario-detail-cover {
+        max-width: 100%;
+        height: auto;
+    }
 }
 
 /* ==========================================

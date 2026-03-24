@@ -175,89 +175,29 @@ async function main() {
         <div class="scenario-detail-runs-split">
           <section class="scenario-detail-runs-block">
             <h3 class="scenario-detail-h3">進行中セッション</h3>
-            ${
-              activeRuns.length
-                ? `<div class="scenario-detail-runs-grid">
-                    ${activeRuns.map(r => {
-                      const next = nextByRunId.get(r.id);
-                      const nextText = next?._start
-                        ? `${next._start.toLocaleDateString("ja-JP")} ${next._start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`
-                        : "次回未定";
-                      return `
-                        <article class="scenario-detail-run-card active">
-                          <h3 class="scenario-detail-run-title">
-                            ${Utils.escapeHtml(r.title ?? r.id)}
-                            <small>（進行中）</small>
-                          </h3>
-                          <div class="scenario-detail-run-meta">
-                            <div>GM: ${Utils.escapeHtml(r.gm ?? "—")}</div>
-                            <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
-                            <div>次回: ${Utils.escapeHtml(nextText)}</div>
-                          </div>
-                          <a class="scenario-detail-link"
-                            href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
-                            セッション詳細へ
-                          </a>
-                        </article>
-                      `;
-                    }).join("")}
-                  </div>`
-                : `<p class="scenario-detail-muted"><small>進行中の卓はありません</small></p>`
-            }
+            ${activeRuns.length 
+              ? `<div class="scenario-detail-runs-grid">
+                  ${activeRuns.map(r => renderRunCard(r, "進行中", "active", nextByRunId)).join("")}
+                </div>` 
+              : `<p class="scenario-detail-muted"><small>進行中の卓はありません</small></p>`}
           </section>
 
           <section class="scenario-detail-runs-block">
             <h3 class="scenario-detail-h3">計画中セッション</h3>
-            ${
-              planningRuns.length
-                ? `<div class="scenario-detail-runs-grid">
-                    ${planningRuns.map(r => `
-                      <article class="scenario-detail-run-card planning">
-                        <h3 class="scenario-detail-run-title">
-                          ${Utils.escapeHtml(r.title ?? r.id)}
-                          <small>（計画中）</small>
-                        </h3>
-                        <div class="scenario-detail-run-meta">
-                          <div>GM: ${Utils.escapeHtml(r.gm ?? "—")}</div>
-                          <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
-                          <div><small>計画中</small></div>
-                        </div>
-                        <a class="scenario-detail-link"
-                          href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
-                          セッション詳細へ
-                        </a>
-                      </article>
-                    `).join("")}
-                  </div>`
-                : `<p class="scenario-detail-muted"><small>計画中の卓はありません</small></p>`
-            }
+            ${planningRuns.length 
+              ? `<div class="scenario-detail-runs-grid">
+                  ${planningRuns.map(r => renderRunCard(r, "計画中", "planning", nextByRunId)).join("")}
+                </div>` 
+              : `<p class="scenario-detail-muted"><small>計画中の卓はありません</small></p>`}
           </section>
 
           <section class="scenario-detail-runs-block">
             <h3 class="scenario-detail-h3">終了済セッション</h3>
-            ${
-              doneRuns.length
-                ? `<div class="scenario-detail-runs-grid">
-                    ${doneRuns.map(r => `
-                      <article class="scenario-detail-run-card done">
-                        <h3 class="scenario-detail-run-title">
-                          ${Utils.escapeHtml(r.title ?? r.id)}
-                          <small>（終了済み）</small>
-                        </h3>
-                        <div class="scenario-detail-run-meta">
-                          <div>GM: ${Utils.escapeHtml(r.gm ?? "—")}</div>
-                          <div>PL: ${Utils.escapeHtml((r.players ?? []).join(" / ") || "—")}</div>
-                          <div><small>完結済</small></div>
-                        </div>
-                        <a class="scenario-detail-link"
-                          href="../sessions/detail.html?id=${encodeURIComponent(r.id)}">
-                          セッション詳細へ
-                        </a>
-                      </article>
-                    `).join("")}
-                  </div>`
-                : `<p class="scenario-detail-muted"><small>終了済の卓はありません</small></p>`
-            }
+            ${doneRuns.length 
+              ? `<div class="scenario-detail-runs-grid">
+                  ${doneRuns.map(r => renderRunCard(r, "終了済", "done", nextByRunId)).join("")}
+                </div>` 
+              : `<p class="scenario-detail-muted"><small>終了済の卓はありません</small></p>`}
           </section>
         </div>
       </section>
@@ -313,13 +253,20 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     }
 });
 
-// 各カードを生成する共通ヘルパー関数（コードがスッキリします）
-function renderRunCard(r, statusLabel, statusClass, nextText = null) {
+/**
+ * セッション（卓）のカードを生成するヘルパー関数
+ */
+function renderRunCard(r, statusLabel, statusClass, nextByRunId) {
   const title = Utils.escapeHtml(r.title ?? r.id);
   const gm = Utils.escapeHtml(r.gm ?? "—");
   const players = Utils.escapeHtml((r.players ?? []).join(" / ") || "—");
   
-  // card 全体を a タグにする
+  // 次回予定の取得と整形
+  const next = nextByRunId.get(r.id);
+  const nextText = next?._start
+    ? `${next._start.toLocaleDateString("ja-JP")} ${next._start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`
+    : null;
+
   return `
     <a href="../sessions/detail.html?id=${encodeURIComponent(r.id)}" class="scenario-detail-run-card-link">
       <article class="scenario-detail-run-card ${statusClass}">

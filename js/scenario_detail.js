@@ -313,4 +313,31 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     }
 });
 
+// 各カードを生成する共通ヘルパー関数（コードがスッキリします）
+function renderRunCard(r, statusLabel, statusClass, nextText = null) {
+  const title = Utils.escapeHtml(r.title ?? r.id);
+  const gm = Utils.escapeHtml(r.gm ?? "—");
+  const players = Utils.escapeHtml((r.players ?? []).join(" / ") || "—");
+  
+  // card 全体を a タグにする
+  return `
+    <a href="../sessions/detail.html?id=${encodeURIComponent(r.id)}" class="scenario-detail-run-card-link">
+      <article class="scenario-detail-run-card ${statusClass}">
+        <div class="run-card-header">
+          <h3 class="run-card-title">${title}</h3>
+          <span class="run-status-badge">${statusLabel}</span>
+        </div>
+        <div class="run-card-body">
+          <div class="run-meta-item"><strong>GM:</strong> ${gm}</div>
+          <div class="run-meta-item"><strong>PL:</strong> ${players}</div>
+          ${nextText ? `<div class="run-meta-item next"><strong>次回:</strong> ${Utils.escapeHtml(nextText)}</div>` : ""}
+        </div>
+        <div class="run-card-footer-info">
+          <span>詳細を見る →</span>
+        </div>
+      </article>
+    </a>
+  `;
+}
+
 Utils.domReady(main);

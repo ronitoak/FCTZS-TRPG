@@ -312,21 +312,4 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     }
 });
 
-// 更新実行処理
-document.getElementById('edit-scenario-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const payload = Object.fromEntries(fd.entries());
-
-    try {
-        // scenarios テーブルを PATCH
-        await Utils.apiPatch("scenarios", payload, `id=eq.${currentScenarioId}`);
-        alert("シナリオ情報を更新しました");
-        location.reload();
-    } catch (err) {
-        console.error(err);
-        alert("更新に失敗しました");
-    }
-});
-
 Utils.domReady(main);

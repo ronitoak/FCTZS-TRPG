@@ -46,8 +46,7 @@ async function main() {
       ["タイトル", scenario.title],
       ["システム", scenario.system],
       ["作者", scenario.author],
-      ["概要", scenario.description],
-      ["備考", scenario.notes],
+      ["基本情報", scenario.notes],
     ].filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
 
     // このシナリオのrunだけ

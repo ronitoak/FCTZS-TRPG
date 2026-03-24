@@ -151,13 +151,15 @@ async function main() {
           <div class="scenario-base-info">
             ${scenario.notes ? `<div><strong>基本情報:</strong><br>${renderMultilineText(scenario.notes)}</div>` : ""}
           </div>
-          <p class="scenario-detail-desc">
-            ${scenario.description
-              ? renderMultilineText(scenario.description)
-              : "（未登録）"}
-          </p>
         </div>
       </section>
+
+      <article class="scenario-detail-panel scenario-detail-intro-card">
+        <h2 class="scenario-detail-h2">イントロダクション</h2>
+        <p class="scenario-detail-desc">
+        ${scenario.description ? `${renderMultilineText(scenario.description)}` : ""}
+        </p>
+      </article>
 
       <section class="scenario-detail-section">
         <h2 class="scenario-detail-h2">通過キャラクター</h2>

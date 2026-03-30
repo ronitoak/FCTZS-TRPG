@@ -1,0 +1,592 @@
+/**
+* Discordにメッセージを送る共通関数
+* @param {string} content - メインメッセージ
+* @param {object} embed - 綺麗な枠（タイトルや説明など）
+* @param {object} env - 環境変数（URLが入っている）
+*/
+async function sendDiscordNotification(content, embed, env) {
+  console.log("Discord通知を開始します..."); // これを追加
+  const url = env.DISCORD_WEBHOOK_URL;
+  if (!url) {
+    console.log("URLが見つかりません"); // これを追加
+    return;
+  }; // URLが設定されていなければ何もしない
+
+  const payload = {
+    content: content,
+    embeds: [embed]
+  };
+
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS, PATCH",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    };
+
+    const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    // ---- helpers ----
+    async function sbGet(pathAndQuery) {
+      const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, {
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      });
+      const text = await res.text();
+      return { res, text };
+    }
+
+    // ---- BBS (既存保持) ----
+    if (request.method === "GET" && url.pathname === "/api/posts") {
+      const apiUrl = `/rest/v1/posts?select=id,created_at,author,body&order=created_at.desc&limit=50`;
+      const { res, text } = await sbGet(apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/posts") {
+      const body = await request.json();
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/posts`, {
+        method: "POST",
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify([body]),
+      });
+
+
+      return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
+    }
+
+    // ---- Comments (既存保持) ----
+    if (request.method === "GET" && url.pathname === "/api/comments") {
+      const target_type = url.searchParams.get("target_type");
+      const target_id = url.searchParams.get("target_id");
+      const apiUrl = `/rest/v1/comments?select=*&target_type=eq.${target_type}&target_id=eq.${target_id}&order=created_at.asc`;
+      const { res, text } = await sbGet(apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/comments") {
+      const body = await request.json();
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/comments`, {
+        method: "POST",
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify([body]),
+      });
+      return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/comments/recent") {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
+      const apiUrl = `/rest/v1/comments?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
+      const { res, text } = await sbGet(apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // ---- Characters ----
+    if (request.method === "GET" && url.pathname === "/api/characters") {
+      const { res, text } = await sbGet("/rest/v1/characters?select=*&order=id.desc");
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/character_last_session") {
+      const { res, text } = await sbGet("/rest/v1/character_last_session?select=*");
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // 一括作成API
+    if (request.method === "POST" && url.pathname === "/api/character_full") {
+      try {
+        const body = await request.json();
+        const { character, attributes, skills } = body;
+
+        const charRes = await fetch(`${env.SUPABASE_URL}/rest/v1/characters`, {
+          method: "POST",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+          },
+          body: JSON.stringify([character]),
+        });
+
+        if (!charRes.ok) {
+          const err = await charRes.text();
+          return new Response(JSON.stringify({ error: "Character creation failed", detail: err }), { status: charRes.status, headers: jsonHeaders });
+        }
+
+        const charData = await charRes.json();
+        const newCharId = charData[0].id;
+
+        if (attributes?.length > 0) {
+          await fetch(`${env.SUPABASE_URL}/rest/v1/character_attributes`, {
+            method: "POST",
+            headers: {
+              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(attributes.map(a => ({ ...a, character_id: newCharId }))),
+          });
+        }
+
+        if (skills?.length > 0) {
+          await fetch(`${env.SUPABASE_URL}/rest/v1/character_skills`, {
+            method: "POST",
+            headers: {
+              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+              "Prefer": "resolution=merge-duplicates"
+            },
+            body: JSON.stringify(skills.map(s => ({ ...s, character_id: newCharId }))),
+          });
+        }
+
+        return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/character_skills") {
+      try {
+        const body = await request.json(); // フロントから届く技能配列
+        
+        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_skills`, {
+          method: "POST",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+            // ★ 既存データがあれば更新、なければ挿入する設定
+            "Prefer": "resolution=merge-duplicates"
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return new Response(JSON.stringify({ error: "character_skills Upsert Failed", detail: errText }), { 
+            status: res.status, 
+            headers: jsonHeaders 
+          });
+        }
+
+        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/character_scenarios") {
+      try {
+        const body = await request.json(); // フロントから届く技能配列
+        
+        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios`, {
+          method: "POST",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+            // ★ 既存データがあれば更新、なければ挿入する設定
+            "Prefer": "resolution=merge-duplicates"
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return new Response(JSON.stringify({ error: "character_scenarios Upsert Failed", detail: errText }), { 
+            status: res.status, 
+            headers: jsonHeaders 
+          });
+        }
+
+        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/character_attributes") {
+      try {
+        const body = await request.json(); // フロントから届く技能配列
+        
+        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_attributes`, {
+          method: "POST",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+            // ★ 既存データがあれば更新、なければ挿入する設定
+            "Prefer": "resolution=merge-duplicates"
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return new Response(JSON.stringify({ error: "character_attributes Upsert Failed", detail: errText }), { 
+            status: res.status, 
+            headers: jsonHeaders 
+          });
+        }
+
+        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+
+    
+  // ---- worker.js / POST: シナリオ作成 ----
+  if (request.method === "POST" && url.pathname === "/api/scenarios") {
+    try {
+      const body = await request.json();
+      
+      // DB定義に合わせて、不要なデータを除去し、必要な項目だけをSupabaseに送る
+      const scenarioData = {
+        title: body.title,
+        system: body.system,
+        author: body.author,
+        description: body.description,
+        notes: body.notes
+      };
+
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios`, {
+        method: "POST",
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify([scenarioData]),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: errText }), { status: res.status, headers: jsonHeaders });
+      }
+
+      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    }
+  }
+
+
+  // ---- worker.js に追加するブロック ----
+  if (request.method === "POST" && url.pathname === "/api/runs") {
+    try {
+      const body = await request.json();
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs`, {
+        method: "POST",
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify([body]), // 1件挿入
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        return new Response(JSON.stringify({ error: "Run creation failed", detail: err }), { status: res.status, headers: jsonHeaders });
+      }
+
+      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/sessions") {
+    try {
+      const body = await request.json();
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/sessions`, {
+        method: "POST",
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify([body]),
+      });
+      
+      if (!res.ok) {
+          const err = await res.text();
+          return new Response(JSON.stringify({ error: "Insert failed", detail: err }), { status: res.status, headers: jsonHeaders });
+      }
+      
+      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    }
+  }
+
+    // ---- Scenarios (既存保持) ----
+    // シナリオ一覧の取得
+    if (request.method === "GET" && url.pathname === "/api/scenarios") {
+      // tagsを除外し、authorを追加した明示的なセレクト
+      const apiUrl = `/rest/v1/scenarios?select=id,title,system,author,description,notes,updated_at&order=updated_at.desc`;
+      const { res, text } = await sbGet(apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/character_scenarios") {
+      const scenarioId = url.searchParams.get("scenario_id");
+      const charId = url.searchParams.get("character_id");
+      
+      // キャラクター詳細でもシナリオ詳細でも使えるように select=* にする
+      let apiUrl = `/rest/v1/character_scenarios?select=*`;
+      
+      if (scenarioId) {
+        apiUrl += `&scenario_id=eq.${encodeURIComponent(scenarioId)}`;
+      }
+      
+      if (charId) {
+        // character_id=eq.xxx の形式に対応
+        const cleanCharId = charId.replace("eq.", "");
+        apiUrl += `&character_id=eq.${encodeURIComponent(cleanCharId)}`;
+      }
+
+      const { res, text } = await sbGet(apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // scenario_list ビュー（もしDB側でビューを使っている場合）の取得
+    if (request.method === "GET" && url.pathname === "/api/scenario_list") {
+      // ビューの定義もDB側で更新が必要ですが、Worker側でも安全にカラムを指定します
+      const { res, text } = await sbGet("/rest/v1/scenario_list?select=id,title,system,author,updated_at");
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // ---- Runs & Sessions (既存保持) ----
+    if (request.method === "GET" && url.pathname === "/api/runs") {
+      const { res, text } = await sbGet("/rest/v1/runs?select=*&order=updated_at.desc");
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+    
+    if (request.method === "PATCH") {
+      const resource = url.pathname.replace("/api/", ""); // "runs", "characters" 等を取得
+      
+      // 許可するリソースのホワイトリスト（セキュリティのため）
+      const allowedResources = ["runs", "sessions", "characters", "scenarios", "character_attributes", "character_skills"];
+      
+      if (allowedResources.includes(resource)) {
+        try {
+          const body = await request.json();
+          const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${resource}${url.search}`, {
+            method: "PATCH",
+            headers: {
+              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=representation",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const err = await res.text();
+            return new Response(JSON.stringify({ error: `${resource} update failed`, detail: err }), { status: res.status, headers: jsonHeaders });
+          }
+
+          return new Response(await res.text(), { status: 200, headers: jsonHeaders });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        }
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/sessions") {
+      const { res, text } = await sbGet("/rest/v1/sessions?select=*");
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/session_list") {
+      const { res, text } = await sbGet("/rest/v1/session_list?select=*");
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/sessions/detail") {
+      const id = url.searchParams.get("id");
+      const { res, text } = await sbGet(`/rest/v1/sessions?select=*&id=eq.${id}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // ---- Master Data & Helpers (既存保持) ----
+    if (request.method === "GET" && url.pathname === "/api/system_attributes") {
+      const system = url.searchParams.get("system");
+      const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
+      const { res, text } = await sbGet(`/rest/v1/system_attributes${query}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/system_skill_bases") {
+      const system = url.searchParams.get("system");
+      const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
+      const { res, text } = await sbGet(`/rest/v1/system_skill_bases${query}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/character_skill_list") {
+      const charId = url.searchParams.get("character_id");
+      const { res, text } = await sbGet(`/rest/v1/character_skill_list?character_id=eq.${charId}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/character_attributes") {
+      const charId = url.searchParams.get("character_id");
+      const { res, text } = await sbGet(`/rest/v1/character_attributes?character_id=eq.${charId}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    return new Response(JSON.stringify({ error: "Not Found", path: url.pathname }), { status: 404, headers: jsonHeaders });
+  },
+
+  // セッション通知処理
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try {
+        // 1. 時間の計算（今 〜 24時間後）
+        const now = new Date();
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+        const startDate = encodeURIComponent(now.toISOString());
+        const endDate = encodeURIComponent(tomorrow.toISOString());
+
+        // 2. 直近のセッションを取得（sessionsからid,start,run_id,titleを取得）
+        const sessionUrl = `/rest/v1/sessions?select=id,start,run_id,title&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`;
+        const sessionRes = await fetch(`${env.SUPABASE_URL}${sessionUrl}`, {
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        });
+        
+        if (!sessionRes.ok) {
+          console.error("Supabase APIエラー(Sessions):", await sessionRes.text());
+          return;
+        }
+
+        const upcomingSessions = await sessionRes.json();
+
+        // セッション予定なし
+        if (!Array.isArray(upcomingSessions) || upcomingSessions.length === 0) {
+          console.log("本日の予定セッションはありません。");
+          return;
+        }
+
+        // 3. セッション情報から卓情報を取得
+        const runIds = [...new Set(upcomingSessions.map(s => s.run_id).filter(Boolean))];
+        let runsMap = new Map();
+        
+        if (runIds.length > 0) {
+          const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
+          // 2. 卓情報を取得（runsからid,title,gm,playersを取得）
+          const runsUrl = `/rest/v1/runs?select=id,title,gm,players&id=in.${runIdsParam}`;
+          const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
+            headers: {
+              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+            }
+          });
+          if (runsRes.ok) {
+            const runsData = await runsRes.json();
+            runsMap = new Map(runsData.map(r => [r.id, r]));
+          }
+        }
+
+        // 4. プレイヤー情報を取得（playersからplayer_name,discord_idを取得）
+        const mapRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?select=player_name,discord_id`, {
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        });
+        const allPlayers = mapRes.ok ? await mapRes.json() : [];
+        const discordMap = new Map(allPlayers.map(p => [p.player_name, p.discord_id]));
+
+        // 5. 通知の送信（メンションを箱の外に出す修正版）
+        for (const session of upcomingSessions) {
+          const run = runsMap.get(session.run_id) || {};
+          const runTitle = run.title || "名称未設定の卓";
+          const sessionTitle = session.title || session.name || "名称未設定のセッション";
+          
+          const sessionStart = new Date(session.start);
+          const timeString = sessionStart.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
+
+          // --- 1. 通知用メンションの作成（箱の外に出す用） ---
+          const mentions = [];
+          
+          // GMのDiscord ID取得
+          const gmName = run.gm || 'GM未定';
+          const gmDiscordId = discordMap.get(gmName);
+          if (gmDiscordId) mentions.push(`<@${gmDiscordId}>`);
+
+          // プレイヤーのDiscord ID取得
+          if (Array.isArray(run.players)) {
+            run.players.forEach(pName => {
+              const dId = discordMap.get(pName);
+              if (dId) mentions.push(`<@${dId}>`);
+            });
+          }
+
+          // 重複削除してスペース区切りに
+          const notificationLine = mentions.length > 0 ? [...new Set(mentions)].join(" ") : "";
+
+          // --- 2. 箱の中（Embed）に表示するテキストの作成 ---
+          // こちらはメンションにせず、そのままの名前を表示します
+          const displayGm = gmName; 
+          const displayPlayerList = (Array.isArray(run.players) && run.players.length > 0)
+            ? run.players.map(p => `- ${p}`).join("\n")
+            : "- 参加者情報なし";
+
+          // --- 3. 送信 ---
+          await sendDiscordNotification(
+            `${notificationLine}\n🔔 **セッション通知**`,
+            {
+              title: `卓名：${runTitle} （${sessionTitle}）`,
+              description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${displayGm}\n\n**【PL】**\n${displayPlayerList}\n\nFCTZS TRPG部に集合！`,
+              color: 15158332,
+              url: `https://ronitoak.github.io/FCTZS-TRPG/sessions/detail.html?id=${session.run_id}`
+            },
+            env
+          );
+        }
+      } catch (err) {
+        console.error("定期実行エラー:", err);
+      }
+    })());
+  }
+};

@@ -4,28 +4,17 @@ function normalize(s) {
   return String(s ?? "").toLowerCase();
 }
 
-function renderCharacters(root, characters, query, lastByCharId) {
+// クエリ引数(query)を削除し、純粋に「渡された配列を描画する」だけの関数にします
+function renderCharacters(root, characters, lastByCharId) {
   root.innerHTML = "";
 
-  const q = normalize(query);
+  const list = Array.isArray(characters) ? characters : [];
 
-  // 1) フィルタ
-  const list = (Array.isArray(characters) ? characters : [])
-    .filter((c) => {
-      if (!q) return true;
-      const hay = [c.id, c.name, c.job, c.player, c.system]
-        .map(normalize)
-        .join(" ");
-      return hay.includes(q);
-    });
-
-  // 2) ソート（最終セッションが新しい順 → 同順なら名前）
-  //    last が無いキャラは最後（-Infinity 扱い）
+  // ソート（最終セッションが新しい順 → 同順なら名前）のみフロントで維持します
   list.sort((a, b) => {
     const at = lastByCharId?.get(a.id) ?? -Infinity;
     const bt = lastByCharId?.get(b.id) ?? -Infinity;
     if (at !== bt) return bt - at;
-
     return String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja");
   });
 
@@ -47,10 +36,9 @@ function renderCharacters(root, characters, query, lastByCharId) {
     const imagePath = Utils.getCharacterImagePath(c.id);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
-    // カード全体を <a> で包む
     const cardLink = document.createElement("a");
     cardLink.href = `./detail.html?id=${encodeURIComponent(c.id)}`;
-    cardLink.className = "character-card-wrapper"; // スタイル調整用のクラス
+    cardLink.className = "character-card-wrapper";
     cardLink.style.textDecoration = "none";
     cardLink.style.color = "inherit";
     cardLink.style.display = "block";
@@ -80,40 +68,63 @@ function renderCharacters(root, characters, query, lastByCharId) {
 
 async function main() {
   const root = document.getElementById("character-list");
-  const input = document.getElementById("character-search");
-  if (!root) {
-    console.error("character-list not found");
-    return;
+  if (!root) return;
+
+  // 検索を実行する関数
+  async function fetchAndRender() {
+    try {
+      // 1. UIから値を取得
+      const systemVal = document.getElementById("filter-system")?.value || "";
+      const stateVal = document.getElementById("filter-state")?.value || "";
+      const keywordVal = document.getElementById("filter-keyword")?.value || "";
+
+      // 2. クエリパラメータを組み立てる
+      const params = new URLSearchParams();
+      if (systemVal) params.append("system", systemVal);
+      if (stateVal) params.append("state", stateVal);
+      if (keywordVal) params.append("keyword", keywordVal);
+
+      // パラメータがあれば「?system=...」の形にする
+      const queryStr = params.toString() ? `?${params.toString()}` : "";
+
+      // 3. API通信 (改修したWorkerのAPIを叩く)
+      const [characters, lastRows] = await Promise.all([
+        Utils.apiGet(`characters${queryStr}`),
+        Utils.apiGet("character_last_session"), // ソート用の最終参加日ビューはそのまま
+      ]);
+
+      const lastByCharId = new Map();
+      for (const r of Array.isArray(lastRows) ? lastRows : []) {
+        const cid = r?.character_id;
+        if (!cid) continue;
+        const t = Date.parse(r.last_session_start ?? "");
+        if (!Number.isFinite(t)) continue;
+        lastByCharId.set(cid, t);
+      }
+
+      // 4. 描画
+      renderCharacters(root, characters, lastByCharId);
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = "<p>読み込みに失敗しました</p>";
+    }
   }
 
-  try {
-    // ★ 追加：DB(view)から最終セッションを取得
-    const [characters, lastRows] = await Promise.all([
-      Utils.apiGet("characters"),
-      Utils.apiGet("character_last_session"),
-    ]);
+  // 初回読み込み時の実行
+  await fetchAndRender();
 
-    // character_id -> last_session_start(ms)
-    const lastByCharId = new Map();
-    for (const r of Array.isArray(lastRows) ? lastRows : []) {
-      const cid = r?.character_id;
-      if (!cid) continue;
-      const t = Date.parse(r.last_session_start ?? "");
-      if (!Number.isFinite(t)) continue;
-      lastByCharId.set(cid, t);
-    }
-
-    const query = input ? input.value : "";
-    renderCharacters(root, characters, query, lastByCharId);
-
-    if (input) {
-      input.addEventListener("input", () => {
-        renderCharacters(root, characters, input.value, lastByCharId);
-      });
-    }
-  } catch (err) {
-    console.error(err);
-    root.innerHTML = "<p>読み込みに失敗しました</p>";
+  // 検索ボタンが押された時のイベントリスナー
+  const searchBtn = document.getElementById("search-button");
+  if (searchBtn) {
+    searchBtn.addEventListener("click", fetchAndRender);
+  }
+  
+  // エンターキーでの検索もサポート（UX向上のため）
+  const keywordInput = document.getElementById("filter-keyword");
+  if (keywordInput) {
+    keywordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") fetchAndRender();
+    });
   }
 }
 

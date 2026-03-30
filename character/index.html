@@ -21,11 +21,22 @@
 
         <a href="./create.html">新規追加（仮）</a>
 
-        <div class="character-controls">
-            <label>
-                検索：
-                <input id="character-search" type="search" placeholder="名前/職業/プレイヤー/システム…" />
-            </label>
+        <div class="filter-controls">
+            <select id="filter-system">
+                <option value="">全てのシステム</option>
+                <option value="エモクロア">エモクロア</option>
+                <option value="クトゥルフ神話TRPG">クトゥルフ神話TRPG</option>
+            </select>
+
+            <select id="filter-state">
+                <option value="">全ての状態</option>
+                <option value="survived">生存</option>
+                <option value="dead">ロスト</option>
+            </select>
+
+            <input type="text" id="filter-keyword" placeholder="名前・PL名で検索...">
+
+            <button id="search-button">検索</button>
         </div>
 
         <section id="character-list">

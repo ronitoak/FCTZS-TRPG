@@ -109,7 +109,31 @@ export default {
 
     // ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
-      const { res, text } = await sbGet("/rest/v1/characters?select=*&order=id.desc");
+      let queryParams = [];
+
+      // URLからフィルタ条件を取得
+      const system = url.searchParams.get("system");
+      const player = url.searchParams.get("player");
+      const state = url.searchParams.get("state");
+      const keyword = url.searchParams.get("keyword"); // フリワ検索用
+
+      // Supabaseのフィルタ構文（eq, ilike 等）に変換
+      if (system) queryParams.push(`system=eq.${encodeURIComponent(system)}`);
+      if (player) queryParams.push(`player=eq.${encodeURIComponent(player)}`);
+      if (state) queryParams.push(`state=eq.${encodeURIComponent(state)}`);
+
+      // キーワード検索（名前、職業、プレイヤー名などの部分一致）
+      if (keyword) {
+        const kw = encodeURIComponent(`*${keyword}*`);
+        // or構文を使用して複数カラムを跨いだ検索を実現
+        queryParams.push(`or=(name.ilike.${kw},job.ilike.${kw},player.ilike.${kw})`);
+      }
+
+      queryParams.push("select=*");
+      queryParams.push("order=id.desc");
+
+      const apiUrl = `/rest/v1/characters?${queryParams.join("&")}`;
+      const { res, text } = await sbGet(apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -356,8 +380,24 @@ export default {
     // ---- Scenarios (既存保持) ----
     // シナリオ一覧の取得
     if (request.method === "GET" && url.pathname === "/api/scenarios") {
-      // tagsを除外し、authorを追加した明示的なセレクト
-      const apiUrl = `/rest/v1/scenarios?select=id,title,system,author,description,notes,updated_at&order=updated_at.desc`;
+      let queryParams = [];
+
+      const system = url.searchParams.get("system");
+      const author = url.searchParams.get("author");
+      const keyword = url.searchParams.get("keyword");
+
+      if (system) queryParams.push(`system=eq.${encodeURIComponent(system)}`);
+      if (author) queryParams.push(`author=eq.${encodeURIComponent(author)}`);
+      
+      if (keyword) {
+        const kw = encodeURIComponent(`*${keyword}*`);
+        queryParams.push(`or=(title.ilike.${kw},author.ilike.${kw})`);
+      }
+
+      queryParams.push("select=id,title,system,author,description,notes,updated_at");
+      queryParams.push("order=updated_at.desc");
+
+      const apiUrl = `/rest/v1/scenarios?${queryParams.join("&")}`;
       const { res, text } = await sbGet(apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -392,7 +432,25 @@ export default {
 
     // ---- Runs & Sessions (既存保持) ----
     if (request.method === "GET" && url.pathname === "/api/runs") {
-      const { res, text } = await sbGet("/rest/v1/runs?select=*&order=updated_at.desc");
+      let queryParams = [];
+
+      const gm = url.searchParams.get("gm");
+      const status = url.searchParams.get("status");
+      const keyword = url.searchParams.get("keyword");
+
+      if (gm) queryParams.push(`gm=eq.${encodeURIComponent(gm)}`);
+      if (status) queryParams.push(`status=eq.${encodeURIComponent(status)}`);
+      
+      if (keyword) {
+        const kw = encodeURIComponent(`*${keyword}*`);
+        queryParams.push(`title.ilike.${kw}`);
+      }
+
+      queryParams.push("select=*");
+      queryParams.push("order=updated_at.desc");
+
+      const apiUrl = `/rest/v1/runs?${queryParams.join("&")}`;
+      const { res, text } = await sbGet(apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
     

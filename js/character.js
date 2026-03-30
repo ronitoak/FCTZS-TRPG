@@ -1,5 +1,18 @@
 "use strict";
 
+// システム名の辞書
+const SYSTEM_ALIASES = {
+  "エモクロアTRPG": "エモクロアTRPG",
+  "クトゥルフ神話TRPG": "CoC6",
+  "新クトゥルフ神話TRPG": "CoC7",
+};
+
+// 表示ラベルから、DB検索用の文字列（カンマ区切り）を生成する関数
+function getSystemQueryString(displayLabel) {
+  const values = Object.keys(SYSTEM_ALIASES).filter(k => SYSTEM_ALIASES[k] === displayLabel);
+  return values.length > 0 ? values.join(',') : displayLabel;
+}
+
 function normalize(s) {
   return String(s ?? "").toLowerCase();
 }
@@ -69,20 +82,21 @@ function renderCharacters(root, characters, lastByCharId) {
 // プルダウンの選択肢をデータベースのデータから自動生成する関数
 async function initFilterOptions() {
   try {
-    // 全キャラクターと全シナリオの基本データを取得
     const [allCharacters, allScenarios] = await Promise.all([
       Utils.apiGet("characters"),
       Utils.apiGet("scenarios")
     ]);
     
-    // 1. システムの抽出 (重複を排除してアルファベット順に)
-    const systems = [...new Set((allCharacters || []).map(c => c.system).filter(Boolean))].sort();
+    // ★修正：システムの抽出時に、辞書を使って表示ラベルに統一（正規化）する
+    const rawSystems = (allCharacters || []).map(c => c.system).filter(Boolean);
+    const normalizedSystems = [...new Set(rawSystems.map(sys => SYSTEM_ALIASES[sys] || sys))].sort();
+
     const systemSelect = document.getElementById("filter-system");
     if (systemSelect) {
-      systems.forEach(sys => {
+      normalizedSystems.forEach(label => {
         const option = document.createElement("option");
-        option.value = sys;
-        option.textContent = sys;
+        option.value = label; // 送信時は表示ラベル（例: CoC6）をセット
+        option.textContent = label;
         systemSelect.appendChild(option);
       });
     }
@@ -133,7 +147,9 @@ async function main() {
       const keywordVal = document.getElementById("filter-keyword")?.value || "";
 
       const params = new URLSearchParams();
-      if (systemVal) params.append("system", systemVal);
+      if (systemVal) {
+        params.append("system", getSystemQueryString(systemVal)); 
+      }
       if (playerVal) params.append("player", playerVal);
       if (scenarioVal) params.append("scenario_id", scenarioVal); // ★追加
       if (stateVal) params.append("state", stateVal);

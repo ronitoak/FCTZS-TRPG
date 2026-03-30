@@ -1,13 +1,10 @@
 "use strict";
 
 // システム名の辞書
-const SYSTEM_ALIASES = {
-  "エモクロア": "エモクロアTRPG",
-  "エモクロアTRPG": "エモクロアTRPG",
-  "クトゥルフ神話TRPG": "CoC6",
-  "CoC6": "CoC6",
-  "新クトゥルフ神話TRPG": "CoC7",
-  "CoC7": "CoC7"
+const SYSTEM_DISPLAY_NAMES = {
+  "CoC6": "クトゥルフ神話TRPG",
+  "CoC7": "新クトゥルフ神話TRPG",
+  "エモクロアTRPG": "エモクロアTRPG"
 };
 
 // 表示ラベルから、DB検索用の文字列（カンマ区切り）を生成する関数
@@ -90,16 +87,18 @@ async function initFilterOptions() {
       Utils.apiGet("scenarios")
     ]);
     
-    // ★修正：システムの抽出時に、辞書を使って表示ラベルに統一（正規化）する
-    const rawSystems = (allCharacters || []).map(c => c.system).filter(Boolean);
-    const normalizedSystems = [...new Set(rawSystems.map(sys => SYSTEM_ALIASES[sys] || sys))].sort();
-
+    // 1. システムの抽出 (DB内の実際の値をそのまま取得)
+    const rawSystems = [...new Set((allCharacters || []).map(c => c.system).filter(Boolean))].sort();
+    
     const systemSelect = document.getElementById("filter-system");
     if (systemSelect) {
-      normalizedSystems.forEach(label => {
+      rawSystems.forEach(sys => {
         const option = document.createElement("option");
-        option.value = label; // 送信時は表示ラベル（例: CoC6）をセット
-        option.textContent = label;
+        // 送信時はDBの生の値（例: "CoC6"）を送る
+        option.value = sys; 
+        // 画面の表示は辞書から引いた綺麗な名前（例: "クトゥルフ神話TRPG"）にする
+        // 辞書にないシステムが追加された場合は、とりあえずそのまま表示する
+        option.textContent = SYSTEM_DISPLAY_NAMES[sys] || sys; 
         systemSelect.appendChild(option);
       });
     }
@@ -150,9 +149,7 @@ async function main() {
       const keywordVal = document.getElementById("filter-keyword")?.value || "";
 
       const params = new URLSearchParams();
-      if (systemVal) {
-        params.append("system", getSystemQueryString(systemVal)); 
-      }
+      if (systemVal) params.append("system", systemVal); 
       if (playerVal) params.append("player", playerVal);
       if (scenarioVal) params.append("scenario_id", scenarioVal); // ★追加
       if (stateVal) params.append("state", stateVal);

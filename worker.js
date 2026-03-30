@@ -110,9 +110,9 @@ export default {
 // ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
       let queryParams = [];
-
-      const system = url.searchParams.get("system");
-      const player = url.searchParams.get("player");
+  
+        const system = url.searchParams.get("system");
+        const player = url.searchParams.get("player");
       const state = url.searchParams.get("state");
       const keyword = url.searchParams.get("keyword");
       const scenarioId = url.searchParams.get("scenario_id"); // ★追加：シナリオID

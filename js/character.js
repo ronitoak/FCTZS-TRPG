@@ -66,31 +66,84 @@ function renderCharacters(root, characters, lastByCharId) {
   }
 }
 
+// プルダウンの選択肢をデータベースのデータから自動生成する関数
+async function initFilterOptions() {
+  try {
+    // 全キャラクターと全シナリオの基本データを取得
+    const [allCharacters, allScenarios] = await Promise.all([
+      Utils.apiGet("characters"),
+      Utils.apiGet("scenarios")
+    ]);
+    
+    // 1. システムの抽出 (重複を排除してアルファベット順に)
+    const systems = [...new Set((allCharacters || []).map(c => c.system).filter(Boolean))].sort();
+    const systemSelect = document.getElementById("filter-system");
+    if (systemSelect) {
+      systems.forEach(sys => {
+        const option = document.createElement("option");
+        option.value = sys;
+        option.textContent = sys;
+        systemSelect.appendChild(option);
+      });
+    }
+
+    // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
+    const players = [...new Set((allCharacters || []).map(c => c.player).filter(Boolean))].sort();
+    const playerSelect = document.getElementById("filter-player");
+    if (playerSelect) {
+      players.forEach(pl => {
+        const option = document.createElement("option");
+        option.value = pl;
+        option.textContent = pl;
+        playerSelect.appendChild(option);
+      });
+    }
+
+    // 3. シナリオの抽出 (あいうえお順に)
+    const scenarioSelect = document.getElementById("filter-scenario");
+    if (scenarioSelect && Array.isArray(allScenarios)) {
+      allScenarios.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ja"));
+      allScenarios.forEach(sc => {
+        if (!sc.id) return;
+        const option = document.createElement("option");
+        option.value = sc.id;
+        option.textContent = sc.title || "名称未設定";
+        scenarioSelect.appendChild(option);
+      });
+    }
+  } catch (e) {
+    console.error("フィルタ選択肢の初期化に失敗しました", e);
+  }
+}
+
 async function main() {
   const root = document.getElementById("character-list");
   if (!root) return;
 
+  // ★ まず最初に、プルダウンの選択肢を構築する
+  await initFilterOptions();
+
   // 検索を実行する関数
   async function fetchAndRender() {
     try {
-      // 1. UIから値を取得
       const systemVal = document.getElementById("filter-system")?.value || "";
+      const playerVal = document.getElementById("filter-player")?.value || "";
+      const scenarioVal = document.getElementById("filter-scenario")?.value || ""; // ★追加
       const stateVal = document.getElementById("filter-state")?.value || "";
       const keywordVal = document.getElementById("filter-keyword")?.value || "";
 
-      // 2. クエリパラメータを組み立てる
       const params = new URLSearchParams();
       if (systemVal) params.append("system", systemVal);
+      if (playerVal) params.append("player", playerVal);
+      if (scenarioVal) params.append("scenario_id", scenarioVal); // ★追加
       if (stateVal) params.append("state", stateVal);
       if (keywordVal) params.append("keyword", keywordVal);
 
-      // パラメータがあれば「?system=...」の形にする
       const queryStr = params.toString() ? `?${params.toString()}` : "";
 
-      // 3. API通信 (改修したWorkerのAPIを叩く)
       const [characters, lastRows] = await Promise.all([
         Utils.apiGet(`characters${queryStr}`),
-        Utils.apiGet("character_last_session"), // ソート用の最終参加日ビューはそのまま
+        Utils.apiGet("character_last_session"),
       ]);
 
       const lastByCharId = new Map();
@@ -102,7 +155,6 @@ async function main() {
         lastByCharId.set(cid, t);
       }
 
-      // 4. 描画
       renderCharacters(root, characters, lastByCharId);
     } catch (err) {
       console.error(err);
@@ -113,13 +165,12 @@ async function main() {
   // 初回読み込み時の実行
   await fetchAndRender();
 
-  // 検索ボタンが押された時のイベントリスナー
+  // イベントリスナーの登録
   const searchBtn = document.getElementById("search-button");
   if (searchBtn) {
     searchBtn.addEventListener("click", fetchAndRender);
   }
   
-  // エンターキーでの検索もサポート（UX向上のため）
   const keywordInput = document.getElementById("filter-keyword");
   if (keywordInput) {
     keywordInput.addEventListener("keydown", (e) => {

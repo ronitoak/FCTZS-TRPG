@@ -107,26 +107,45 @@ export default {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
-    // ---- Characters ----
+// ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
       let queryParams = [];
 
-      // URLからフィルタ条件を取得
       const system = url.searchParams.get("system");
       const player = url.searchParams.get("player");
       const state = url.searchParams.get("state");
-      const keyword = url.searchParams.get("keyword"); // フリワ検索用
+      const keyword = url.searchParams.get("keyword");
+      const scenarioId = url.searchParams.get("scenario_id"); // ★追加：シナリオID
 
-      // Supabaseのフィルタ構文（eq, ilike 等）に変換
+      // ★追加：シナリオIDが指定された場合、character_scenariosテーブルから該当キャラを逆引きする
+      if (scenarioId) {
+        const csRes = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`, {
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          }
+        });
+        
+        if (csRes.ok) {
+          const csData = await csRes.json();
+          const charIds = csData.map(d => d.character_id);
+          
+          // 該当するキャラクターが一人もいない場合は、空っぽの配列を返して終了
+          if (charIds.length === 0) {
+             return new Response(JSON.stringify([]), { status: 200, headers: jsonHeaders });
+          }
+          // IN句を使って、見つかったキャラクターIDに絞り込む
+          queryParams.push(`id=in.(${charIds.map(encodeURIComponent).join(',')})`);
+        }
+      }
+
       if (system) queryParams.push(`system=eq.${encodeURIComponent(system)}`);
       if (player) queryParams.push(`player=eq.${encodeURIComponent(player)}`);
       if (state) queryParams.push(`state=eq.${encodeURIComponent(state)}`);
 
-      // キーワード検索（名前、職業、プレイヤー名などの部分一致）
       if (keyword) {
         const kw = encodeURIComponent(`*${keyword}*`);
-        // or構文を使用して複数カラムを跨いだ検索を実現
-        queryParams.push(`or=(name.ilike.${kw},job.ilike.${kw},player.ilike.${kw})`);
+        queryParams.push(`or=(name.ilike.${kw},job.ilike.${kw})`); // キーワードからはplayerを外す(選択式になったため)
       }
 
       queryParams.push("select=*");

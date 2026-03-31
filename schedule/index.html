@@ -39,6 +39,35 @@
         </div>
       </div>
 
+      <div id="availability-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h3 id="modal-date-title"></h3>
+          
+          <div class="form-group">
+            <label for="modal-time-slot">時間帯</label>
+            <select id="modal-time-slot">
+              <option value="morning">朝</option>
+              <option value="afternoon">昼</option>
+              <option value="night" selected>夜</option>
+              <option value="midnight">深夜</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-status">ステータス</label>
+            <select id="modal-status">
+              <option value="ok">○ (空き)</option>
+              <option value="maybe">△ (未定/調整可)</option>
+              <option value="ng">× (不可)</option>
+            </select>
+          </div>
+
+          <div class="modal-actions">
+            <button id="save-availability-btn" class="primary-btn">保存</button>
+            <button id="close-modal-btn" class="secondary-btn">キャンセル</button>
+          </div>
+        </div>
+      </div>
 
   <footer>
     <hr />

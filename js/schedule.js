@@ -69,7 +69,7 @@ function renderCalendar() {
       const badge = document.createElement("a");
       badge.className = "calendar-session-badge";
       // クリックしたら詳細ページへ飛ぶように
-      badge.href = `./detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
+      badge.href = `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
       badge.style.textDecoration = "none";
       badge.style.display = "block";
       badge.textContent = `${timeStr} ${session.title || "名称未設定"}`;

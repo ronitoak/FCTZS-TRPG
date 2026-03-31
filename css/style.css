@@ -534,7 +534,7 @@ a { color: inherit; text-decoration: none; }
     box-sizing: border-box;
 }
 
-/* Modal */
+/* Modal (既存のコードそのまま) */
 .modal {
     display: none;
     position: fixed;
@@ -556,6 +556,29 @@ a { color: inherit; text-decoration: none; }
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+}
+
+/* ---- 今回追加するフォーム要素（追記部分） ---- */
+.form-group {
+    margin-bottom: 16px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: var(--radius, 4px); /* 既存の変数があれば適用 */
+    font-size: 1rem;
+    outline: none;
+    background-color: #fff;
+}
+.form-group select:focus {
+    border-color: #666;
 }
 
 /* ==========================================

@@ -211,7 +211,7 @@ async function renderBulkInputGrid() {
   }
 }
 
-// ★修正：一括保存処理
+// 一括保存処理
 async function saveBulkAvailability() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return alert("プレイヤーを選択してください");
@@ -232,27 +232,32 @@ async function saveBulkAvailability() {
   });
 
   if (payload.length === 0) {
-     alert("保存する予定データがありません。（全て「-」になっています）");
+     alert("保存する予定データがありません。（全て「-」のままです）");
      return;
   }
 
   try {
     const res = await Utils.apiPost("player_availability", payload);
     if (res) {
+      // 1. 何よりも先に、成功したら即座にモーダルを閉じる（ユーザーを待たせない）
       closeModal('availability-modal');
       
-      // 保存後、比較モード中なら比較をやり直し、そうでなければセッションを再取得
-      if (compareMode) await runComparison();
-      else await fetchScheduleData();
+      // 2. 裏側でカレンダーのデータを再取得して画面を更新
+      if (compareMode) {
+        await runComparison();
+      } else {
+        await fetchScheduleData();
+      }
       
-      alert("予定を一括保存しました");
+      // 3. 最後に完了アラートを出す
+      // ※アラートが煩わしい場合は、この行を消していただいても構いません
+      alert("予定を保存しました");
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
     alert("保存に失敗しました");
   }
 }
-
 
 
 

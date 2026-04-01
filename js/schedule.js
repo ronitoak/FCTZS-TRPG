@@ -6,7 +6,7 @@ let compareMode = false;
 let comparisonData = {};
 
 // ★今回追加：時間帯表示用の辞書
-const TIME_SLOT_LABELS = { morning: "朝", afternoon: "昼", night: "夜", midnight: "深夜" };
+const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
 
 // APIからセッション一覧を取得する
 async function fetchScheduleData() {

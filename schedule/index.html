@@ -58,8 +58,19 @@
 
       <div id="availability-modal" class="modal" style="display: none;">
         <div class="modal-content">
-          <h3 id="modal-date-title"></h3>
+          <h3 id="modal-date-title">予定の入力</h3>
           
+          <div class="form-group">
+            <label for="modal-player-id">プレイヤー</label>
+            <select id="modal-player-id">
+              </select>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-date">対象日</label>
+            <input type="date" id="modal-date" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+          </div>
+
           <div class="form-group">
             <label for="modal-time-slot">時間帯</label>
             <select id="modal-time-slot">

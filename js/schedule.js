@@ -175,6 +175,44 @@ function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
   return cell;
 }
 
+async function saveAvailability() {
+  // モーダル内の入力項目から値を取得
+  const playerId = document.getElementById("modal-player-id")?.value;
+  const targetDate = document.getElementById("modal-date")?.value;
+  const timeSlot = document.getElementById("modal-time-slot")?.value;
+  const status = document.getElementById("modal-status")?.value;
+
+  if (!playerId || !targetDate) {
+    alert("プレイヤーと対象日を選択してください。");
+    return;
+  }
+
+  const payload = [{
+    player_id: playerId,
+    target_date: targetDate,
+    time_slot: timeSlot,
+    status: status
+  }];
+
+  try {
+    const res = await Utils.apiPost("player_availability", payload);
+    if (res) {
+      closeModal('availability-modal');
+      // ★保存成功後、カレンダーのデータを再取得して画面を更新
+      await fetchScheduleData(); 
+    }
+  } catch (err) {
+    console.error("保存エラー:", err);
+    alert("保存に失敗しました");
+  }
+}
+
+// 汎用的なモーダルを閉じる関数
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.style.display = "none";
+}
+
 // 起動時の処理とイベントリスナー
 async function main() {
   const prevBtn = document.getElementById("prev-month-btn");
@@ -194,8 +232,32 @@ async function main() {
     });
   }
 
-  // 初回データ取得＆描画
-  await fetchSessions();
+  // --- ★今回不足していた、ボタンとモーダルを繋ぐ処理 ---
+
+  // 「予定を入力する」ボタンで入力モーダルを開く
+  document.getElementById("open-input-btn")?.addEventListener("click", () => {
+    // 日付入力欄に今日の日付をデフォルトでセットしておく
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const dateInput = document.getElementById("modal-date");
+    if (dateInput) dateInput.value = dateStr;
+    
+    document.getElementById("availability-modal").style.display = "flex";
+  });
+
+  // 「予定を比較する」ボタンで比較モーダルを開く
+  document.getElementById("open-compare-btn")?.addEventListener("click", () => {
+    document.getElementById("compare-modal").style.display = "flex";
+  });
+
+  // 各種ボタンのイベント紐付け
+  document.getElementById("close-modal-btn")?.addEventListener("click", () => closeModal("availability-modal"));
+  document.getElementById("save-availability-btn")?.addEventListener("click", saveAvailability);
+  document.getElementById("run-compare-btn")?.addEventListener("click", runComparison);
+
+  // --- ★初回読み込み ---
+  await initPlayerList();    // プレイヤー一覧を取得してセレクトボックス/チェックボックスを作成
+  await fetchScheduleData(); // カレンダーを描画
 }
 
 document.addEventListener("DOMContentLoaded", main);

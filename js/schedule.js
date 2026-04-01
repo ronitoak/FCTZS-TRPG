@@ -99,25 +99,41 @@ function renderCalendar() {
 
 // プレイヤー一覧を取得してチェックボックスを生成
 async function initPlayerList() {
-  const players = await Utils.apiGet("players?select=player_id,player_name");
-  const listEl = document.getElementById("player-checkbox-list");
-  const inputPlayerSelect = document.getElementById("modal-player-id"); // 入力モーダル用
-  
-  if (!listEl) return;
-  listEl.innerHTML = "";
-  
-  players.forEach(p => {
-    // 比較用チェックボックス
-    const label = document.createElement("label");
-    label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}"> ${p.player_name}`;
-    listEl.appendChild(label);
+  try {
+    const players = await Utils.apiGet("players?select=player_id,player_name");
     
-    // 入力モーダル用のセレクトボックスもここで同期
-    const opt = document.createElement("option");
-    opt.value = p.player_id;
-    opt.textContent = p.player_name;
-    inputPlayerSelect?.appendChild(opt);
-  });
+    // APIから正しく配列が返ってこなかった場合はここで処理を打ち切る（エラー落ちを防ぐ）
+    if (!Array.isArray(players)) {
+      console.error("プレイヤー一覧の取得に失敗しました。データが不正です。");
+      return;
+    }
+
+    const listEl = document.getElementById("player-checkbox-list");
+    const inputPlayerSelect = document.getElementById("modal-player-id"); // 入力モーダル用
+    
+    if (listEl) listEl.innerHTML = "";
+    if (inputPlayerSelect) inputPlayerSelect.innerHTML = ""; // 初期化
+    
+    players.forEach(p => {
+      // 比較用チェックボックス
+      if (listEl) {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}"> ${p.player_name}`;
+        listEl.appendChild(label);
+      }
+      
+      // 入力モーダル用のセレクトボックス
+      if (inputPlayerSelect) {
+        const opt = document.createElement("option");
+        opt.value = p.player_id;
+        opt.textContent = p.player_name;
+        inputPlayerSelect.appendChild(opt);
+      }
+    });
+  } catch (err) {
+    // ネットワークエラー等が起きても、ここでエラーを吸収してプログラム全体を止めない
+    console.error("プレイヤー一覧の初期化中にエラーが発生しました:", err);
+  }
 }
 
 // 比較実行

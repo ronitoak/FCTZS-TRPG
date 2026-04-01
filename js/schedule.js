@@ -80,7 +80,7 @@ function renderCalendar() {
 
     // --- ★修正：ここに「比較モード」のバッジ表示処理を正しく組み込みました ---
     if (compareMode) {
-      const slots = ["morning", "afternoon", "night", "midnight"];
+      const slots = ["afternoon", "night",];
       slots.forEach(slot => {
         const key = `${targetDateStr}_${slot}`;
         const match = comparisonData[key];

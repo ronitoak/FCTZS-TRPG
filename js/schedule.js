@@ -155,7 +155,7 @@ async function renderBulkInputGrid() {
   container.innerHTML = ""; // クリア
 
   const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
-  const slots = ["morning", "afternoon", "night", "midnight"];
+  const slots = ["afternoon", "night",];
 
   // 2. 日付ごとに1行ずつ（マトリックス）生成
   for (let d = 1; d <= lastDay; d++) {

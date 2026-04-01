@@ -755,3 +755,25 @@ a { color: inherit; text-decoration: none; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.match-badge {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 12px;
+    margin-bottom: 2px;
+    text-align: center;
+    font-weight: bold;
+    color: #fff;
+}
+.match-badge.green { background-color: #2ecc71; } /* ○ */
+.match-badge.yellow { background-color: #f1c40f; color: #333; } /* △ */
+.match-badge.red { background-color: #e74c3c; } /* × */
+
+.checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 16px 0;
+}

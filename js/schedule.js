@@ -2,6 +2,8 @@
 
 let currentDate = new Date(); // 現在表示している月を保持する変数
 let allSessions = [];         // 取得した全セッションデータを保持
+let compareMode = false;
+let comparisonData = {};
 
 // APIからセッション一覧を取得する
 async function fetchSessions() {
@@ -93,6 +95,68 @@ function renderCalendar() {
     const cell = createCalendarCell("", true);
     grid.appendChild(cell);
   }
+}
+
+// プレイヤー一覧を取得してチェックボックスを生成
+async function initPlayerList() {
+  const players = await Utils.apiGet("players?select=player_id,player_name");
+  const listEl = document.getElementById("player-checkbox-list");
+  const inputPlayerSelect = document.getElementById("modal-player-id"); // 入力モーダル用
+  
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  
+  players.forEach(p => {
+    // 比較用チェックボックス
+    const label = document.createElement("label");
+    label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}"> ${p.player_name}`;
+    listEl.appendChild(label);
+    
+    // 入力モーダル用のセレクトボックスもここで同期
+    const opt = document.createElement("option");
+    opt.value = p.player_id;
+    opt.textContent = p.player_name;
+    inputPlayerSelect?.appendChild(opt);
+  });
+}
+
+// 比較実行
+async function runComparison() {
+  const selectedIds = Array.from(document.querySelectorAll('input[name="compare-player"]:checked')).map(cb => cb.value);
+  if (selectedIds.length === 0) return alert("プレイヤーを選択してください");
+
+  // 表示中の月の範囲を取得
+  const start = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-01`;
+  const end = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-31`;
+
+  const res = await Utils.apiGet(`schedule_match?player_ids=${selectedIds.join(",")}&start_date=${start}&end_date=${end}`);
+  if (res) {
+    comparisonData = res;
+    compareMode = true;
+    closeModal('compare-modal');
+    renderCalendar(); // 比較モードで再描画
+  }
+}
+
+// ★ renderCalendar 関数内での描画ロジックの追加
+// (日付セル生成ループの中で)
+if (compareMode) {
+  const slots = ["morning", "afternoon", "night", "midnight"];
+  slots.forEach(slot => {
+    const key = `${targetDateStr}_${slot}`;
+    const match = comparisonData[key];
+    if (match) {
+      const matchBadge = document.createElement("div");
+      matchBadge.className = `match-badge ${match.color}`;
+      
+      // △の場合は、ホバーや注釈で名前を出せるように（今回はシンプルに記号）
+      let titleText = match.label || "";
+      if (match.maybe_players) titleText = `△: ${match.maybe_players.join(", ")}`;
+      
+      matchBadge.innerHTML = `<span title="${titleText}">${TIME_SLOT_LABELS[slot]}:${match.symbol}</span>`;
+      cell.appendChild(matchBadge);
+    }
+  });
 }
 
 // 日付マス（DOM）を生成する補助関数

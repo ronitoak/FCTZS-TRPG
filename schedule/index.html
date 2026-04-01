@@ -57,37 +57,25 @@
       </div>
 
       <div id="availability-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-          <h3 id="modal-date-title">予定の入力</h3>
+        <div class="modal-content bulk-input-content">
+          <h3>予定の一括入力</h3>
           
           <div class="form-group">
             <label for="modal-player-id">プレイヤー</label>
-            <select id="modal-player-id">
-              </select>
+            <select id="modal-player-id"></select>
           </div>
 
           <div class="form-group">
-            <label for="modal-date">対象日</label>
-            <input type="date" id="modal-date" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+            <label>対象月: <span id="bulk-month-label"></span></label>
           </div>
 
-          <div class="form-group">
-            <label for="modal-time-slot">時間帯</label>
-            <select id="modal-time-slot">
-              <option value="morning">朝</option>
-              <option value="afternoon">昼</option>
-              <option value="night" selected>夜</option>
-              <option value="midnight">深夜</option>
-            </select>
+          <div class="bulk-header-row">
+            <div class="bulk-date">日付</div>
+            <div class="bulk-slot">昼</div>
+            <div class="bulk-slot">夜</div>
           </div>
 
-          <div class="form-group">
-            <label for="modal-status">ステータス</label>
-            <select id="modal-status">
-              <option value="ok">○ (空き)</option>
-              <option value="maybe">△ (未定/調整可)</option>
-              <option value="ng">× (不可)</option>
-            </select>
+          <div id="bulk-input-container" class="bulk-input-container">
           </div>
 
           <div class="modal-actions">

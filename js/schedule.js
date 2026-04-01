@@ -125,6 +125,137 @@ function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
   return cell;
 }
 
+// ★追加：一括入力用のマトリックスを生成する関数
+async function renderBulkInputGrid() {
+  const playerId = document.getElementById("modal-player-id")?.value;
+  if (!playerId) return;
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+
+  // 対象月の表示
+  const monthLabel = document.getElementById("bulk-month-label");
+  if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
+
+  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
+
+  // 1. 選択されたプレイヤーの「今月の既存の予定」を取得
+  let existingData = [];
+  try {
+    const res = await Utils.apiGet(`player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}&target_date=gte.${startDate}&target_date=lte.${endDate}`);
+    if (Array.isArray(res)) existingData = res;
+  } catch (e) {
+    console.error("既存予定の取得に失敗:", e);
+  }
+
+  const container = document.getElementById("bulk-input-container");
+  if (!container) return;
+  container.innerHTML = ""; // クリア
+
+  const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
+  const slots = ["morning", "afternoon", "night", "midnight"];
+
+  // 2. 日付ごとに1行ずつ（マトリックス）生成
+  for (let d = 1; d <= lastDay; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dateObj = new Date(year, month, d);
+    const dowIndex = dateObj.getDay();
+
+    const row = document.createElement("div");
+    row.className = "bulk-row";
+
+    // 日付ラベル
+    const dateLabel = document.createElement("div");
+    dateLabel.className = "bulk-date";
+    if (dowIndex === 0) dateLabel.style.color = "#c62828"; // 日曜は赤
+    if (dowIndex === 6) dateLabel.style.color = "#1565c0"; // 土曜は青
+    dateLabel.textContent = `${d}日(${dayOfWeekStr[dowIndex]})`;
+    row.appendChild(dateLabel);
+
+    // 時間帯ごとのセレクトボックス
+    slots.forEach(slot => {
+      const slotDiv = document.createElement("div");
+      slotDiv.className = "bulk-slot";
+
+      const select = document.createElement("select");
+      select.dataset.date = dateStr;
+      select.dataset.slot = slot;
+      
+      // 未設定（ハイフン）をデフォルトとする
+      select.innerHTML = `
+        <option value="">-</option>
+        <option value="ok">○</option>
+        <option value="maybe">△</option>
+        <option value="ng">×</option>
+      `;
+
+      // 既存の予定データがあれば、その値をセットする
+      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
+      if (exist) {
+        select.value = exist.status;
+        select.className = `select-${exist.status}`;
+      }
+
+      // 値が変わったら背景色を変える
+      select.addEventListener("change", (e) => {
+        select.className = e.target.value ? `select-${e.target.value}` : "";
+      });
+
+      slotDiv.appendChild(select);
+      row.appendChild(slotDiv);
+    });
+
+    container.appendChild(row);
+  }
+}
+
+// ★修正：一括保存処理
+async function saveBulkAvailability() {
+  const playerId = document.getElementById("modal-player-id")?.value;
+  if (!playerId) return alert("プレイヤーを選択してください");
+
+  const selects = document.querySelectorAll("#bulk-input-container select");
+  const payload = [];
+
+  // 「未設定（-）」以外の選択肢をすべて集める
+  selects.forEach(sel => {
+    if (sel.value !== "") {
+      payload.push({
+        player_id: playerId,
+        target_date: sel.dataset.date,
+        time_slot: sel.dataset.slot,
+        status: sel.value
+      });
+    }
+  });
+
+  if (payload.length === 0) {
+     alert("保存する予定データがありません。（全て「-」になっています）");
+     return;
+  }
+
+  try {
+    const res = await Utils.apiPost("player_availability", payload);
+    if (res) {
+      closeModal('availability-modal');
+      
+      // 保存後、比較モード中なら比較をやり直し、そうでなければセッションを再取得
+      if (compareMode) await runComparison();
+      else await fetchScheduleData();
+      
+      alert("予定を一括保存しました");
+    }
+  } catch (err) {
+    console.error("一括保存エラー:", err);
+    alert("保存に失敗しました");
+  }
+}
+
+
+
+
 // プレイヤー一覧を取得してチェックボックスを生成
 async function initPlayerList() {
   try {
@@ -181,44 +312,6 @@ async function runComparison() {
   }
 }
 
-// 予定の保存処理
-async function saveAvailability() {
-  const playerId = document.getElementById("modal-player-id")?.value;
-  const targetDate = document.getElementById("modal-date")?.value;
-  const timeSlot = document.getElementById("modal-time-slot")?.value;
-  const status = document.getElementById("modal-status")?.value;
-
-  if (!playerId || !targetDate) {
-    alert("プレイヤーと対象日を選択してください。");
-    return;
-  }
-
-  const payload = [{
-    player_id: playerId,
-    target_date: targetDate,
-    time_slot: timeSlot,
-    status: status
-  }];
-
-  try {
-    const res = await Utils.apiPost("player_availability", payload);
-    if (res) {
-      closeModal('availability-modal');
-      
-      // 保存後、比較モード中なら比較をやり直し、そうでなければセッションを再取得
-      if (compareMode) {
-        await runComparison();
-      } else {
-        await fetchScheduleData(); 
-      }
-      alert("予定を保存しました");
-    }
-  } catch (err) {
-    console.error("保存エラー:", err);
-    alert("保存に失敗しました");
-  }
-}
-
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) modal.style.display = "none";
@@ -247,12 +340,9 @@ async function main() {
   }
 
   document.getElementById("open-input-btn")?.addEventListener("click", () => {
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const dateInput = document.getElementById("modal-date");
-    if (dateInput) dateInput.value = dateStr;
-    
     document.getElementById("availability-modal").style.display = "flex";
+    // モーダルを開いた時に、現在の月と選択中プレイヤーのグリッドを生成する
+    renderBulkInputGrid();
   });
 
   document.getElementById("open-compare-btn")?.addEventListener("click", () => {
@@ -260,8 +350,11 @@ async function main() {
   });
 
   document.getElementById("close-modal-btn")?.addEventListener("click", () => closeModal("availability-modal"));
-  document.getElementById("save-availability-btn")?.addEventListener("click", saveAvailability);
+  document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
   document.getElementById("run-compare-btn")?.addEventListener("click", runComparison);
+  document.getElementById("modal-player-id")?.addEventListener("change", () => {
+    renderBulkInputGrid();
+  });
 
   // 初回読み込み
   await initPlayerList();    

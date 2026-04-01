@@ -361,4 +361,12 @@ async function main() {
   await fetchScheduleData(); // ここでデータを取得し、カレンダーを描画する
 }
 
+// --- 追加：モーダルの背景（外側）をクリックした時に閉じる処理 ---
+window.addEventListener("click", (e) => {
+  // クリックした要素自体が「modal」クラスを持っている場合（＝中身の白枠ではなく、外側の黒背景の場合）
+  if (e.target.classList.contains("modal")) {
+    e.target.style.display = "none";
+  }
+});
+
 document.addEventListener("DOMContentLoaded", main);

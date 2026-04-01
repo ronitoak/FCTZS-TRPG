@@ -295,8 +295,13 @@ async function runComparison() {
   const selectedIds = Array.from(document.querySelectorAll('input[name="compare-player"]:checked')).map(cb => cb.value);
   if (selectedIds.length === 0) return alert("プレイヤーを選択してください");
 
-  const start = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-01`;
-  const end = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-31`;
+  // ★修正：対象月の正しい「末日」を計算する
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate(); // 4月なら30、2月なら28(29)が取得できる
+
+  const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
   try {
     const res = await Utils.apiGet(`schedule_match?player_ids=${selectedIds.join(",")}&start_date=${start}&end_date=${end}`);

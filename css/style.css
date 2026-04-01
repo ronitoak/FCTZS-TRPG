@@ -677,15 +677,16 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
 }
 
-/* 7列のグリッドを作る */
+/* カレンダーのグリッド（7等分を強制する） */
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px; /* マスの間の罫線代わり */
-  background-color: #ddd; /* 罫線の色 */
+  /* ★ minmax(0, 1fr) にすることで、中身が長くても絶対に7等分の枠を維持します */
+  grid-template-columns: repeat(7, minmax(0, 1fr)); 
+  gap: 1px;
+  background-color: #ddd;
   border: 1px solid #ddd;
   border-radius: 4px;
-  overflow: hidden;
+  width: 100%;
 }
 
 .calendar-day-header {
@@ -698,45 +699,59 @@ a { color: inherit; text-decoration: none; }
 /* 日付マスの基本スタイル */
 .calendar-cell {
   background-color: #fff;
-  min-height: 120px;
-  padding: 8px;
+  min-height: 100px;
+  padding: 4px; /* 余白を少し削って広く使う */
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0; /* ★ 必須：テキストの長さに引っ張られてマスが広がるのを防ぐ */
 }
 
-/* 今日の日付だけ色を変える */
-.calendar-cell.today {
-  background-color: #fff8e1;
-}
-
-/* 前月・次月の日付マス */
-.calendar-cell.other-month {
-  background-color: #fbfbfb;
-  color: #aaa;
-}
-
+/* 今日の日付や前月マスなどはそのまま維持 */
+.calendar-cell.today { background-color: #fff8e1; }
+.calendar-cell.other-month { background-color: #fbfbfb; color: #aaa; }
 .calendar-date-number {
   text-align: right;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #555;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-/* セッション情報のバッジ */
+/* ---- セッション予定バッジ（改行・縮小対応） ---- */
 .calendar-session-badge {
   background-color: #e3f2fd;
   color: #0d47a1;
-  font-size: 0.75rem;
-  padding: 4px 6px;
+  padding: 4px;
   border-radius: 4px;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis; /* 長いタイトルは「...」で省略 */
+  display: block;
+  text-decoration: none;
   transition: background-color 0.2s;
+  overflow: hidden;
 }
 
 .calendar-session-badge:hover {
   background-color: #bbdefb;
+}
+
+/* 1行目：開始時刻 */
+.calendar-session-badge .badge-time {
+  font-size: 0.65rem;  /* フォントを極小に */
+  font-weight: bold;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+/* 2行目：セッションタイトル */
+.calendar-session-badge .badge-title {
+  font-size: 0.75rem;  /* タイトルも小さく */
+  line-height: 1.3;
+  white-space: normal; /* 折り返しを許可 */
+  word-break: break-word; /* 単語の途中でも枠に合わせて改行 */
+  
+  /* 長すぎるタイトルは最大2行で「...」と省略するモダンな手法 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

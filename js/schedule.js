@@ -66,13 +66,19 @@ function renderCalendar() {
     // マスにセッションのバッジを追加
     daySessions.forEach(session => {
       const timeStr = new Date(session.start).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' });
+      const titleStr = session.title || "名称未設定";
+      
       const badge = document.createElement("a");
       badge.className = "calendar-session-badge";
       // クリックしたら詳細ページへ飛ぶように
-      badge.href = `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
-      badge.style.textDecoration = "none";
-      badge.style.display = "block";
-      badge.textContent = `${timeStr} ${session.title || "名称未設定"}`;
+      badge.href = `./detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
+      
+      // ★ 時間とタイトルを別々のdivに分け、安全に挿入
+      const safeTitle = Utils.escapeHtml ? Utils.escapeHtml(titleStr) : titleStr.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      badge.innerHTML = `
+        <div class="badge-time">${timeStr}</div>
+        <div class="badge-title">${safeTitle}</div>
+      `;
       
       cell.appendChild(badge);
     });

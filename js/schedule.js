@@ -134,14 +134,12 @@ async function renderBulkInputGrid() {
   const month = currentDate.getMonth();
   const lastDay = new Date(year, month + 1, 0).getDate();
 
-  // 対象月の表示
   const monthLabel = document.getElementById("bulk-month-label");
   if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
 
   const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
 
-  // 1. 選択されたプレイヤーの「今月の既存の予定」を取得
   let existingData = [];
   try {
     const res = await Utils.apiGet(`player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}&target_date=gte.${startDate}&target_date=lte.${endDate}`);
@@ -152,12 +150,11 @@ async function renderBulkInputGrid() {
 
   const container = document.getElementById("bulk-input-container");
   if (!container) return;
-  container.innerHTML = ""; // クリア
+  container.innerHTML = "";
 
   const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
-  const slots = ["afternoon", "night",];
+  const slots = ["afternoon", "night"];
 
-  // 2. 日付ごとに1行ずつ（マトリックス）生成
   for (let d = 1; d <= lastDay; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const dateObj = new Date(year, month, d);
@@ -166,15 +163,13 @@ async function renderBulkInputGrid() {
     const row = document.createElement("div");
     row.className = "bulk-row";
 
-    // 日付ラベル
     const dateLabel = document.createElement("div");
     dateLabel.className = "bulk-date";
-    if (dowIndex === 0) dateLabel.style.color = "#c62828"; // 日曜は赤
-    if (dowIndex === 6) dateLabel.style.color = "#1565c0"; // 土曜は青
+    if (dowIndex === 0) dateLabel.style.color = "#c62828";
+    if (dowIndex === 6) dateLabel.style.color = "#1565c0";
     dateLabel.textContent = `${d}日(${dayOfWeekStr[dowIndex]})`;
     row.appendChild(dateLabel);
 
-    // 時間帯ごとのセレクトボックス
     slots.forEach(slot => {
       const slotDiv = document.createElement("div");
       slotDiv.className = "bulk-slot";
@@ -183,7 +178,6 @@ async function renderBulkInputGrid() {
       select.dataset.date = dateStr;
       select.dataset.slot = slot;
       
-      // 未設定（ハイフン）をデフォルトとする
       select.innerHTML = `
         <option value="">-</option>
         <option value="ok">○</option>
@@ -191,14 +185,14 @@ async function renderBulkInputGrid() {
         <option value="ng">×</option>
       `;
 
-      // 既存の予定データがあれば、その値をセットする
       const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-      if (exist) {
-        select.value = exist.status;
-        select.className = `select-${exist.status}`;
-      }
+      // ★ 変更点1：初期値を記憶させる（何もない場合は空文字）
+      const initialVal = exist ? exist.status : "";
+      select.value = initialVal;
+      select.dataset.initial = initialVal;
+      
+      if (initialVal) select.className = `select-${initialVal}`;
 
-      // 値が変わったら背景色を変える
       select.addEventListener("change", (e) => {
         select.className = e.target.value ? `select-${e.target.value}` : "";
       });
@@ -219,38 +213,41 @@ async function saveBulkAvailability() {
   const selects = document.querySelectorAll("#bulk-input-container select");
   const payload = [];
 
-  // 「未設定（-）」以外の選択肢をすべて集める
   selects.forEach(sel => {
-    if (sel.value !== "") {
-      payload.push({
-        player_id: playerId,
-        target_date: sel.dataset.date,
-        time_slot: sel.dataset.slot,
-        status: sel.value
-      });
+    // ★ 変更点2：初期値から「変更されたものだけ」を対象にする
+    if (sel.value !== sel.dataset.initial) {
+      // ※ もし「空文字（未設定）」に変更された場合（＝予定を消したい場合）の処理は、
+      // Supabaseのupsertの仕様上少し厄介なので、今回は「一度入れた予定は未設定に戻せず、必ず○△×のどれかにする」仕様とします。
+      // もし消せるようにしたい場合は、API側で DELETE メソッドを実装する必要があります。
+      if (sel.value !== "") {
+        payload.push({
+          player_id: playerId,
+          target_date: sel.dataset.date,
+          time_slot: sel.dataset.slot,
+          status: sel.value
+        });
+      }
     }
   });
 
   if (payload.length === 0) {
-     alert("保存する予定データがありません。（全て「-」のままです）");
+     alert("変更された予定データがありません。");
+     // 変更がなくてもモーダルは閉じるのが親切
+     closeModal('availability-modal');
      return;
   }
 
   try {
     const res = await Utils.apiPost("player_availability", payload);
     if (res) {
-      // 1. 何よりも先に、成功したら即座にモーダルを閉じる（ユーザーを待たせない）
       closeModal('availability-modal');
       
-      // 2. 裏側でカレンダーのデータを再取得して画面を更新
       if (compareMode) {
         await runComparison();
       } else {
         await fetchScheduleData();
       }
       
-      // 3. 最後に完了アラートを出す
-      // ※アラートが煩わしい場合は、この行を消していただいても構いません
       alert("予定を保存しました");
     }
   } catch (err) {
@@ -258,8 +255,6 @@ async function saveBulkAvailability() {
     alert("保存に失敗しました");
   }
 }
-
-
 
 // プレイヤー一覧を取得してチェックボックスを生成
 async function initPlayerList() {

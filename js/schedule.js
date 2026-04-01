@@ -73,7 +73,7 @@ function renderCalendar() {
       const badge = document.createElement("a");
       badge.className = "calendar-session-badge";
       // クリックしたら詳細ページへ飛ぶように
-      badge.href = `./detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
+      badge.href = `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
       
       // ★ 時間とタイトルを別々のdivに分け、安全に挿入
       const safeTitle = Utils.escapeHtml ? Utils.escapeHtml(titleStr) : titleStr.replace(/</g, "&lt;").replace(/>/g, "&gt;");

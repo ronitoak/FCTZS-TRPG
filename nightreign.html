@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遺物計算ツール</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f2f5;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        .accessories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .accessory-card {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .accessory-card h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .effect-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+        .select-type { flex: 3; }
+        .select-plus { flex: 1; }
+        
+        .result-box {
+            background-color: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .calc-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .calc-btn:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>遺物計算ツール</h1>
+    
+    <div class="accessories-grid" id="accessories-container">
+        </div>
+
+    <button class="calc-btn" onclick="calculate()">計算する</button>
+
+    <div class="result-box">
+        総合倍率: <span id="totalMultiplier">1.000</span> 倍<br>
+        <span style="font-size: 1rem; color: #555;">(総上昇量: +<span id="totalPercent">0.0</span> %)</span>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. データ定義（ご提供いただいたデータ）
+    // ルールに従い、値が足りないものは最後の値で+4まで補完
+    // ==========================================
+    const effectData = {
+        "none": { label: "選択なし", values: [0, 0, 0, 0, 0] },
+        "phys_atk": { label: "物理攻撃力上昇", values: [4.0, 5.0, 6.0, 10.5, 12.0] },
+        "magic_atk": { label: "魔力攻撃力上昇", values: [4.0, 5.0, 6.0, 10.5, 12.0] },
+        "fire_atk": { label: "炎攻撃力上昇", values: [4.0, 5.0, 6.0, 10.5, 12.0] },
+        "lightning_atk": { label: "雷攻撃力上昇", values: [4.0, 5.0, 6.0, 10.5, 12.0] },
+        "holy_atk": { label: "聖攻撃力上昇", values: [4.0, 5.0, 6.0, 10.5, 12.0] },
+        "elem_atk": { label: "属性攻撃力上昇", values: [5.0, 8.0, 10.0, 10.0, 10.0] },
+        "sorcery_enh": { label: "魔術強化", values: [5.0, 8.5, 10.0, 10.0, 10.0] },
+        "incant_enh": { label: "祈祷強化", values: [5.0, 8.5, 10.0, 10.0, 10.0] },
+        "melee_atk": { label: "近接攻撃力上昇", values: [6.0, 6.0, 6.0, 6.0, 6.0] },
+        "skill_atk": { label: "戦技攻撃力上昇", values: [15.0, 15.0, 15.0, 15.0, 15.0] },
+        "first_hit": { label: "通常攻撃の1段目強化", values: [15.0, 15.0, 15.0, 15.0, 15.0] },
+        "critical_enh": { label: "致命の一撃強化", values: [17.0, 24.0, 24.0, 24.0, 24.0] },
+        "roar_enh": { label: "咆哮とブレス強化", values: [15.0, 15.0, 15.0, 15.0, 15.0] },
+        "swap_atk": { label: "武器の持ち替え時、物理攻撃力上昇", values: [10.0, 10.0, 10.0, 10.0, 10.0] },
+        "elem_buff_atk": { label: "属性攻撃力が付加された時、属性攻撃力上昇", values: [10.0, 10.0, 10.0, 10.0, 10.0] },
+        "hit_atk": { label: "攻撃を受けると攻撃力上昇", values: [15.0, 15.0, 15.0, 15.0, 15.0] },
+        "consecutive_2": { label: "攻撃連続時、攻撃力上昇", values: [5.0, 12.0, 22.0, 22.0, 22.0] },
+        "gaol_atk": { label: "封牢の囚を倒す度、攻撃力上昇", values: [5.0, 10.25, 15.7625, 21.550625, 27.6281563] },
+        "night_atk": { label: "夜の侵入者を倒す度、攻撃力上昇", values: [7.0, 14.49, 22.5043, 31.079601, 40.2551731] },
+        "guard_counter": { label: "ガードカウンター強化", values: [17.0, 25.0, 29.0, 29.0, 29.0] },
+        "grease_atk": { label: "脂アイテム使用時、追加で物理攻撃力上昇", values: [10.0, 17.0, 20.0, 20.0, 20.0] },
+        "pot_atk": { label: "投擲壺の攻撃力上昇", values: [15.0, 30.0, 30.0, 30.0, 30.0] },
+        "knife_atk": { label: "投擲ナイフの攻撃力上昇", values: [14.0, 30.0, 30.0, 30.0, 30.0] },
+        "stone_atk": { label: "輝石、重力石アイテムの攻撃力上昇", values: [15.0, 30.0, 30.0, 30.0, 30.0] },
+        "perfume_enh": { label: "調香術強化", values: [14.0, 30.0, 30.0, 30.0, 30.0] },
+        "some_sorcery": { label: "○○の魔術を強化", values: [12.0, 12.0, 12.0, 12.0, 12.0] },
+        "some_incant": { label: "○○の祈祷を強化", values: [12.0, 12.0, 12.0, 12.0, 12.0] },
+        "status_enemy": { label: "○○状態の敵に対する攻撃を強化", values: [10.0, 16.0, 20.0, 20.0, 20.0] },
+        "status_around": { label: "周囲で○○状態の発生時、攻撃力上昇", values: [12.0, 22.0, 22.0, 22.0, 22.0] }
+    };
+
+    // ==========================================
+    // 2. 画面の自動生成ロジック
+    // ==========================================
+    const container = document.getElementById('accessories-container');
+    
+    // 効果の選択肢用HTML文字列を作成
+    let typeOptionsHTML = '';
+    for (const [key, data] of Object.entries(effectData)) {
+        typeOptionsHTML += `<option value="${key}">${data.label}</option>`;
+    }
+
+    // +値の選択肢用HTML文字列を作成 (+0 〜 +4)
+    let plusOptionsHTML = '';
+    for (let i = 0; i <= 4; i++) {
+        plusOptionsHTML += `<option value="${i}">+${i}</option>`;
+    }
+
+    // アクセサリー枠を6つ生成
+    for (let i = 1; i <= 6; i++) {
+        let cardHTML = `<div class="accessory-card"><h3>アクセサリー枠 ${i}</h3>`;
+        // 各アクセサリーに3つの効果枠を生成
+        for (let j = 1; j <= 3; j++) {
+            cardHTML += `
+                <div class="effect-row">
+                    <select class="select-type" id="type_${i}_${j}">${typeOptionsHTML}</select>
+                    <select class="select-plus" id="plus_${i}_${j}">${plusOptionsHTML}</select>
+                </div>
+            `;
+        }
+        cardHTML += `</div>`;
+        container.innerHTML += cardHTML;
+    }
+
+    // ==========================================
+    // 3. 計算ロジック
+    // ==========================================
+    function calculate() {
+        let totalMultiplier = 1.0;
+
+        // 18枠すべて個別に取得し、乗算していく
+        for (let i = 1; i <= 6; i++) {
+            for (let j = 1; j <= 3; j++) {
+                const typeKey = document.getElementById(`type_${i}_${j}`).value;
+                const plusIndex = parseInt(document.getElementById(`plus_${i}_${j}`).value);
+
+                // 選択された効果の配列から、+値に対応する%を取得
+                const percentValue = effectData[typeKey].values[plusIndex];
+
+                // 0%でなければ乗算
+                if (percentValue > 0) {
+                    totalMultiplier *= (1 + (percentValue / 100));
+                }
+            }
+        }
+
+        // 小数点第3位まで表示
+        document.getElementById('totalMultiplier').textContent = totalMultiplier.toFixed(3);
+        
+        // 分かりやすいように総合の%アップ量も表示
+        const totalPercent = (totalMultiplier - 1.0) * 100;
+        document.getElementById('totalPercent').textContent = totalPercent.toFixed(1);
+    }
+</script>
+
+</body>
+</html>

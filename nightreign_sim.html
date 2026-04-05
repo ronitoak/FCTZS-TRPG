@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nightreign Build Simulator</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #eee; padding: 20px; }
+        .card { background: #2a2a2a; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 1px solid #444; }
+        select, button { padding: 8px; border-radius: 4px; background: #333; color: white; border: 1px solid #555; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
+        .status-item { background: #333; padding: 10px; border-radius: 4px; text-align: center; }
+        .status-label { font-size: 0.8rem; color: #aaa; display: block; }
+        .status-value { font-size: 1.2rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>ナイトレイン ビルドシミュレーター</h1>
+
+    <div class="card">
+        <label for="char-select">キャラクターを選択:</label>
+        <select id="char-select">
+            <option value="">読込中...</option>
+        </select>
+    </div>
+
+    <div id="status-board" class="card" style="display:none;">
+        <h2 id="selected-char-name">キャラクター名</h2>
+        <div class="status-grid">
+            <div class="status-item"><span class="status-label">生命力</span><span class="status-value" id="val-vignance">-</span></div>
+            <div class="status-item"><span class="status-label">筋力</span><span class="status-value" id="val-strength">-</span></div>
+            <div class="status-item"><span class="status-label">技量</span><span class="status-value" id="val-dexterity">-</span></div>
+            <div class="status-item"><span class="status-label">知力</span><span class="status-value" id="val-intelligence">-</span></div>
+            </div>
+    </div>
+
+    <script>
+        // --- 設定 ---
+        const WORKER_URL = 'https://あなたのworker名.workers.dev'; // 作成したWorkerのURLに書き換え
+
+        let characters = [];
+
+        // キャラクター一覧を取得
+        async function fetchCharacters() {
+            try {
+                // Worker経由でnightreign_charactersを取得するリクエスト
+                const response = await fetch(`${WORKER_URL}/characters`); 
+                characters = await response.json();
+                
+                const select = document.getElementById('char-select');
+                select.innerHTML = '<option value="">選択してください</option>';
+                
+                characters.forEach(char => {
+                    const opt = document.createElement('option');
+                    opt.value = char.id;
+                    opt.textContent = char.character_name;
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("データ取得失敗:", err);
+                alert("Workerとの通信に失敗しました。URLやCORS設定を確認してください。");
+            }
+        }
+
+        // キャラ選択時の処理
+        document.getElementById('char-select').addEventListener('change', (e) => {
+            const char = characters.find(c => c.id === e.target.value);
+            if (!char) return;
+
+            document.getElementById('status-board').style.display = 'block';
+            document.getElementById('selected-char-name').textContent = char.character_name;
+            
+            // 各ステータスを画面に反映
+            document.getElementById('val-vignance').textContent = char.vignance;
+            document.getElementById('val-strength').textContent = char.strength;
+            document.getElementById('val-dexterity').textContent = char.dexterity;
+            document.getElementById('val-intelligence').textContent = char.intelligence;
+        });
+
+        // 起動時に実行
+        fetchCharacters();
+    </script>
+</body>
+</html>

@@ -44,7 +44,7 @@
         // キャラクター一覧を取得
         async function fetchCharacters() {
             try {
-                characters = Utils.apiGet("nightreign/characters");
+                const [characters] = await Promise.all([Utils.apiGet("nightreign/characters"), ]);
                 
                 const select = document.getElementById('char-select');
                 select.innerHTML = '<option value="">選択してください</option>';

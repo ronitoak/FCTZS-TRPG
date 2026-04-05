@@ -155,6 +155,31 @@
             });
         }
 
+        // 装備中の遺物から効果を合計する関数のイメージ
+        function calculateTotalStats(equippedRelics) {
+            let totalMultiplier = 1.0;
+            let addStrength = 0;
+
+            equippedRelics.forEach(relic => {
+                // 効果1〜3をループ
+                [relic.effect1, relic.effect2, relic.effect3].forEach(effect => {
+                    if (!effect) return;
+
+                    // 乗算かつ対象属性フラグが立っている場合のみ計算
+                    if (effect.is_multiplier && effect.base_value > 0) {
+                        totalMultiplier *= effect.base_value;
+                    } 
+                    // 加算（能力値）の場合
+                    else if (!effect.is_multiplier && effect.affected_status === 'strength') {
+                        addStrength += effect.base_value;
+                    }
+                    // それ以外（フラグがfalseやvalueが0）は、このif文を通り抜けるので自動的に無視される
+                });
+            });
+
+            return { totalMultiplier, addStrength };
+        }
+
         async function saveRelic() {
             const name = document.getElementById('relic-name').value;
             const color = document.getElementById('relic-color').value;

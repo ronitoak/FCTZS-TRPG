@@ -99,43 +99,104 @@
         // --- 設定 ---
         let characters = [];
         let presets = []; // ★追加: プリセット保持用
+        let relicEffects = []; // 効果マスタを保持する変数
 
         async function fetchCharacters() {
             try {
-                // charactersを外部変数に保存するよう修正
-                characters = await Utils.apiGet("nightreign/characters");
+                // キャラクターと効果マスタを同時に取得
+                const [charData, effectData] = await Promise.all([
+                    Utils.apiGet("nightreign/characters"),
+                    Utils.apiGet("nightreign/relic_effects")
+                ]);
                 
+                characters = charData;
+                relicEffects = effectData;
+                
+                // キャラクターセレクトの生成（既存通り）
                 const select = document.getElementById('char-select');
                 select.innerHTML = '<option value="">選択してください</option>';
-                
                 characters.forEach(char => {
                     const opt = document.createElement('option');
                     opt.value = char.id;
                     opt.textContent = char.character_name;
                     select.appendChild(opt);
                 });
+
+                // ★追加: 遺物登録用の効果セレクトボックスを生成
+                fillEffectSelects();
+
             } catch (err) {
                 console.error("データ取得失敗:", err);
             }
         }
 
+        // 効果セレクトボックスにマスタデータを流し込む関数
+        function fillEffectSelects() {
+            const effectSelectIds = ['relic-effect-1', 'relic-effect-2', 'relic-effect-3'];
+            
+            effectSelectIds.forEach(id => {
+                const select = document.getElementById(id);
+                select.innerHTML = '<option value="">効果なし</option>';
+                
+                // カテゴリごとにグルーピングして表示すると選びやすくなります
+                let currentCategory = "";
+                relicEffects.forEach(eff => {
+                    if (currentCategory !== eff.category) {
+                        const group = document.createElement('optgroup');
+                        group.label = `--- ${eff.category} ---`;
+                        select.appendChild(group);
+                        currentCategory = eff.category;
+                    }
+                    const opt = document.createElement('option');
+                    opt.value = eff.id;
+                    opt.textContent = eff.effect_name;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
         async function saveRelic() {
+            const name = document.getElementById('relic-name').value;
+            const color = document.getElementById('relic-color').value;
+            const isDeep = document.getElementById('relic-is-deep').checked;
+            const e1 = document.getElementById('relic-effect-1').value;
+            const e2 = document.getElementById('relic-effect-2').value;
+            const e3 = document.getElementById('relic-effect-3').value;
+
+            if (!name) {
+                alert("管理用の名前を入力してください");
+                return;
+            }
+
             const payload = {
-                custom_name: document.getElementById('relic-name').value,
-                artifact_color: document.getElementById('relic-color').value, // テーブル名変更に合わせて調整
-                is_deep_artifact: document.getElementById('relic-is-deep').checked,
-                effect_1_id: document.getElementById('relic-effect-1').value || null,
-                effect_2_id: document.getElementById('relic-effect-2').value || null,
-                effect_3_id: document.getElementById('relic-effect-3').value || null
+                custom_name: name,
+                artifact_color: color,
+                is_deep_artifact: isDeep,
+                effect_1_id: e1 || null,
+                effect_2_id: e2 || null,
+                effect_3_id: e3 || null,
+                // デメリット（penalty）については必要に応じて追加してください
+                penalty_status: null,
+                penalty_value: 0
             };
 
             try {
                 const res = await Utils.apiPost("nightreign/user_relics", payload);
-                alert("遺物を登録しました");
-                location.reload(); // 一旦簡易的にリロードして反映
+                console.log("保存成功:", res);
+                alert("遺物を登録しました！");
+                
+                // 入力欄をクリア
+                document.getElementById('relic-name').value = '';
+                document.getElementById('relic-color').value = '';
+                document.getElementById('relic-is-deep').checked = false;
+                document.getElementById('relic-effect-1').value = '';
+                document.getElementById('relic-effect-2').value = '';
+                document.getElementById('relic-effect-3').value = '';
+
+                // 登録後に所持一覧を再取得する処理をここに入れるとスムーズです
             } catch (err) {
-                console.error(err);
-                alert("保存に失敗しました");
+                console.error("保存失敗:", err);
+                alert("保存に失敗しました。");
             }
         }
 

@@ -12,6 +12,18 @@
         .status-item { background: #333; padding: 10px; border-radius: 4px; text-align: center; }
         .status-label { font-size: 0.8rem; color: #aaa; display: block; }
         .status-value { font-size: 1.2rem; font-weight: bold; }
+        .slot-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #555;
+            display: inline-block;
+        }
+        .bg-red { background-color: #ff4d4d; }
+        .bg-blue { background-color: #4d79ff; }
+        .bg-yellow { background-color: #ffcc00; }
+        .bg-green { background-color: #2eb82e; }
+        .bg-white { background-color: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
     </style>
 </head>
 <body>
@@ -23,6 +35,34 @@
         <select id="char-select">
             <option value="">読込中...</option>
         </select>
+    </div>
+
+    <div class="card">
+        <label for="char-select">キャラクターを選択:</label>
+        <select id="char-select">
+            <option value="">読込中...</option>
+        </select>
+
+        <div id="preset-container" style="margin-top: 15px; display:none;">
+            <label for="preset-select">スロット構成を選択:</label>
+            <select id="preset-select">
+                <option value="">選択してください</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="slot-board" class="card" style="display:none;">
+        <h3>装備スロット</h3>
+        <div style="display: flex; gap: 20px;">
+            <div>
+                <p style="font-size: 0.8rem; color: #aaa;">通常遺物</p>
+                <div id="normal-slots" style="display: flex; gap: 10px;"></div>
+            </div>
+            <div>
+                <p style="font-size: 0.8rem; color: #aaa;">深層遺物</p>
+                <div id="deep-slots" style="display: flex; gap: 10px;"></div>
+            </div>
+        </div>
     </div>
 
     <div id="status-board" class="card" style="display:none;">
@@ -40,11 +80,12 @@
         
         // --- 設定 ---
         let characters = [];
+        let presets = []; // ★追加: プリセット保持用
 
-        // キャラクター一覧を取得
         async function fetchCharacters() {
             try {
-                const [characters] = await Promise.all([Utils.apiGet("nightreign/characters"), ]);
+                // charactersを外部変数に保存するよう修正
+                characters = await Utils.apiGet("nightreign/characters");
                 
                 const select = document.getElementById('char-select');
                 select.innerHTML = '<option value="">選択してください</option>';
@@ -57,23 +98,63 @@
                 });
             } catch (err) {
                 console.error("データ取得失敗:", err);
-                alert("Workerとの通信に失敗しました。URLやCORS設定を確認してください。");
             }
         }
 
-        // キャラ選択時の処理
-        document.getElementById('char-select').addEventListener('change', (e) => {
-            const char = characters.find(c => c.id === e.target.value);
+        // キャラ選択時の処理をアップデート
+        document.getElementById('char-select').addEventListener('change', async (e) => {
+            const charId = e.target.value;
+            const char = characters.find(c => c.id === charId);
             if (!char) return;
 
             document.getElementById('status-board').style.display = 'block';
             document.getElementById('selected-char-name').textContent = char.character_name;
             
-            // 各ステータスを画面に反映
+            // ステータス反映（既存）
             document.getElementById('val-vignance').textContent = char.vignance;
             document.getElementById('val-strength').textContent = char.strength;
             document.getElementById('val-dexterity').textContent = char.dexterity;
             document.getElementById('val-intelligence').textContent = char.intelligence;
+
+            // ★追加: プリセット（器・盃）の読み込み
+            try {
+                presets = await Utils.apiGet(`nightreign/slot_presets?character_id=${charId}`);
+                const pSelect = document.getElementById('preset-select');
+                pSelect.innerHTML = '<option value="">選択してください</option>';
+                presets.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.preset_name;
+                    pSelect.appendChild(opt);
+                });
+                document.getElementById('preset-container').style.display = 'block';
+            } catch (err) {
+                console.error("プリセット取得失敗", err);
+            }
+        });
+
+        // ★追加: プリセット選択時にスロットの色を表示する
+        document.getElementById('preset-select').addEventListener('change', (e) => {
+            const preset = presets.find(p => p.id === e.target.value);
+            if (!preset) return;
+
+            document.getElementById('slot-board').style.display = 'block';
+            
+            const colorMap = { '赤': 'bg-red', '青': 'bg-blue', '黄': 'bg-yellow', '緑': 'bg-green', '白': 'bg-white' };
+
+            const renderSlots = (containerId, colors) => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                colors.forEach(c => {
+                    const dot = document.createElement('div');
+                    dot.className = `slot-dot ${colorMap[c]}`;
+                    dot.title = c;
+                    container.appendChild(dot);
+                });
+            };
+
+            renderSlots('normal-slots', [preset.normal_slot_1, preset.normal_slot_2, preset.normal_slot_3]);
+            renderSlots('deep-slots', [preset.deep_slot_1, preset.deep_slot_2, preset.deep_slot_3]);
         });
 
         // 起動時に実行

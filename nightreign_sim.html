@@ -35,18 +35,16 @@
             </div>
     </div>
 
+    <script src="./js/utils.js"></script>
     <script>
+        
         // --- 設定 ---
-        const WORKER_URL = 'https://あなたのworker名.workers.dev'; // 作成したWorkerのURLに書き換え
-
         let characters = [];
 
         // キャラクター一覧を取得
         async function fetchCharacters() {
             try {
-                // Worker経由でnightreign_charactersを取得するリクエスト
-                const response = await fetch(`${WORKER_URL}/characters`); 
-                characters = await response.json();
+                characters = Utils.apiGet("nightreign/characters");
                 
                 const select = document.getElementById('char-select');
                 select.innerHTML = '<option value="">選択してください</option>';

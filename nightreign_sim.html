@@ -31,6 +31,28 @@
     <h1>ナイトレイン ビルドシミュレーター</h1>
 
     <div class="card">
+        <h3>所持遺物の新規登録</h3>
+        <div style="display: grid; gap: 10px;">
+            <input type="text" id="relic-name" placeholder="遺物の名前（任意）">
+            
+            <select id="relic-color">
+                <option value="赤">赤</option>
+                <option value="青">青</option>
+                <option value="黄">黄</option>
+                <option value="緑">緑</option>
+            </select>
+
+            <label><input type="checkbox" id="relic-is-deep"> 深層遺物</label>
+
+            <select id="relic-effect-1"><option value="">効果1を選択</option></select>
+            <select id="relic-effect-2"><option value="">効果2を選択</option></select>
+            <select id="relic-effect-3"><option value="">効果3を選択</option></select>
+
+            <button onclick="saveRelic()">遺物を保存する</button>
+        </div>
+    </div>
+
+    <div class="card">
         <label for="char-select">キャラクターを選択:</label>
         <select id="char-select">
             <option value="">読込中...</option>
@@ -94,6 +116,26 @@
                 });
             } catch (err) {
                 console.error("データ取得失敗:", err);
+            }
+        }
+
+        async function saveRelic() {
+            const payload = {
+                custom_name: document.getElementById('relic-name').value,
+                artifact_color: document.getElementById('relic-color').value, // テーブル名変更に合わせて調整
+                is_deep_artifact: document.getElementById('relic-is-deep').checked,
+                effect_1_id: document.getElementById('relic-effect-1').value || null,
+                effect_2_id: document.getElementById('relic-effect-2').value || null,
+                effect_3_id: document.getElementById('relic-effect-3').value || null
+            };
+
+            try {
+                const res = await Utils.apiPost("nightreign/user_relics", payload);
+                alert("遺物を登録しました");
+                location.reload(); // 一旦簡易的にリロードして反映
+            } catch (err) {
+                console.error(err);
+                alert("保存に失敗しました");
             }
         }
 

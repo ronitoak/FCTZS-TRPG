@@ -61,10 +61,13 @@
     <div id="status-board" class="card" style="display:none;">
         <h2 id="selected-char-name">キャラクター名</h2>
         <div class="status-grid">
-            <div class="status-item"><span class="status-label">生命力</span><span class="status-value" id="val-vignance">-</span></div>
+            <div class="status-item"><span class="status-label">HP</span><span class="status-value" id="val-hp">-</span></div>
+            <div class="status-item"><span class="status-label">FP</span><span class="status-value" id="val-fp">-</span></div>
+            <div class="status-item"><span class="status-label">スタミナ</span><span class="status-value" id="val-stamina">-</span></div>
             <div class="status-item"><span class="status-label">筋力</span><span class="status-value" id="val-strength">-</span></div>
             <div class="status-item"><span class="status-label">技量</span><span class="status-value" id="val-dexterity">-</span></div>
             <div class="status-item"><span class="status-label">知力</span><span class="status-value" id="val-intelligence">-</span></div>
+            <div class="status-item"><span class="status-label">信仰</span><span class="status-value" id="val-faith">-</span></div>
             </div>
     </div>
 
@@ -104,10 +107,13 @@
             document.getElementById('selected-char-name').textContent = char.character_name;
             
             // ステータス反映（既存）
-            document.getElementById('val-vignance').textContent = char.vignance;
+            document.getElementById('val-hp').textContent = char.hp;
+            document.getElementById('val-fp').textContent = char.fp;
+            document.getElementById('val-stamina').textContent = char.stamina;
             document.getElementById('val-strength').textContent = char.strength;
             document.getElementById('val-dexterity').textContent = char.dexterity;
             document.getElementById('val-intelligence').textContent = char.intelligence;
+            document.getElementById('val-faith').textContent = char.faith;
 
             // ★追加: プリセット（器・盃）の読み込み
             try {

@@ -33,6 +33,12 @@
     <div class="card">
         <h3>所持遺物の新規登録</h3>
         <div style="display: grid; gap: 10px;">
+            <label>所有者:</label>
+            <select id="relic-owner-reg">
+                <option value="daruji">daruji</option>
+                <option value="BK201">BK201</option>
+                <option value="orcapanda">orcapanda</option>
+            </select>
             <input type="text" id="relic-name" placeholder="遺物の名前（任意）">
             
             <select id="relic-color">
@@ -78,6 +84,18 @@
                 <div id="deep-slots" style="display: flex; gap: 10px;"></div>
             </div>
         </div>
+    </div>
+
+    <hr>
+
+    <div class="card">
+        <h3>ビルド編集</h3>
+        <label>表示する遺物の所有者:</label>
+        <select id="owner-filter">
+            <option value="daruji">daruji</option>
+            <option value="BK201">BK201</option>
+            <option value="orcapanda">orcapanda</option>
+        </select>
     </div>
 
     <div id="status-board" class="card" style="display:none;">
@@ -181,6 +199,7 @@
         }
 
         async function saveRelic() {
+            const owner = document.getElementById('relic-owner-reg').value;
             const name = document.getElementById('relic-name').value;
             const color = document.getElementById('relic-color').value;
             const isDeep = document.getElementById('relic-is-deep').checked;
@@ -194,6 +213,7 @@
             }
 
             const payload = {
+                owner_name: owner,         // ★追加
                 custom_name: name,
                 relic_color: color,
                 is_deep_relic: isDeep,
@@ -208,7 +228,7 @@
             try {
                 const res = await Utils.apiPost("nightreign/user_relics", payload);
                 console.log("保存成功:", res);
-                alert("遺物を登録しました！");
+                alert(`${owner} の遺物として登録しました！`);
                 
                 // 入力欄をクリア
                 document.getElementById('relic-name').value = '';
@@ -223,6 +243,27 @@
                 console.error("保存失敗:", err);
                 alert("保存に失敗しました。");
             }
+        }
+
+        let allUserRelics = []; // DBから取得した全ユーザー遺物
+
+        async function loadUserRelics() {
+            allUserRelics = await Utils.apiGet("nightreign/user_relics");
+        }
+
+        // スロットクリック時に呼ばれる関数（仮）
+        function openRelicSelector(slotColor) {
+            const currentOwner = document.getElementById('owner-filter').value;
+            
+            // 「所有者が一致」かつ「色が一致（またはスロットが白）」する遺物だけを抽出
+            const availableRelics = allUserRelics.filter(r => {
+                const ownerMatch = r.owner_name === currentOwner;
+                const colorMatch = (slotColor === '白' || r.relic_color === slotColor);
+                return ownerMatch && colorMatch;
+            });
+
+            console.log("選択可能な遺物:", availableRelics);
+            // ここでポップアップやリストを表示して選択させる処理へ
         }
 
         // キャラ選択時の処理をアップデート

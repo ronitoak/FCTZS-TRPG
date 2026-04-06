@@ -12,11 +12,11 @@ Utils.domReady(() => {
     // --- 1. システム選択時の動的生成 (既存ロジック) ---
     systemSelect.addEventListener("change", async () => {
         const system = systemSelect.value;
+        const isGaia = (system === "ガイアケアTRPG");
+        document.querySelectorAll(".gaia-specific-field").forEach(el => {
+            el.style.display = isGaia ? "" : "none";
+        });
         const customSkillActions = document.getElementById('custom-skill-actions');
-        const gaiaFields = document.getElementById("gaia-specific-fields");
-        if (gaiaFields) {
-            gaiaFields.style.display = (system === "ガイアケアTRPG") ? "block" : "none";
-        }
         if (!system) {
             dynamicContainer.innerHTML = "";
             if (customSkillActions) customSkillActions.style.display = "none"; // 非表示 

@@ -655,6 +655,7 @@ function renderGenericIntAttributes(system, defs, attrMap) {
     const body = Number(attrMap.get("body")?.value_int);
     const spirit = Number(attrMap.get("spirit")?.value_int);
     const intellect = Number(attrMap.get("intellect")?.value_int);
+  }
 
     if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
     if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);

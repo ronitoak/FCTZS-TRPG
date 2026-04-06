@@ -13,9 +13,14 @@ Utils.domReady(() => {
     systemSelect.addEventListener("change", async () => {
         const system = systemSelect.value;
         const customSkillActions = document.getElementById('custom-skill-actions');
+        const gaiaFields = document.getElementById("gaia-specific-fields");
+        if (gaiaFields) {
+            gaiaFields.style.display = (system === "ガイアケアTRPG") ? "block" : "none";
+        }
         if (!system) {
             dynamicContainer.innerHTML = "";
             if (customSkillActions) customSkillActions.style.display = "none"; // 非表示 
+            if (gaiaFields) gaiaFields.style.display = "none"; // 非表示
             return;
         }
 

@@ -89,18 +89,38 @@ async function main() {
     const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
 
     // プロフィール（columns）
-    const profileRows = [
-      ["職業", c.job],
-      ["年齢", c.age],
-      ["性別", c.gender],
-      ["身長", c.height ? `${c.height}cm` : ""],
-      ["体重", c.weight ? `${c.weight}kg` : ""],
-      ["出身", c.origin],
-      ["プレイヤー", c.player],
-      ["システム", c.system],
-      ["種族", c.race],
-      ["原種", c.original_species]
-    ].filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    const rawProfileRows = [
+      { label: "職業", value: c.job },
+      { label: "年齢", value: c.age },
+      { label: "性別", value: c.gender },
+      { label: "身長", value: c.height ? `${c.height}cm` : "" },
+      { label: "体重", value: c.weight ? `${c.weight}kg` : "" },
+      { label: "出身", value: c.origin },
+      { label: "プレイヤー", value: c.player },
+      { label: "システム", value: c.system }
+    ];
+
+    // ★ガイアケアTRPGの場合のみ追加
+    if (c.system === "ガイアケアTRPG") {
+      rawProfileRows.push({ label: "種族", value: c.race, isSpoiler: true });
+      rawProfileRows.push({ label: "原種", value: c.original_species, isSpoiler: true });
+    }
+
+    // HTMLの行(tr)要素として組み立てる
+    const profileRowsHtml = rawProfileRows
+      .filter(r => r.value !== undefined && r.value !== null && String(r.value).trim() !== "")
+      .map(r => {
+        const escapedVal = Utils.escapeHtml(String(r.value));
+        // スポイラー設定がある場合は span で囲む
+        const valHtml = r.isSpoiler ? `<span class="spoiler-field">${escapedVal}</span>` : escapedVal;
+        return `
+          <tr>
+            <th>${Utils.escapeHtml(r.label)}</th>
+            <td>${valHtml}</td>
+          </tr>
+        `;
+      }).join("");
+
 
     // 能力値（ability_* columns -> object）
     const abilities = {
@@ -207,13 +227,7 @@ async function main() {
 
           <table class="character-detail-table">
             <tbody>
-              ${profileRows.map(([k, v]) => `
-                <tr>
-                  <th>${Utils.escapeHtml(k)}</th>
-                  <td>${Utils.escapeHtml(String(v))}</td>
-                </tr>
-              `).join("")}
-              
+              ${profileRowsHtml}
             </tbody>
           </table>
         </article>
@@ -528,10 +542,10 @@ document.getElementById('edit-scenarios-form')?.addEventListener('submit', async
 });
 
 // 隠しフィールドをクリックしたら開示する
-document.querySelectorAll('.spoiler-field').forEach(el => {
-    el.addEventListener('click', () => {
-        el.classList.toggle('revealed');
-    });
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.classList.contains('spoiler-field')) {
+        e.target.classList.toggle('revealed');
+    }
 });
 
 // データの流し込み（例）
@@ -662,22 +676,15 @@ function renderGenericIntAttributes(system, defs, attrMap) {
   const intDefs = safeDefs.filter(d => d?.kind === "int");
   const chips = [];
 
-  // 派生値（エモクロアTRPGのみ）
-  if (system === "エモクロアTRPG") {
+  // ★修正：派生値（HP/MP）の計算処理のスコープエラーを解消
+  if (system === "エモクロアTRPG" || system === "ガイアケアTRPG") {
     const body = Number(attrMap.get("body")?.value_int);
     const spirit = Number(attrMap.get("spirit")?.value_int);
     const intellect = Number(attrMap.get("intellect")?.value_int);
 
     if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
     if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
-  } else if (system === "ガイアケアTRPG") {
-    const body = Number(attrMap.get("body")?.value_int);
-    const spirit = Number(attrMap.get("spirit")?.value_int);
-    const intellect = Number(attrMap.get("intellect")?.value_int);
   }
-
-    if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
-    if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
 
   for (const d of intDefs) {
     const key = String(d.key);

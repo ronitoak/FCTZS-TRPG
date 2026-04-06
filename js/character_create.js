@@ -115,7 +115,7 @@ Utils.domReady(() => {
                         result.skills[rawSkillName] = diceNum;
                     }
                 }
-                
+
                 return result;
             } catch (e) {
                 console.error("JSON解析失敗、テキストとして続行します", e);
@@ -211,18 +211,44 @@ Utils.domReady(() => {
 
             for (const [sName, sVal] of Object.entries(data.skills)) {
                 let found = false;
-                
-                existingInputs.forEach(input => {
-                    const dataName = input.dataset.name || "";
-                    // 既存リストにその技能名が含まれているかチェック
-                    if (dataName.includes(sName)) {
-                        input.value = sVal;
-                        matchedSkills.add(sName);
-                        found = true;
-                    }
-                });
 
-                // 2. 既存リストに見つからなかった場合、オリジナル技能として行を追加
+                // 1. 「技能名（詳細）」の形式か判定（全角・半角カッコ両対応）
+                const detailMatch = sName.match(/^(.+?)[（\(](.+?)[）\)]$/);
+
+                if (detailMatch) {
+                    const baseName = detailMatch[1].trim();
+                    const detailText = detailMatch[2].trim();
+
+                    // ベース名が一致する label 入力枠を探す
+                    const labelInputs = dynamicContainer.querySelectorAll(`input[name="skill_label"][data-base-name="${baseName}"]`);
+
+                    for (const labelInput of labelInputs) {
+                        // 空枠、または既に同じ詳細が入力されている枠に割り当て
+                        if (labelInput.value === "" || labelInput.value === detailText) {
+                            labelInput.value = detailText;
+                            const valInput = labelInput.closest('.skill-input-container').querySelector('input[name="skill_val"]');
+                            if (valInput) valInput.value = sVal;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. 通常の技能、または詳細技能の枠が埋まっていた場合の処理
+                if (!found) {
+                    const existingInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
+                    for (const input of existingInputs) {
+                        const dataName = input.dataset.name || "";
+                        // 完全一致、または「技能名（）」という空枠フォーマットへの合致をチェック
+                        if (dataName === sName || dataName === `${sName}（）`) {
+                            input.value = sVal;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 3. 該当する枠が一切存在しない場合、オリジナル技能として追加
                 if (!found) {
                     addCustomSkillRow(sName, sVal);
                 }

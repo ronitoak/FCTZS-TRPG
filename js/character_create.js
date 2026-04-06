@@ -95,16 +95,27 @@ Utils.domReady(() => {
 
                 // C. 技能の抽出 (xDM または xDA から始まる記法に対応)
                 if (data.commands) {
-                    // 「xDM<=...」と「xDA{...}」の両方のパターンから、Dの前の数字(技能値)を抽出します
                     const skillRegex = /(\d+)D[MA].*?〈(.+?)〉/g;
                     let match;
                     while ((match = skillRegex.exec(data.commands)) !== null) {
                         const diceNum = match[1]; 
-                        const skillName = match[2].replace('＊', '');
+                        const rawSkillName = match[2];
                         
-                        result.skills[skillName] = diceNum;
+                        // ★追加: 「＊」から始まるベース技能は取り込みをスキップする
+                        if (rawSkillName.startsWith('＊')) {
+                            continue;
+                        }
+                        
+                        // （※「∞共鳴」などはそもそも正規表現の \d+ にマッチしないため自動で弾かれていますが、
+                        // 万が一「1DA{共鳴} 〈∞共鳴〉」のように数字で出力された場合に備えて弾いておくとより安全です）
+                        if (rawSkillName.startsWith('∞')) {
+                            continue;
+                        }
+                        
+                        result.skills[rawSkillName] = diceNum;
                     }
                 }
+                
                 return result;
             } catch (e) {
                 console.error("JSON解析失敗、テキストとして続行します", e);

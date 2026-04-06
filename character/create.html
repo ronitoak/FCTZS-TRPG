@@ -50,24 +50,20 @@
                 <div class="form-group"><label>体重</label><input type="number" name="weight" class="form-control"></div>
                 <div class="form-group"><label>出身</label><input type="text" name="origin" class="form-control"></div>
                 <div class="form-group"><label>プレイヤー</label><input type="text" name="player" class="form-control"></div>
-            </div>
-
-            <div id="gaia-specific-fields" style="display: none; margin-top: 16px;">
-                <div class="profile-grid">
-                    <div class="form-group">
-                        <label>種族</label>
-                        <select name="race" class="form-control">
-                            <option value="">選択してください</option>
-                            <option value="人間">人間</option>
-                            <option value="亜獣">亜獣</option>
-                            <option value="付喪">付喪</option>
-                            <option value="越境者">越境者</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>原種</label>
-                        <input type="text" name="original_species" class="form-control">
-                    </div>
+                
+                <div class="form-group gaia-specific-field" style="display: none;">
+                    <label>種族</label>
+                    <select name="race" class="form-control">
+                        <option value="">選択してください</option>
+                        <option value="人間">人間</option>
+                        <option value="亜獣">亜獣</option>
+                        <option value="付喪">付喪</option>
+                        <option value="越境者">越境者</option>
+                    </select>
+                </div>
+                <div class="form-group gaia-specific-field" style="display: none;">
+                    <label>原種</label>
+                    <input type="text" name="original_species" class="form-control">
                 </div>
             </div>
         </fieldset>

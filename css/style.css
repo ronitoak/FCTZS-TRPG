@@ -841,3 +841,23 @@ a { color: inherit; text-decoration: none; }
 .bulk-slot select.select-ok { background-color: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
 .bulk-slot select.select-maybe { background-color: #fff3e0; color: #ef6c00; border-color: #ffe0b2; }
 .bulk-slot select.select-ng { background-color: #ffebee; color: #c62828; border-color: #ffcdd2; }
+
+/* 隠し情報（種族・原種用）のスタイル */
+.spoiler-field {
+    background-color: #1a202c; /* ほぼ黒 */
+    color: #1a202c;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px 6px;
+    transition: background-color 0.3s, color 0.3s;
+    display: inline-block;
+    min-width: 50px;
+    user-select: none; /* 誤って選択されないように */
+}
+
+/* 開示状態 */
+.spoiler-field.revealed {
+    background-color: transparent;
+    color: inherit;
+    user-select: text;
+}

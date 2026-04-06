@@ -28,17 +28,7 @@
             </div>
         </fieldset>
         <fieldset class="form-section">
-            <legend>プロフィール</legend>
-            <div class="profile-grid">
-                
-                <div class="form-group"><label>名前</label><input type="text" name="name" required class="form-control"></div>
-                <div class="form-group"><label>職業</label><input type="text" name="job" class="form-control"></div>
-                <div class="form-group"><label>年齢</label><input type="number" name="age" class="form-control"></div>
-                <div class="form-group"><label>性別</label><input type="text" name="gender" class="form-control"></div>
-                <div class="form-group"><label>身長</label><input type="number" name="height" class="form-control"></div>
-                <div class="form-group"><label>体重</label><input type="number" name="weight" class="form-control"></div>
-                <div class="form-group"><label>出身</label><input type="text" name="origin" class="form-control"></div>
-                <div class="form-group"><label>プレイヤー</label><input type="text" name="player" class="form-control"></div>
+            <legend>プロフィール 
                 <div class="form-group">
                     <label>システム</label>
                     <select name="system" id="system-select" required>
@@ -49,6 +39,25 @@
                         <option value="ガイアケアTRPG">ガイアケアTRPG</option>
                     </select>
                 </div>
+            </legend>
+            <div class="profile-grid">
+                
+                <div class="form-group"><label>名前</label><input type="text" name="name" required class="form-control"></div>
+                <div class="form-group"><label>職業</label><input type="text" name="job" class="form-control"></div>
+                <div class="form-group"><label>年齢</label><input type="number" name="age" class="form-control"></div>
+                <div class="form-group"><label>性別</label><input type="text" name="gender" class="form-control"></div>
+                <div class="form-group"><label>身長</label><input type="number" name="height" class="form-control"></div>
+                <div class="form-group"><label>体重</label><input type="number" name="weight" class="form-control"></div>
+                <div class="form-group"><label>出身</label><input type="text" name="origin" class="form-control"></div>
+                <div class="form-group"><label>プレイヤー</label><input type="text" name="player" class="form-control"></div>
+                <div class="form-group"><label>種族</label><select name="race" id="race-select" class="form-control">
+                    <option value="">選択してください</option>
+                    <option value="人間">人間</option>
+                    <option value="亜獣">亜獣</option>
+                    <option value="付喪">付喪</option>
+                    <option value="越境者">越境者</option>
+                </select></div>
+                <div class="form-group"><label>原種</label><input type="text" name="original_species" class="form-control"></div>
             </div>
         </fieldset>
 

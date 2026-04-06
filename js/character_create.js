@@ -340,7 +340,9 @@ Utils.domReady(() => {
                 height: parseInt(form.height.value) || null,
                 weight: parseInt(form.weight.value) || null,
                 origin: form.origin.value,
-                memo: form.memo.value
+                memo: form.memo.value,
+                race: form.race ? form.race.value : null,
+                original_species: form.original_species ? form.original_species.value : null,
             },
             attributes: [],
             skills: []

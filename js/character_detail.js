@@ -98,6 +98,8 @@ async function main() {
       ["出身", c.origin],
       ["プレイヤー", c.player],
       ["システム", c.system],
+      ["種族", c.race],
+      ["原種", c.original_species]
     ].filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
 
     // 能力値（ability_* columns -> object）
@@ -211,6 +213,7 @@ async function main() {
                   <td>${Utils.escapeHtml(String(v))}</td>
                 </tr>
               `).join("")}
+              
             </tbody>
           </table>
         </article>
@@ -523,6 +526,22 @@ document.getElementById('edit-scenarios-form')?.addEventListener('submit', async
         alert("更新に失敗しました");
     }
 });
+
+// 隠しフィールドをクリックしたら開示する
+document.querySelectorAll('.spoiler-field').forEach(el => {
+    el.addEventListener('click', () => {
+        el.classList.toggle('revealed');
+    });
+});
+
+// データの流し込み（例）
+function renderDetail(data) {
+    const raceEl = document.getElementById('display-race');
+    const originEl = document.getElementById('display-original-species');
+    
+    if (raceEl) raceEl.textContent = data.race || '未設定';
+    if (originEl) originEl.textContent = data.original_species || '未設定';
+}
 
 // 入力行を生成する共通補助関数（select対応版）
 function appendAttrInput(container, def, value, inputType, inputName) {

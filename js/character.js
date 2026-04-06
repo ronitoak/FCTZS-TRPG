@@ -4,7 +4,8 @@
 const SYSTEM_DISPLAY_NAMES = {
   "CoC6": "クトゥルフ神話TRPG",
   "CoC7": "新クトゥルフ神話TRPG",
-  "エモクロアTRPG": "エモクロアTRPG"
+  "エモクロアTRPG": "エモクロアTRPG",
+  "ガイアケアTRPG": "ガイアケアTRPG"
 };
 
 // 表示ラベルから、DB検索用の文字列（カンマ区切り）を生成する関数

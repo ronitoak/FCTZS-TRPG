@@ -36,21 +36,33 @@ Utils.domReady(() => {
         }
     });
 
-    // --- 2. いあきゃらテキスト解析関数 (精度向上版) ---
+// --- 2. いあきゃらテキスト解析関数 (精度向上・ガイアケア対応版) ---
     function parseIachara(text) {
         const result = { profile: {}, attributes: {}, skills: {} };
         const trimmedText = text.trim();
 
-        // --- JSON形式（エモクロア等）の判定と解析 ---
+        // --- JSON形式（エモクロア・ガイアケア等）の判定と解析 ---
         if (trimmedText.startsWith('{')) {
             try {
                 const json = JSON.parse(trimmedText);
                 const data = json.data || {};
 
+                // ★ ガイアケアTRPGの判定ロジック
+                let isGaia = false;
+                // params内に「真価」があるかチェック
+                if (Array.isArray(data.params) && data.params.some(p => p.label === "真価")) {
+                    isGaia = true;
+                }
+                // commands（チャットパレット）に「〈オリジン〉」技能があるかチェック
+                if (data.commands && data.commands.includes("〈オリジン〉")) {
+                    isGaia = true;
+                }
+
                 // A. プロフィール
                 result.profile.name = data.name || "";
                 result.profile.memo = data.memo || "";
-                result.profile.system = "エモクロアTRPG";
+                // 判定結果に基づいてシステムをセット
+                result.profile.system = isGaia ? "ガイアケアTRPG" : "エモクロアTRPG";
 
                 const emotionFields = {
                     "共鳴感情・表": "emotion_front",
@@ -60,16 +72,18 @@ Utils.domReady(() => {
 
                 for (const [label, key] of Object.entries(emotionFields)) {
                     const reg = new RegExp(`${label}:\\s*([^\\n]+)`);
-                    const m = data.memo.match(reg);
+                    const m = (data.memo || "").match(reg);
                     if (m) {
-                        // 例: "好奇心(欲望)" をそのまま select の value に入れる
                         result.attributes[key] = m[1].trim();
                     }
                 }
 
                 // B. 能力値 (params配列から抽出)
                 const emoAttrMap = {
-                    "精神":"power","五感":"senses","身体":"strength","社会":"social","運勢":"luck","知力":"intellect","器用":"dexterity","魅力":"appearance","共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
+                    "精神":"power","五感":"senses","身体":"strength","社会":"social",
+                    "運勢":"luck", "真価":"luck", // ★「真価」は既存テーブル互換のため「運勢(luck)」としてマッピング
+                    "知力":"intellect","器用":"dexterity","魅力":"appearance",
+                    "共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
                 };
 
                 if (Array.isArray(data.params)) {
@@ -82,12 +96,20 @@ Utils.domReady(() => {
                 // C. 技能の抽出 (xDM<=y 〈技能名〉 から x を抽出)
                 if (data.commands) {
                     const skillRegex = /(\d+)DM<=\d+\s*〈(.+?)〉/g;
+                    const skillRegexGaia = /(\d+)DA<=\d+\s*〈(.+?)〉/g;
                     let match;
                     while ((match = skillRegex.exec(data.commands)) !== null) {
-                        const diceNum = match[1]; // "2DM" の "2"
-                        const skillName = match[2].replace('＊', ''); // 共通技能の＊を除去
+                        // 技能値は不等号の後ろではなく、「DM」の前の数字を正しく取得します
+                        const diceNum = match[1]; 
+                        const skillName = match[2].replace('＊', '');
                         
-                        // 技能レベル (ダイス数) を格納
+                        result.skills[skillName] = diceNum;
+                    }
+                    while ((match = skillRegexGaia.exec(data.commands)) !== null) {
+                        // ガイアケアTRPGの技能抽出
+                        const diceNum = match[1];
+                        const skillName = match[2].replace('＊', '');
+                        
                         result.skills[skillName] = diceNum;
                     }
                 }
@@ -97,7 +119,7 @@ Utils.domReady(() => {
             }
         } else if (trimmedText.startsWith('いあきゃら')) {
 
-            // A. プロフィール抽出 (否定文字クラス [^/]+ を活用)
+            // A. プロフィール抽出
             const profileFields = {
                 name: /名前:\s*([^/(\n]+)/,
                 job: /職業:\s*([^/(\n]+)/,
@@ -117,12 +139,13 @@ Utils.domReady(() => {
                 }
             }
 
-            // B. システム判定
+            // B. システム判定 (★テキスト形式の場合も判定を強化)
             if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
             else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
+            else if (text.includes("ガイアケアTRPG") || text.includes("真価") || text.includes("〈オリジン〉")) result.profile.system = "ガイアケアTRPG";
             else if (text.includes("エモクロアTRPG")) result.profile.system = "エモクロアTRPG";
 
-            // C. 能力値の抽出 (行頭にこだわらず柔軟に取得)
+            // C. 能力値の抽出
             const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
             attrNames.forEach(attr => {
                 const reg = new RegExp(`${attr}\\s+([0-9]+)`, 'i'); 
@@ -136,7 +159,7 @@ Utils.domReady(() => {
                 if (skillMatch) result.skills[skillMatch[1]] = skillMatch[2];
             });
 
-            // E. メモ欄の抽出 (【メモ】以降すべて)
+            // E. メモ欄の抽出
             const memoMatch = text.match(/【メモ】\s*([\s\S]*)/);
             if (memoMatch) result.profile.memo = memoMatch[1].trim();
 

@@ -248,6 +248,13 @@ async function main() {
               </article>
             ` : ``}
 
+            ${hasGeneric && c.system === "ガイアケアTRPG" ? `
+              <article class="character-detail-panel character-detail-emotions">
+                <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
+                ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
+              </article>
+            ` : ``}
+
             <article class="character-detail-panel">
               <h2 class="character-detail-h2">技能${skillsEditBtn}</h2>
               ${skillEntries.length ? `
@@ -644,7 +651,13 @@ function renderGenericIntAttributes(system, defs, attrMap) {
 
     if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
     if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
-  }
+  } else if (system === "ガイアケアTRPG") {
+    const body = Number(attrMap.get("body")?.value_int);
+    const spirit = Number(attrMap.get("spirit")?.value_int);
+    const intellect = Number(attrMap.get("intellect")?.value_int);
+
+    if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
+    if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
 
   for (const d of intDefs) {
     const key = String(d.key);

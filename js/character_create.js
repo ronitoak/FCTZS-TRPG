@@ -93,21 +93,13 @@ Utils.domReady(() => {
                     });
                 }
 
-                // C. 技能の抽出 (xDM<=y 〈技能名〉 から x を抽出)
+                // C. 技能の抽出 (xDM または xDA から始まる記法に対応)
                 if (data.commands) {
-                    const skillRegex = /(\d+)DM<=\d+\s*〈(.+?)〉/g;
-                    const skillRegexGaia = /(\d+)DA<=\d+\s*〈(.+?)〉/g;
+                    // 「xDM<=...」と「xDA{...}」の両方のパターンから、Dの前の数字(技能値)を抽出します
+                    const skillRegex = /(\d+)D[MA].*?〈(.+?)〉/g;
                     let match;
                     while ((match = skillRegex.exec(data.commands)) !== null) {
-                        // 技能値は不等号の後ろではなく、「DM」の前の数字を正しく取得します
                         const diceNum = match[1]; 
-                        const skillName = match[2].replace('＊', '');
-                        
-                        result.skills[skillName] = diceNum;
-                    }
-                    while ((match = skillRegexGaia.exec(data.commands)) !== null) {
-                        // ガイアケアTRPGの技能抽出
-                        const diceNum = match[1];
                         const skillName = match[2].replace('＊', '');
                         
                         result.skills[skillName] = diceNum;

@@ -37,6 +37,15 @@
             border: 2px solid white !important;
             box-shadow: 0 0 8px currentColor;
         }
+        /* スタイルの追加・微調整 */
+        #equipped-effects-summary ul li {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+        }
+        #equipped-effects-summary strong {
+            color: #ffcc00; /* 遺物名を少し目立たせる */
+        }
     </style>
 </head>
 <body>
@@ -86,29 +95,37 @@
     </div>
 
     <div id="slot-board" class="card" style="display:none;">
-        <h3>装備スロット</h3>
-        <div style="display: flex; gap: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="margin: 0;">装備スロット</h3>
             <div>
-                <p style="font-size: 0.8rem; color: #aaa;">通常遺物</p>
-                <div id="normal-slots" style="display: flex; gap: 10px;"></div>
-            </div>
-            <div>
-                <p style="font-size: 0.8rem; color: #aaa;">深層遺物</p>
-                <div id="deep-slots" style="display: flex; gap: 10px;"></div>
+                <label style="font-size: 0.8rem; color: #aaa;">遺物所有者:</label>
+                <select id="owner-filter">
+                    <option value="daruji">daruji</option>
+                    <option value="BK201">BK201</option>
+                    <option value="orcapanda">orcapanda</option>
+                </select>
             </div>
         </div>
-    </div>
 
-    <hr>
+        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+            <div style="flex: 0 1 auto;">
+                <div style="margin-bottom: 10px;">
+                    <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0;">通常遺物</p>
+                    <div id="normal-slots" style="display: flex; gap: 10px;"></div>
+                </div>
+                <div>
+                    <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0;">深層遺物</p>
+                    <div id="deep-slots" style="display: flex; gap: 10px;"></div>
+                </div>
+            </div>
 
-    <div class="card">
-        <h3>ビルド編集</h3>
-        <label>表示する遺物の所有者:</label>
-        <select id="owner-filter">
-            <option value="daruji">daruji</option>
-            <option value="BK201">BK201</option>
-            <option value="orcapanda">orcapanda</option>
-        </select>
+            <div style="flex: 1 1 300px; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 10px; border: 1px dashed #555;">
+                <p style="font-size: 0.8rem; color: #aaa; margin-top: 0;">現在の適用効果一覧</p>
+                <div id="equipped-effects-summary" style="font-size: 0.85rem; line-height: 1.6;">
+                    <p style="color: #666;">遺物を装備するとここに詳細が表示されます</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="status-board" class="card" style="display:none;">
@@ -203,65 +220,80 @@
         }
 
         // --- 装備・計算メインロジック ---
+    function updateCalculations() {
+        const charId = document.getElementById('char-select').value;
+        const char = characters.find(c => c.id === charId);
+        if (!char) return;
 
-        function updateCalculations() {
-            const charId = document.getElementById('char-select').value;
-            const char = characters.find(c => c.id === charId);
-            if (!char) return;
+        document.getElementById('status-board').style.display = 'block';
 
-            document.getElementById('status-board').style.display = 'block';
+        let stats = { 
+            hp: char.hp, fp: char.fp, stamina: char.stamina, 
+            strength: char.strength, dexterity: char.dexterity, 
+            intelligence: char.intelligence, faith: char.faith 
+        };
+        let multi = { phys: 1.0, magic: 1.0, fire: 1.0, lightning: 1.0, holy: 1.0 };
+        
+        // 効果テキストを蓄積する配列
+        let effectTexts = [];
 
-            let stats = { 
-                hp: char.hp, fp: char.fp, stamina: char.stamina, 
-                strength: char.strength, dexterity: char.dexterity, 
-                intelligence: char.intelligence, faith: char.faith 
-            };
-            let multi = { phys: 1.0, magic: 1.0, fire: 1.0, lightning: 1.0, holy: 1.0 };
+        const activeRelics = equippedRelics.filter(r => r);
 
-            const activeRelics = equippedRelics.filter(r => r);
+        activeRelics.forEach(relic => {
+            let relicDesc = `<strong>${relic.custom_name}:</strong> `;
+            let relicEffs = [];
 
-            // 加算処理
-            activeRelics.forEach(relic => {
-                [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id].forEach(id => {
-                    const eff = relicEffects.find(e => e.id === id);
-                    if (!eff || eff.is_multiplier) return;
-                    if (eff.affected_status) stats[eff.affected_status] += Number(eff.base_value || 0);
+            [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id].forEach(id => {
+                const eff = relicEffects.find(e => e.id === id);
+                if (!eff) return;
+
+                relicEffs.push(eff.effect_name);
+
+                const val = Number(eff.base_value || 0);
+                if (eff.is_multiplier) {
+                    const mVal = Number(eff.base_value || 1);
+                    if (eff.affects_physical) multi.phys *= mVal;
+                    if (eff.affects_magic) multi.magic *= mVal;
+                    if (eff.affects_fire) multi.fire *= mVal;
+                    if (eff.affects_lightning) multi.lightning *= mVal;
+                    if (eff.affects_holy) multi.holy *= mVal;
+                    if (eff.affected_status && stats[eff.affected_status]) stats[eff.affected_status] *= mVal;
+                } else {
+                    if (eff.affected_status) stats[eff.affected_status] += val;
                     if (eff.affected_status_2) stats[eff.affected_status_2] += Number(eff.base_value_2 || 0);
-                });
+                }
             });
+            effectTexts.push(relicDesc + relicEffs.join(' / '));
+        });
 
-            // 乗算処理
-            activeRelics.forEach(relic => {
-                [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id].forEach(id => {
-                    const eff = relicEffects.find(e => e.id === id);
-                    if (!eff || !eff.is_multiplier) return;
-                    const val = Number(eff.base_value || 1);
-                    if (eff.affects_physical) multi.phys *= val;
-                    if (eff.affects_magic) multi.magic *= val;
-                    if (eff.affects_fire) multi.fire *= val;
-                    if (eff.affects_lightning) multi.lightning *= val;
-                    if (eff.affects_holy) multi.holy *= val;
-                    if (eff.affected_status && stats[eff.affected_status]) stats[eff.affected_status] *= val;
-                });
-            });
+        // --- UI反映 ---
+        // ステータス数値
+        Object.keys(stats).forEach(key => {
+            const el = document.getElementById(`val-${key}`);
+            if (el) el.textContent = Math.floor(stats[key]);
+        });
 
-            // UI反映
-            Object.keys(stats).forEach(key => {
-                const el = document.getElementById(`val-${key}`);
-                if (el) el.textContent = Math.floor(stats[key]);
-            });
+        // 倍率
+        const multiMap = { 'phys': 'phys', 'magic': 'magic', 'fire': 'fire', 'lightning': 'lightning', 'holy': 'holy' };
+        Object.keys(multiMap).forEach(k => {
+            const el = document.getElementById(`val-multi-${k}`);
+            if (el) el.textContent = multi[k].toFixed(2);
+        });
 
-            document.getElementById('val-multi-phys').textContent = multi.phys.toFixed(2);
-            document.getElementById('val-multi-magic').textContent = multi.magic.toFixed(2);
-            document.getElementById('val-multi-fire').textContent = multi.fire.toFixed(2);
-            document.getElementById('val-multi-lightning').textContent = multi.lightning.toFixed(2);
-            document.getElementById('val-multi-holy').textContent = multi.holy.toFixed(2);
-
-            // スロットUIを同期
-            if (document.getElementById('preset-select').value) {
-                refreshSlotUI();
-            }
+        // ★追加：右側の「適用効果一覧」の更新
+        const summaryEl = document.getElementById('equipped-effects-summary');
+        if (effectTexts.length > 0) {
+            summaryEl.innerHTML = '<ul style="padding-left: 20px; margin: 0;">' + 
+                effectTexts.map(t => `<li>${t}</li>`).join('') + 
+                '</ul>';
+        } else {
+            summaryEl.innerHTML = '<p style="color: #666;">遺物を装備するとここに詳細が表示されます</p>';
         }
+
+        if (document.getElementById('preset-select').value) {
+            refreshSlotUI();
+        }
+    }
 
         function refreshSlotUI() {
             const presetId = document.getElementById('preset-select').value;

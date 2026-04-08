@@ -137,329 +137,239 @@
 
     <script src="./js/utils.js"></script>
     <script>
-        
-        // --- 設定 ---
-        let characters = [];
-        let presets = []; // ★追加: プリセット保持用
-        let relicEffects = []; // 効果マスタを保持する変数
+    // --- 状態管理 ---
+    let characters = [];
+    let presets = [];
+    let relicEffects = [];
+    let allUserRelics = [];
+    let equippedRelics = [null, null, null, null, null, null]; // 0-2:通常, 3-5:深層
+    let currentTargetSlotIndex = null;
 
-        async function fetchCharacters() {
-            try {
-                // キャラクターと効果マスタを同時に取得
-                const [charData, effectData] = await Promise.all([
-                    Utils.apiGet("nightreign/characters"),
-                    Utils.apiGet("nightreign/relic_effects")
-                ]);
-                
-                characters = charData;
-                relicEffects = effectData;
-                
-                // キャラクターセレクトの生成（既存通り）
-                const select = document.getElementById('char-select');
-                select.innerHTML = '<option value="">選択してください</option>';
-                characters.forEach(char => {
-                    const opt = document.createElement('option');
-                    opt.value = char.id;
-                    opt.textContent = char.character_name;
-                    select.appendChild(opt);
-                });
+    const colorMap = { '赤': 'bg-red', '青': 'bg-blue', '黄': 'bg-yellow', '緑': 'bg-green', '白': 'bg-white' };
 
-                // ★追加: 遺物登録用の効果セレクトボックスを生成
-                fillEffectSelects();
+    // --- 初期化処理 ---
+    async function init() {
+        try {
+            const [charData, effectData] = await Promise.all([
+                Utils.apiGet("nightreign/characters"),
+                Utils.apiGet("nightreign/relic_effects")
+            ]);
+            characters = charData;
+            relicEffects = effectData;
 
-            } catch (err) {
-                console.error("データ取得失敗:", err);
-            }
-        }
-
-        // 効果セレクトボックスにマスタデータを流し込む関数
-        function fillEffectSelects() {
-            const effectSelectIds = ['relic-effect-1', 'relic-effect-2', 'relic-effect-3'];
-            
-            effectSelectIds.forEach(id => {
-                const select = document.getElementById(id);
-                select.innerHTML = '<option value="">効果なし</option>';
-                
-                // カテゴリごとにグルーピングして表示すると選びやすくなります
-                let currentCategory = "";
-                relicEffects.forEach(eff => {
-                    if (currentCategory !== eff.category) {
-                        const group = document.createElement('optgroup');
-                        group.label = `--- ${eff.category} ---`;
-                        select.appendChild(group);
-                        currentCategory = eff.category;
-                    }
-                    const opt = document.createElement('option');
-                    opt.value = eff.id;
-                    opt.textContent = eff.effect_name;
-                    select.appendChild(opt);
-                });
-            });
-        }
-
-        // 装備中の遺物から効果を合計する関数のイメージ
-        function calculateTotalStats(equippedRelics) {
-            let totalMultiplier = 1.0;
-            let addStrength = 0;
-
-            equippedRelics.forEach(relic => {
-                // 効果1〜3をループ
-                [relic.effect1, relic.effect2, relic.effect3].forEach(effect => {
-                    if (!effect) return;
-
-                    // 乗算かつ対象属性フラグが立っている場合のみ計算
-                    if (effect.is_multiplier && effect.base_value > 0) {
-                        totalMultiplier *= effect.base_value;
-                    } 
-                    // 加算（能力値）の場合
-                    else if (!effect.is_multiplier && effect.affected_status === 'strength') {
-                        addStrength += effect.base_value;
-                    }
-                    // それ以外（フラグがfalseやvalueが0）は、このif文を通り抜けるので自動的に無視される
-                });
+            // キャラクターセレクト生成
+            const select = document.getElementById('char-select');
+            select.innerHTML = '<option value="">選択してください</option>';
+            characters.forEach(char => {
+                const opt = document.createElement('option');
+                opt.value = char.id; opt.textContent = char.character_name;
+                select.appendChild(opt);
             });
 
-            return { totalMultiplier, addStrength };
+            fillEffectSelects();
+            await loadUserRelics();
+        } catch (err) {
+            console.error("初期化失敗:", err);
         }
+    }
 
-        async function saveRelic() {
-            const owner = document.getElementById('relic-owner-reg').value;
-            const name = document.getElementById('relic-name').value;
-            const color = document.getElementById('relic-color').value;
-            const isDeep = document.getElementById('relic-is-deep').checked;
-            const e1 = document.getElementById('relic-effect-1').value;
-            const e2 = document.getElementById('relic-effect-2').value;
-            const e3 = document.getElementById('relic-effect-3').value;
+    async function loadUserRelics() {
+        allUserRelics = await Utils.apiGet("nightreign/user_relics");
+    }
 
-            if (!name) {
-                alert("管理用の名前を入力してください");
-                return;
-            }
-
-            const payload = {
-                owner_name: owner,         // ★追加
-                custom_name: name,
-                relic_color: color,
-                is_deep_relic: isDeep,
-                effect_1_id: e1 || null,
-                effect_2_id: e2 || null,
-                effect_3_id: e3 || null,
-                // デメリット（penalty）については必要に応じて追加してください
-                penalty_status: null,
-                penalty_value: 0
-            };
-
-            try {
-                const res = await Utils.apiPost("nightreign/user_relics", payload);
-                console.log("保存成功:", res);
-                alert(`${owner} の遺物として登録しました！`);
-                
-                // 入力欄をクリア
-                document.getElementById('relic-name').value = '';
-                document.getElementById('relic-color').value = '';
-                document.getElementById('relic-is-deep').checked = false;
-                document.getElementById('relic-effect-1').value = '';
-                document.getElementById('relic-effect-2').value = '';
-                document.getElementById('relic-effect-3').value = '';
-
-                // 登録後に所持一覧を再取得する処理をここに入れるとスムーズです
-            } catch (err) {
-                console.error("保存失敗:", err);
-                alert("保存に失敗しました。");
-            }
-        }
-
-        let allUserRelics = []; // DBから取得した全遺物
-        let equippedRelics = [null, null, null, null, null, null]; // 0-2:通常, 3-5:深層
-        let currentTargetSlotIndex = null;
-
-        // 起動時や保存時に呼び出して遺物リストを更新しておく
-        async function loadUserRelics() {
-            try {
-                allUserRelics = await Utils.apiGet("nightreign/user_relics");
-                console.log("所持遺物ロード完了:", allUserRelics.length, "件", "allUserRelics：", allUserRelics);
-            } catch (err) {
-                console.error("遺物ロード失敗:", err);
-            }
-        }
-
-        // モーダルを開く
-        function openRelicModal(index, slotColor, isDeep) {
-            currentTargetSlotIndex = index;
-            const owner = document.getElementById('owner-filter').value;
-            const modal = document.getElementById('relic-modal');
-
-            // フィルタリング処理の直前にログ
-            // モーダルを表示状態にする
-            modal.style.display = 'flex'; 
-
-            const listContainer = document.getElementById('relic-list-container');
-            document.getElementById('modal-title').textContent = `${slotColor}スロットの遺物選択 (${owner})`;
-            listContainer.innerHTML = '読込中...';
-
-            console.log("選択中の所有者:", owner);
-            console.log("全遺物リストの状態:", allUserRelics);
-            console.log("スロットの色:", slotColor);
-            console.log("全遺物リストの状態:", allUserRelics);
-
-            // フィルタリングロジック（前述の通り）
-            const filtered = allUserRelics.filter(r => {
-                const ownerMatch = r.owner_name === owner;
-                const colorMatch = (slotColor === '白' || r.relic_color === slotColor);
-                const deepMatch = r.is_deep_relic === isDeep;
-                return ownerMatch && colorMatch && deepMatch;
+    function fillEffectSelects() {
+        const effectSelectIds = ['relic-effect-1', 'relic-effect-2', 'relic-effect-3'];
+        effectSelectIds.forEach(id => {
+            const select = document.getElementById(id);
+            select.innerHTML = '<option value="">効果なし</option>';
+            let currentCategory = "";
+            relicEffects.forEach(eff => {
+                if (currentCategory !== eff.category) {
+                    const group = document.createElement('optgroup');
+                    group.label = `--- ${eff.category} ---`;
+                    select.appendChild(group);
+                    currentCategory = eff.category;
+                }
+                const opt = document.createElement('option');
+                opt.value = eff.id; opt.textContent = eff.effect_name;
+                select.appendChild(opt);
             });
+        });
+    }
 
-            listContainer.innerHTML = '';
-            
-            // 解除ボタン
-            const clearBtn = document.createElement('button');
-            clearBtn.textContent = "--- 装備解除 ---";
-            clearBtn.style.marginBottom = "10px";
-            clearBtn.onclick = () => selectRelic(null);
-            listContainer.appendChild(clearBtn);
+    // --- 装備・計算メインロジック ---
 
-            if (filtered.length === 0) {
-                const p = document.createElement('p');
-                p.textContent = '該当する遺物がありません。所有者フィルタや登録内容を確認してください。';
-                listContainer.appendChild(p);
-            }
+    function updateCalculations() {
+        const charId = document.getElementById('char-select').value;
+        const char = characters.find(c => c.id === charId);
+        if (!char) return;
 
-            filtered.forEach(relic => {
-                const btn = document.createElement('button');
-                btn.className = 'relic-option-btn'; // スタイル用
-                btn.style.width = "100%";
-                btn.style.textAlign = "left";
-                btn.style.marginBottom = "5px";
-                btn.innerHTML = `
-                    <strong>${relic.custom_name || '無名の遺物'}</strong><br>
-                    <small style="color:#ccc;">${getEffectNames(relic)}</small>
-                `;
-                btn.onclick = () => selectRelic(relic);
-                listContainer.appendChild(btn);
-            });
-        }
+        // 表示エリアの制御
+        document.getElementById('status-board').style.display = 'block';
 
-        // 遺物内の効果名を取得する補助関数
-        function getEffectNames(relic) {
-            const names = [];
+        // 1. 基礎値のセット
+        let stats = { 
+            hp: char.hp, fp: char.fp, stamina: char.stamina, 
+            strength: char.strength, dexterity: char.dexterity, 
+            intelligence: char.intelligence, faith: char.faith 
+        };
+        let multi = { phys: 1.0, magic: 1.0, fire: 1.0, lightning: 1.0, holy: 1.0 };
+
+        // 2. 加算（数値補正）
+        equippedRelics.filter(r => r).forEach(relic => {
             [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id].forEach(id => {
-                if (!id) return;
                 const eff = relicEffects.find(e => e.id === id);
-                if (eff) names.push(eff.effect_name);
+                if (!eff || eff.is_multiplier) return;
+                if (eff.affected_status) stats[eff.affected_status] += Number(eff.base_value);
+                if (eff.affected_status_2) stats[eff.affected_status_2] += Number(eff.base_value_2);
             });
-            return names.join(' / ') || '効果なし';
-        }
-
-        function selectRelic(relic) {
-            equippedRelics[currentTargetSlotIndex] = relic;
-            closeModal();
-            console.log("現在の装備構成:", equippedRelics);
-            
-            // ここで計算関数を呼び出す（次回実装）
-            // updateCalculations(); 
-        }
-
-        function closeModal() {
-            document.getElementById('relic-modal').style.display = 'none';
-        }
-
-        // 初期化時にロード
-        window.addEventListener('DOMContentLoaded', () => {
-            loadUserRelics();
         });
 
-        // スロットクリック時に呼ばれる関数（仮）
-        function openRelicSelector(slotColor) {
-            const currentOwner = document.getElementById('owner-filter').value;
-            
-            // 「所有者が一致」かつ「色が一致（またはスロットが白）」する遺物だけを抽出
-            const availableRelics = allUserRelics.filter(r => {
-                const ownerMatch = r.owner_name === currentOwner;
-                const colorMatch = (slotColor === '白' || r.relic_color === slotColor);
-                return ownerMatch && colorMatch;
+        // 3. 乗算（攻撃倍率・リソース倍率）
+        equippedRelics.filter(r => r).forEach(relic => {
+            [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id].forEach(id => {
+                const eff = relicEffects.find(e => e.id === id);
+                if (!eff || !eff.is_multiplier) return;
+                const val = Number(eff.base_value);
+                if (eff.affects_physical) multi.phys *= val;
+                if (eff.affects_magic) multi.magic *= val;
+                if (eff.affects_fire) multi.fire *= val;
+                if (eff.affects_lightning) multi.lightning *= val;
+                if (eff.affects_holy) multi.holy *= val;
+
+                // HP/FP等の乗算補正
+                if (eff.affected_status && stats[eff.affected_status]) stats[eff.affected_status] *= val;
             });
-
-            console.log("選択可能な遺物:", availableRelics);
-            // ここでポップアップやリストを表示して選択させる処理へ
-        }
-
-        // キャラ選択時の処理をアップデート
-        document.getElementById('char-select').addEventListener('change', async (e) => {
-            const charId = e.target.value;
-            const char = characters.find(c => c.id === charId);
-            if (!char) return;
-
-            document.getElementById('status-board').style.display = 'block';
-            document.getElementById('selected-char-name').textContent = char.character_name;
-            
-            // ステータス反映（既存）
-            document.getElementById('val-hp').textContent = char.hp;
-            document.getElementById('val-fp').textContent = char.fp;
-            document.getElementById('val-stamina').textContent = char.stamina;
-            document.getElementById('val-strength').textContent = char.strength;
-            document.getElementById('val-dexterity').textContent = char.dexterity;
-            document.getElementById('val-intelligence').textContent = char.intelligence;
-            document.getElementById('val-faith').textContent = char.faith;
-
-            // ★追加: プリセット（器・盃）の読み込み
-            try {
-                presets = await Utils.apiGet(`nightreign/slot_presets?character_id=${charId}`);
-                const pSelect = document.getElementById('preset-select');
-                pSelect.innerHTML = '<option value="">選択してください</option>';
-                presets.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.preset_name;
-                    pSelect.appendChild(opt);
-                });
-                document.getElementById('preset-container').style.display = 'block';
-            } catch (err) {
-                console.error("プリセット取得失敗", err);
-            }
         });
 
-        // --- 1. 定数や変数の定義（一番外側） ---
-        const colorMap = { '赤': 'bg-red', '青': 'bg-blue', '黄': 'bg-yellow', '緑': 'bg-green', '白': 'bg-white' };
-
-        // --- 2. 関数の定義（一番外側） ---
-        function renderSlots(containerId, colors, isDeep) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-
-            colors.forEach((c, i) => {
-                const slotIndex = isDeep ? i + 3 : i;
-                const dot = document.createElement('div');
-                
-                // 装備状態に応じてクラスを付与
-                const equippedClass = equippedRelics[slotIndex] ? ' slot-equipped' : '';
-                dot.className = `slot-dot ${colorMap[c]}${equippedClass}`;
-                
-                dot.onclick = () => {
-                    console.log(`Slot clicked: index ${slotIndex}`);
-                    openRelicModal(slotIndex, c, isDeep);
-                };
-                
-                container.appendChild(dot);
-            });
-        }
-
-        // --- 3. イベントリスナー（DOMが読み込まれた後） ---
-
-        // プリセット選択時の処理
-        document.getElementById('preset-select').addEventListener('change', (e) => {
-            const preset = presets.find(p => p.id === e.target.value);
-            if (!preset) return;
-
-            document.getElementById('slot-board').style.display = 'block';
-            
-            // ここでは定義を削除し、「実行」だけを行う
-            renderSlots('normal-slots', [preset.normal_slot_1, preset.normal_slot_2, preset.normal_slot_3], false);
-            renderSlots('deep-slots', [preset.deep_slot_1, preset.deep_slot_2, preset.deep_slot_3], true);
+        // 4. UI反映
+        Object.keys(stats).forEach(key => {
+            const el = document.getElementById(`val-${key}`);
+            if (el) el.textContent = Math.floor(stats[key]);
         });
 
-        // 起動時に実行
-        fetchCharacters();
+        // ※攻撃倍率表示用の要素があればここに追加（現在はHTMLにないのでログ出力）
+        console.log("最終倍率 物理:", multi.phys.toFixed(2), "魔力:", multi.magic.toFixed(2));
+
+        // スロットの再描画（装備枠の白線反映）
+        refreshSlotUI();
+    }
+
+    // 現在のプリセットに基づきスロットを再描画する
+    function refreshSlotUI() {
+        const presetId = document.getElementById('preset-select').value;
+        const preset = presets.find(p => p.id === presetId);
+        if (!preset) return;
+        renderSlots('normal-slots', [preset.normal_slot_1, preset.normal_slot_2, preset.normal_slot_3], false);
+        renderSlots('deep-slots', [preset.deep_slot_1, preset.deep_slot_2, preset.deep_slot_3], true);
+    }
+
+    function renderSlots(containerId, colors, isDeep) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        colors.forEach((c, i) => {
+            const slotIndex = isDeep ? i + 3 : i;
+            const dot = document.createElement('div');
+            const isEquipped = !!equippedRelics[slotIndex];
+            dot.className = `slot-dot ${colorMap[c]} ${isEquipped ? 'slot-equipped' : ''}`;
+            dot.onclick = () => openRelicModal(slotIndex, c, isDeep);
+            container.appendChild(dot);
+        });
+    }
+
+    // --- 遺物選択・保存 ---
+
+    function selectRelic(relic) {
+        equippedRelics[currentTargetSlotIndex] = relic;
+        closeModal();
+        updateCalculations(); // 装備後に再計算
+    }
+
+    async function saveRelic() {
+        const payload = {
+            owner_name: document.getElementById('relic-owner-reg').value,
+            custom_name: document.getElementById('relic-name').value,
+            relic_color: document.getElementById('relic-color').value,
+            is_deep_relic: document.getElementById('relic-is-deep').checked,
+            effect_1_id: document.getElementById('relic-effect-1').value || null,
+            effect_2_id: document.getElementById('relic-effect-2').value || null,
+            effect_3_id: document.getElementById('relic-effect-3').value || null,
+            penalty_status: null, penalty_value: 0
+        };
+
+        if (!payload.custom_name) return alert("名前を入力してください");
+
+        try {
+            await Utils.apiPost("nightreign/user_relics", payload);
+            alert("登録しました！");
+            await loadUserRelics(); // リスト更新
+        } catch (err) { console.error(err); alert("保存失敗"); }
+    }
+
+    function openRelicModal(index, slotColor, isDeep) {
+        currentTargetSlotIndex = index;
+        const owner = document.getElementById('owner-filter').value;
+        const modal = document.getElementById('relic-modal');
+        modal.style.display = 'flex';
+
+        const container = document.getElementById('relic-list-container');
+        document.getElementById('modal-title').textContent = `${slotColor}スロット選択 (${owner})`;
+        
+        const filtered = allUserRelics.filter(r => 
+            r.owner_name === owner && 
+            (slotColor === '白' || r.relic_color === slotColor) && 
+            r.is_deep_relic === isDeep
+        );
+
+        container.innerHTML = '';
+        
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = "--- 解除 ---";
+        clearBtn.onclick = () => selectRelic(null);
+        container.appendChild(clearBtn);
+
+        filtered.forEach(relic => {
+            const btn = document.createElement('button');
+            btn.style.textAlign = "left";
+            btn.innerHTML = `<strong>${relic.custom_name}</strong><br><small>${getEffectNames(relic)}</small>`;
+            btn.onclick = () => selectRelic(relic);
+            container.appendChild(btn);
+        });
+    }
+
+    function getEffectNames(relic) {
+        return [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id]
+            .map(id => relicEffects.find(e => e.id === id)?.effect_name)
+            .filter(n => n).join(' / ') || '効果なし';
+    }
+
+    function closeModal() { document.getElementById('relic-modal').style.display = 'none'; }
+
+    // --- イベントリスナー ---
+
+    document.getElementById('char-select').addEventListener('change', async (e) => {
+        const charId = e.target.value;
+        equippedRelics = [null, null, null, null, null, null]; // キャラ変更で装備リセット
+        updateCalculations();
+
+        try {
+            presets = await Utils.apiGet(`nightreign/slot_presets?character_id=${charId}`);
+            const pSelect = document.getElementById('preset-select');
+            pSelect.innerHTML = '<option value="">選択してください</option>';
+            presets.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id; opt.textContent = p.preset_name;
+                pSelect.appendChild(opt);
+            });
+            document.getElementById('preset-container').style.display = 'block';
+        } catch (err) { console.error(err); }
+    });
+
+    document.getElementById('preset-select').addEventListener('change', () => {
+        refreshSlotUI();
+    });
+
+    init(); // 起動
     </script>
 </body>
 </html>

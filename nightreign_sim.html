@@ -24,6 +24,19 @@
         .bg-yellow { background-color: #ffcc00; }
         .bg-green { background-color: #2eb82e; }
         .bg-white { background-color: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .slot-dot {
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .slot-dot:hover {
+            transform: scale(1.2);
+            border-color: #fff;
+        }
+        /* 装備済みスロットの強調 */
+        .slot-equipped {
+            border: 2px solid white !important;
+            box-shadow: 0 0 8px currentColor;
+        }
     </style>
 </head>
 <body>
@@ -109,6 +122,17 @@
             <div class="status-item"><span class="status-label">知力</span><span class="status-value" id="val-intelligence">-</span></div>
             <div class="status-item"><span class="status-label">信仰</span><span class="status-value" id="val-faith">-</span></div>
             </div>
+    </div>
+
+    <div id="relic-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div class="card" style="width:90%; max-width:500px; max-height:80vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="modal-title">遺物を選択</h3>
+                <button onclick="closeModal()">×</button>
+            </div>
+            <div id="relic-list-container" style="display:grid; gap:10px; margin-top:10px;">
+                </div>
+        </div>
     </div>
 
     <script src="./js/utils.js"></script>
@@ -245,11 +269,109 @@
             }
         }
 
-        let allUserRelics = []; // DBから取得した全ユーザー遺物
+        let allUserRelics = []; // DBから取得した全遺物
+        let equippedRelics = [null, null, null, null, null, null]; // 0-2:通常, 3-5:深層
+        let currentTargetSlotIndex = null;
 
+        // 起動時や保存時に呼び出して遺物リストを更新しておく
         async function loadUserRelics() {
-            allUserRelics = await Utils.apiGet("nightreign/user_relics");
+            try {
+                allUserRelics = await Utils.apiGet("nightreign/user_relics");
+                console.log("所持遺物ロード完了:", allUserRelics.length, "件");
+            } catch (err) {
+                console.error("遺物ロード失敗:", err);
+            }
         }
+
+        // スロットクリックイベントの登録（renderSlots関数内を修正）
+        function renderSlots(containerId, colors, isDeep) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            colors.forEach((c, i) => {
+                const slotIndex = isDeep ? i + 3 : i;
+                const dot = document.createElement('div');
+                dot.className = `slot-dot ${colorMap[c]}`;
+                dot.dataset.color = c;
+                dot.dataset.index = slotIndex;
+                dot.title = `${c}スロット (クリックして装備)`;
+                
+                // クリックでモーダルを開く
+                dot.onclick = () => openRelicModal(slotIndex, c, isDeep);
+                
+                container.appendChild(dot);
+            });
+        }
+
+        // モーダルを開く
+        function openRelicModal(index, slotColor, isDeep) {
+            currentTargetSlotIndex = index;
+            const owner = document.getElementById('owner-filter').value;
+            const modal = document.getElementById('relic-modal');
+            const listContainer = document.getElementById('relic-list-container');
+            
+            document.getElementById('modal-title').textContent = `${slotColor}スロットの遺物選択 (${owner})`;
+            listContainer.innerHTML = '';
+
+            // フィルタリング: 所有者一致 ＆ 色一致(または白) ＆ 深層区分一致
+            const filtered = allUserRelics.filter(r => {
+                const ownerMatch = r.owner_name === owner;
+                const colorMatch = (slotColor === '白' || r.relic_color === slotColor);
+                const deepMatch = r.is_deep_artifact === isDeep;
+                return ownerMatch && colorMatch && deepMatch;
+            });
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = '<p>該当する遺物がありません。登録してください。</p>';
+            }
+
+            // 解除ボタン
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = "--- 装備解除 ---";
+            clearBtn.onclick = () => selectRelic(null);
+            listContainer.appendChild(clearBtn);
+
+            filtered.forEach(relic => {
+                const btn = document.createElement('button');
+                btn.style.textAlign = "left";
+                btn.innerHTML = `
+                    <strong>${relic.custom_name || '無名の遺物'}</strong><br>
+                    <small>${getEffectNames(relic)}</small>
+                `;
+                btn.onclick = () => selectRelic(relic);
+                listContainer.appendChild(btn);
+            });
+
+            modal.style.display = 'flex';
+        }
+
+        // 遺物内の効果名を取得する補助関数
+        function getEffectNames(relic) {
+            const names = [];
+            [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id].forEach(id => {
+                if (!id) return;
+                const eff = relicEffects.find(e => e.id === id);
+                if (eff) names.push(eff.effect_name);
+            });
+            return names.join(' / ') || '効果なし';
+        }
+
+        function selectRelic(relic) {
+            equippedRelics[currentTargetSlotIndex] = relic;
+            closeModal();
+            console.log("現在の装備構成:", equippedRelics);
+            
+            // ここで計算関数を呼び出す（次回実装）
+            // updateCalculations(); 
+        }
+
+        function closeModal() {
+            document.getElementById('relic-modal').style.display = 'none';
+        }
+
+        // 初期化時にロード
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUserRelics();
+        });
 
         // スロットクリック時に呼ばれる関数（仮）
         function openRelicSelector(slotColor) {

@@ -121,7 +121,14 @@
             <div class="status-item"><span class="status-label">技量</span><span class="status-value" id="val-dexterity">-</span></div>
             <div class="status-item"><span class="status-label">知力</span><span class="status-value" id="val-intelligence">-</span></div>
             <div class="status-item"><span class="status-label">信仰</span><span class="status-value" id="val-faith">-</span></div>
-            </div>
+        </div>
+        <div class="status-grid"></div>
+            <div class="status-item"><span class="status-label">物理攻撃力倍率</span><span class="status-value" id="val-multi-phys">1.00</span></div>
+            <div class="status-item"><span class="status-label">魔力攻撃力倍率</span><span class="status-value" id="val-multi-magic">1.00</span></div>
+            <div class="status-item"><span class="status-label">炎攻撃力倍率</span><span class="status-value" id="val-multi-fire">1.00</span></div>
+            <div class="status-item"><span class="status-label">雷攻撃力倍率</span><span class="status-value" id="val-multi-lightning">1.00</span></div>
+            <div class="status-item"><span class="status-label">聖攻撃力倍率</span><span class="status-value" id="val-multi-holy">1.00</span></div>
+        </div>
     </div>
 
     <div id="relic-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
@@ -248,8 +255,19 @@
             if (el) el.textContent = Math.floor(stats[key]);
         });
 
+        const presetId = document.getElementById('preset-select').value;
+        if (presetId) {
+            refreshSlotUI();
+        }
+
         // ※攻撃倍率表示用の要素があればここに追加（現在はHTMLにないのでログ出力）
         console.log("最終倍率 物理:", multi.phys.toFixed(2), "魔力:", multi.magic.toFixed(2));
+        // 4. UI反映の部分
+        document.getElementById('val-multi-phys').textContent = multi.phys.toFixed(2);
+        document.getElementById('val-multi-magic').textContent = multi.magic.toFixed(2);
+        document.getElementById('val-multi-fire').textContent = multi.fire.toFixed(2);
+        document.getElementById('val-multi-lightning').textContent = multi.lightning.toFixed(2);
+        document.getElementById('val-multi-holy').textContent = multi.holy.toFixed(2);
 
         // スロットの再描画（装備枠の白線反映）
         refreshSlotUI();
@@ -349,19 +367,26 @@
 
     document.getElementById('char-select').addEventListener('change', async (e) => {
         const charId = e.target.value;
+        if (!charId) return; // 未選択時は何もしない
         equippedRelics = [null, null, null, null, null, null]; // キャラ変更で装備リセット
         updateCalculations();
 
         try {
+            // プリセットを読み込んでセレクトボックスを更新
             presets = await Utils.apiGet(`nightreign/slot_presets?character_id=${charId}`);
             const pSelect = document.getElementById('preset-select');
             pSelect.innerHTML = '<option value="">選択してください</option>';
             presets.forEach(p => {
                 const opt = document.createElement('option');
-                opt.value = p.id; opt.textContent = p.preset_name;
+                opt.value = p.id; 
+                opt.textContent = p.preset_name;
                 pSelect.appendChild(opt);
             });
             document.getElementById('preset-container').style.display = 'block';
+            
+            // ★重要：キャラ変更時はスロットボードを一度隠す（器を選び直させるため）
+            document.getElementById('slot-board').style.display = 'none';
+            
         } catch (err) { console.error(err); }
     });
 

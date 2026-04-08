@@ -105,7 +105,7 @@
     </div>
 
     <div id="slot-board" class="card" style="display:none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 style="margin: 0;">装備スロット</h3>
             <div>
                 <label style="font-size: 0.8rem; color: #aaa;">遺物所有者:</label>
@@ -117,28 +117,22 @@
             </div>
         </div>
 
-        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-            <div style="flex: 0 1 auto;">
-                <div style="margin-bottom: 10px;">
-                    <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0;">通常遺物</p>
-                    <div id="normal-slots" style="display: flex; gap: 10px;"></div>
-                    <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0;">深層遺物</p>
-                    <div id="deep-slots" style="display: flex; gap: 10px;"></div>
-                </div>
-            </div>
+        <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #444;">
+            <div id="normal-slots" style="display: flex; gap: 10px;"></div>
+            <div style="width: 2px; background: #444; margin: 0 10px;"></div> <div id="deep-slots" style="display: flex; gap: 10px;"></div>
+        </div>
 
-            <div style="display: flex; gap: 40px; min-height: 200px;">
-                <div style="flex: 1;">
-                    <p style="font-size: 0.75rem; color: #888; border-bottom: 1px solid #333; padding-bottom: 5px;">通常遺物効果</p>
-                    <ul id="effect-list-normal" style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: #bbb;">
-                        </ul>
-                </div>
-                
-                <div style="flex: 1;">
-                    <p style="font-size: 0.75rem; color: #888; border-bottom: 1px solid #333; padding-bottom: 5px;">深層遺物効果</p>
-                    <ul id="effect-list-deep" style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: #bbb;">
-                        </ul>
-                </div>
+        <div style="display: flex; gap: 40px; min-height: 200px;">
+            <div style="flex: 1;">
+                <p style="font-size: 0.75rem; color: #888; border-bottom: 1px solid #333; padding-bottom: 5px;">通常遺物効果</p>
+                <ul id="effect-list-normal" style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: #bbb;">
+                    </ul>
+            </div>
+            
+            <div style="flex: 1;">
+                <p style="font-size: 0.75rem; color: #888; border-bottom: 1px solid #333; padding-bottom: 5px;">深層遺物効果</p>
+                <ul id="effect-list-deep" style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: #bbb;">
+                    </ul>
             </div>
         </div>
     </div>

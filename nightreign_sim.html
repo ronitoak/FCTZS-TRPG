@@ -277,7 +277,7 @@
         async function loadUserRelics() {
             try {
                 allUserRelics = await Utils.apiGet("nightreign/user_relics");
-                console.log("所持遺物ロード完了:", allUserRelics.length, "件");
+                console.log("所持遺物ロード完了:", allUserRelics.length, "件", "allUserRelics：", allUserRelics);
             } catch (err) {
                 console.error("遺物ロード失敗:", err);
             }
@@ -288,13 +288,17 @@
             currentTargetSlotIndex = index;
             const owner = document.getElementById('owner-filter').value;
             const modal = document.getElementById('relic-modal');
-            
+
+            // フィルタリング処理の直前にログ
             // モーダルを表示状態にする
             modal.style.display = 'flex'; 
 
             const listContainer = document.getElementById('relic-list-container');
             document.getElementById('modal-title').textContent = `${slotColor}スロットの遺物選択 (${owner})`;
             listContainer.innerHTML = '読込中...';
+
+            console.log("選択中の所有者:", owner);
+            console.log("全遺物リストの状態:", allUserRelics);
 
             // フィルタリングロジック（前述の通り）
             const filtered = allUserRelics.filter(r => {

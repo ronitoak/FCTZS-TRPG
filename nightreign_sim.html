@@ -344,8 +344,9 @@
         }
 
         async function saveRelic() {
+            const owner = document.getElementById('relic-owner-reg').value;
             const payload = {
-                owner_name: document.getElementById('relic-owner-reg').value,
+                owner_name: owner || null, // 未選択なら null を入れる
                 custom_name: document.getElementById('relic-name').value,
                 relic_color: document.getElementById('relic-color').value,
                 is_deep_relic: document.getElementById('relic-is-deep').checked,
@@ -373,11 +374,14 @@
             const container = document.getElementById('relic-list-container');
             document.getElementById('modal-title').textContent = `${slotColor}スロット選択 (${owner})`;
             
-            const filtered = allUserRelics.filter(r => 
-                r.owner_name === owner && 
-                (slotColor === '白' || r.relic_color === slotColor) && 
-                r.is_deep_relic === isDeep
-            );
+            const filtered = allUserRelics.filter(r => {
+            // 所有者が一致、または所有者が未設定（共通遺物）
+            const isOwnerMatch = (r.owner_name === owner || r.owner_name === null || r.owner_name === "");
+            const isColorMatch = (slotColor === '白' || r.relic_color === slotColor);
+            const isDeepMatch = (r.is_deep_relic === isDeep);
+            
+            return isOwnerMatch && isColorMatch && isDeepMatch;
+        });
 
             container.innerHTML = '';
             
@@ -392,15 +396,19 @@
             }
 
             filtered.forEach(relic => {
-                const btn = document.createElement('button');
-                btn.style.textAlign = "left";
-                btn.style.width = "100%";
-                btn.style.marginBottom = "5px";
-                btn.innerHTML = `<strong>${relic.custom_name}</strong><br><small style="color:#bbb;">${getEffectNames(relic)}</small>`;
-                btn.onclick = () => selectRelic(relic);
-                container.appendChild(btn);
-            });
-        }
+            const btn = document.createElement('button');
+            btn.style.textAlign = "left";
+            btn.style.width = "100%";
+            btn.style.marginBottom = "5px";
+            
+            // 共通遺物には[共通]と表示すると分かりやすい
+            const prefix = (relic.owner_name === null || relic.owner_name === "") ? '<span style="color:#00ffcc;">[共通]</span> ' : '';
+            
+            btn.innerHTML = `<strong>${prefix}${relic.custom_name}</strong><br><small style="color:#bbb;">${getEffectNames(relic)}</small>`;
+            btn.onclick = () => selectRelic(relic);
+            container.appendChild(btn);
+        });
+    }
 
         function getEffectNames(relic) {
             return [relic.effect_1_id, relic.effect_2_id, relic.effect_3_id]

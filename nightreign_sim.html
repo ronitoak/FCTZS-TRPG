@@ -299,12 +299,14 @@
 
             console.log("選択中の所有者:", owner);
             console.log("全遺物リストの状態:", allUserRelics);
+            console.log("スロットの色:", slotColor);
+            console.log("全遺物リストの状態:", allUserRelics);
 
             // フィルタリングロジック（前述の通り）
             const filtered = allUserRelics.filter(r => {
                 const ownerMatch = r.owner_name === owner;
                 const colorMatch = (slotColor === '白' || r.relic_color === slotColor);
-                const deepMatch = r.is_deep_artifact === isDeep;
+                const deepMatch = r.is_deep_relic === isDeep;
                 return ownerMatch && colorMatch && deepMatch;
             });
 

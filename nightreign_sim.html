@@ -283,36 +283,20 @@
             }
         }
 
-        // スロットクリックイベントの登録（renderSlots関数内を修正）
-        function renderSlots(containerId, colors, isDeep) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            colors.forEach((c, i) => {
-                const slotIndex = isDeep ? i + 3 : i;
-                const dot = document.createElement('div');
-                dot.className = `slot-dot ${colorMap[c]}`;
-                dot.dataset.color = c;
-                dot.dataset.index = slotIndex;
-                dot.title = `${c}スロット (クリックして装備)`;
-                
-                // クリックでモーダルを開く
-                dot.onclick = () => openRelicModal(slotIndex, c, isDeep);
-                
-                container.appendChild(dot);
-            });
-        }
-
         // モーダルを開く
         function openRelicModal(index, slotColor, isDeep) {
             currentTargetSlotIndex = index;
             const owner = document.getElementById('owner-filter').value;
             const modal = document.getElementById('relic-modal');
-            const listContainer = document.getElementById('relic-list-container');
             
-            document.getElementById('modal-title').textContent = `${slotColor}スロットの遺物選択 (${owner})`;
-            listContainer.innerHTML = '';
+            // モーダルを表示状態にする
+            modal.style.display = 'flex'; 
 
-            // フィルタリング: 所有者一致 ＆ 色一致(または白) ＆ 深層区分一致
+            const listContainer = document.getElementById('relic-list-container');
+            document.getElementById('modal-title').textContent = `${slotColor}スロットの遺物選択 (${owner})`;
+            listContainer.innerHTML = '読込中...';
+
+            // フィルタリングロジック（前述の通り）
             const filtered = allUserRelics.filter(r => {
                 const ownerMatch = r.owner_name === owner;
                 const colorMatch = (slotColor === '白' || r.relic_color === slotColor);
@@ -320,28 +304,34 @@
                 return ownerMatch && colorMatch && deepMatch;
             });
 
-            if (filtered.length === 0) {
-                listContainer.innerHTML = '<p>該当する遺物がありません。登録してください。</p>';
-            }
-
+            listContainer.innerHTML = '';
+            
             // 解除ボタン
             const clearBtn = document.createElement('button');
             clearBtn.textContent = "--- 装備解除 ---";
+            clearBtn.style.marginBottom = "10px";
             clearBtn.onclick = () => selectRelic(null);
             listContainer.appendChild(clearBtn);
 
+            if (filtered.length === 0) {
+                const p = document.createElement('p');
+                p.textContent = '該当する遺物がありません。所有者フィルタや登録内容を確認してください。';
+                listContainer.appendChild(p);
+            }
+
             filtered.forEach(relic => {
                 const btn = document.createElement('button');
+                btn.className = 'relic-option-btn'; // スタイル用
+                btn.style.width = "100%";
                 btn.style.textAlign = "left";
+                btn.style.marginBottom = "5px";
                 btn.innerHTML = `
                     <strong>${relic.custom_name || '無名の遺物'}</strong><br>
-                    <small>${getEffectNames(relic)}</small>
+                    <small style="color:#ccc;">${getEffectNames(relic)}</small>
                 `;
                 btn.onclick = () => selectRelic(relic);
                 listContainer.appendChild(btn);
             });
-
-            modal.style.display = 'flex';
         }
 
         // 遺物内の効果名を取得する補助関数
@@ -423,28 +413,43 @@
             }
         });
 
-        // ★追加: プリセット選択時にスロットの色を表示する
+        // --- 1. 定数や変数の定義（一番外側） ---
+        const colorMap = { '赤': 'bg-red', '青': 'bg-blue', '黄': 'bg-yellow', '緑': 'bg-green', '白': 'bg-white' };
+
+        // --- 2. 関数の定義（一番外側） ---
+        function renderSlots(containerId, colors, isDeep) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            colors.forEach((c, i) => {
+                const slotIndex = isDeep ? i + 3 : i;
+                const dot = document.createElement('div');
+                
+                // 装備状態に応じてクラスを付与
+                const equippedClass = equippedRelics[slotIndex] ? ' slot-equipped' : '';
+                dot.className = `slot-dot ${colorMap[c]}${equippedClass}`;
+                
+                dot.onclick = () => {
+                    console.log(`Slot clicked: index ${slotIndex}`);
+                    openRelicModal(slotIndex, c, isDeep);
+                };
+                
+                container.appendChild(dot);
+            });
+        }
+
+        // --- 3. イベントリスナー（DOMが読み込まれた後） ---
+
+        // プリセット選択時の処理
         document.getElementById('preset-select').addEventListener('change', (e) => {
             const preset = presets.find(p => p.id === e.target.value);
             if (!preset) return;
 
             document.getElementById('slot-board').style.display = 'block';
             
-            const colorMap = { '赤': 'bg-red', '青': 'bg-blue', '黄': 'bg-yellow', '緑': 'bg-green', '白': 'bg-white' };
-
-            const renderSlots = (containerId, colors) => {
-                const container = document.getElementById(containerId);
-                container.innerHTML = '';
-                colors.forEach(c => {
-                    const dot = document.createElement('div');
-                    dot.className = `slot-dot ${colorMap[c]}`;
-                    dot.title = c;
-                    container.appendChild(dot);
-                });
-            };
-
-            renderSlots('normal-slots', [preset.normal_slot_1, preset.normal_slot_2, preset.normal_slot_3]);
-            renderSlots('deep-slots', [preset.deep_slot_1, preset.deep_slot_2, preset.deep_slot_3]);
+            // ここでは定義を削除し、「実行」だけを行う
+            renderSlots('normal-slots', [preset.normal_slot_1, preset.normal_slot_2, preset.normal_slot_3], false);
+            renderSlots('deep-slots', [preset.deep_slot_1, preset.deep_slot_2, preset.deep_slot_3], true);
         });
 
         // 起動時に実行

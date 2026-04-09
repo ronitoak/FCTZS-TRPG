@@ -21,8 +21,11 @@
       <p>予定管理用</p>
 
       <div class="calendar-toolbar">
-        <button id="open-input-btn" class="primary-btn">予定入力</button>
-        <button id="open-compare-btn" class="secondary-btn">予定比較</button>
+        <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
+        <button id="compare-btn" class="primary-btn">予定を比較</button>
+        
+        <button id="btn-import-csv" class="secondary-btn" style="margin-left: 10px; background-color: #2e7d32; color: white; border-color: #2e7d32;">調整さんCSVインポート</button>
+        <input type="file" id="csv-upload" accept=".csv" style="display: none;">
       </div>
 
       <div id="compare-modal" class="modal">
@@ -36,6 +39,8 @@
           </div>
         </div>
       </div>
+
+      
 
       <div class="calendar-wrapper">
         <div class="calendar-header">
@@ -89,6 +94,24 @@
     <hr />
     <small><a href="../index.html">Back to Home</a></small>
   </footer>
+  </div>
+
+  <div id="csv-mapping-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <h2 style="margin-bottom: 15px;">プレイヤーの紐付け</h2>
+      <p style="font-size: 0.9rem; margin-bottom: 15px;">
+          CSVから読み込んだ名前と、システム上のプレイヤーを紐付けてください。<br>
+          ※紐付けない（無視する）列は「取り込まない」を選択してください。
+      </p>
+      
+      <div id="csv-mapping-container" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+      </div>
+
+      <div style="text-align: right;">
+          <button id="btn-execute-import" class="primary-btn">インポート実行</button>
+          <button class="secondary-btn" onclick="document.getElementById('csv-mapping-modal').style.display='none'">キャンセル</button>
+      </div>
+    </div>
   </div>
   <script src="../js/utils.js"></script>
   <script src="../js/schedule.js"></script>

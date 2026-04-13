@@ -131,11 +131,11 @@ Utils.domReady(() => {
             const profileFields = {
                 name: /名前:\s*([^/(\n]+)/,
                 job: /職業:\s*([^/(\n]+)/,
-                age: /年齢:\s*([^/]+)/,
-                gender: /性別:\s*([^/]+)/,
-                height: /身長:\s*([^/]+)/,
-                weight: /体重:\s*([^/]+)/,
-                origin: /出身:\s*([^/]+)/
+                age: /年齢:\s*([^/\n]+)/,
+                gender: /性別:\s*([^/\n]+)/,
+                height: /身長:\s*([^/\n]+)/,
+                weight: /体重:\s*([^/\n]+)/,
+                origin: /出身:\s*([^/\n]+)/
             };
 
             for (const [key, regex] of Object.entries(profileFields)) {
@@ -162,9 +162,22 @@ Utils.domReady(() => {
             });
 
             // D. 技能の抽出
+            // 技能として取り込まない基本パラメータの除外リストを作成
+            const excludeParams = [
+                "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", 
+                "HP", "MP", "SAN", "現在SAN", "最大SAN", "アイデア", "幸運", "知識", 
+                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント"
+            ];
+
             text.split('\n').forEach(line => {
                 const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
-                if (skillMatch) result.skills[skillMatch[1]] = skillMatch[2];
+                if (skillMatch) {
+                    const skillName = skillMatch[1];
+                    // 除外リストに含まれていない場合のみ技能として追加する
+                    if (!excludeParams.includes(skillName.toUpperCase())) {
+                        result.skills[skillName] = skillMatch[2];
+                    }
+                }
             });
 
             // E. メモ欄の抽出
@@ -346,8 +359,8 @@ Utils.domReady(() => {
                 weight: parseInt(form.weight.value) || null,
                 origin: form.origin.value,
                 memo: form.memo.value,
-                race: form.race ? form.race.value : null,
-                original_species: form.original_species ? form.original_species.value : null,
+                race: (sys === "ガイアケアTRPG" && form.race.value) ? form.race.value : null,
+                original_species: (sys === "ガイアケアTRPG" && form.original_species.value) ? form.original_species.value : null,
             },
             attributes: [],
             skills: []

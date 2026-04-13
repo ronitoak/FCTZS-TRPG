@@ -359,8 +359,8 @@ Utils.domReady(() => {
                 weight: parseInt(form.weight.value) || null,
                 origin: form.origin.value,
                 memo: form.memo.value,
-                race: (system === "ガイアケアTRPG" && form.race.value) ? form.race.value : null,
-                original_species: (system === "ガイアケアTRPG" && form.original_species.value) ? form.original_species.value : null,
+                race: (systemSelect.value === "ガイアケアTRPG" && form.race.value) ? form.race.value : null,
+                original_species: (systemSelect.value === "ガイアケアTRPG" && form.original_species.value) ? form.original_species.value : null,
             },
             attributes: [],
             skills: []

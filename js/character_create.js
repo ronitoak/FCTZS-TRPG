@@ -164,7 +164,7 @@ Utils.domReady(() => {
             // D. 技能の抽出
             // 技能として取り込まない基本パラメータの除外リストを作成
             const excludeParams = [
-                "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", 
+                "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", "IDE", 
                 "HP", "MP", "SAN", "現在SAN", "最大SAN", "アイデア", "幸運", "知識", 
                 "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント"
             ];

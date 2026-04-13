@@ -396,11 +396,19 @@ document.getElementById("csv-upload")?.addEventListener("change", (e) => {
     
     reader.onload = (event) => {
         const text = event.target.result;
+        // 空行を除外して行の配列にする
         const lines = text.split('\n').filter(l => l.trim() !== '');
-        if (lines.length < 2) return alert("有効なCSVデータがありません");
+        
+        // ★修正：「日程」という文字から始まる行を探し、そこをヘッダー（列名）とする
+        const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
+        
+        if (headerIndex === -1) {
+            return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
+        }
 
-        const headers = lines[0].split(',').map(s => s.replace(/^"|"$/g, '').trim());
-        const dataRows = lines.slice(1).map(line => line.split(',').map(s => s.replace(/^"|"$/g, '').trim()));
+        // ヘッダー行と、それ以降のデータ行を正しく分割する
+        const headers = lines[headerIndex].split(',').map(s => s.replace(/^"|"$/g, '').trim());
+        const dataRows = lines.slice(headerIndex + 1).map(line => line.split(',').map(s => s.replace(/^"|"$/g, '').trim()));
 
         parsedCsvData = { headers, dataRows };
         showMappingModal();

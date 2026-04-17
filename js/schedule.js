@@ -262,32 +262,26 @@ async function saveBulkAvailability() {
 // プレイヤー一覧を取得してチェックボックスを生成
 async function initPlayerList() {
   try {
-    globalPlayers = await Utils.apiGet("players?select=player_id,player_name"); // 変数を変更
+    // Utils のキャッシュ機能を使ってプレイヤーを取得
+    globalPlayers = await Utils.getPlayers(); 
     
-    if (!Array.isArray(globalPlayers)) {
-      console.error("プレイヤー一覧の取得に失敗しました。");
-      return;
-    }
-
     const listEl = document.getElementById("player-checkbox-list");
     const inputPlayerSelect = document.getElementById("modal-player-id");
     
     if (listEl) listEl.innerHTML = "";
-    if (inputPlayerSelect) inputPlayerSelect.innerHTML = "";
     
-    globalPlayers.forEach(p => { // 変数を変更
+    globalPlayers.forEach(p => {
       if (listEl) {
         const label = document.createElement("label");
         label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}"> ${p.player_name}`;
         listEl.appendChild(label);
       }
-      if (inputPlayerSelect) {
-        const opt = document.createElement("option");
-        opt.value = p.player_id;
-        opt.textContent = p.player_name;
-        inputPlayerSelect.appendChild(opt);
-      }
     });
+
+    // 選択プルダウンの生成は Utils の共通関数にお任せ
+    if (inputPlayerSelect) {
+        await Utils.setupPlayerSelect(inputPlayerSelect);
+    }
   } catch (err) {
     console.error("プレイヤー一覧初期化エラー:", err);
   }
@@ -363,6 +357,131 @@ async function main() {
     renderBulkInputGrid();
   });
 
+  // ==========================================
+  // ★ 追加：調整さんCSV スマートインポート機能
+  // ==========================================
+
+  document.getElementById("btn-import-csv")?.addEventListener("click", () => {
+      document.getElementById("csv-upload").value = ""; 
+      document.getElementById("csv-upload").click();
+  });
+
+  document.getElementById("csv-upload")?.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.readAsText(file, 'Shift_JIS'); // 調整さんの文字化け対策
+      
+      reader.onload = (event) => {
+          const text = event.target.result;
+          // 空行を除外して行の配列にする
+          const lines = text.split('\n').filter(l => l.trim() !== '');
+          
+          // ★修正：「日程」という文字から始まる行を探し、そこをヘッダー（列名）とする
+          const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
+          
+          if (headerIndex === -1) {
+              return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
+          }
+
+          // ヘッダー行と、それ以降のデータ行を正しく分割する
+          const headers = lines[headerIndex].split(',').map(s => s.replace(/^"|"$/g, '').trim());
+          const dataRows = lines.slice(headerIndex + 1).map(line => line.split(',').map(s => s.replace(/^"|"$/g, '').trim()));
+
+          parsedCsvData = { headers, dataRows };
+          showMappingModal();
+      };
+  });
+
+
+  document.getElementById("btn-execute-import")?.addEventListener("click", async () => {
+      const selects = document.querySelectorAll(".csv-player-select");
+      const payload = [];
+      const currentYear = currentDate.getFullYear();
+      const columnMap = {};
+
+      selects.forEach(sel => {
+          if (sel.value) columnMap[sel.dataset.csvIndex] = sel.value;
+      });
+
+      if (Object.keys(columnMap).length === 0) return alert("取り込むプレイヤーが選択されていません");
+
+      const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" }; // ※調整さんは大きな丸「◯」の場合もあるため両方対応
+
+      parsedCsvData.dataRows.forEach(row => {
+          const rawDateStr = row[0]; 
+          if (!rawDateStr) return;
+
+          let targetDate = null;
+          let timeSlot = "night";
+          const rawText = rawDateStr.trim();
+
+          const dateMatch = rawDateStr.match(/(\d{1,2})\/(\d{1,2})/);
+          if (dateMatch) {
+              targetDate = `${currentYear}-${String(dateMatch[1]).padStart(2, "0")}-${String(dateMatch[2]).padStart(2, "0")}`;
+          }
+          if (!targetDate) return; 
+
+          const timeMatch = rawDateStr.match(/(\d{1,2}):(\d{2})/);
+          if (timeMatch) {
+              const hour = parseInt(timeMatch[1], 10);
+              if (hour >= 5 && hour < 12) timeSlot = "morning";
+              else if (hour >= 12 && hour < 18) timeSlot = "afternoon";
+              else if (hour >= 18 && hour <= 23) timeSlot = "night";
+              else timeSlot = "midnight";
+          } else {
+              if (rawDateStr.includes("朝")) timeSlot = "morning";
+              else if (rawDateStr.includes("昼")) timeSlot = "afternoon";
+              else if (rawDateStr.includes("深夜")) timeSlot = "midnight";
+              else if (rawDateStr.includes("夜")) timeSlot = "night";
+          }
+
+          Object.entries(columnMap).forEach(([colIndex, playerId]) => {
+              const rawStatus = row[colIndex];
+              const status = statusMap[rawStatus]; 
+              
+              if (status) {
+                  payload.push({
+                      player_id: playerId,
+                      target_date: targetDate,
+                      time_slot: timeSlot,
+                      status: status,
+                      raw_text: rawText
+                  });
+              }
+          });
+      });
+
+      if (payload.length === 0) {
+          alert("取り込む予定データがありませんでした");
+          return closeModal("csv-mapping-modal");
+      }
+
+      try {
+          const btn = document.getElementById("btn-execute-import");
+          btn.disabled = true;
+          btn.textContent = "インポート中...";
+
+          const res = await Utils.apiPost("player_availability", payload);
+          if (res) {
+              closeModal("csv-mapping-modal");
+              alert(`${payload.length}件の予定データをインポートしました！`);
+              if (compareMode) await runComparison();
+              else await fetchScheduleData();
+          }
+      } catch (err) {
+          console.error("CSVインポートエラー:", err);
+          alert("インポートに失敗しました");
+      } finally {
+          const btn = document.getElementById("btn-execute-import");
+          btn.disabled = false;
+          btn.textContent = "インポート実行";
+      }
+  });
+
+
+
   // 初回読み込み
   await initPlayerList();    
   await fetchScheduleData(); // ここでデータを取得し、カレンダーを描画する
@@ -378,42 +497,6 @@ window.addEventListener("click", (e) => {
 
 document.addEventListener("DOMContentLoaded", main);
 
-// ==========================================
-// ★ 追加：調整さんCSV スマートインポート機能
-// ==========================================
-
-document.getElementById("btn-import-csv")?.addEventListener("click", () => {
-    document.getElementById("csv-upload").value = ""; 
-    document.getElementById("csv-upload").click();
-});
-
-document.getElementById("csv-upload")?.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.readAsText(file, 'Shift_JIS'); // 調整さんの文字化け対策
-    
-    reader.onload = (event) => {
-        const text = event.target.result;
-        // 空行を除外して行の配列にする
-        const lines = text.split('\n').filter(l => l.trim() !== '');
-        
-        // ★修正：「日程」という文字から始まる行を探し、そこをヘッダー（列名）とする
-        const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
-        
-        if (headerIndex === -1) {
-            return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
-        }
-
-        // ヘッダー行と、それ以降のデータ行を正しく分割する
-        const headers = lines[headerIndex].split(',').map(s => s.replace(/^"|"$/g, '').trim());
-        const dataRows = lines.slice(headerIndex + 1).map(line => line.split(',').map(s => s.replace(/^"|"$/g, '').trim()));
-
-        parsedCsvData = { headers, dataRows };
-        showMappingModal();
-    };
-});
 
 function showMappingModal() {
     const container = document.getElementById("csv-mapping-container");
@@ -454,87 +537,3 @@ function showMappingModal() {
     document.getElementById("csv-mapping-modal").style.display = "block";
 }
 
-document.getElementById("btn-execute-import")?.addEventListener("click", async () => {
-    const selects = document.querySelectorAll(".csv-player-select");
-    const payload = [];
-    const currentYear = currentDate.getFullYear();
-    const columnMap = {};
-
-    selects.forEach(sel => {
-        if (sel.value) columnMap[sel.dataset.csvIndex] = sel.value;
-    });
-
-    if (Object.keys(columnMap).length === 0) return alert("取り込むプレイヤーが選択されていません");
-
-    const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" }; // ※調整さんは大きな丸「◯」の場合もあるため両方対応
-
-    parsedCsvData.dataRows.forEach(row => {
-        const rawDateStr = row[0]; 
-        if (!rawDateStr) return;
-
-        let targetDate = null;
-        let timeSlot = "night";
-        const rawText = rawDateStr.trim();
-
-        const dateMatch = rawDateStr.match(/(\d{1,2})\/(\d{1,2})/);
-        if (dateMatch) {
-            targetDate = `${currentYear}-${String(dateMatch[1]).padStart(2, "0")}-${String(dateMatch[2]).padStart(2, "0")}`;
-        }
-        if (!targetDate) return; 
-
-        const timeMatch = rawDateStr.match(/(\d{1,2}):(\d{2})/);
-        if (timeMatch) {
-            const hour = parseInt(timeMatch[1], 10);
-            if (hour >= 5 && hour < 12) timeSlot = "morning";
-            else if (hour >= 12 && hour < 18) timeSlot = "afternoon";
-            else if (hour >= 18 && hour <= 23) timeSlot = "night";
-            else timeSlot = "midnight";
-        } else {
-            if (rawDateStr.includes("朝")) timeSlot = "morning";
-            else if (rawDateStr.includes("昼")) timeSlot = "afternoon";
-            else if (rawDateStr.includes("深夜")) timeSlot = "midnight";
-            else if (rawDateStr.includes("夜")) timeSlot = "night";
-        }
-
-        Object.entries(columnMap).forEach(([colIndex, playerId]) => {
-            const rawStatus = row[colIndex];
-            const status = statusMap[rawStatus]; 
-            
-            if (status) {
-                payload.push({
-                    player_id: playerId,
-                    target_date: targetDate,
-                    time_slot: timeSlot,
-                    status: status,
-                    raw_text: rawText
-                });
-            }
-        });
-    });
-
-    if (payload.length === 0) {
-        alert("取り込む予定データがありませんでした");
-        return closeModal("csv-mapping-modal");
-    }
-
-    try {
-        const btn = document.getElementById("btn-execute-import");
-        btn.disabled = true;
-        btn.textContent = "インポート中...";
-
-        const res = await Utils.apiPost("player_availability", payload);
-        if (res) {
-            closeModal("csv-mapping-modal");
-            alert(`${payload.length}件の予定データをインポートしました！`);
-            if (compareMode) await runComparison();
-            else await fetchScheduleData();
-        }
-    } catch (err) {
-        console.error("CSVインポートエラー:", err);
-        alert("インポートに失敗しました");
-    } finally {
-        const btn = document.getElementById("btn-execute-import");
-        btn.disabled = false;
-        btn.textContent = "インポート実行";
-    }
-});

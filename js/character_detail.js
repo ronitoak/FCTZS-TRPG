@@ -240,7 +240,7 @@ async function main() {
               <h2 class="character-detail-h2">能力値${paramsEditBtn}</h2>
 
               ${hasGeneric
-                ? renderGenericIntAttributes(c.system, sysDefsSafe, attrMap)
+                ? renderGenericAttributes(c.system, sysDefsSafe, attrMap, "int")
                 : (
                   Object.keys(abilities).length
                     ? `
@@ -261,14 +261,14 @@ async function main() {
             ${hasGeneric && c.system === "エモクロアTRPG" ? `
               <article class="character-detail-panel character-detail-emotions">
                 <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
-                ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
+                ${renderGenericAttributes(c.system, sysDefsSafe, attrMap, "emotion")}
               </article>
             ` : ``}
 
             ${hasGeneric && c.system === "ガイアケアTRPG" ? `
               <article class="character-detail-panel character-detail-emotions">
                 <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
-                ${renderGenericEmotionAttributes(sysDefsSafe, attrMap)}
+                ${renderGenericAttributes(c.system, sysDefsSafe, attrMap, "emotion")}
               </article>
             ` : ``}
 
@@ -666,6 +666,58 @@ function buildCharacterAttributeMap(rows) {
     });
   }
   return map;
+}
+
+// 統合版：数値・感情の両方に対応する属性レンダリング関数
+function renderGenericAttributes(system, defs, attrMap, targetKind) {
+  const safeDefs = (Array.isArray(defs) ? defs : [])
+    .slice()
+    .sort((a, b) => (Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0)));
+
+  // 指定されたkind（int または emotion）でフィルタリング
+  const targetDefs = safeDefs.filter(d => d?.kind === targetKind);
+  const chips = [];
+
+  // 派生値（HP/MP）の計算処理（数値モードの時のみ実行）
+  if (targetKind === "int" && (system === "エモクロアTRPG" || system === "ガイアケアTRPG")) {
+    const body = Number(attrMap.get("body")?.value_int);
+    const spirit = Number(attrMap.get("spirit")?.value_int);
+    const intellect = Number(attrMap.get("intellect")?.value_int);
+
+    if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
+    if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
+  }
+
+  for (const d of targetDefs) {
+    const key = String(d.key);
+    const label = d.label ?? key;
+    const v = attrMap.get(key);
+    let display = "—";
+    
+    // kindに応じて取得する値を切り替え
+    if (targetKind === "int") {
+        const n = Number(v?.value_int);
+        if (Number.isFinite(n)) display = String(n);
+    } else {
+        const e = v?.value_emotion;
+        if (e !== null && e !== undefined && String(e).trim() !== "") display = String(e);
+    }
+    
+    chips.push([label, display]);
+  }
+
+  if (chips.length === 0) return `<p class="character-detail-muted">未登録</p>`;
+
+  return `
+    <div class="character-detail-chips">
+      ${chips.map(([k, v]) => `
+        <span class="character-detail-chip">
+          <span class="character-detail-chip-key">${Utils.escapeHtml(String(k))}</span>
+          <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
+        </span>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderGenericIntAttributes(system, defs, attrMap) {

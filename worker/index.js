@@ -651,8 +651,8 @@ export default {
     const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
     const scenarioTitle = scenarioData[0]?.title || data.scenario_id || "シナリオ未設定";
     
-    // 役割の日本語化
     const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
+    const count = data.target_count;
     const memo = data.memo || "詳細情報なし";
     
     // 詳細URLの作成
@@ -668,10 +668,10 @@ export default {
       body: JSON.stringify({
         content: `**新規募集**`,
         embeds: [{
-          title: `【${role}募集】${scenarioTitle}`,
-          description: `...`,
-          color: 3447003,
-          url: detailUrl,
+            title: `【${role}募集】${scenarioTitle}`,
+            description: `**【募集主】\n- ${recruiterName}**\n\n**【募集人数】**\n- ${count}\n\n**【メモ】**\n${memo}`,
+            color: 3447003,
+            url: detailUrl,
         }],
         components: [
           {

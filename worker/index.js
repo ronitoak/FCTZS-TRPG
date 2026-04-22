@@ -669,7 +669,7 @@ export default {
         content: `**新規募集**`,
         embeds: [{
             title: `【${role}募集】${scenarioTitle}`,
-            description: `**【募集主】\n- ${recruiterName}**\n\n**【募集人数】**\n- ${count}\n\n**【メモ】**\n${memo}`,
+            description: `**【募集主】\n- ${recruiterName}**\n**【募集人数】**\n- ${count}人\n**【メモ】**\n${memo}`,
             color: 3447003,
             url: detailUrl,
         }],

@@ -80,8 +80,6 @@ export default {
       }
     }
 
-    const url = new URL(request.url);
-
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS, PATCH",

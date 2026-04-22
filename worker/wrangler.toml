@@ -1,0 +1,9 @@
+name = "fctzs-trpg" # 自分のWorker名に合わせて変更
+main = "index.js"
+compatibility_date = "2024-04-01"
+
+[vars]
+# ここに環境変数を定義します
+DISCORD_PUBLIC_KEY = "f54c85df464bf11b37f3c8e44586c65fe9acd6e824dd936eb49778f8ed65d4ae"
+SUPABASE_URL = "https://bcmxaqrjpelpfxafrtqu.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Nzk0MTE3OCwiZXhwIjoyMDgzNTE3MTc4fQ.e4sEUcgDtvqlPpze_D3KqrhxUfSeJt3pzdOHy2CoPBU"

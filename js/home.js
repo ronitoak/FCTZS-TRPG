@@ -5,36 +5,20 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // 1. Supabaseの初期化
 const supabase = createClient(
   'https://bcmxaqrjpelpfxafrtqu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY',
-  {
-    auth: {
-      // 認証の永続化先を明示し、リダイレクト先を現在の階層に強制する
-      redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/',
-      persistSession: true,
-      detectSessionInUrl: true
-    }
-  }
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY'
 );
 
-const hash = window.location.hash;
-if (hash && hash.includes('access_token')) {
-    // もしリポジトリ名（FCTZS-TRPG）が含まれていないURLにいたら、正しい場所へ転送する
-    if (!window.location.pathname.includes('FCTZS-TRPG')) {
-        console.log("リダイレクト先を修正中...");
-        window.location.href = window.location.origin + '/FCTZS-TRPG/' + hash;
-    }
-}
+// リダイレクト先の固定URL（あなたの環境に合わせて1箇所で管理）
+const REDIRECT_URL = 'https://ronitoak.github.io/FCTZS-TRPG/';
 
-// 2. ログイン関数
+// 2. ログイン関数（SDKに頼らずURLを直接生成して遷移する）
 async function loginWithDiscord() {
-  alert("今の設定: " + 'https://ronitoak.github.io/FCTZS-TRPG/'); // これを追加
   const projectID = 'bcmxaqrjpelpfxafrtqu';
-  const redirectTo = encodeURIComponent('https://ronitoak.github.io/FCTZS-TRPG/');
+  const encodedRedirect = encodeURIComponent(REDIRECT_URL);
   
-  // 認証用URLを組み立て
-  const authUrl = `https://${projectID}.supabase.co/auth/v1/authorize?provider=discord&redirect_to=${redirectTo}`;
+  // 認証用URLを強制的に組み立て
+  const authUrl = `https://${projectID}.supabase.co/auth/v1/authorize?provider=discord&redirect_to=${encodedRedirect}`;
   
-  // そのURLに移動する
   window.location.href = authUrl;
 }
 
@@ -48,7 +32,8 @@ supabase.auth.onAuthStateChange((event, session) => {
     userInfo.style.display = 'block';
     
     const user = session.user.user_metadata;
-    document.getElementById('user-name').innerText = user.full_name;
+    // user_metadata の構造に合わせてフォールバックを設定
+    document.getElementById('user-name').innerText = user.full_name || user.name || "User";
     document.getElementById('user-avatar').src = user.avatar_url;
     
     console.log("ログイン成功！ユーザーID:", session.user.id);
@@ -58,25 +43,15 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 });
 
-// ログインボタンのクリックイベント
-document.getElementById('login-btn').addEventListener('click', async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'discord',
-    options: {
-      // ログイン後に戻ってくるURL（GitHub PagesのURLなど）
-      redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/',
-    }
-  });
-  if (error) console.error("ログインエラー:", error.message);
-});
+// 4. イベントリスナーの登録
+// ログインボタンをクリックしたら、上で作った「loginWithDiscord」を呼ぶように修正
+document.getElementById('login-btn').addEventListener('click', loginWithDiscord);
 
-// ログアウトボタンのクリックイベント
+// ログアウト処理
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await supabase.auth.signOut();
-  location.reload(); // 状態をリセット
+  window.location.href = REDIRECT_URL; // ログアウト後もトップへ戻す
 });
-
-
 
 function toValidDate(iso) {
   const d = new Date(iso);

@@ -10,12 +10,13 @@ const supabase = createClient(
 
 // 2. ログイン関数
 async function loginWithDiscord() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'discord',
-    options: {
-      redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/'
-    }
-  })
+  const { error } = await supabase.auth.signInWithOAuth({
+  provider: 'discord',
+  options: {
+    // あなたのGitHub PagesのURLを直接指定
+    redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/'
+  }
+});
 }
 
 // 3. ログイン状態の監視

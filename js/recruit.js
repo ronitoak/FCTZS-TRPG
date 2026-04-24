@@ -113,7 +113,7 @@ function renderRecruitments() {
             onerror="this.onerror=null; this.src='${fallback}';"
             alt="${Utils.escapeHtml(scenario.title ?? scenario.id)}"
             loading="lazy">
-            <a href="../scenario/details.html?id=${scenario?.id}" style="text-decoration: none; color: inherit;">
+            <a href="../scenarios/detail.html?id=${scenario?.id}" style="text-decoration: none; color: inherit;">
                 <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
             </a>
             <div style="font-size: 0.9rem; color: var(--text-muted);">

@@ -635,7 +635,7 @@ export default {
           Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
         }
       }),
-      data.scenario_id ? fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title,image_filename`, {
+      data.scenario_id ? fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title`, {
         headers: {
           apikey: env.SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`

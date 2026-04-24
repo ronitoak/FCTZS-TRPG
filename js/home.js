@@ -27,12 +27,15 @@ if (hash && hash.includes('access_token')) {
 
 // 2. ログイン関数
 async function loginWithDiscord() {
-  const { error } = await supabase.auth.signInWithOAuth({
-  provider: 'discord',
-  options: {
-    redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/'
-  }
-});
+  // Supabaseの認証エンドポイントを直接叩きます
+  const projectID = 'bcmxaqrjpelpfxafrtqu';
+  const redirectTo = encodeURIComponent('https://ronitoak.github.io/FCTZS-TRPG/');
+  
+  // 認証用URLを組み立て
+  const authUrl = `https://${projectID}.supabase.co/auth/v1/authorize?provider=discord&redirect_to=${redirectTo}`;
+  
+  // そのURLに移動する
+  window.location.href = authUrl;
 }
 
 // 3. ログイン状態の監視

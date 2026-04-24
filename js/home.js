@@ -1,6 +1,6 @@
 // /js/home.js
 "use strict";
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 // 1. Supabaseの初期化
 const supabase = createClient(

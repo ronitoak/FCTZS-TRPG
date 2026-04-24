@@ -76,6 +76,7 @@ function renderRecruitments() {
 
         const scenario = allScenarios.find(s => s.id === recruit.scenario_id);
         const scenarioTitle = scenario ? scenario.title : "未定";
+        const coverPath = Utils.getScenarioCoverPath(scenario.id);
 
         const applicantsForThis = allApplicants.filter(a => a.recruitment_id === recruit.id);
         const currentCount = applicantsForThis.length;
@@ -106,7 +107,14 @@ function renderRecruitments() {
                     ${isFulfilled ? '満員御礼！' : `${currentCount} / ${recruit.target_count} 人`}
                 </span>
             </div>
-            <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
+            <img class="scenario-detail-cover"
+            src="${coverPath}"
+            onerror="this.onerror=null; this.src='${fallback}';"
+            alt="${Utils.escapeHtml(scenario.title ?? scenario.id)}"
+            loading="lazy">
+            <a href="../scenario/details.html?id=${scenario?.id}" style="text-decoration: none; color: inherit;">
+                <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
+            </a>
             <div style="font-size: 0.9rem; color: var(--text-muted);">
                 募集主: <strong>${Utils.escapeHtml(ownerName)}</strong>
             </div>

@@ -5,8 +5,16 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // 1. Supabaseの初期化
 const supabase = createClient(
   'https://bcmxaqrjpelpfxafrtqu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY'
-)
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY',
+  {
+    auth: {
+      // 認証の永続化先を明示し、リダイレクト先を現在の階層に強制する
+      redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/',
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
+);
 
 const hash = window.location.hash;
 if (hash && hash.includes('access_token')) {

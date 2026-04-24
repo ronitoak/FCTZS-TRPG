@@ -22,8 +22,7 @@ async function loginWithDiscord() {
   const { error } = await supabase.auth.signInWithOAuth({
   provider: 'discord',
   options: {
-    // あなたのGitHub PagesのURLを直接指定
-    redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/'
+    // redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/'
   }
 });
 }

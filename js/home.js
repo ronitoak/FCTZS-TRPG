@@ -13,7 +13,7 @@ async function loginWithDiscord() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: {
-      redirectTo: window.location.origin // ログイン後に戻ってくる場所
+      redirectTo: window.location.href
     }
   })
 }

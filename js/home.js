@@ -20,15 +20,43 @@ async function loginWithDiscord() {
 
 // 3. ログイン状態の監視
 supabase.auth.onAuthStateChange((event, session) => {
+  const loginBtn = document.getElementById('login-btn');
+  const userInfo = document.getElementById('user-info');
+
   if (session) {
-    console.log("ログイン中:", session.user)
-    document.getElementById('user-name').innerText = session.user.user_metadata.full_name
-    document.getElementById('user-avatar').src = session.user.user_metadata.avatar_url
-    // ここで「登録ボタン」などを表示する処理を入れる
+    loginBtn.style.display = 'none';
+    userInfo.style.display = 'block';
+    
+    const user = session.user.user_metadata;
+    document.getElementById('user-name').innerText = user.full_name;
+    document.getElementById('user-avatar').src = user.avatar_url;
+    
+    console.log("ログイン成功！ユーザーID:", session.user.id);
   } else {
-    console.log("未ログイン")
+    loginBtn.style.display = 'block';
+    userInfo.style.display = 'none';
   }
-})
+});
+
+// ログインボタンのクリックイベント
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'discord',
+    options: {
+      // ログイン後に戻ってくるURL（GitHub PagesのURLなど）
+      redirectTo: window.location.origin 
+    }
+  });
+  if (error) console.error("ログインエラー:", error.message);
+});
+
+// ログアウトボタンのクリックイベント
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  location.reload(); // 状態をリセット
+});
+
+
 
 function toValidDate(iso) {
   const d = new Date(iso);

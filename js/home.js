@@ -27,7 +27,7 @@ if (hash && hash.includes('access_token')) {
 
 // 2. ログイン関数
 async function loginWithDiscord() {
-  // Supabaseの認証エンドポイントを直接叩きます
+  alert("今の設定: " + 'https://ronitoak.github.io/FCTZS-TRPG/'); // これを追加
   const projectID = 'bcmxaqrjpelpfxafrtqu';
   const redirectTo = encodeURIComponent('https://ronitoak.github.io/FCTZS-TRPG/');
   

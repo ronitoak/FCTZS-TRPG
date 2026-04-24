@@ -19,7 +19,7 @@ async function loginWithDiscord() {
 }
 
 // 3. ログイン状態の監視
-supabase.auth.onAuthStateChanged((event, session) => {
+supabase.auth.onAuthStateChange((event, session) => {
   if (session) {
     console.log("ログイン中:", session.user)
     document.getElementById('user-name').innerText = session.user.user_metadata.full_name

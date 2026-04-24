@@ -13,7 +13,7 @@ async function loginWithDiscord() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: {
-      redirectTo: window.location.href
+      redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/'
     }
   })
 }

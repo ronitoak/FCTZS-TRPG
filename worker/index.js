@@ -635,7 +635,7 @@ export default {
           Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
         }
       }),
-      data.scenario_id ? fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${data.scenario_id}&select=title`, {
+      data.scenario_id ? fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title,image_filename`, {
         headers: {
           apikey: env.SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
@@ -646,6 +646,8 @@ export default {
     // 2. データのパース
     const playerData = playerRes.ok ? await playerRes.json() : [];
     const scenarioData = (scenarioRes && scenarioRes.ok) ? await scenarioRes.json() : [];
+    const scenarioId = data.scenario_id || "default";
+    const scenarioImageUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/${scenarioId}.png?raw=true`;
 
     // 3. 表示名の決定（データがない場合のフォールバック付き）
     const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
@@ -668,6 +670,7 @@ export default {
       body: JSON.stringify({
         content: `**新規募集**`,
         embeds: [{
+            image: { url: scenarioImageUrl },
             title: `【${role}募集】${scenarioTitle}`,
             description: `**【募集主】\n- ${recruiterName}**\n**【募集人数】**\n- ${count}人\n**【メモ】**\n${memo}`,
             color: 3447003,

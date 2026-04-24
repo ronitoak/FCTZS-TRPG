@@ -1,6 +1,34 @@
 // /js/home.js
 "use strict";
+import { createClient } from '@supabase/supabase-js'
 
+// 1. Supabaseの初期化
+const supabase = createClient(
+  'https://bcmxaqrjpelpfxafrtqu.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY'
+)
+
+// 2. ログイン関数
+async function loginWithDiscord() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'discord',
+    options: {
+      redirectTo: window.location.origin // ログイン後に戻ってくる場所
+    }
+  })
+}
+
+// 3. ログイン状態の監視
+supabase.auth.onAuthStateChanged((event, session) => {
+  if (session) {
+    console.log("ログイン中:", session.user)
+    document.getElementById('user-name').innerText = session.user.user_metadata.full_name
+    document.getElementById('user-avatar').src = session.user.user_metadata.avatar_url
+    // ここで「登録ボタン」などを表示する処理を入れる
+  } else {
+    console.log("未ログイン")
+  }
+})
 
 function toValidDate(iso) {
   const d = new Date(iso);

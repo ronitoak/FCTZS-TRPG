@@ -64,7 +64,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     provider: 'discord',
     options: {
       // ログイン後に戻ってくるURL（GitHub PagesのURLなど）
-      redirectTo: window.location.origin 
+      redirectTo: 'https://ronitoak.github.io/FCTZS-TRPG/',
     }
   });
   if (error) console.error("ログインエラー:", error.message);

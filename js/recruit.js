@@ -77,6 +77,7 @@ function renderRecruitments() {
         const scenario = allScenarios.find(s => s.id === recruit.scenario_id);
         const scenarioTitle = scenario ? scenario.title : "未定";
         const coverPath = Utils.getScenarioCoverPath(scenario.id);
+        const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
         const applicantsForThis = allApplicants.filter(a => a.recruitment_id === recruit.id);
         const currentCount = applicantsForThis.length;

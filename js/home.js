@@ -8,6 +8,15 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY'
 )
 
+const hash = window.location.hash;
+if (hash && hash.includes('access_token')) {
+    // もしリポジトリ名（FCTZS-TRPG）が含まれていないURLにいたら、正しい場所へ転送する
+    if (!window.location.pathname.includes('FCTZS-TRPG')) {
+        console.log("リダイレクト先を修正中...");
+        window.location.href = window.location.origin + '/FCTZS-TRPG/' + hash;
+    }
+}
+
 // 2. ログイン関数
 async function loginWithDiscord() {
   const { error } = await supabase.auth.signInWithOAuth({

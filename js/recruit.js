@@ -101,6 +101,8 @@ function renderRecruitments() {
             !applicantsForThis.some(a => a.player_id === p.player_id)
         );
 
+        const isOwner = true; // 本来はログインユーザーIDと比較: recruit.owner_player_id === currentUserId;
+
         card.innerHTML = `
             <div class="recruit-header">
                 <span class="recruit-role-badge">${recruit.recruit_role === 'GM' ? 'GM募集' : 'PL募集'}</span>
@@ -135,8 +137,9 @@ function renderRecruitments() {
                     <button class="btn-primary btn-join" data-id="${recruit.id}" style="white-space: nowrap;">参加する</button>
                 </div>
             ` : `
-                <div style="margin-top: 16px; text-align: right;">
+                <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
                     <a href="../schedule/index.html" class="btn-secondary" style="font-size: 0.85rem;">日程調整へ進む ▶</a>
+                    <button class="btn-close-recruit" data-id="${recruit.id}" style="font-size: 0.8rem; background: none; border: 1px solid #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px;">募集を終了する</button>
                 </div>
             `}
         `;
@@ -184,7 +187,27 @@ function renderRecruitments() {
             }
         });
     });
+
+    // 募集終了ボタン（ステータスをclosed等に変更して一覧から消す）
+    document.querySelectorAll(".btn-close-recruit").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            if (!confirm("この募集を終了し、一覧から非表示にしますか？")) return;
+            
+            const recruitId = e.target.dataset.id;
+            try {
+                // ステータスを 'closed' に更新（これにより filter から外れる）
+                await Utils.apiPatch("recruitments", { status: "closed" }, `id=eq.${recruitId}`);
+                alert("募集を終了しました。");
+                await loadRecruitments();
+            } catch (err) {
+                console.error(err);
+                alert("処理に失敗しました。");
+            }
+        });
+    });
 }
+
+
 
 // 5. 募集作成モーダルの制御
 document.getElementById("btn-open-recruit-modal")?.addEventListener("click", () => {

@@ -128,6 +128,12 @@ function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
   return cell;
 }
 
+// シンボル取得用のヘルパー関数
+function getStatusSymbol(status) {
+    const symbols = { "ok": "○", "maybe": "△", "ng": "×" };
+    return symbols[status] || "-";
+}
+
 // ★追加：一括入力用のマトリックスを生成する関数
 async function renderBulkInputGrid() {
   const playerId = document.getElementById("modal-player-id")?.value;
@@ -175,33 +181,36 @@ async function renderBulkInputGrid() {
 
     slots.forEach(slot => {
       const slotDiv = document.createElement("div");
-      slotDiv.className = "bulk-slot";
+    slotDiv.className = "bulk-slot-toggle";
+    slotDiv.dataset.date = dateStr;
+    slotDiv.dataset.slot = slot;
 
-      const select = document.createElement("select");
-      select.dataset.date = dateStr;
-      select.dataset.slot = slot;
-      
-      select.innerHTML = `
-        <option value="">-</option>
-        <option value="ok">○</option>
-        <option value="maybe">△</option>
-        <option value="ng">×</option>
-      `;
+    const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
+    const initialVal = exist ? exist.status : "";
+    
+    slotDiv.dataset.status = initialVal;     // 現在の値
+    slotDiv.dataset.initial = initialVal;    // 保存判定用の初期値
+    slotDiv.textContent = getStatusSymbol(initialVal);
+    if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
 
-      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-      // ★ 変更点1：初期値を記憶させる（何もない場合は空文字）
-      const initialVal = exist ? exist.status : "";
-      select.value = initialVal;
-      select.dataset.initial = initialVal;
-      
-      if (initialVal) select.className = `select-${initialVal}`;
+    slotDiv.addEventListener("click", () => {
+        const statusOrder = ["", "ok", "maybe", "ng"];
+        let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
+        let nextIndex = (currentIndex + 1) % statusOrder.length;
+        
+        const nextStatus = statusOrder[nextIndex];
+        slotDiv.dataset.status = nextStatus;
+        slotDiv.textContent = getStatusSymbol(nextStatus);
+        
+        // クラスの付け替え
+        slotDiv.className = "bulk-slot-toggle"; 
+        if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
+    });
 
-      select.addEventListener("change", (e) => {
-        select.className = e.target.value ? `select-${e.target.value}` : "";
-      });
-
-      slotDiv.appendChild(select);
-      row.appendChild(slotDiv);
+    const wrapper = document.createElement("div");
+    wrapper.className = "bulk-slot";
+    wrapper.appendChild(slotDiv);
+    row.appendChild(wrapper);
     });
 
     container.appendChild(row);
@@ -213,21 +222,19 @@ async function saveBulkAvailability() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return alert("プレイヤーを選択してください");
 
-  const selects = document.querySelectorAll("#bulk-input-container select");
+  // ここを .bulk-slot-toggle に変更
+  const toggles = document.querySelectorAll(".bulk-slot-toggle");
   const payload = [];
 
-  selects.forEach(sel => {
-    // ★ 変更点2：初期値から「変更されたものだけ」を対象にする
-    if (sel.value !== sel.dataset.initial) {
-      // ※ もし「空文字（未設定）」に変更された場合（＝予定を消したい場合）の処理は、
-      // Supabaseのupsertの仕様上少し厄介なので、今回は「一度入れた予定は未設定に戻せず、必ず○△×のどれかにする」仕様とします。
-      // もし消せるようにしたい場合は、API側で DELETE メソッドを実装する必要があります。
-      if (sel.value !== "") {
+  toggles.forEach(el => {
+    // dataset.status と dataset.initial を比較
+    if (el.dataset.status !== el.dataset.initial) {
+      if (el.dataset.status !== "") {
         payload.push({
           player_id: playerId,
-          target_date: sel.dataset.date,
-          time_slot: sel.dataset.slot,
-          status: sel.value
+          target_date: el.dataset.date,
+          time_slot: el.dataset.slot,
+          status: el.dataset.status
         });
       }
     }

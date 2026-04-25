@@ -878,3 +878,24 @@ a { color: inherit; text-decoration: none; }
     color: inherit;
     user-select: text;
 }
+
+/* カレンダーのセルのような見た目にする */
+.bulk-slot-toggle {
+    cursor: pointer;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    text-align: center;
+    user-select: none; /* テキスト選択を防ぐ */
+    transition: background-color 0.2s;
+    min-width: 40px;
+}
+
+.bulk-slot-toggle:hover {
+    background-color: #f0f0f0;
+}
+
+/* ステータスごとの色設定（既存のselect-ok等に合わせる） */
+.bulk-slot-toggle.select-ok { background-color: #e3f2fd; color: #1565c0; border-color: #1565c0; }
+.bulk-slot-toggle.select-maybe { background-color: #fff3e0; color: #ef6c00; border-color: #ef6c00; }
+.bulk-slot-toggle.select-ng { background-color: #ffeae1; color: #c62828; border-color: #c62828; }

@@ -31,15 +31,15 @@ async function main() {
     // セクションを2つ作る
     const activeSection = document.createElement("section");
     activeSection.className = "sessions-section";
-    activeSection.innerHTML = `<h2 class="sessions-section-title">進行中セッション</h2>`;
+    activeSection.innerHTML = `<h2 class="sessions-section-title">進行中の卓</h2>`;
 
     const planningSection = document.createElement("section");
     planningSection.className = "sessions-section";
-    planningSection.innerHTML = `<h2 class="sessions-section-title">計画中セッション</h2>`;
+    planningSection.innerHTML = `<h2 class="sessions-section-title">計画中の卓</h2>`;
 
     const doneSection = document.createElement("section");
     doneSection.className = "sessions-section";
-    doneSection.innerHTML = `<h2 class="sessions-section-title">終了済セッション</h2>`;
+    doneSection.innerHTML = `<h2 class="sessions-section-title">終了済みの卓</h2>`;
 
     const activeGrid = document.createElement("div");
     activeGrid.className = "sessions-grid";

@@ -222,8 +222,8 @@ export default {
         const charRes = await fetch(`${env.SUPABASE_URL}/rest/v1/characters`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             "Prefer": "return=representation",
           },

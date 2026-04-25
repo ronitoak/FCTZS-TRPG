@@ -96,8 +96,8 @@ export default {
     async function sbGet(pathAndQuery) {
       const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, {
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
         },
       });
       const text = await res.text();
@@ -116,8 +116,8 @@ export default {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/posts`, {
         method: "POST",
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
           Prefer: "return=representation",
         },
@@ -142,8 +142,8 @@ export default {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/comments`, {
         method: "POST",
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
           Prefer: "return=representation",
         },
@@ -173,8 +173,8 @@ export default {
       if (scenarioId) {
         const csRes = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`, {
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           }
         });
         
@@ -242,8 +242,8 @@ export default {
           await fetch(`${env.SUPABASE_URL}/rest/v1/character_attributes`, {
             method: "POST",
             headers: {
-              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              apikey: env.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify(attributes.map(a => ({ ...a, character_id: newCharId }))),
@@ -254,8 +254,8 @@ export default {
           await fetch(`${env.SUPABASE_URL}/rest/v1/character_skills`, {
             method: "POST",
             headers: {
-              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              apikey: env.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
               "Content-Type": "application/json",
               "Prefer": "resolution=merge-duplicates"
             },
@@ -276,8 +276,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_skills`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             // ★ 既存データがあれば更新、なければ挿入する設定
             "Prefer": "resolution=merge-duplicates"
@@ -306,8 +306,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             // ★ 既存データがあれば更新、なければ挿入する設定
             "Prefer": "resolution=merge-duplicates"
@@ -336,8 +336,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_attributes`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             // ★ 既存データがあれば更新、なければ挿入する設定
             "Prefer": "resolution=merge-duplicates"
@@ -385,8 +385,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/player_availability`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             "Prefer": "resolution=merge-duplicates" // 複合主キーが一致すれば上書き
           },
@@ -465,8 +465,8 @@ export default {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios`, {
         method: "POST",
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
           "Prefer": "return=representation",
         },
@@ -492,8 +492,8 @@ export default {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs`, {
         method: "POST",
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
           "Prefer": "return=representation",
         },
@@ -517,8 +517,8 @@ export default {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/sessions`, {
         method: "POST",
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
           "Prefer": "return=representation",
         },
@@ -631,14 +631,14 @@ export default {
     const [playerRes, scenarioRes] = await Promise.all([
       fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=eq.${data.owner_player_id}&select=player_name`, {
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
         }
       }),
       data.scenario_id ? fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title`, {
         headers: {
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
         }
       }) : Promise.resolve(null)
     ]);
@@ -704,8 +704,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             "Prefer": "return=representation"
           },
@@ -744,8 +744,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             "Prefer": "return=representation"
           },
@@ -786,8 +786,8 @@ export default {
         // ※ players テーブルに discord_id カラムがあることを前提としています
         const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?discord_id=eq.${discordUser.id}&select=player_id,player_name`, {
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
           }
         });
 
@@ -807,8 +807,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             // 複合主キーによる重複（二重登録）があった場合はエラーにせず無視する設定
             "Prefer": "return=representation,resolution=ignore-duplicates"
@@ -844,8 +844,8 @@ export default {
           const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${resource}${url.search}`, {
             method: "PATCH",
             headers: {
-              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+              apikey: env.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
               "Content-Type": "application/json",
               "Prefer": "return=representation",
             },
@@ -942,8 +942,8 @@ export default {
         const res = await fetch(`${env.SUPABASE_URL}/rest/v1/nightreign_user_relics`, {
           method: "POST",
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json",
             "Prefer": "return=representation",
           },
@@ -973,8 +973,8 @@ export default {
         const sessionUrl = `/rest/v1/sessions?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`;
         const sessionRes = await fetch(`${env.SUPABASE_URL}${sessionUrl}`, {
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
           }
         });
         
@@ -1001,8 +1001,8 @@ export default {
           const runsUrl = `/rest/v1/runs?select=id,title,gm,players&id=in.${runIdsParam}`;
           const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
             headers: {
-              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-              Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+              apikey: env.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
             }
           });
           if (runsRes.ok) {
@@ -1014,8 +1014,8 @@ export default {
         // 4. プレイヤー情報を取得（playersからplayer_name,discord_idを取得）
         const mapRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?select=player_name,discord_id`, {
           headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
           }
         });
         const allPlayers = mapRes.ok ? await mapRes.json() : [];

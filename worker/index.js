@@ -93,11 +93,15 @@ export default {
     }
 
     // ---- helpers ----
-    async function sbGet(pathAndQuery) {
+    async function sbGet(pathAndQuery, request) { // 第2引数に request を追加
+      // フロントから届いた Authorization ヘッダーを抽出
+      const authHeader = request.headers.get("Authorization");
+
       const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, {
         headers: {
           apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+          // ログイン中ならその人のトークンを、未ログインなら ANON_KEY を転送
+          Authorization: authHeader || `Bearer ${env.SUPABASE_ANON_KEY}`,
         },
       });
       const text = await res.text();
@@ -107,7 +111,7 @@ export default {
     // ---- BBS (既存保持) ----
     if (request.method === "GET" && url.pathname === "/api/posts") {
       const apiUrl = `/rest/v1/posts?select=id,created_at,author,body&order=created_at.desc&limit=50`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -133,7 +137,7 @@ export default {
       const target_type = url.searchParams.get("target_type");
       const target_id = url.searchParams.get("target_id");
       const apiUrl = `/rest/v1/comments?select=*&target_type=eq.${target_type}&target_id=eq.${target_id}&order=created_at.asc`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -155,7 +159,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/comments/recent") {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
       const apiUrl = `/rest/v1/comments?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -204,12 +208,12 @@ export default {
       queryParams.push("order=id.desc");
 
       const apiUrl = `/rest/v1/characters?${queryParams.join("&")}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_last_session") {
-      const { res, text } = await sbGet("/rest/v1/character_last_session?select=*");
+      const { res, text } = await sbGet("/rest/v1/character_last_session?select=*", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -366,7 +370,7 @@ export default {
     // 1. プレイヤー一覧の取得
     if (request.method === "GET" && url.pathname === "/api/players") {
       const apiUrl = `/rest/v1/players${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -374,7 +378,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/player_availability") {
       // フロントから送られたクエリパラメータ（?select=...&player_id=...）をそのままSupabaseに渡す
       const apiUrl = `/rest/v1/player_availability${url.search}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -414,7 +418,7 @@ export default {
       const playerIds = playerIdsStr.split(",");
       const encodedIds = playerIds.map(id => encodeURIComponent(id)).join(",");
       
-      const { res, text } = await sbGet(`/rest/v1/player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`);
+      const { res, text } = await sbGet(`/rest/v1/player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`, request);
       
       if (!res.ok) return new Response(text, { status: res.status, headers: jsonHeaders });
 
@@ -557,7 +561,7 @@ export default {
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/scenarios?${queryParams.join("&")}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -578,14 +582,14 @@ export default {
         apiUrl += `&character_id=eq.${encodeURIComponent(cleanCharId)}`;
       }
 
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // scenario_list ビュー（もしDB側でビューを使っている場合）の取得
     if (request.method === "GET" && url.pathname === "/api/scenario_list") {
       // ビューの定義もDB側で更新が必要ですが、Worker側でも安全にカラムを指定します
-      const { res, text } = await sbGet("/rest/v1/scenario_list?select=id,title,system,author,updated_at");
+      const { res, text } = await sbGet("/rest/v1/scenario_list?select=id,title,system,author,updated_at", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -609,7 +613,7 @@ export default {
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/runs?${queryParams.join("&")}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
     
@@ -620,7 +624,7 @@ export default {
     // 募集一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitments") {
       const apiUrl = `/rest/v1/recruitments${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -733,7 +737,7 @@ export default {
     // 応募者一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitment_applicants") {
       const apiUrl = `/rest/v1/recruitment_applicants${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl);
+      const { res, text } = await sbGet(apiUrl, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -865,18 +869,18 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/api/sessions") {
-      const { res, text } = await sbGet("/rest/v1/sessions?select=*");
+      const { res, text } = await sbGet("/rest/v1/sessions?select=*", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/session_list") {
-      const { res, text } = await sbGet("/rest/v1/session_list?select=*");
+      const { res, text } = await sbGet("/rest/v1/session_list?select=*", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/sessions/detail") {
       const id = url.searchParams.get("id");
-      const { res, text } = await sbGet(`/rest/v1/sessions?select=*&id=eq.${id}`);
+      const { res, text } = await sbGet(`/rest/v1/sessions?select=*&id=eq.${id}`, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -884,33 +888,33 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/system_attributes") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
-      const { res, text } = await sbGet(`/rest/v1/system_attributes${query}`);
+      const { res, text } = await sbGet(`/rest/v1/system_attributes${query}`, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/system_skill_bases") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
-      const { res, text } = await sbGet(`/rest/v1/system_skill_bases${query}`);
+      const { res, text } = await sbGet(`/rest/v1/system_skill_bases${query}`, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_skill_list") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbGet(`/rest/v1/character_skill_list?character_id=eq.${charId}`);
+      const { res, text } = await sbGet(`/rest/v1/character_skill_list?character_id=eq.${charId}`, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_attributes") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbGet(`/rest/v1/character_attributes?character_id=eq.${charId}`);
+      const { res, text } = await sbGet(`/rest/v1/character_attributes?character_id=eq.${charId}`, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- ここからナイトレインツール ----
     // キャラクターマスタ取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/characters") {
-      const { res, text } = await sbGet("/rest/v1/nightreign_characters?select=*&order=id.asc");
+      const { res, text } = await sbGet("/rest/v1/nightreign_characters?select=*&order=id.asc", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -919,19 +923,19 @@ export default {
       const charId = url.searchParams.get("character_id");
       if (!charId) return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
       
-      const { res, text } = await sbGet(`/rest/v1/nightreign_slot_presets?select=*&character_id=eq.${charId}&order=created_at.asc`);
+      const { res, text } = await sbGet(`/rest/v1/nightreign_slot_presets?select=*&character_id=eq.${charId}&order=created_at.asc`, request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // 遺物効果マスタ取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/relic_effects") {
-      const { res, text } = await sbGet("/rest/v1/nightreign_relic_effects?select=*&order=category.asc,effect_name.asc");
+      const { res, text } = await sbGet("/rest/v1/nightreign_relic_effects?select=*&order=category.asc,effect_name.asc", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ユーザー所持遺物の取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/user_relics") {
-      const { res, text } = await sbGet("/rest/v1/nightreign_user_relics?select=*&order=created_at.desc");
+      const { res, text } = await sbGet("/rest/v1/nightreign_user_relics?select=*&order=created_at.desc", request);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 

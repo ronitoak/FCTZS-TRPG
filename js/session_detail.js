@@ -309,6 +309,7 @@ Utils.domReady(() => {
         }
         
         // 現在の値をセット
+        form.title.value = currentRunData.title || "";
         form.gm.value = currentRunData.gm || "";
         
         modal.style.display = 'block';
@@ -334,6 +335,7 @@ Utils.domReady(() => {
     if (!currentRunData) return;
 
     const payload = {
+        title: e.target.title.value, // タイトルは変更させない（現状）
         gm: e.target.gm.value,
     };
 

@@ -287,9 +287,9 @@ async function updateCharacterSelectOptions() {
 
     let apiUrl = "characters";
     if (tempPlayers.length > 0) {
-        // 各プレイヤー名をエンコードしてカンマで繋ぐ
-        const playerList = tempPlayers.map(p => encodeURIComponent(p)).join(',');
-        apiUrl = `characters?player=in.(${playerList})`;
+        // 各プレイヤー名をダブルクォートで囲み、全体をエンコードする
+        const playerList = tempPlayers.map(p => `"${p}"`).join(',');
+        apiUrl = `characters?player=in.(${encodeURIComponent(playerList)})`;
     }
 
     try {

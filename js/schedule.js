@@ -89,14 +89,33 @@ function renderCalendar() {
       slots.forEach(slot => {
         const key = `${targetDateStr}_${slot}`;
         const match = comparisonData[key];
-        if (match) {
+
+        if (match && match.symbol === "○") { // ○（全員OK）の時だけ遷移可能にする
           const matchBadge = document.createElement("div");
           matchBadge.className = `match-badge ${match.color}`;
+          matchBadge.style.cursor = "pointer"; // クリック可能であることを示す
           
           let titleText = match.label || "";
-          if (match.maybe_players) titleText = `△: ${match.maybe_players.join(", ")}`;
-          
           matchBadge.innerHTML = `<span title="${titleText}">${TIME_SLOT_LABELS[slot]}:${match.symbol}</span>`;
+
+          // ★ ここにクリックイベントを移動します
+          matchBadge.onclick = () => {
+            const runSelect = document.getElementById("compare-run-select");
+            const selectedRunId = runSelect ? runSelect.value : null;
+            
+            if (!selectedRunId) {
+              alert("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。");
+              return;
+            }
+
+            const params = new URLSearchParams({
+              id: selectedRunId,
+              date: targetDateStr,
+              slot: slot
+            });
+            window.location.href = `../sessions/detail.html?${params.toString()}`;
+          };
+          
           cell.appendChild(matchBadge);
         }
       });
@@ -575,7 +594,6 @@ window.addEventListener("click", (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", main);
-
 
 function showMappingModal() {
     const container = document.getElementById("csv-mapping-container");

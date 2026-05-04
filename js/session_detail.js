@@ -194,6 +194,8 @@ async function main() {
 
     renderCompletionGuide(runSessions, run);
 
+    setFormInitialValues();
+
     Comments.mount("comments-root", "session", run_id);
   } catch (e) {
     console.error(e);
@@ -304,6 +306,26 @@ async function updateCharacterSelectOptions() {
     } catch (e) {
       console.error("キャラクター候補の取得に失敗:", e);
     }
+}
+
+// URLパラメータから初期値をセットする処理
+function setFormInitialValues() {
+    const params = new URLSearchParams(location.search);
+    const date = params.get("date"); // YYYY-MM-DD
+    const slot = params.get("slot"); // afternoon or night
+    
+    const startInput = document.getElementById("new-session-start");
+    if (!startInput || !date) return;
+
+    // 時間帯に応じたデフォルト時刻を結合
+    // 昼: 13:00 / 夜: 19:00[cite: 5]
+    const time = (slot === "afternoon") ? "13:00" : "19:00";
+    
+    // datetime-local 形式 (YYYY-MM-DDThh:mm) に整形
+    startInput.value = `${date}T${time}`;
+    
+    // ユーザーに分かりやすくするため、フォームへスクロールさせるなどの配慮も有効
+    document.getElementById("add-session-record").scrollIntoView({ behavior: 'smooth' });
 }
 
 // 削除用グローバル関数 (onclickから呼ぶため)

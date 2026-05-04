@@ -261,25 +261,20 @@ function renderCompletionGuide(allSessions, run) {
 function renderEditLists() {
     const pList = document.getElementById('edit-players-list');
     const cList = document.getElementById('edit-characters-list');
+    if(!pList || !cList) return;
 
-    // プレイヤー表示 (案A: ×ボタン付きチップ)
+    // プレイヤー表示
     pList.innerHTML = tempPlayers.map((p, index) => `
-        <span class="tag">
-            ${Utils.escapeHtml(p)}
-            <button type="button" onclick="removeTempPlayer(${index})" style="border:none; background:none; cursor:pointer; margin-left:5px;">×</button>
-        </span>
-    `).join('');
+        <span class="tag">${Utils.escapeHtml(p)}
+            <button type="button" onclick="removeTempPlayer(${index})" class="btn-remove">×</button>
+        </span>`).join('');
 
-    // キャラクター表示 (案A: ×ボタン付きチップ)
-    // ※ID表示だと分かりにくいため、本来は名前を表示すべきですが要件に基づき一旦保持データで描画
+    // キャラクター表示
     cList.innerHTML = tempCharacters.map((c, index) => `
-        <span class="tag">
-            ${Utils.escapeHtml(c)}
-            <button type="button" onclick="removeTempCharacter(${index})" style="border:none; background:none; cursor:pointer; margin-left:5px;">×</button>
-        </span>
-    `).join('');
+        <span class="tag">${Utils.escapeHtml(c.name)}
+            <button type="button" onclick="removeTempCharacter(${index})" class="btn-remove">×</button>
+        </span>`).join('');
 
-    // キャラクターの選択肢を現在のプレイヤー状況に合わせて更新
     updateCharacterSelectOptions();
 }
 
@@ -291,17 +286,20 @@ async function updateCharacterSelectOptions() {
     if (!charSelect) return;
 
     let apiUrl = "characters";
-    // プレイヤーが選択されている場合は、そのプレイヤーのキャラのみ取得
     if (tempPlayers.length > 0) {
-        // SQLのIN句のように複数のプレイヤーを指定 (API側の対応状況に合わせる)
-        const playerQueries = tempPlayers.map(p => `player=eq.${encodeURIComponent(p)}`).join(',');
-        apiUrl = `characters?or=(${playerQueries})`;
+        // player=in.("PlayerA","PlayerB") 形式に変換
+        const playerList = tempPlayers.map(p => `"${p}"`).join(',');
+        apiUrl = `characters?player=in.(${encodeURIComponent(playerList)})`;
     }
 
     try {
         const characters = await Utils.apiGet(apiUrl);
+        // 重複を避けるため、現在の選択肢をクリアしてから追加
         charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-            characters.map(c => `<option value="${c.id}">${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(c.player)})</option>`).join('');
+            characters.map(c => `
+                <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
+                    ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(c.player)})
+                </option>`).join('');
     } catch (e) {
         console.error("キャラクター候補の取得に失敗:", e);
     }
@@ -409,25 +407,24 @@ Utils.domReady(() => {
   // 卓情報の更新実行
   const runForm = document.getElementById('edit-run-form');
   runForm?.addEventListener('submit', async (e) => {
-      // 注意: 既存の submit リスナーがある場合、e.stopImmediatePropagation() 等で
-      // こちらの処理のみが走るように調整するか、既存のリスナーを削除してください。
+
       e.preventDefault();
       
-      const payload = {
-          title: runForm.title.value,
-          gm: runForm.gm.value,
-          players: tempPlayers, // 編集した一時リストを送信
-          characters: tempCharacters // 編集した一時リストを送信
-      };
+    const payload = {
+      title: runForm.title.value,
+      gm: runForm.gm.value,
+      players: tempPlayers,
+      characters: tempCharacters.map(c => c.id) // 送信時は ID 配列に戻す
+    };
 
-      try {
-          await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
-          alert("卓情報を更新しました");
-          location.reload();
-      } catch (err) {
-          console.error(err);
-          alert("更新に失敗しました");
-      }
+    try {
+        await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
+        alert("卓情報を更新しました");
+        location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("更新に失敗しました");
+    }
   });
   
   // 編集フォームの送信
@@ -517,10 +514,14 @@ Utils.domReady(() => {
 
   // 3. キャラクター追加ボタン
   document.getElementById('btn-add-character')?.addEventListener('click', () => {
-      const val = document.getElementById('add-character-select').value;
-      if (val && !tempCharacters.includes(val)) {
-          tempCharacters.push(val);
-          renderEditLists();
-      }
-  });
+    const select = document.getElementById('add-character-select');
+    const selectedOption = select.options[select.selectedIndex];
+    const id = select.value;
+    const name = selectedOption.getAttribute('data-name');
+
+    if (id && !tempCharacters.some(c => c.id === id)) {
+        tempCharacters.push({ id, name }); // IDと名前のセットで保持
+        renderEditLists();
+    }
+});
 });

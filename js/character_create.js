@@ -1,6 +1,6 @@
 "use strict";
 
-Utils.domReady(() => {
+Utils.domReady(async () => {
     const form = document.getElementById("character-form");
     const systemSelect = document.getElementById("system-select");
     const dynamicContainer = document.getElementById("dynamic-fields-container");

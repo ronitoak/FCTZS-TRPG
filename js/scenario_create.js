@@ -1,6 +1,6 @@
 "use strict";
 
-Utils.domReady(() => {
+Utils.domReady(async () => {
     const form = document.getElementById("scenario-form");
     if (!form) return;
 

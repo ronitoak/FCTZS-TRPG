@@ -7,6 +7,7 @@ let allApplicants = [];
 
 // 1. 初期データの読み込み（プレイヤーとシナリオ）
 async function initData() {
+    Utils.renderHeader('common-nav', '../');
     try {
         [allPlayers, allScenarios] = await Promise.all([
             Utils.getPlayers(),

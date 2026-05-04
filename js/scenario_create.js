@@ -4,6 +4,8 @@ Utils.domReady(() => {
     const form = document.getElementById("scenario-form");
     if (!form) return;
 
+    Utils.renderHeader('common-nav', '../');
+
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const submitBtn = form.querySelector("button[type=submit]");

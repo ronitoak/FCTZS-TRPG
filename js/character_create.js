@@ -9,6 +9,8 @@ Utils.domReady(() => {
 
     if (!form || !systemSelect || !dynamicContainer) return;
 
+    Utils.renderHeader('common-nav', '../');
+
     // --- 1. システム選択時の動的生成 (既存ロジック) ---
     systemSelect.addEventListener("change", async () => {
         const system = systemSelect.value;

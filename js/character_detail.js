@@ -33,6 +33,8 @@ async function main() {
   const root = document.getElementById("character-detail");
   if (!root) return;
 
+  Utils.renderHeader('common-nav', '../');
+
   const id = Utils.getQueryParam("id");
   if (!id) {
     root.innerHTML = "<p>キャラクターIDが指定されていません</p>";

@@ -14,6 +14,8 @@ async function main() {
   const root = document.getElementById("scenario-detail");
   if (!root) return;
 
+  Utils.renderHeader('common-nav', '../');
+
   const id = Utils.getQueryParam("id");
   if (!id) {
     root.innerHTML = "<p>シナリオIDが指定されていません</p>";

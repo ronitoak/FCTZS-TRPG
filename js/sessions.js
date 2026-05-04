@@ -7,6 +7,8 @@ async function main() {
   if (!listRoot) return;
   listRoot.innerHTML = "";
 
+  Utils.renderHeader('common-nav', '../');
+
   try {
     const [scenarios, runs, sessions] = await Promise.all([
       Utils.apiGet("scenarios"),

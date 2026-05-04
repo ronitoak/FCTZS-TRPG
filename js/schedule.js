@@ -328,6 +328,8 @@ function closeModal(modalId) {
 
 // 起動時の処理とイベントリスナー
 async function main() {
+  Utils.renderHeader('common-nav', '../');
+  
   const prevBtn = document.getElementById("prev-month-btn");
   const nextBtn = document.getElementById("next-month-btn");
 

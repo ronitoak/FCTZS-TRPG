@@ -17,6 +17,8 @@ async function main() {
   const root = document.getElementById("session-detail");
   if (!root) return;
 
+  Utils.renderHeader('common-nav', '../');
+  
   const run_id = Utils.getQueryParam("id");
   if (!run_id) {
     root.innerHTML = "<p>run ID が指定されていません</p>";

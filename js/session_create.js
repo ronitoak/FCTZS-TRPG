@@ -1,6 +1,8 @@
 "use strict";
 
 Utils.domReady(async () => {
+    Utils.renderHeader('common-nav', '../');
+    
     const scenarioSelect = document.getElementById("scenario-select");
     const charGrid = document.getElementById("character-selection-grid");
     const form = document.getElementById("session-form");

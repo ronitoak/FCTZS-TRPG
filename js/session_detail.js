@@ -287,14 +287,14 @@ async function updateCharacterSelectOptions() {
 
     let apiUrl = "characters";
     if (tempPlayers.length > 0) {
-        // 各プレイヤー名をダブルクォートで囲み、全体をエンコードする
-        const playerList = tempPlayers.map(p => `"${p}"`).join(',');
-        apiUrl = `characters?player=in.(${encodeURIComponent(playerList)})`;
+        const orConditions = tempPlayers.map(p => `player.eq."${p}"`).join(',');
+        apiUrl = `characters?or=(${encodeURIComponent(orConditions)})`;
     }
 
     try {
+        console.log("Fetching characters with URL:", apiUrl); // デバッグ用
         const characters = await Utils.apiGet(apiUrl);
-        // 重複チェックを考慮しつつ選択肢を生成
+        
         charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
             characters.map(c => `
                 <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
@@ -302,7 +302,6 @@ async function updateCharacterSelectOptions() {
                 </option>`).join('');
     } catch (e) {
         console.error("キャラクター候補の取得に失敗:", e);
-        charSelect.innerHTML = '<option value="">読み込み失敗</option>';
     }
 }
 

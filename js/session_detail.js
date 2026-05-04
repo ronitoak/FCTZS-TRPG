@@ -17,7 +17,7 @@ async function main() {
   const root = document.getElementById("session-detail");
   if (!root) return;
 
-  Utils.renderHeader('common-nav', '../');
+  await Utils.initAuthAndHeader('common-nav', '../');
   
   const run_id = Utils.getQueryParam("id");
   if (!run_id) {

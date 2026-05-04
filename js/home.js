@@ -179,6 +179,8 @@ async function main() {
   const ongoingEl = document.getElementById("ongoing-scenarios");
   if (!nextEl || !ongoingEl) return;
 
+  await Utils.initAuthAndHeader('common-nav', './');
+
   nextEl.textContent = "";
   ongoingEl.textContent = "";
 

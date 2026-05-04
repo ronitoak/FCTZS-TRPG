@@ -7,7 +7,7 @@ async function main() {
   if (!listRoot) return;
   listRoot.innerHTML = "";
 
-  Utils.renderHeader('common-nav', '../');
+  await Utils.initAuthAndHeader('common-nav', '../');
 
   try {
     const [scenarios, runs, sessions] = await Promise.all([

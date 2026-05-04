@@ -33,7 +33,7 @@ async function main() {
   const root = document.getElementById("character-detail");
   if (!root) return;
 
-  Utils.renderHeader('common-nav', '../');
+  await Utils.initAuthAndHeader('common-nav', '../');
 
   const id = Utils.getQueryParam("id");
   if (!id) {

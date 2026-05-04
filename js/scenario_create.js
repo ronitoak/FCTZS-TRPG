@@ -4,7 +4,7 @@ Utils.domReady(() => {
     const form = document.getElementById("scenario-form");
     if (!form) return;
 
-    Utils.renderHeader('common-nav', '../');
+    await Utils.initAuthAndHeader('common-nav', '../');
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();

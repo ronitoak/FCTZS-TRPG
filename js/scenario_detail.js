@@ -14,7 +14,7 @@ async function main() {
   const root = document.getElementById("scenario-detail");
   if (!root) return;
 
-  Utils.renderHeader('common-nav', '../');
+  await Utils.initAuthAndHeader('common-nav', '../');
 
   const id = Utils.getQueryParam("id");
   if (!id) {

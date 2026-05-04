@@ -137,7 +137,7 @@ async function main() {
   const root = document.getElementById("character-list");
   if (!root) return;
 
-  Utils.renderHeader('common-nav', '../');
+  await Utils.initAuthAndHeader('common-nav', '../');
   
   // ★ まず最初に、プルダウンの選択肢を構築する
   await initFilterOptions();

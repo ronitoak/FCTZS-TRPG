@@ -5,7 +5,7 @@ async function main() {
   if (!root) return;
   root.innerHTML = "";
 
-  Utils.renderHeader('common-nav', '../');
+  await Utils.initAuthAndHeader('common-nav', '../');
 
   try {
     const [scenarios, runs] = await Promise.all([

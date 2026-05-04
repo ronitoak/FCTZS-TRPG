@@ -287,14 +287,14 @@ async function updateCharacterSelectOptions() {
 
     let apiUrl = "characters";
     if (tempPlayers.length > 0) {
-        // player=in.("PlayerA","PlayerB") 形式に変換
-        const playerList = tempPlayers.map(p => `"${p}"`).join(',');
-        apiUrl = `characters?player=in.(${encodeURIComponent(playerList)})`;
+        // 各プレイヤー名をエンコードしてカンマで繋ぐ
+        const playerList = tempPlayers.map(p => encodeURIComponent(p)).join(',');
+        apiUrl = `characters?player=in.(${playerList})`;
     }
 
     try {
         const characters = await Utils.apiGet(apiUrl);
-        // 重複を避けるため、現在の選択肢をクリアしてから追加
+        // 重複チェックを考慮しつつ選択肢を生成
         charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
             characters.map(c => `
                 <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
@@ -302,6 +302,7 @@ async function updateCharacterSelectOptions() {
                 </option>`).join('');
     } catch (e) {
         console.error("キャラクター候補の取得に失敗:", e);
+        charSelect.innerHTML = '<option value="">読み込み失敗</option>';
     }
 }
 
@@ -377,16 +378,21 @@ Utils.domReady(() => {
       form.gm.value = currentRunData.gm || "";
       // currentRunDataから現在の値をコピー
       tempPlayers = [...(currentRunData.players || [])];
-      tempCharacters = [...(currentRunData.characters || [])];
+
+      try {
+          const allChars = await Utils.apiGet("characters"); 
+          tempCharacters = (currentRunData.characters || []).map(id => {
+              const match = allChars.find(c => c.id === id);
+              return { id: id, name: match ? match.name : id };
+          });
+      } catch(err) {
+          console.error("キャラクターマスタの取得失敗", err);
+          tempCharacters = (currentRunData.characters || []).map(id => ({ id, name: id }));
+      }
       
       // プレイヤー全件をプルダウンにセット
       const pSelect = document.getElementById('add-player-select');
       const allPlayers = await Utils.apiGet("players");
-      const allChars = await Utils.apiGet("characters"); 
-      tempCharacters = (currentRunData.characters || []).map(id => {
-          const match = allChars.find(c => c.id === id);
-          return { id: id, name: match ? match.name : id };
-      });
       pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
         allPlayers.map(p => `<option value="${p.player_name}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
 

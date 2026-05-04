@@ -481,18 +481,10 @@ Utils.domReady(() => {
           return;
       }
 
-      // 採番規則: se-YYYYMMDD (ハイフンを除去)
-      // startValの "T" より前の日付部分を取得して加工
-      const datePart = startVal.split('T')[0];
-      const idDate = datePart.replace(/-/g, ""); 
-      const newSessionId = `se-${idDate}`;
-      
       // start (timestamp with time zone) の作成
-      // datetime-local の文字列をそのまま Date オブジェクトに渡して ISO形式に変換
       const startTimestamp = new Date(startVal).toISOString();
 
       const payload = {
-        // id: は含めない（DBのトリガーで自動採番される）
         run_id: currentRunData.id,
         gm: currentRunData.gm,
         start: startTimestamp,
@@ -505,7 +497,16 @@ Utils.domReady(() => {
       submitBtn.disabled = true;
 
       try {
+          // ① セッションを保存
           await Utils.apiPost("sessions", payload);
+
+          // ② 参加プレイヤー全員のスケジュールを 'ng' にする
+          const playerIds = currentRunData.players || [];
+          if (playerIds.length > 0) {
+              // utils.js に定義した関数を呼び出す
+              await Utils.syncSchedulesForFullDay(startTimestamp, playerIds);
+          }
+
           location.reload(); 
       } catch (err) {
           console.error(err);

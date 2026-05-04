@@ -382,6 +382,11 @@ Utils.domReady(() => {
       // プレイヤー全件をプルダウンにセット
       const pSelect = document.getElementById('add-player-select');
       const allPlayers = await Utils.apiGet("players");
+      const allChars = await Utils.apiGet("characters"); 
+      tempCharacters = (currentRunData.characters || []).map(id => {
+          const match = allChars.find(c => c.id === id);
+          return { id: id, name: match ? match.name : id };
+      });
       pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
         allPlayers.map(p => `<option value="${p.player_name}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
 

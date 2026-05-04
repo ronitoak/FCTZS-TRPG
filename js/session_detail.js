@@ -2,6 +2,9 @@
 
 // 1. グローバル変数として定義
 let currentRunData = null;
+let allCharactersData = []; // キャラクターデータの全体キャッシュ（ID→名前の逆引き用）
+let editingPlayers = [];
+let editingCharacters = [];
 
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
@@ -372,10 +375,6 @@ Utils.domReady(() => {
           alert("更新に失敗しました: " + err.message);
       }
   });
-
-  // main関数内の適切な場所（editRunBtnのリスナー付近）に追加
-let editingPlayers = [];
-let editingCharacters = [];
 
 // モーダルを開く処理の更新
 editRunBtn.addEventListener("click", async () => {

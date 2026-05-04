@@ -509,7 +509,13 @@ export default {
         return new Response(JSON.stringify({ error: "Run creation failed", detail: err }), { status: res.status, headers: jsonHeaders });
       }
 
-      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+      const insertedData = await res.json();
+      
+      if (insertedData && insertedData[0]) {
+        ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
+      }
+
+      return new Response(JSON.stringify(insertedData), { status: 201, headers: jsonHeaders });
     } catch (e) {
       return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
     }
@@ -928,13 +934,23 @@ export default {
           "apikey": env.SUPABASE_ANON_KEY,
           "Authorization": request.headers.get("Authorization") || `Bearer ${env.SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
-          "Prefer": "return=minimal"
+          "Prefer": "return=representation"
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(body)
       });
 
+      if (res.ok) {
+        const updatedData = await res.json();
+        
+        if (updatedData && updatedData[0]) {
+          ctx.waitUntil(syncCharacterScenarios(updatedData[0], env));
+        }
+        return new Response(JSON.stringify(updatedData), { status: 200, headers: jsonHeaders });
+      }
       return new Response(null, { status: res.status, headers: jsonHeaders });
     }
+
+
 
     // ---- ここからナイトレインツール ----
     // キャラクターマスタ取得
@@ -1105,3 +1121,35 @@ export default {
     })());
   }
 };
+
+// character_scenarios を同期する共通関数
+async function syncCharacterScenarios(runData, env) {
+  const { scenario_id, characters, user_id } = runData;
+  
+  if (!scenario_id || !Array.isArray(characters) || characters.length === 0) {
+    return;
+  }
+
+  // 有効なキャラクターIDのみ抽出
+  const records = characters
+    .filter(cId => cId && cId.trim() !== '')
+    .map(cId => ({
+      character_id: cId,
+      scenario_id: scenario_id,
+      user_id: user_id
+    }));
+
+  if (records.length === 0) return;
+
+  // SupabaseへUpsertを実行
+  await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios`, {
+    method: "POST",
+    headers: {
+      apikey: env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "resolution=merge-duplicates" // 重複は上書き（実質スキップ）
+    },
+    body: JSON.stringify(records),
+  });
+}

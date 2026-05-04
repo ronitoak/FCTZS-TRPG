@@ -2,6 +2,8 @@
 
 // 1. グローバル変数として定義
 let currentRunData = null;
+let tempPlayers = [];
+let tempCharacters = [];
 
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
@@ -253,8 +255,72 @@ function renderCompletionGuide(allSessions, run) {
     }
 }
 
+/**
+ * モーダル内のプレイヤー/キャラクターリストを再描画する
+ */
+function renderEditLists() {
+    const pList = document.getElementById('edit-players-list');
+    const cList = document.getElementById('edit-characters-list');
+
+    // プレイヤー表示 (案A: ×ボタン付きチップ)
+    pList.innerHTML = tempPlayers.map((p, index) => `
+        <span class="tag">
+            ${Utils.escapeHtml(p)}
+            <button type="button" onclick="removeTempPlayer(${index})" style="border:none; background:none; cursor:pointer; margin-left:5px;">×</button>
+        </span>
+    `).join('');
+
+    // キャラクター表示 (案A: ×ボタン付きチップ)
+    // ※ID表示だと分かりにくいため、本来は名前を表示すべきですが要件に基づき一旦保持データで描画
+    cList.innerHTML = tempCharacters.map((c, index) => `
+        <span class="tag">
+            ${Utils.escapeHtml(c)}
+            <button type="button" onclick="removeTempCharacter(${index})" style="border:none; background:none; cursor:pointer; margin-left:5px;">×</button>
+        </span>
+    `).join('');
+
+    // キャラクターの選択肢を現在のプレイヤー状況に合わせて更新
+    updateCharacterSelectOptions();
+}
+
+/**
+ * キャラクター選択肢を動的に更新する
+ */
+async function updateCharacterSelectOptions() {
+    const charSelect = document.getElementById('add-character-select');
+    if (!charSelect) return;
+
+    let apiUrl = "characters";
+    // プレイヤーが選択されている場合は、そのプレイヤーのキャラのみ取得
+    if (tempPlayers.length > 0) {
+        // SQLのIN句のように複数のプレイヤーを指定 (API側の対応状況に合わせる)
+        const playerQueries = tempPlayers.map(p => `player=eq.${encodeURIComponent(p)}`).join(',');
+        apiUrl = `characters?or=(${playerQueries})`;
+    }
+
+    try {
+        const characters = await Utils.apiGet(apiUrl);
+        charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+            characters.map(c => `<option value="${c.id}">${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(c.player)})</option>`).join('');
+    } catch (e) {
+        console.error("キャラクター候補の取得に失敗:", e);
+    }
+}
+
+// 削除用グローバル関数 (onclickから呼ぶため)
+window.removeTempPlayer = (index) => {
+    tempPlayers.splice(index, 1);
+    renderEditLists();
+};
+window.removeTempCharacter = (index) => {
+    tempCharacters.splice(index, 1);
+    renderEditLists();
+};
+
+
 // 送信処理の登録
 Utils.domReady(() => {
+
   // まず main を実行
   main();
 
@@ -298,21 +364,32 @@ Utils.domReady(() => {
   });
 
   // 卓編集モーダルを開く
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     if (e.target.id === 'btn-open-run-edit') {
-        const modal = document.getElementById('edit-run-modal');
-        const form = document.getElementById('edit-run-form');
-        
-        if (!currentRunData) {
-            alert("データの読み込みが完了していません。");
-            return;
-        }
-        
-        // 現在の値をセット
-        form.title.value = currentRunData.title || "";
-        form.gm.value = currentRunData.gm || "";
-        
-        modal.style.display = 'block';
+      const modal = document.getElementById('edit-run-modal');
+      const form = document.getElementById('edit-run-form');
+
+      if (!currentRunData) {
+        alert("データの読み込みが完了していません。");
+        return;
+      }
+
+      // 現在の値をセット
+      form.title.value = currentRunData.title || "";
+      form.gm.value = currentRunData.gm || "";
+      // currentRunDataから現在の値をコピー
+      tempPlayers = [...(currentRunData.players || [])];
+      tempCharacters = [...(currentRunData.characters || [])];
+      
+      // プレイヤー全件をプルダウンにセット
+      const pSelect = document.getElementById('add-player-select');
+      const allPlayers = await Utils.apiGet("players");
+      pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
+        allPlayers.map(p => `<option value="${p.player_name}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
+
+      renderEditLists();
+
+      modal.style.display = 'block';
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
@@ -330,23 +407,27 @@ Utils.domReady(() => {
   });
 
   // 卓情報の更新実行
-  document.getElementById('edit-run-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!currentRunData) return;
+  const runForm = document.getElementById('edit-run-form');
+  runForm?.addEventListener('submit', async (e) => {
+      // 注意: 既存の submit リスナーがある場合、e.stopImmediatePropagation() 等で
+      // こちらの処理のみが走るように調整するか、既存のリスナーを削除してください。
+      e.preventDefault();
+      
+      const payload = {
+          title: runForm.title.value,
+          gm: runForm.gm.value,
+          players: tempPlayers, // 編集した一時リストを送信
+          characters: tempCharacters // 編集した一時リストを送信
+      };
 
-    const payload = {
-        title: e.target.title.value, // タイトルは変更させない（現状）
-        gm: e.target.gm.value,
-    };
-
-    try {
-        await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
-        alert("卓情報を更新しました");
-        location.reload();
-    } catch (err) {
-        console.error(err);
-        alert("更新に失敗しました: " + err.message);
-    }
+      try {
+          await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
+          alert("卓情報を更新しました");
+          location.reload();
+      } catch (err) {
+          console.error(err);
+          alert("更新に失敗しました");
+      }
   });
   
   // 編集フォームの送信
@@ -422,6 +503,24 @@ Utils.domReady(() => {
           console.error(err);
           alert("保存失敗: " + err.message);
           submitBtn.disabled = false;
+      }
+  });
+
+  // 2. プレイヤー追加ボタン
+  document.getElementById('btn-add-player')?.addEventListener('click', () => {
+      const val = document.getElementById('add-player-select').value;
+      if (val && !tempPlayers.includes(val)) {
+          tempPlayers.push(val);
+          renderEditLists();
+      }
+  });
+
+  // 3. キャラクター追加ボタン
+  document.getElementById('btn-add-character')?.addEventListener('click', () => {
+      const val = document.getElementById('add-character-select').value;
+      if (val && !tempCharacters.includes(val)) {
+          tempCharacters.push(val);
+          renderEditLists();
       }
   });
 });

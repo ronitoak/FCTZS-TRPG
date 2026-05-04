@@ -2,57 +2,6 @@
 "use strict";
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// 1. Supabaseの初期化
-const supabase = createClient(
-  'https://bcmxaqrjpelpfxafrtqu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY'
-);
-
-// リダイレクト先の固定URL（あなたの環境に合わせて1箇所で管理）
-const REDIRECT_URL = 'https://ronitoak.github.io/FCTZS-TRPG/';
-
-// 2. ログイン関数（SDKに頼らずURLを直接生成して遷移する）
-async function loginWithDiscord() {
-  const projectID = 'bcmxaqrjpelpfxafrtqu';
-  const encodedRedirect = encodeURIComponent(REDIRECT_URL);
-  
-  // 認証用URLを強制的に組み立て
-  const authUrl = `https://${projectID}.supabase.co/auth/v1/authorize?provider=discord&redirect_to=${encodedRedirect}`;
-  
-  window.location.href = authUrl;
-}
-
-// 3. ログイン状態の監視
-supabase.auth.onAuthStateChange((event, session) => {
-  const loginBtn = document.getElementById('login-btn');
-  const userInfo = document.getElementById('user-info');
-
-  if (session) {
-    loginBtn.style.display = 'none';
-    userInfo.style.display = 'block';
-    
-    const user = session.user.user_metadata;
-    // user_metadata の構造に合わせてフォールバックを設定
-    document.getElementById('user-name').innerText = user.full_name || user.name || "User";
-    document.getElementById('user-avatar').src = user.avatar_url;
-    
-    console.log("ログイン成功！ユーザーID:", session.user.id);
-  } else {
-    loginBtn.style.display = 'block';
-    userInfo.style.display = 'none';
-  }
-});
-
-// 4. イベントリスナーの登録
-// ログインボタンをクリックしたら、上で作った「loginWithDiscord」を呼ぶように修正
-document.getElementById('login-btn').addEventListener('click', loginWithDiscord);
-
-// ログアウト処理
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  await supabase.auth.signOut();
-  window.location.href = REDIRECT_URL; // ログアウト後もトップへ戻す
-});
-
 function toValidDate(iso) {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? null : d;

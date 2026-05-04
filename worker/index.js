@@ -911,6 +911,31 @@ export default {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    if (request.method === "PATCH" && url.pathname === "/api/runs") {
+      const id = url.searchParams.get("id");
+      const body = await request.json();
+
+      // 更新対象のカラムを明示的に指定
+      const updateData = {};
+      if (body.title) updateData.title = body.title;
+      if (body.gm) updateData.gm = body.gm;
+      if (body.players) updateData.players = body.players; // text[] として送信
+      if (body.characters) updateData.characters = body.characters; // text[] として送信
+
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs?id=eq.${id}`, {
+        method: "PATCH",
+        headers: {
+          "apikey": env.SUPABASE_ANON_KEY,
+          "Authorization": request.headers.get("Authorization") || `Bearer ${env.SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      return new Response(null, { status: res.status, headers: jsonHeaders });
+    }
+
     // ---- ここからナイトレインツール ----
     // キャラクターマスタ取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/characters") {

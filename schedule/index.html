@@ -23,9 +23,20 @@
 
       <div id="compare-modal" class="modal" style="display: none;">
         <div class="modal-content">
-          <h3>比較するプレイヤーを選択</h3>
+          <h3>比較対象を選択</h3>
+          
+          <!-- 追加：卓からメンバーを一括チェックするUI -->
+          <div class="form-group" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <label for="compare-run-select" style="display: block; margin-bottom: 5px; font-weight: bold;">卓から一括選択</label>
+            <select id="compare-run-select" class="form-control">
+              <option value="">-- 卓を選択 --</option>
+            </select>
+          </div>
+
           <div id="player-checkbox-list" class="checkbox-list">
-            </div>
+            <!-- プレイヤー一覧がここに生成される -->
+          </div>
+          
           <div class="modal-actions">
             <button id="run-compare-btn" class="primary-btn">比較実行</button>
             <button onclick="closeModal('compare-modal')" class="secondary-btn">閉じる</button>

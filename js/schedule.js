@@ -7,6 +7,8 @@ let comparisonData = {};
 
 let globalPlayers = [];
 let parsedCsvData = null;
+// 卓データを保持する変数
+let globalRuns = [];
 
 // ★今回追加：時間帯表示用の辞書
 const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
@@ -326,6 +328,74 @@ function closeModal(modalId) {
   if (modal) modal.style.display = "none";
 }
 
+async function initCompareModalData() {
+  try {
+    // 1. プレイヤー一覧を初期化（既存処理）
+    globalPlayers = await Utils.getPlayers();
+    renderPlayerCheckboxes();
+
+    // 2. 卓一覧を取得（apiGet("runs")を使用）
+    const runs = await Utils.apiGet("runs");
+    // 進行中(active)や計画中(planning)のみにフロント側で絞り込む
+    globalRuns = Array.isArray(runs) ? runs.filter(r => r.status === 'active' || r.status === 'planning') : [];
+
+    const runSelect = document.getElementById("compare-run-select");
+    if (runSelect) {
+      runSelect.innerHTML = '<option value="">-- 卓を選択 --</option>';
+      globalRuns.forEach(run => {
+        const option = document.createElement("option");
+        option.value = run.id;
+        option.textContent = `${run.title} (${run.status === 'active' ? '進行中' : '計画中'})`;
+        runSelect.appendChild(option);
+      });
+      runSelect.addEventListener("change", handleRunSelection);
+    }
+  } catch (err) {
+    console.error("比較モーダルの初期化に失敗:", err);
+  }
+}
+
+// 既存の initPlayerList 内の描画部分を関数化して整理
+function renderPlayerCheckboxes() {
+  const listEl = document.getElementById("player-checkbox-list");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  
+  globalPlayers.forEach(p => {
+    const label = document.createElement("label");
+    // フロント側での照合を容易にするため、valueはplayer_idのまま、テキストはplayer_name
+    label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}" data-name="${p.player_name}"> ${p.player_name}`;
+    listEl.appendChild(label);
+  });
+}
+
+function handleRunSelection(e) {
+  const runId = e.target.value;
+  if (!runId) return;
+
+  const selectedRun = globalRuns.find(r => r.id == runId);
+  if (!selectedRun) return;
+
+  // すべてのチェックを一度外す
+  const checkboxes = document.querySelectorAll('input[name="compare-player"]');
+  checkboxes.forEach(cb => cb.checked = false);
+
+  // 卓に含まれる名前のリストを作成
+  const targetNames = [];
+  if (selectedRun.gm) targetNames.push(selectedRun.gm);
+  if (Array.isArray(selectedRun.players)) {
+    targetNames.push(...selectedRun.players);
+  }
+
+  // 名前（data-name属性）が一致するチェックボックスをONにする
+  checkboxes.forEach(cb => {
+    const pName = cb.getAttribute("data-name");
+    if (targetNames.includes(pName)) {
+      cb.checked = true;
+    }
+  });
+}
+
 // 起動時の処理とイベントリスナー
 async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
@@ -492,7 +562,7 @@ async function main() {
 
 
   // 初回読み込み
-  await initPlayerList();    
+  await initCompareModalData();    
   await fetchScheduleData(); // ここでデータを取得し、カレンダーを描画する
 }
 

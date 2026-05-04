@@ -285,23 +285,22 @@ async function updateCharacterSelectOptions() {
     const charSelect = document.getElementById('add-character-select');
     if (!charSelect) return;
 
-    let apiUrl = "characters";
-    if (tempPlayers.length > 0) {
-        const orConditions = tempPlayers.map(p => `player.eq."${p}"`).join(',');
-        apiUrl = `characters?or=(${encodeURIComponent(orConditions)})`;
-    }
-
     try {
-        console.log("Fetching characters with URL:", apiUrl); // デバッグ用
-        const characters = await Utils.apiGet(apiUrl);
-        
-        charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-            characters.map(c => `
-                <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
-                    ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(c.player)})
-                </option>`).join('');
+      // 全件取得（あるいはキャッシュから取得）[cite: 2]
+      const allCharacters = await Utils.apiGet("characters");
+      
+      // フロントエンド側でプレイヤー名一致をフィルタリング[cite: 6]
+      const filtered = tempPlayers.length > 0 
+        ? allCharacters.filter(c => tempPlayers.includes(c.player))
+        : allCharacters;
+
+      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+        filtered.map(c => `
+          <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
+              ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(c.player)})
+          </option>`).join('');
     } catch (e) {
-        console.error("キャラクター候補の取得に失敗:", e);
+      console.error("キャラクター候補の取得に失敗:", e);
     }
 }
 

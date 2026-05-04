@@ -2,9 +2,6 @@
 
 // 1. グローバル変数として定義
 let currentRunData = null;
-let allCharactersData = []; // キャラクターデータの全体キャッシュ（ID→名前の逆引き用）
-let editingPlayers = [];
-let editingCharacters = [];
 
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
@@ -338,7 +335,7 @@ Utils.domReady(() => {
     if (!currentRunData) return;
 
     const payload = {
-        title: e.target.title.value,
+        title: e.target.title.value, // タイトルは変更させない（現状）
         gm: e.target.gm.value,
     };
 
@@ -375,74 +372,6 @@ Utils.domReady(() => {
           alert("更新に失敗しました: " + err.message);
       }
   });
-
-// モーダルを開く処理の更新
-editRunBtn.addEventListener("click", async () => {
-  const form = document.getElementById("edit-run-form");
-  form.title.value = currentRunData.title;
-  form.gm.value = currentRunData.gm;
-
-  // 現在の値をコピー
-  editingPlayers = [...(currentRunData.players || [])];
-  editingCharacters = [...(currentRunData.characters || [])];
-
-  // セレクトボックスの選択肢を準備（playersテーブルとcharactersテーブルから）
-  const allPlayers = await Utils.apiGet("players").catch(() => []);
-  const allChars = await Utils.apiGet("characters").catch(() => []);
-
-  const pSelect = document.getElementById("add-player-select");
-  pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
-    allPlayers.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
-
-  const cSelect = document.getElementById("add-character-select");
-  cSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-    allChars.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-
-  renderEditLists();
-  document.getElementById("edit-run-modal").style.display = "flex";
-});
-
-function renderEditLists() {
-  // プレイヤーリストの描画
-  const pList = document.getElementById("edit-players-list");
-  pList.innerHTML = editingPlayers.map((p, i) => `
-    <span class="tag">${p} <span class="remove" onclick="removeEditingPlayer(${i})">×</span></span>
-  `).join("");
-
-  // キャラクターリストの描画
-  const cList = document.getElementById("edit-characters-list");
-  // キャラクター名は ID から逆引きして表示
-  cList.innerHTML = editingCharacters.map((id, i) => {
-    const char = allCharactersData.find(c => c.id === id);
-    return `<span class="tag">${char ? char.name : id} <span class="remove" onclick="removeEditingCharacter(${i})">×</span></span>`;
-  }).join("");
-}
-
-// 追加・削除用のグローバル関数（一時的にwindowへ紐付け）
-window.removeEditingPlayer = (index) => { editingPlayers.splice(index, 1); renderEditLists(); };
-window.removeEditingCharacter = (index) => { editingCharacters.splice(index, 1); renderEditLists(); };
-
-document.getElementById("btn-add-player").onclick = () => {
-  const val = document.getElementById("add-player-select").value;
-  if (val && !editingPlayers.includes(val)) { editingPlayers.push(val); renderEditLists(); }
-};
-document.getElementById("btn-add-character").onclick = () => {
-  const val = document.getElementById("add-character-select").value;
-  if (val && !editingCharacters.includes(val)) { editingCharacters.push(val); renderEditLists(); }
-};
-
-// 送信処理の更新
-document.getElementById("edit-run-form").onsubmit = async (e) => {
-  e.preventDefault();
-  const payload = {
-    title: e.target.title.value,
-    gm: e.target.gm.value,
-    players: editingPlayers,
-    characters: editingCharacters
-  };
-  await Utils.apiPatch(`runs?id=eq.${currentRunData.id}`, payload);
-  location.reload();
-};
 
   subForm.addEventListener("submit", async (e) => {
       e.preventDefault();

@@ -377,15 +377,26 @@ async function initCompareModalData() {
 // 既存の initPlayerList 内の描画部分を関数化して整理
 function renderPlayerCheckboxes() {
   const listEl = document.getElementById("player-checkbox-list");
-  if (!listEl) return;
-  listEl.innerHTML = "";
-  
-  globalPlayers.forEach(p => {
-    const label = document.createElement("label");
-    // フロント側での照合を容易にするため、valueはplayer_idのまま、テキストはplayer_name
-    label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}" data-name="${p.player_name}"> ${p.player_name}`;
-    listEl.appendChild(label);
-  });
+  const modalSelect = document.getElementById("modal-player-id"); // 一括入力用プルダウン
+
+  if (listEl) {
+    listEl.innerHTML = "";
+    globalPlayers.forEach(p => {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" name="compare-player" value="${p.player_id}" data-name="${p.player_name}"> ${p.player_name}`;
+      listEl.appendChild(label);
+    });
+  }
+
+  if (modalSelect) {
+    modalSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>';
+    globalPlayers.forEach(p => {
+      const option = document.createElement("option");
+      option.value = p.player_id;
+      option.textContent = p.player_name;
+      modalSelect.appendChild(option);
+    });
+  }
 }
 
 function handleRunSelection(e) {

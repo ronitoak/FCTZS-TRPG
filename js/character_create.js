@@ -369,11 +369,13 @@ Utils.domReady(async () => {
         // 能力値の収集
         dynamicContainer.querySelectorAll('[name^="attr_"]').forEach(el => {
             const key = el.name.replace("attr_", "");
+            const upperKey = key.toUpperCase();
+
             if (el.dataset.kind === 'emotion') {
                 if (el.value) payload.attributes.push({ key, value_int: null, value_emotion: el.value });
             } else {
                 const val = parseInt(el.value, 10);
-                if (!isNaN(val)) payload.attributes.push({ key, value_int: val, value_emotion: null });
+                if (!isNaN(val)) payload.attributes.push({ upperKey, value_int: val, value_emotion: null });
             }
         });
 

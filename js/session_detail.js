@@ -530,12 +530,23 @@ Utils.domReady(() => {
           // ② 参加プレイヤー全員のスケジュールを 'ng' にする
           const playerNames = currentRunData.players || [];
           if (playerNames.length > 0) {
-            // 名前から ID を逆引き (playersテーブルの定義に合わせて調整してください)
+            // 名前から ID を逆引き
             const playerIds = playerNames.map(name => {
-                const found = allPlayers.find(p => p.player_name === name || p.name === name);
-                return found ? found.id : null;
-            }).filter(id => id !== null);
+              // 名前が一致するプレイヤーを検索
+              const found = allPlayers.find(p => 
+                  (p.player_name === name) || 
+                  (p.name === name) // 万が一 API側で name として返ってきている場合のため
+              );
+              if (found) {
+                  return found.player_id;
+              } else {
+                  console.warn(`マッチ失敗: ${name} が allPlayers に見つかりません`);
+                  return null;
+              }
+          }).filter(id => id !== null); // null（見つからなかったプレイヤー）を除外
+
             if (playerIds.length > 0) {
+                console.log("最終的に送信する player_id 配列:", playerIds);
                 await Utils.syncSchedulesForFullDay(startTimestamp, playerIds);
             }
           }

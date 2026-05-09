@@ -4,6 +4,7 @@
 let currentRunData = null;
 let tempPlayers = [];
 let tempCharacters = [];
+let allPlayers = [];
 
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
@@ -26,13 +27,16 @@ async function main() {
   }
 
   try {
-    const [runs, scenarios, sessions, characters, allPlayers] = await Promise.all([
+    const [runs, scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
       Utils.apiGet("runs"),
       Utils.apiGet("scenarios"),
       Utils.apiGet("sessions"),
       Utils.apiGet("characters").catch(() => []),
       Utils.apiGet("players").catch(() => []) // プレイヤーマスタも念のため取得しておく（失敗しても空配列で続行）
     ]);
+
+    // 取得したプレイヤーデータをグローバル変数に代入
+    allPlayers = fetchedPlayers;
 
     const run = (Array.isArray(runs) ? runs : []).find(r => r.id === run_id);
     if (!run) {

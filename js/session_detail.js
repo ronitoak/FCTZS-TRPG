@@ -31,6 +31,7 @@ async function main() {
       Utils.apiGet("scenarios"),
       Utils.apiGet("sessions"),
       Utils.apiGet("characters").catch(() => []),
+      Utils.apiGet("players").catch(() => []) // プレイヤーマスタも念のため取得しておく（失敗しても空配列で続行）
     ]);
 
     const run = (Array.isArray(runs) ? runs : []).find(r => r.id === run_id);
@@ -524,11 +525,15 @@ Utils.domReady(() => {
 
           // ② 参加プレイヤー全員のスケジュールを 'ng' にする
           const playerIds = currentRunData.players || [];
-          if (playerIds.length > 0) {
-              console.log("Current Run Data:", currentRunData);
-              console.log("スケジュールを更新するプレイヤーID:", playerIds);
-              // utils.js に定義した関数を呼び出す
-              await Utils.syncSchedulesForFullDay(startTimestamp, playerIds);
+          if (playerNames.length > 0) {
+            // 名前から ID を逆引き (playersテーブルの定義に合わせて調整してください)
+            const playerIds = playerNames.map(name => {
+                const found = allPlayers.find(p => p.player_name === name || p.name === name);
+                return found ? found.id : null;
+            }).filter(id => id !== null);
+            if (playerIds.length > 0) {
+                await Utils.syncSchedulesForFullDay(startTimestamp, playerIds);
+            }
           }
 
           location.reload(); 

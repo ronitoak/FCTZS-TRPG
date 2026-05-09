@@ -524,7 +524,7 @@ Utils.domReady(() => {
           await Utils.apiPost("sessions", payload);
 
           // ② 参加プレイヤー全員のスケジュールを 'ng' にする
-          const playerIds = currentRunData.players || [];
+          const playerNames = currentRunData.players || [];
           if (playerNames.length > 0) {
             // 名前から ID を逆引き (playersテーブルの定義に合わせて調整してください)
             const playerIds = playerNames.map(name => {

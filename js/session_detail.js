@@ -26,7 +26,7 @@ async function main() {
   }
 
   try {
-    const [runs, scenarios, sessions, characters] = await Promise.all([
+    const [runs, scenarios, sessions, characters, allPlayers] = await Promise.all([
       Utils.apiGet("runs"),
       Utils.apiGet("scenarios"),
       Utils.apiGet("sessions"),

@@ -525,6 +525,7 @@ Utils.domReady(() => {
           // ② 参加プレイヤー全員のスケジュールを 'ng' にする
           const playerIds = currentRunData.players || [];
           if (playerIds.length > 0) {
+              console.log("Current Run Data:", currentRunData);
               console.log("スケジュールを更新するプレイヤーID:", playerIds);
               // utils.js に定義した関数を呼び出す
               await Utils.syncSchedulesForFullDay(startTimestamp, playerIds);

@@ -105,15 +105,16 @@ async function initFilterOptions() {
     }
 
     // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
-    const players = [...new Set((allCharacters || []).map(c => c.players?.player_name).filter(Boolean))].sort();
-    const playerSelect = document.getElementById("filter-player");
-    if (playerSelect) {
-      players.forEach(pl => {
-        const option = document.createElement("option");
-        option.value = pl;
-        option.textContent = pl;
-        playerSelect.appendChild(option);
-      });
+    const players = await Utils.apiGet("players");
+    const filterPlayer = document.getElementById("filter-player");
+    if (filterPlayer) {
+        players.forEach(p => {
+            const opt = document.createElement("option");
+            // ★修正箇所: value には ID を、表示テキストには名前を入れる
+            opt.value = p.player_id; 
+            opt.textContent = p.player_name;
+            filterPlayer.appendChild(opt);
+        });
     }
 
     // 3. シナリオの抽出 (あいうえお順に)
@@ -153,7 +154,7 @@ async function main() {
 
       const params = new URLSearchParams();
       if (systemVal) params.append("system", systemVal); 
-      if (playerVal) params.append("player", playerVal);
+      if (playerVal) params.append("player_id", playerVal);
       if (scenarioVal) params.append("scenario_id", scenarioVal); // ★追加
       if (stateVal) params.append("state", stateVal);
       if (keywordVal) params.append("keyword", keywordVal);

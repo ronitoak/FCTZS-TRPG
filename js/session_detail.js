@@ -354,7 +354,6 @@ Utils.domReady(() => {
 
   // 編集ボタンのクリックイベント（デリゲーション）
   document.addEventListener('click', (e) => {
-    // 編集アイコン 📝 をクリックしたとき
     const btn = e.target.closest('.btn-edit-session');
     if (btn) {
       const modal = document.getElementById('edit-session-modal');
@@ -363,7 +362,7 @@ Utils.domReady(() => {
       // データのセット
       form.session_id.value = btn.dataset.id;
       form.title.value = btn.dataset.title;
-      
+      form.stream_url.value = btn.dataset.stream_url || "";
       // 日時の変換処理 (ISO -> local datetime)
       if (btn.dataset.start) {
         const d = new Date(btn.dataset.start);
@@ -402,7 +401,6 @@ Utils.domReady(() => {
       // 現在の値をセット
       form.title.value = currentRunData.title || "";
       form.gm.value = currentRunData.gm || "";
-      // currentRunDataから現在の値をコピー
       tempPlayers = [...(currentRunData.players || [])];
 
       try {
@@ -478,8 +476,6 @@ Utils.domReady(() => {
       };
 
       try {
-          // 先ほど作成した apiPatch を使用
-          // セッションIDは不変（se-XXX_Y_Z）なので、これをキーに更新
           await Utils.apiPatch("sessions", payload, `id=eq.${sessionId}`);
           alert("セッション情報を更新しました");
           location.reload();

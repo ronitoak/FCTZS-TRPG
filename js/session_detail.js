@@ -159,7 +159,7 @@ async function main() {
                   const linksHtml = (s.replay_url || s.stream_url)
                     ? `
                       <div class="session-links">
-                        ${s.stream_url ? `${renderLink(s.stream_url, "配信or動画")}` : ""}
+                        ${s.stream_url ? `${renderLink(s.stream_url, "アーカイブ")}` : ""}
                       </div>
                     `
                     : "";

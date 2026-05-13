@@ -335,7 +335,7 @@ async function main() {
           
           // フォームに値をセット
           form.name.value = currentCharData.name || "";
-          form.player_name.value = currentCharData.players.player_name || "";
+          form.player_id.value = currentCharData.players.player_name || "";
           form.state.value = currentCharData.state || "survived";
           form.job.value = currentCharData.job || "";
           form.age.value = currentCharData.age || "";

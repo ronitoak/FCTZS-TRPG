@@ -42,7 +42,12 @@
                 <div class="form-group"><label>身長</label><input type="number" name="height" class="form-control"></div>
                 <div class="form-group"><label>体重</label><input type="number" name="weight" class="form-control"></div>
                 <div class="form-group"><label>出身</label><input type="text" name="origin" class="form-control"></div>
-                <div class="form-group"><label>プレイヤー</label><input type="text" name="player" class="form-control"></div>
+                <div class="form-group">
+                    <label>プレイヤー</label>
+                    <select name="player_id" id="player-select" required class="form-control">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
                 
                 <div class="form-group gaia-specific-field" style="display: none;">
                     <label>種族</label>

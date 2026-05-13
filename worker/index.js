@@ -167,13 +167,12 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/characters") {
       let queryParams = [];
   
-        const system = url.searchParams.get("system");
-        const player = url.searchParams.get("player");
+      const system = url.searchParams.get("system");
+      const player = url.searchParams.get("player_id");
       const state = url.searchParams.get("state");
       const keyword = url.searchParams.get("keyword");
-      const scenarioId = url.searchParams.get("scenario_id"); // ★追加：シナリオID
+      const scenarioId = url.searchParams.get("scenario_id");
 
-      // ★追加：シナリオIDが指定された場合、character_scenariosテーブルから該当キャラを逆引きする
       if (scenarioId) {
         const csRes = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`, {
           headers: {
@@ -196,7 +195,7 @@ export default {
       }
 
       if (system) queryParams.push(`system=eq.${encodeURIComponent(system)}`);
-      if (player) queryParams.push(`player=eq.${encodeURIComponent(player)}`);
+      if (player) queryParams.push(`player_id=eq.${encodeURIComponent(player_id)}`);
       if (state) queryParams.push(`state=eq.${encodeURIComponent(state)}`);
 
       if (keyword) {

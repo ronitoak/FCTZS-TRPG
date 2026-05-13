@@ -11,6 +11,16 @@ Utils.domReady(async () => {
 
     await Utils.initAuthAndHeader('common-nav', '../');
 
+    // プレイヤー一覧を取得してセレクトボックスに詰める
+    const players = await Utils.apiGet("players");
+    const playerSelect = document.getElementById("player-select");
+    players.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.player_id;
+        opt.textContent = p.player_name;
+        playerSelect.appendChild(opt);
+    });
+
     // --- 1. システム選択時の動的生成 (既存ロジック) ---
     systemSelect.addEventListener("change", async () => {
         const system = systemSelect.value;
@@ -350,7 +360,7 @@ Utils.domReady(async () => {
         const payload = {
             character: {
                 name: form.name.value,
-                player: form.player.value,
+                player_id: form.player_id.value,
                 system: systemSelect.value,
                 job: form.job.value,
                 age: parseInt(form.age.value) || null,

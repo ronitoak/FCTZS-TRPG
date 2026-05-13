@@ -195,7 +195,7 @@ export default {
       }
 
       if (system) queryParams.push(`system=eq.${encodeURIComponent(system)}`);
-      if (player) queryParams.push(`player_id=eq.${encodeURIComponent(player_id)}`);
+      if (player) queryParams.push(`player_id=eq.${encodeURIComponent(player)}`);
       if (state) queryParams.push(`state=eq.${encodeURIComponent(state)}`);
 
       if (keyword) {

@@ -44,7 +44,7 @@ function renderCharacters(root, characters, lastByCharId) {
   for (const c of list) {
     const name = Utils.escapeHtml(c.name ?? c.id ?? "（無名）");
     const job = Utils.escapeHtml(c.job ?? "");
-    const player = Utils.escapeHtml(c.player ?? "");
+    const player = Utils.escapeHtml(c.players?.player_name ?? "");
     const system = Utils.escapeHtml(c.system ?? "");
     const state = typeof c.state === "string" ? c.state : "";
     const imagePath = Utils.getCharacterImagePath(c.id);
@@ -105,7 +105,7 @@ async function initFilterOptions() {
     }
 
     // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
-    const players = [...new Set((allCharacters || []).map(c => c.player).filter(Boolean))].sort();
+    const players = [...new Set((allCharacters || []).map(c => c.players?.player_name).filter(Boolean))].sort();
     const playerSelect = document.getElementById("filter-player");
     if (playerSelect) {
       players.forEach(pl => {

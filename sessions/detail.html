@@ -25,9 +25,15 @@
             <label>セッションタイトル</label>
             <input type="text" name="title" required class="form-control" placeholder="例：Part1">
           </div>
+
+          <div class="form-group">
+            <label>配信URL</label>
+            <input type="url" name="stream_url" class="form-control" placeholder="https://youtube.com/...">
+          </div>
+
           <div class="form-group" style="grid-column: 1 / -1;">
             <label>備考</label>
-            <textarea name="notes" rows="3" class="form-control" placeholder=""></textarea>
+            <textarea name="notes" rows="3" class="form-control"></textarea>
           </div>
           <div style="grid-column: 1 / -1; margin-top: 10px;">
             <button type="submit" class="btn-primary">記録を保存</button>
@@ -47,6 +53,10 @@
             <div class="form-group">
               <label>開催日時</label>
               <input type="datetime-local" name="start" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>配信URL</label>
+              <input type="url" name="stream_url" class="form-control" placeholder="https://youtube.com/...">
             </div>
             <div class="form-group">
               <label>ステータス</label>

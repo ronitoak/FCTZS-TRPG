@@ -203,7 +203,7 @@ export default {
         queryParams.push(`or=(name.ilike.${kw},job.ilike.${kw})`); // キーワードからはplayerを外す(選択式になったため)
       }
 
-      queryParams.push("select=*");
+      queryParams.push("select=*,players(player_name)");
       queryParams.push("order=id.desc");
 
       const apiUrl = `/rest/v1/characters?${queryParams.join("&")}`;

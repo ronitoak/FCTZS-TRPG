@@ -98,7 +98,7 @@ async function main() {
       { label: "身長", value: c.height ? `${c.height}cm` : "" },
       { label: "体重", value: c.weight ? `${c.weight}kg` : "" },
       { label: "出身", value: c.origin },
-      { label: "プレイヤー", value: c.player_id ? renderLink(`../players/detail.html?id=${encodeURIComponent(c.player_id)}`, c.player_name || c.player_id) : "" },
+      { label: "プレイヤー", value: c.players.player_name },
       { label: "システム", value: c.system }
     ];
 
@@ -322,7 +322,7 @@ async function main() {
           
           // フォームに値をセット
           form.name.value = currentCharData.name || "";
-          form.player_id.value = currentCharData.player_id || "";
+          form.player_name.value = currentCharData.players.player_name || "";
           form.state.value = currentCharData.state || "survived";
           form.job.value = currentCharData.job || "";
           form.age.value = currentCharData.age || "";

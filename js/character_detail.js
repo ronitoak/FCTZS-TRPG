@@ -73,12 +73,15 @@ async function main() {
         // プレイヤー一覧を取得してセレクトボックスに詰める
     const players = await Utils.apiGet("players");
     const playerSelect = document.getElementById("player-select");
-    players.forEach(p => {
-        const opt = document.createElement("option");
-        opt.value = p.player_id;
-        opt.textContent = p.player_name;
-        playerSelect.appendChild(opt);
-    });
+    if (playerSelect) {
+        playerSelect.innerHTML = '<option value="">選択してください</option>'; // 初期化
+        players.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.player_id;
+            opt.textContent = p.player_name;
+            playerSelect.appendChild(opt);
+        });
+    }
 
     currentCharData = c; // 編集モーダルで使用するためグローバルに保持
     currentSkillRows = Array.isArray(skillRows) ? skillRows : []; // 技能編集モーダル用

@@ -368,7 +368,7 @@ async function main() {
         // 全項目をpayloadにまとめる
         const payload = {
             name: fd.get("name"),
-            player_name: fd.get("players.player_name"),
+            player_id: fd.get("player_id"),
             state: fd.get("state"),
             job: fd.get("job"),
             age: toIntOrNull(fd.get("age")),

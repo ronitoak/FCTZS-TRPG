@@ -385,7 +385,7 @@ Utils.domReady(async () => {
                 if (el.value) payload.attributes.push({ key, value_int: null, value_emotion: el.value });
             } else {
                 const val = parseInt(el.value, 10);
-                if (!isNaN(val)) payload.attributes.push({ upperKey, value_int: val, value_emotion: null });
+                if (!isNaN(val)) payload.attributes.push({ key: upperKey, value_int: val, value_emotion: null });
             }
         });
 

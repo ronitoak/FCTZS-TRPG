@@ -618,8 +618,50 @@ export default {
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/runs?${queryParams.join("&")}`;
+      
+      // 1. 従来通りruns（セッションデータ）をSupabaseから取得
       const { res, text } = await sbGet(apiUrl, request);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      
+      // もし通信エラーなどの場合はそのまま返す
+      if (!res.ok) {
+        return new Response(text, { status: res.status, headers: jsonHeaders });
+      }
+
+      // データを編集できるように一度JSONオブジェクト（配列）に変換
+      let runs = JSON.parse(text);
+
+      if (Array.isArray(runs) && runs.length > 0) {
+        try {
+          // 2. プレイヤーの名前マスタ（IDと名前のセット）を紐づけ用に一括取得
+          const { text: playersText } = await sbGet("/rest/v1/players?select=player_id,player_name", request);
+          const players = JSON.parse(playersText);
+          
+          if (Array.isArray(players)) {
+            // IDから名前をすぐに引ける「辞書（Map）」を作る
+            const playerMap = new Map(players.map(p => [p.player_id, p.player_name]));
+
+            // 3. 取得したセッションデータ1件ずつに、名前を合体させていく
+            runs.forEach(run => {
+              // gm_id から GMの名前を取得して gm_name カラムを作る。なければ従来のgm値をフォールバック
+              run.gm_name = playerMap.get(run.gm_id) || run.gm || "未設定";
+
+              // player_ids（ID配列）から、プレイヤーの名前配列（player_names）を作成して追加
+              if (Array.isArray(run.player_ids)) {
+                run.player_names = run.player_ids.map(id => playerMap.get(id) || id);
+              } else {
+                // まだID化されていない古いデータがあった場合の保険（以前の名前配列をそのまま使う）
+                run.player_names = Array.isArray(run.players) ? run.players : [];
+              }
+            });
+          }
+        } catch (err) {
+          // 万が一名前の合体処理でエラーが起きても画面が真っ白にならないよう、ログだけ吐いて処理は続行
+          console.error("プレイヤー名結合エラー:", err);
+        }
+      }
+
+      // 4. 名前情報が合体した新しいデータを文字列に戻してフロントエンドへ返却
+      return new Response(JSON.stringify(runs), { status: 200, headers: jsonHeaders });
     }
     
     // ==========================================

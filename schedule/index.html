@@ -19,6 +19,7 @@
         
         <button id="btn-import-csv" class="secondary-btn" style="margin-left: 10px; background-color: #2e7d32; color: white; border-color: #2e7d32;">調整さんCSVインポート</button>
         <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+        <button type="button" id="btn-add-session" class="primary-btn" style="margin-left: 10px;">＋ セッション予定を追加</button>
       </div>
 
       <div id="compare-modal" class="modal" style="display: none;">
@@ -111,6 +112,42 @@
           </div>
         </div>
       </div>
+
+      <div id="add-session-modal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3>セッション予定の追加</h3>
+            <form id="add-session-form">
+                <div class="form-group">
+                    <label>卓（Run）を選択</label>
+                    <select id="add-session-run-id" class="form-control" required>
+                        <option value="">-- 卓を選択 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                  <label for="new-session-date">開催日時</label>
+                  <input type="datetime-local" id="new-session-start" name="start" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label>セッションタイトル</label>
+                  <input type="text" name="title" required class="form-control" placeholder="例：Part1">
+                </div>
+
+                <div class="form-group">
+                  <label>配信URL</label>
+                  <input type="url" name="stream_url" class="form-control" placeholder="https://youtube.com/...">
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label>備考</label>
+                  <textarea name="notes" rows="3" class="form-control"></textarea>
+                </div>
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="submit" class="btn-primary">追加</button>
+                    <button type="button" id="close-add-session-btn" class="btn-secondary">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
   <footer>
     <hr />

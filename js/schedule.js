@@ -27,14 +27,14 @@ async function fetchScheduleData() {
 // カレンダーを描画する関数
 function renderCalendar() {
   const year = currentDate.getFullYear();
-  const month = currentDate.getMonth(); // 0が1月, 11が12月
+  const month = currentDate.getMonth();
 
   const titleEl = document.getElementById("calendar-month-title");
   if (titleEl) titleEl.textContent = `${year}年 ${month + 1}月`;
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  const startDayOfWeek = firstDay.getDay(); // 1日の曜日 (0:日, 6:土)
+  const startDayOfWeek = firstDay.getDay();
   const totalDays = lastDay.getDate();
 
   const grid = document.getElementById("calendar-grid");
@@ -58,7 +58,6 @@ function renderCalendar() {
     
     const cell = createCalendarCell(day, false, isToday);
 
-    // --- セッション予定の表示 ---
     const daySessions = allSessions.filter(s => {
       if (!s.start) return false;
       return s.start.startsWith(targetDateStr);
@@ -83,7 +82,6 @@ function renderCalendar() {
       cell.appendChild(badge);
     });
 
-    // --- 比較モードのバッジ表示処理 ---
     if (compareMode) {
       const slots = ["afternoon", "night"];
       slots.forEach(slot => {
@@ -278,7 +276,6 @@ async function saveBulkAvailability() {
   }
 }
 
-// プレイヤー一覧を取得してチェックボックスを生成 (既存の Utils.getPlayers を使用)
 async function initPlayerList() {
   try {
     const data = await Utils.getPlayers();
@@ -305,7 +302,6 @@ async function initPlayerList() {
   }
 }
 
-// 比較実行
 async function runComparison() {
   const selectedIds = Array.from(document.querySelectorAll('input[name="compare-player"]:checked')).map(cb => cb.value);
   if (selectedIds.length === 0) return alert("プレイヤーを選択してください");
@@ -338,16 +334,16 @@ function closeModal(modalId) {
 
 async function initCompareModalData() {
   try {
-    // 1. プレイヤー一覧を初期化 (既存の Utils.getPlayers を使用)
     const playersData = await Utils.getPlayers();
     globalPlayers = Array.isArray(playersData) ? playersData : [];
     renderPlayerCheckboxes();
 
-    // 2. 卓一覧を取得
     const runs = await Utils.apiGet("runs");
     globalRuns = Array.isArray(runs) ? runs.filter(r => r.status === 'active' || r.status === 'planning') : [];
 
     const runSelect = document.getElementById("compare-run-select");
+    const addSessionRunSelect = document.getElementById("add-session-run-id"); // ★追加: セッション追加用セレクトボックス
+
     if (runSelect) {
       runSelect.innerHTML = '<option value="">-- 卓を選択 --</option>';
       globalRuns.forEach(run => {
@@ -358,6 +354,18 @@ async function initCompareModalData() {
       });
       runSelect.addEventListener("change", handleRunSelection);
     }
+
+    // ★追加: セッション追加用モーダルにも取得した卓をセットする
+    if (addSessionRunSelect) {
+      addSessionRunSelect.innerHTML = '<option value="">-- 卓を選択 --</option>';
+      globalRuns.forEach(run => {
+        const option = document.createElement("option");
+        option.value = run.id;
+        option.textContent = `${run.title} (${run.status === 'active' ? '進行中' : '計画中'})`;
+        addSessionRunSelect.appendChild(option);
+      });
+    }
+
   } catch (err) {
     console.error("比較モーダルの初期化に失敗:", err);
   }
@@ -387,7 +395,6 @@ function renderPlayerCheckboxes() {
   }
 }
 
-// ★今回のメイン改修箇所：卓選択時のチェックボックス自動ON処理
 function handleRunSelection(e) {
   const runId = e.target.value;
   if (!runId) return;
@@ -395,11 +402,9 @@ function handleRunSelection(e) {
   const selectedRun = globalRuns.find(r => r.id == runId);
   if (!selectedRun) return;
 
-  // すべてのチェックを一度外す
   const checkboxes = document.querySelectorAll('input[name="compare-player"]');
   checkboxes.forEach(cb => cb.checked = false);
 
-  // 正規化データ(gm_id, player_ids)と旧データ(gm_name, player_names, またはgm, players)の両方に対応
   const targetIds = [];
   if (selectedRun.gm_id) targetIds.push(selectedRun.gm_id);
   if (Array.isArray(selectedRun.player_ids)) targetIds.push(...selectedRun.player_ids);
@@ -411,7 +416,6 @@ function handleRunSelection(e) {
   if (Array.isArray(selectedRun.player_names)) targetNames.push(...selectedRun.player_names);
   else if (Array.isArray(selectedRun.players)) targetNames.push(...selectedRun.players);
 
-  // IDまたは名前のどちらかに一致するチェックボックスをONにする
   checkboxes.forEach(cb => {
     const pName = cb.getAttribute("data-name");
     const pId = cb.value;
@@ -459,6 +463,60 @@ async function main() {
   document.getElementById("modal-player-id")?.addEventListener("change", () => {
     renderBulkInputGrid();
   });
+
+  // ★追加: セッション追加ボタンの制御
+  document.getElementById("btn-add-session")?.addEventListener("click", () => {
+      // 開いた時に、タイムゾーンを考慮して現在時刻を初期セットする
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      document.getElementById("add-session-start").value = now.toISOString().slice(0, 16);
+      
+      document.getElementById("add-session-modal").style.display = "flex";
+  });
+
+  document.getElementById("close-add-session-btn")?.addEventListener("click", () => {
+      closeModal("add-session-modal");
+  });
+
+  // ★追加: セッション追加のAPI送信処理
+  document.getElementById("add-session-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const runId = document.getElementById("add-session-run-id").value;
+      const title = document.getElementById("add-session-title").value;
+      const startStr = document.getElementById("add-session-start").value;
+
+      if (!runId || !startStr) return alert("必須項目が入力されていません。");
+
+      // datetime-localの文字列をタイムゾーン付きのISO形式に変換
+      const isoStart = new Date(startStr).toISOString();
+
+      try {
+          const btn = e.target.querySelector('button[type="submit"]');
+          btn.disabled = true;
+
+          await Utils.apiPost("sessions", [{
+              run_id: runId,
+              title: title || null,
+              start: isoStart,
+              status: "scheduled"
+          }]);
+
+          alert("セッション予定を追加しました！");
+          closeModal("add-session-modal");
+          e.target.reset(); // フォームをクリア
+          
+          // カレンダーを再取得して表示を更新
+          await fetchScheduleData();
+          btn.disabled = false;
+
+      } catch (err) {
+          console.error("セッション追加エラー:", err);
+          alert("セッションの追加に失敗しました。");
+          e.target.querySelector('button[type="submit"]').disabled = false;
+      }
+  });
+
 
   // ==========================================
   // 調整さんCSV スマートインポート機能

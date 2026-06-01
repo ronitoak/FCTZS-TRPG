@@ -485,7 +485,6 @@ async function main() {
       const title = document.getElementById("add-session-title").value;
       const startStr = document.getElementById("add-session-start").value;
       
-      // 追加した入力欄の値も取得する
       const streamUrl = document.getElementById("add-session-stream")?.value || null;
       const notes = document.getElementById("add-session-notes")?.value || null;
 
@@ -498,15 +497,17 @@ async function main() {
           const btn = e.target.querySelector('button[type="submit"]');
           btn.disabled = true;
 
-          // payloadに配信URLと備考を追加
-          await Utils.apiPost("sessions", [{
+          // ★修正: 配列 [...] ではなく、単一のオブジェクト {...} に変更
+          const payload = {
               run_id: runId,
               title: title || null,
               start: isoStart,
               stream_url: streamUrl,
-              notes: notes,
               status: "scheduled"
-          }]);
+          };
+
+          // 単一オブジェクトとしてPOST送信
+          await Utils.apiPost("sessions", payload);
 
           alert("セッション予定を追加しました！");
           
@@ -515,7 +516,7 @@ async function main() {
 
       } catch (err) {
           console.error("セッション追加エラー:", err);
-          alert("セッションの追加に失敗しました。");
+          alert("セッションの追加に失敗しました。コンソールを確認してください。");
           e.target.querySelector('button[type="submit"]').disabled = false;
       }
   });

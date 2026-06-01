@@ -20,7 +20,7 @@ async function main() {
             Utils.apiGet("players"),
             Utils.apiGet("scenarios"),
             Utils.apiGet("recruitments", `id=eq.${recruitId}`),
-            Utils.apiGet("recruitment_applicants", `recruit_id=eq.${recruitId}`)
+            Utils.apiGet("recruitment_applicants", `recruitment_id=eq.${recruitId}`)
         ]);
 
         allPlayers = Array.isArray(players) ? players : [];

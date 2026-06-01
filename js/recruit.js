@@ -96,6 +96,11 @@ function renderRecruitments() {
 
         if (!applicantsHtml) applicantsHtml = "<span class='u-muted' style='font-size: 0.8rem;'>まだ応募はありません</span>";
 
+        card.style.cursor = "pointer";
+        card.onclick = () => {
+            location.href = `./detail.html?id=${recruit.id}`;
+        };
+
         // まだ参加していないプレイヤーの選択肢を作る
         const unjoinedPlayers = allPlayers.filter(p => 
             p.player_id !== recruit.owner_player_id && 
@@ -127,10 +132,6 @@ function renderRecruitments() {
             <div style="margin-top: 8px;">
                 <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">現在の参加者:</div>
                 <div class="applicant-list">${applicantsHtml}</div>
-            </div>
-
-            <div style="margin-top: 15px; text-align: right;">
-                <a href="./detail.html?id=${recruit.id}" class="secondary-btn" style="text-decoration: none; display: inline-block;">詳細を見る / 応募する</a>
             </div>
             
             ${!isFulfilled ? `

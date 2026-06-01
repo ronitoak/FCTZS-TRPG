@@ -116,8 +116,8 @@ function renderDetail() {
                 <select id="action-player-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.95em;">
                     <option value="">-- プレイヤーを選択 --</option>
                 </select>
-                <button type="button" id="btn-apply" class="primary-btn" style="padding: 6px 12px; font-size: 0.95em;">応募する</button>
-                <button type="button" id="btn-cancel-apply" class="secondary-btn" style="padding: 6px 12px; font-size: 0.95em;">取り消す</button>
+                <button type="button" id="btn-apply" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">応募する</button>
+                <button type="button" id="btn-cancel-apply" class="btn-primary btn-cancel" style="padding: 6px 12px; font-size: 0.95em;">取り消す</button>
             </div>
         </div>
 

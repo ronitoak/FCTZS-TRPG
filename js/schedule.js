@@ -478,13 +478,16 @@ async function main() {
       closeModal("add-session-modal");
   });
 
-  // ★追加: セッション追加のAPI送信処理
   document.getElementById("add-session-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       
       const runId = document.getElementById("add-session-run-id").value;
       const title = document.getElementById("add-session-title").value;
       const startStr = document.getElementById("add-session-start").value;
+      
+      // 追加した入力欄の値も取得する
+      const streamUrl = document.getElementById("add-session-stream")?.value || null;
+      const notes = document.getElementById("add-session-notes")?.value || null;
 
       if (!runId || !startStr) return alert("必須項目が入力されていません。");
 
@@ -495,16 +498,19 @@ async function main() {
           const btn = e.target.querySelector('button[type="submit"]');
           btn.disabled = true;
 
+          // payloadに配信URLと備考を追加
           await Utils.apiPost("sessions", [{
               run_id: runId,
               title: title || null,
               start: isoStart,
+              stream_url: streamUrl,
+              notes: notes,
               status: "scheduled"
           }]);
 
           alert("セッション予定を追加しました！");
           
-          // ★変更: カレンダーを再描画するのではなく、追加した卓（Run）の詳細画面へ即座にジャンプする
+          // 追加した卓（Run）の詳細画面へ即座にジャンプする
           window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
 
       } catch (err) {

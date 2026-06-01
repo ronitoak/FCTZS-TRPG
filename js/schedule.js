@@ -10,7 +10,7 @@ let parsedCsvData = null;
 // 卓データを保持する変数
 let globalRuns = [];
 
-// ★今回追加：時間帯表示用の辞書
+// 時間帯表示用の辞書
 const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
 
 // APIからセッション一覧を取得する
@@ -83,22 +83,21 @@ function renderCalendar() {
       cell.appendChild(badge);
     });
 
-    // --- ★修正：ここに「比較モード」のバッジ表示処理を正しく組み込みました ---
+    // --- 比較モードのバッジ表示処理 ---
     if (compareMode) {
-      const slots = ["afternoon", "night",];
+      const slots = ["afternoon", "night"];
       slots.forEach(slot => {
         const key = `${targetDateStr}_${slot}`;
         const match = comparisonData[key];
 
-        if (match && match.symbol === "○") { // ○（全員OK）の時だけ遷移可能にする
+        if (match && match.symbol === "○") { 
           const matchBadge = document.createElement("div");
           matchBadge.className = `match-badge ${match.color}`;
-          matchBadge.style.cursor = "pointer"; // クリック可能であることを示す
+          matchBadge.style.cursor = "pointer"; 
           
           let titleText = match.label || "";
           matchBadge.innerHTML = `<span title="${titleText}">${TIME_SLOT_LABELS[slot]}:${match.symbol}</span>`;
 
-          // ★ ここにクリックイベントを移動します
           matchBadge.onclick = () => {
             const runSelect = document.getElementById("compare-run-select");
             const selectedRunId = runSelect ? runSelect.value : null;
@@ -133,7 +132,6 @@ function renderCalendar() {
   }
 }
 
-// 日付マス（DOM）を生成する補助関数
 function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
   const cell = document.createElement("div");
   cell.className = "calendar-cell";
@@ -149,13 +147,11 @@ function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
   return cell;
 }
 
-// シンボル取得用のヘルパー関数
 function getStatusSymbol(status) {
     const symbols = { "ok": "○", "maybe": "△", "ng": "×" };
     return symbols[status] || "-";
 }
 
-// ★追加：一括入力用のマトリックスを生成する関数
 async function renderBulkInputGrid() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return;
@@ -202,53 +198,49 @@ async function renderBulkInputGrid() {
 
     slots.forEach(slot => {
       const slotDiv = document.createElement("div");
-    slotDiv.className = "bulk-slot-toggle";
-    slotDiv.dataset.date = dateStr;
-    slotDiv.dataset.slot = slot;
+      slotDiv.className = "bulk-slot-toggle";
+      slotDiv.dataset.date = dateStr;
+      slotDiv.dataset.slot = slot;
 
-    const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-    const initialVal = exist ? exist.status : "";
-    
-    slotDiv.dataset.status = initialVal;     // 現在の値
-    slotDiv.dataset.initial = initialVal;    // 保存判定用の初期値
-    slotDiv.textContent = getStatusSymbol(initialVal);
-    if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
+      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
+      const initialVal = exist ? exist.status : "";
+      
+      slotDiv.dataset.status = initialVal;
+      slotDiv.dataset.initial = initialVal;
+      slotDiv.textContent = getStatusSymbol(initialVal);
+      if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
 
-    slotDiv.addEventListener("click", () => {
-        const statusOrder = ["", "ok", "maybe", "ng"];
-        let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
-        let nextIndex = (currentIndex + 1) % statusOrder.length;
-        
-        const nextStatus = statusOrder[nextIndex];
-        slotDiv.dataset.status = nextStatus;
-        slotDiv.textContent = getStatusSymbol(nextStatus);
-        
-        // クラスの付け替え
-        slotDiv.className = "bulk-slot-toggle"; 
-        if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
-    });
+      slotDiv.addEventListener("click", () => {
+          const statusOrder = ["", "ok", "maybe", "ng"];
+          let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
+          let nextIndex = (currentIndex + 1) % statusOrder.length;
+          
+          const nextStatus = statusOrder[nextIndex];
+          slotDiv.dataset.status = nextStatus;
+          slotDiv.textContent = getStatusSymbol(nextStatus);
+          
+          slotDiv.className = "bulk-slot-toggle"; 
+          if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
+      });
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "bulk-slot";
-    wrapper.appendChild(slotDiv);
-    row.appendChild(wrapper);
+      const wrapper = document.createElement("div");
+      wrapper.className = "bulk-slot";
+      wrapper.appendChild(slotDiv);
+      row.appendChild(wrapper);
     });
 
     container.appendChild(row);
   }
 }
 
-// 一括保存処理
 async function saveBulkAvailability() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return alert("プレイヤーを選択してください");
 
-  // ここを .bulk-slot-toggle に変更
   const toggles = document.querySelectorAll(".bulk-slot-toggle");
   const payload = [];
 
   toggles.forEach(el => {
-    // dataset.status と dataset.initial を比較
     if (el.dataset.status !== el.dataset.initial) {
       if (el.dataset.status !== "") {
         payload.push({
@@ -263,7 +255,6 @@ async function saveBulkAvailability() {
 
   if (payload.length === 0) {
      alert("変更された予定データがありません。");
-     // 変更がなくてもモーダルは閉じるのが親切
      closeModal('availability-modal');
      return;
   }
@@ -287,11 +278,11 @@ async function saveBulkAvailability() {
   }
 }
 
-// プレイヤー一覧を取得してチェックボックスを生成
+// プレイヤー一覧を取得してチェックボックスを生成 (既存の Utils.getPlayers を使用)
 async function initPlayerList() {
   try {
-    // Utils のキャッシュ機能を使ってプレイヤーを取得
-    globalPlayers = await Utils.getPlayers(); 
+    const data = await Utils.getPlayers();
+    globalPlayers = Array.isArray(data) ? data : [];
     
     const listEl = document.getElementById("player-checkbox-list");
     const inputPlayerSelect = document.getElementById("modal-player-id");
@@ -306,7 +297,6 @@ async function initPlayerList() {
       }
     });
 
-    // 選択プルダウンの生成は Utils の共通関数にお任せ
     if (inputPlayerSelect) {
         await Utils.setupPlayerSelect(inputPlayerSelect);
     }
@@ -320,10 +310,9 @@ async function runComparison() {
   const selectedIds = Array.from(document.querySelectorAll('input[name="compare-player"]:checked')).map(cb => cb.value);
   if (selectedIds.length === 0) return alert("プレイヤーを選択してください");
 
-  // ★修正：対象月の正しい「末日」を計算する
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const lastDay = new Date(year, month + 1, 0).getDate(); // 4月なら30、2月なら28(29)が取得できる
+  const lastDay = new Date(year, month + 1, 0).getDate();
 
   const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
@@ -349,13 +338,13 @@ function closeModal(modalId) {
 
 async function initCompareModalData() {
   try {
-    // 1. プレイヤー一覧を初期化（既存処理）
-    globalPlayers = await Utils.getPlayers();
+    // 1. プレイヤー一覧を初期化 (既存の Utils.getPlayers を使用)
+    const playersData = await Utils.getPlayers();
+    globalPlayers = Array.isArray(playersData) ? playersData : [];
     renderPlayerCheckboxes();
 
-    // 2. 卓一覧を取得（apiGet("runs")を使用）
+    // 2. 卓一覧を取得
     const runs = await Utils.apiGet("runs");
-    // 進行中(active)や計画中(planning)のみにフロント側で絞り込む
     globalRuns = Array.isArray(runs) ? runs.filter(r => r.status === 'active' || r.status === 'planning') : [];
 
     const runSelect = document.getElementById("compare-run-select");
@@ -374,10 +363,9 @@ async function initCompareModalData() {
   }
 }
 
-// 既存の initPlayerList 内の描画部分を関数化して整理
 function renderPlayerCheckboxes() {
   const listEl = document.getElementById("player-checkbox-list");
-  const modalSelect = document.getElementById("modal-player-id"); // 一括入力用プルダウン
+  const modalSelect = document.getElementById("modal-player-id");
 
   if (listEl) {
     listEl.innerHTML = "";
@@ -399,6 +387,7 @@ function renderPlayerCheckboxes() {
   }
 }
 
+// ★今回のメイン改修箇所：卓選択時のチェックボックス自動ON処理
 function handleRunSelection(e) {
   const runId = e.target.value;
   if (!runId) return;
@@ -410,17 +399,23 @@ function handleRunSelection(e) {
   const checkboxes = document.querySelectorAll('input[name="compare-player"]');
   checkboxes.forEach(cb => cb.checked = false);
 
-  // 卓に含まれる名前のリストを作成
-  const targetNames = [];
-  if (selectedRun.gm) targetNames.push(selectedRun.gm);
-  if (Array.isArray(selectedRun.players)) {
-    targetNames.push(...selectedRun.players);
-  }
+  // 正規化データ(gm_id, player_ids)と旧データ(gm_name, player_names, またはgm, players)の両方に対応
+  const targetIds = [];
+  if (selectedRun.gm_id) targetIds.push(selectedRun.gm_id);
+  if (Array.isArray(selectedRun.player_ids)) targetIds.push(...selectedRun.player_ids);
 
-  // 名前（data-name属性）が一致するチェックボックスをONにする
+  const targetNames = [];
+  if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
+  else if (selectedRun.gm) targetNames.push(selectedRun.gm);
+
+  if (Array.isArray(selectedRun.player_names)) targetNames.push(...selectedRun.player_names);
+  else if (Array.isArray(selectedRun.players)) targetNames.push(...selectedRun.players);
+
+  // IDまたは名前のどちらかに一致するチェックボックスをONにする
   checkboxes.forEach(cb => {
     const pName = cb.getAttribute("data-name");
-    if (targetNames.includes(pName)) {
+    const pId = cb.value;
+    if (targetIds.includes(pId) || targetNames.includes(pName)) {
       cb.checked = true;
     }
   });
@@ -436,7 +431,6 @@ async function main() {
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
       currentDate.setMonth(currentDate.getMonth() - 1);
-      // 月が変わった時、比較モード中ならデータを再取得する
       if (compareMode) runComparison(); 
       else renderCalendar();
     });
@@ -467,7 +461,7 @@ async function main() {
   });
 
   // ==========================================
-  // ★ 追加：調整さんCSV スマートインポート機能
+  // 調整さんCSV スマートインポート機能
   // ==========================================
 
   document.getElementById("btn-import-csv")?.addEventListener("click", () => {
@@ -480,21 +474,18 @@ async function main() {
       if (!file) return;
 
       const reader = new FileReader();
-      reader.readAsText(file, 'Shift_JIS'); // 調整さんの文字化け対策
+      reader.readAsText(file, 'Shift_JIS'); 
       
       reader.onload = (event) => {
           const text = event.target.result;
-          // 空行を除外して行の配列にする
           const lines = text.split('\n').filter(l => l.trim() !== '');
           
-          // ★修正：「日程」という文字から始まる行を探し、そこをヘッダー（列名）とする
           const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
           
           if (headerIndex === -1) {
               return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
           }
 
-          // ヘッダー行と、それ以降のデータ行を正しく分割する
           const headers = lines[headerIndex].split(',').map(s => s.replace(/^"|"$/g, '').trim());
           const dataRows = lines.slice(headerIndex + 1).map(line => line.split(',').map(s => s.replace(/^"|"$/g, '').trim()));
 
@@ -502,7 +493,6 @@ async function main() {
           showMappingModal();
       };
   });
-
 
   document.getElementById("btn-execute-import")?.addEventListener("click", async () => {
       const selects = document.querySelectorAll(".csv-player-select");
@@ -516,7 +506,7 @@ async function main() {
 
       if (Object.keys(columnMap).length === 0) return alert("取り込むプレイヤーが選択されていません");
 
-      const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" }; // ※調整さんは大きな丸「◯」の場合もあるため両方対応
+      const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" };
 
       parsedCsvData.dataRows.forEach(row => {
           const rawDateStr = row[0]; 
@@ -589,16 +579,13 @@ async function main() {
       }
   });
 
-
-
   // 初回読み込み
   await initCompareModalData();    
-  await fetchScheduleData(); // ここでデータを取得し、カレンダーを描画する
+  await fetchScheduleData(); 
 }
 
-// --- 追加：モーダルの背景（外側）をクリックした時に閉じる処理 ---
+// モーダルの背景（外側）をクリックした時に閉じる処理
 window.addEventListener("click", (e) => {
-  // クリックした要素自体が「modal」クラスを持っている場合（＝中身の白枠ではなく、外側の黒背景の場合）
   if (e.target.classList.contains("modal")) {
     e.target.style.display = "none";
   }
@@ -619,7 +606,6 @@ function showMappingModal() {
     csvNames.forEach((csvName, index) => {
         if (!csvName) return;
         
-        // CSVの名前とDBの名前が一致したら自動選択する
         const matchedPlayer = globalPlayers.find(p => p.player_name === csvName);
         const selectedId = matchedPlayer ? matchedPlayer.player_id : "";
 
@@ -644,4 +630,3 @@ function showMappingModal() {
 
     document.getElementById("csv-mapping-modal").style.display = "block";
 }
-

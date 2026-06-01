@@ -117,7 +117,7 @@ function renderDetail() {
                     <option value="">-- プレイヤーを選択 --</option>
                 </select>
                 <button type="button" id="btn-apply" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">応募する</button>
-                <button type="button" id="btn-cancel-apply" class="btn-secondary btn-cancel" style="padding: 6px 12px; font-size: 0.95em;">取り消す</button>
+                <button type="button" id="btn-cancel-apply" class="btn-cancel" style="padding: 6px 12px; font-size: 0.95em;">取り消す</button>
             </div>
         </div>
 

@@ -11,7 +11,9 @@
     --primary-hover: #2b6cb0;
     --success-color: #38a169;
     --danger-color: #e53e3e;
+    --danger-hover: #6d2222;
     --cancel-color: #718096;
+    --cancel-hover: #4a5568;
     --radius: 8px;
     --shadow: 0 4px 8px rgba(0,0,0,0.08);
     
@@ -77,6 +79,18 @@ a { color: inherit; text-decoration: none; }
     transition: background 0.2s;
 }
 .btn-primary:hover { background: var(--primary-hover); }
+
+.btn-cancel {
+    background: var(--danger-color);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+.btn-cancel:hover { background: var(--danger-hover); }
 
 .btn-secondary {
     background: #edf2f7;

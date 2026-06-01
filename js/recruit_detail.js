@@ -54,7 +54,7 @@ function renderDetail() {
 
     const scenarioObj = allScenarios.find(s => s.id === currentRecruit.scenario_id);
     const scenarioName = scenarioObj ? scenarioObj.title : "未定・オリジナル";
-    const scenarioImage = scenarioObj && scenarioObj.image_url ? scenarioObj.image_url : "../images/default_scenario.jpg"; // 画像がない場合のデフォルト
+    const scenarioImage = scenarioObj ? `../img/scenario/${scenarioObj.id}.png` : "../img/scenario/default.png";
 
     const applicantNames = currentApplicants.map(app => {
         const pObj = allPlayers.find(p => p.player_id === app.player_id);
@@ -72,7 +72,7 @@ function renderDetail() {
     root.innerHTML = `
         <section class="profile-header">
             <div class="profile-image-container" style="text-align: center;">
-                <img src="${Utils.escapeHtml(scenarioImage)}" alt="Scenario" style="max-width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px;" onerror="this.src='../images/default_scenario.jpg';">
+                <img src="${Utils.escapeHtml(scenarioImage)}" alt="Scenario" style="max-width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px;" onerror="this.src='../img/scenario/default.png';">
             </div>
             
             <div class="profile-info">

@@ -82,7 +82,7 @@ export default {
 
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS, PATCH",
+      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS, PATCH, DELETE",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     };
 
@@ -991,6 +991,38 @@ export default {
       return new Response(null, { status: res.status, headers: jsonHeaders });
     }
 
+    // ==========================================
+    // ---- DELETE 共通ルーティング ----
+    // ==========================================
+    if (request.method === "DELETE") {
+      const resource = url.pathname.replace("/api/", ""); 
+      
+      // PATCHと同じく、許可するリソースのホワイトリスト
+      const allowedResources = ["runs", "sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants"];
+      
+      if (allowedResources.includes(resource)) {
+        try {
+          const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${resource}${url.search}`, {
+            method: "DELETE",
+            headers: {
+              apikey: env.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+              "Content-Type": "application/json",
+            }
+          });
+
+          if (!res.ok) {
+            const err = await res.text();
+            return new Response(JSON.stringify({ error: `${resource} delete failed`, detail: err }), { status: res.status, headers: jsonHeaders });
+          }
+
+          // DELETEリクエストはボディ(レスポンス)が空の場合があるため、text()で安全に受け取る
+          return new Response(await res.text(), { status: 200, headers: jsonHeaders });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        }
+      }
+    }
 
 
     // ---- ここからナイトレインツール ----

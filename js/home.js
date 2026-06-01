@@ -65,7 +65,7 @@ function renderNextSession(container, sessions, runsById, scenariosById) {
  * Ongoing Scenarios
  * - runs.json の status==="active" を「進行中」とみなす
  */
-function renderOngoing(container, runs, scenariosById, sessionsByRunId) {
+function renderOngoing(container, runs, scenariosById, sessionsByRunId, playersById) {
   const now = new Date();
 
   const activeRuns = (Array.isArray(runs) ? runs : [])
@@ -142,11 +142,16 @@ async function main() {
   ongoingEl.textContent = "";
 
   try {
-    const [scenarios, runs, sessions] = await Promise.all([
+    const [scenarios, runs, sessions, players] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
+      Utils.apiGet("players").catch(() => []), // エラー時は空配列として続行
     ]);
+
+    const playersById = new Map(
+      (Array.isArray(players) ? players : []).map(p => [p.player_id, p])
+    );
 
     const scenariosById = new Map(
       (Array.isArray(scenarios) ? scenarios : [])
@@ -175,7 +180,7 @@ async function main() {
   }
 
   try {
-    renderOngoing(ongoingEl, runs, scenariosById, sessionsByRunId);
+    renderOngoing(ongoingEl, runs, scenariosById, sessionsByRunId, playersById);
   } catch (e) {
     ongoingEl.innerHTML = `<p>進行中表示でエラー：${Utils.escapeHtml(e?.message || "")}</p>`;
   }

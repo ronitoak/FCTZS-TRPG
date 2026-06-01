@@ -282,10 +282,14 @@ function renderEditLists() {
     if(!pList || !cList) return;
 
     // プレイヤー表示
-    pList.innerHTML = tempPlayers.map((p, index) => `
-        <span class="tag">${Utils.escapeHtml(p)}
+    pList.innerHTML = tempPlayers.map((id, index) => {
+        const found = allPlayers.find(player => player.player_id === id);
+        const displayName = found ? found.player_name : id; // 見つかれば名前、なければ旧テキスト
+        return `
+        <span class="tag">${Utils.escapeHtml(displayName)}
             <button type="button" onclick="removeTempPlayer(${index})" class="btn-remove">×</button>
-        </span>`).join('');
+        </span>`;
+    }).join('');
 
     // キャラクター表示
     cList.innerHTML = tempCharacters.map((c, index) => `
@@ -410,8 +414,22 @@ Utils.domReady(() => {
 
       // 現在の値をセット
       form.title.value = currentRunData.title || "";
-      form.gm.value = currentRunData.gm || "";
-      tempPlayers = [...(currentRunData.players || [])];
+      
+      // ★修正: GM選択セレクトボックスの構築と初期値セット
+      const gmSelect = document.getElementById('edit-gm-select');
+      if (gmSelect) {
+          gmSelect.innerHTML = '<option value="">選択してください</option>';
+          allPlayers.forEach(p => {
+              const opt = document.createElement("option");
+              opt.value = p.player_id;
+              opt.textContent = p.player_name;
+              gmSelect.appendChild(opt);
+          });
+          gmSelect.value = currentRunData.gm_id || "";
+      }
+
+      // ★修正: 旧テキストではなくID配列を優先してセット
+      tempPlayers = [...(currentRunData.player_ids || currentRunData.players || [])];
 
       try {
           const allChars = await Utils.apiGet("characters"); 
@@ -424,11 +442,12 @@ Utils.domReady(() => {
           tempCharacters = (currentRunData.characters || []).map(id => ({ id, name: id }));
       }
       
-      // プレイヤー全件をプルダウンにセット
+      // ★修正: プレイヤー全件をプルダウンにセット（送信するvalueをIDに変更）
       const pSelect = document.getElementById('add-player-select');
-      const allPlayers = await Utils.apiGet("players");
-      pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
-        allPlayers.map(p => `<option value="${p.player_name}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
+      if (pSelect) {
+          pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
+            allPlayers.map(p => `<option value="${p.player_id}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
+      }
 
       renderEditLists();
 
@@ -455,10 +474,13 @@ Utils.domReady(() => {
 
       e.preventDefault();
       
+      const submitBtn = runForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true; // 連打防止
+      
     const payload = {
       title: runForm.title.value,
-      gm: runForm.gm.value,
-      players: tempPlayers,
+      gm_id: runForm.gm_id.value || null, // ★修正: gm -> gm_id
+      player_ids: tempPlayers,            // ★修正: players -> player_ids
       characters: tempCharacters.map(c => c.id) // 送信時は ID 配列に戻す
     };
 
@@ -469,6 +491,7 @@ Utils.domReady(() => {
     } catch (err) {
         console.error(err);
         alert("更新に失敗しました");
+        if (submitBtn) submitBtn.disabled = false;
     }
   });
   

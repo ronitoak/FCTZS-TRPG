@@ -128,6 +128,10 @@ function renderRecruitments() {
                 <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">現在の参加者:</div>
                 <div class="applicant-list">${applicantsHtml}</div>
             </div>
+
+            <div style="margin-top: 15px; text-align: right;">
+                    <a href="./detail.html?id=${r.id}" class="secondary-btn" style="text-decoration: none; display: inline-block;">詳細を見る / 応募する</a>
+            </div>
             
             ${!isFulfilled ? `
                 <div style="margin-top: 16px; display: flex; gap: 8px;">
@@ -143,11 +147,7 @@ function renderRecruitments() {
                     <button class="btn-close-recruit" data-id="${recruit.id}" style="font-size: 0.8rem; background: none; border: 1px solid #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px;">募集を終了する</button>
                 </div>
             `}
-            
-            <div style="margin-top: 15px; text-align: right;">
-                <a href="./detail.html?id=${r.id}" class="secondary-btn" style="text-decoration: none; display: inline-block;">詳細を見る / 応募する</a>
-            </div>
-            `;
+        `;
 
         container.appendChild(card);
     });

@@ -11,8 +11,10 @@ function hexToUint8Array(hex) {
 * @param {object} embed - 綺麗な枠（タイトルや説明など）
 * @param {object} env - 環境変数（URLが入っている）
 * @param {string} webhookUrl - 通知先のWebhook URL
+* @param {string} customUsername - カスタムユーザー名
+* @param {string} customAvatarUrl - カスタムアバターURL
 */
-async function sendDiscordNotification(content, embed, env, webhookUrl) {
+async function sendDiscordNotification(content, embed, env, webhookUrl, customUsername = null, customAvatarUrl = null) {
   console.log("Discord通知を開始します..."); // これを追加
   const url = webhookUrl || env.DISCORD_WEBHOOK_URL;
   if (!url) {
@@ -25,11 +27,38 @@ async function sendDiscordNotification(content, embed, env, webhookUrl) {
     embeds: [embed]
   };
 
+  if (customUsername) payload.username = customUsername;
+  if (customAvatarUrl) payload.avatar_url = customAvatarUrl;
+
   await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+}
+
+// charactersテーブルからランダムに1件取得する関数
+async function getRandomCharacter(env) {
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/characters?select=id,name`, {
+      headers: {
+        apikey: env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+      }
+    });
+    
+    if (res.ok) {
+      const characters = await res.json();
+      if (characters && characters.length > 0) {
+        // 取得したリストからランダムに1つ選択
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        return characters[randomIndex];
+      }
+    }
+  } catch (err) {
+    console.error("キャラクター取得エラー:", err);
+  }
+  return null;
 }
 
 export default {
@@ -1175,6 +1204,9 @@ export default {
             ? run.players.map(p => `- ${p}`).join("\n")
             : "- 参加者情報なし";
 
+          const randomChar = await getRandomCharacter(env);
+          const customName = randomChar ? randomChar.name : null;
+          const customAvatar = randomChar ? `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true` : null;
           // --- 3. 送信 ---
           await sendDiscordNotification(
             `${notificationLine}\n🔔 **セッション通知**`,
@@ -1185,7 +1217,9 @@ export default {
               url: `https://ronitoak.github.io/FCTZS-TRPG/sessions/detail.html?id=${session.run_id}`
             },
             env,
-            env.DISCORD_WEBHOOK_URL // 通知先を分けるための引数追加（後述）
+            env.DISCORD_WEBHOOK_URL, // 通知先を分けるための引数追加（後述）
+            customName,    // ★追加: カスタム名
+            customAvatar   // ★追加: カスタム画像
           );
         }
       } catch (err) {
@@ -1295,6 +1329,11 @@ export default {
             const uniqueScenarioTitles = [...new Set(scenarioTitles)].join(", ");
 
             if (uniqueMentions) {
+              // ★追加: 乱数でキャラクターを取得
+              const randomChar = await getRandomCharacter(env);
+              const customName = randomChar ? randomChar.name : null;
+              const customAvatar = randomChar ? `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true` : null;
+
               await sendDiscordNotification(
                 `${uniqueMentions}\n**募集終了通知**`,
                 {
@@ -1303,7 +1342,10 @@ export default {
                   color: 15158332,
                   fields: uniqueScenarioTitles ? [{ name: "削除された募集のシナリオ", value: uniqueScenarioTitles }] : []
                 },
-                env
+                env,
+                env.DISCORD_WEBHOOK_URL,
+                customName,    // ★追加: カスタム名
+                customAvatar   // ★追加: カスタム画像
               );
             }
 

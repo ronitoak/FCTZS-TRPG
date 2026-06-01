@@ -128,12 +128,12 @@ function renderDetail() {
         </div>
       </section>
 
-      <section class="scenario-detail-section" style="margin-top: 30px;">
-        <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
-            <legend style="color: #c53030; font-weight: bold;">募集の削除</legend>
-            <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none;">この募集を削除する</button>
-        </fieldset>
-      </section>
+        <section class="scenario-detail-section" style="margin-top: 30px;">
+            <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
+                <legend style="color: #c53030; font-weight: bold;">募集の削除</legend>
+                <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none; width: 100%; padding: 20px; font-size: 1.3rem; font-weight: bold; cursor: pointer; border-radius: 5px;">この募集を削除する</button>
+            </fieldset>
+        </section>
     `;
 }
 

@@ -64,7 +64,7 @@ function renderDetail() {
     const scenarioObj = allScenarios.find(s => s.id === currentRecruit.scenario_id);
     const scenarioName = scenarioObj ? scenarioObj.title : "未定・オリジナル";
     
-    // 画像パスの生成
+    // 画像パスの生成（シナリオIDがあればその画像、なければデフォルト）
     const scenarioImage = scenarioObj ? `../img/scenario/${scenarioObj.id}.png` : "../img/scenario/default.png";
 
     const applicantNames = currentApplicants.map(app => {
@@ -109,7 +109,18 @@ function renderDetail() {
       </section>
 
       <section class="scenario-detail-section">
-        <h2 class="scenario-detail-h2">現在の応募者</h2>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--border-color, #eee); padding-bottom: 8px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h2 class="scenario-detail-h2" style="margin: 0; border: none; padding: 0;">現在の応募者</h2>
+            
+            <div class="input-group" style="display: flex; gap: 8px; align-items: center; margin: 0;">
+                <select id="action-player-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.95em;">
+                    <option value="">-- プレイヤーを選択 --</option>
+                </select>
+                <button type="button" id="btn-apply" class="primary-btn" style="padding: 6px 12px; font-size: 0.95em;">応募する</button>
+                <button type="button" id="btn-cancel-apply" class="secondary-btn" style="padding: 6px 12px; font-size: 0.95em;">取り消す</button>
+            </div>
+        </div>
+
         <div class="scenario-detail-characters">
             ${applicantNames.length > 0 
                 ? applicantNames.map(name => `<span class="tag" style="display: inline-block; background: var(--bg-color); padding: 4px 10px; border-radius: 12px; margin: 4px; border: 1px solid var(--border-color);">${Utils.escapeHtml(name)}</span>`).join('') 
@@ -118,19 +129,9 @@ function renderDetail() {
       </section>
 
       <section class="scenario-detail-section" style="margin-top: 30px;">
-        <fieldset class="form-section">
-            <legend>参加 / 参加取り消し</legend>
-            <div class="input-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <select id="action-player-select" class="form-control" style="max-width: 250px;">
-                    <option value="">-- プレイヤーを選択 --</option>
-                </select>
-                <button type="button" id="btn-apply" class="primary-btn">応募する</button>
-                <button type="button" id="btn-cancel-apply" class="secondary-btn" style="color: #c53030; border-color: #fc8181;">参加を取り消す</button>
-            </div>
-        </fieldset>
-
-        <fieldset class="form-section" style="margin-top: 20px; border: 1px solid #fc8181; background: #fff5f5;">
-            <legend style="color: #c53030;">募集の管理（募集主用）</legend>
+        <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
+            <legend style="color: #c53030; font-weight: bold;">募集の管理（募集主用）</legend>
+            <p style="font-size: 0.9em; margin-bottom: 10px; color: #666;">※募集を中止する場合のみ削除してください。</p>
             <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none;">この募集を削除する</button>
         </fieldset>
       </section>

@@ -16,24 +16,30 @@
         <fieldset class="form-section">
             <legend>卓の基本情報</legend>
             <div class="profile-grid">
-            <div class="form-group">
-                <label>卓名</label>
-                <input type="text" name="title" required class="form-control" placeholder="例：第1回、平日夜卓">
-            </div>
-            <div class="form-group">
-                <label>シナリオ</label>
-                <select name="scenario_id" id="scenario-select" required class="form-control">
-                <option value="">読み込み中...</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>GM</label>
-                <input type="text" name="gm" class="form-control" placeholder="GM名">
-            </div>
-            <div class="form-group">
-            <label>プレイヤー (カンマ区切り)</label>
-            <input type="text" name="extra_players" class="form-control" placeholder="">
-        </div>
+                <div class="form-group">
+                    <label>卓名</label>
+                    <input type="text" name="title" required class="form-control" placeholder="例：第1回、平日夜卓">
+                </div>
+                <div class="form-group">
+                    <label>シナリオ</label>
+                    <select name="scenario_id" id="scenario-select" required class="form-control">
+                    <option value="">読み込み中...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>GM</label>
+                    <select name="gm_id" id="gm-select" class="form-control" required>
+                        <option value="">読み込み中...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>追加プレイヤー (見学・キャラ未選択枠)</label>
+                    <select name="extra_player_ids" id="extra-player-select" multiple class="form-control">
+                    </select>
+                    <small style="display:block; margin-top:4px; color:#666;">
+                        ※Ctrlキー(Windows) / Cmdキー(Mac)を押しながらクリックで複数選択
+                    </small>
+                </div>
             </div>
         </fieldset>
 

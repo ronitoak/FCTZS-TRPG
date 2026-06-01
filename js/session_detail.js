@@ -71,6 +71,16 @@ async function main() {
     const runCharIds = Array.isArray(run.characters) ? run.characters : [];
     const runChars = runCharIds.map(id => charsById.get(id)).filter(Boolean);
 
+    const playersById = new Map(allPlayers.map(p => [p.player_id, p]));
+    let gmName = run.gm ?? "—";
+    if (run.gm_id && playersById.has(run.gm_id)) {
+        gmName = playersById.get(run.gm_id).player_name;
+    }
+    let plNames = run.players ?? [];
+    if (run.player_ids && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
+        plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
+    }
+
     root.innerHTML = `
       <header class="session-detail-header">
         <h1 class="session-detail-title">${Utils.escapeHtml(run.title ?? run.id)}</h1>
@@ -99,8 +109,8 @@ async function main() {
                   ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(scenario.id)}">${Utils.escapeHtml(scenario.title ?? scenario.id)}</a>`
                   : "（不明）"
               }</td></tr>
-              <tr><th>GM</th><td>${Utils.escapeHtml(run.gm ?? "—")}</td></tr>
-              <tr><th>PL</th><td>${Utils.escapeHtml((run.players ?? []).join(" / ") || "—")}</td></tr>
+              <tr><th>GM</th><td>${Utils.escapeHtml(gmName)}</td></tr>
+              <tr><th>PL</th><td>${Utils.escapeHtml(plNames.join(" / ")) || "—"}</td></tr>
               <tr><th>次回</th><td>${
                 run.status === "active"
                   ? (upcoming[0]?._start ? Utils.escapeHtml(Utils.formatDateTime(upcoming[0]._start)) : "未定")
@@ -509,7 +519,6 @@ Utils.domReady(() => {
 
       const payload = {
         run_id: currentRunData.id,
-        gm: currentRunData.gm,
         start: startTimestamp,
         title: titleVal,
         stream_url: subForm.stream_url.value,
@@ -524,28 +533,21 @@ Utils.domReady(() => {
           // ① セッションを保存
           await Utils.apiPost("sessions", payload);
 
-          // ② 参加プレイヤー全員のスケジュールを 'ng' にする
-          const playerNames = currentRunData.players || [];
-          if (playerNames.length > 0) {
-            // 名前から ID を逆引き
-            const playerIds = playerNames.map(name => {
-              // 名前が一致するプレイヤーを検索
-              const found = allPlayers.find(p => 
-                  (p.player_name === name) || 
-                  (p.name === name) // 万が一 API側で name として返ってきている場合のため
-              );
-              if (found) {
-                  return found.player_id;
-              } else {
-                  console.warn(`マッチ失敗: ${name} が allPlayers に見つかりません`);
-                  return null;
-              }
-          }).filter(id => id !== null); // null（見つからなかったプレイヤー）を除外
+          let syncPlayerIds = [];
 
-            if (playerIds.length > 0) {
-                console.log("最終的に送信する player_id 配列:", playerIds);
-                await Utils.syncSchedulesForFullDay(startTimestamp, playerIds);
-            }
+          // ② 参加プレイヤー全員のスケジュールを 'ng' にする
+          if (currentRunData.player_ids && currentRunData.player_ids.length > 0) {
+              syncPlayerIds = currentRunData.player_ids; // 移行済みの場合はそのままIDを使用
+          } else if (currentRunData.players && currentRunData.players.length > 0) {
+              // 未移行データ用フォールバック（旧ロジック残し）
+              syncPlayerIds = currentRunData.players.map(name => {
+                  const found = allPlayers.find(p => p.player_name === name || p.name === name);
+                  return found ? found.player_id : null;
+              }).filter(id => id !== null);
+          }
+
+          if (syncPlayerIds.length > 0) {
+              await Utils.syncSchedulesForFullDay(startTimestamp, syncPlayerIds);
           }
 
           location.reload(); 

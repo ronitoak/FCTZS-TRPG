@@ -10,15 +10,17 @@ async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
 
   try {
-    const [scenarios, runs, sessions] = await Promise.all([
+    const [scenarios, runs, sessions, players] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("session_list"),
+      Utils.apiGet("players").catch(() => [])
     ]);
 
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
     const runsSafe = Array.isArray(runs) ? runs : [];
     const sessionsSafe = Array.isArray(sessions) ? sessions : [];
+    const playersById = new Map((Array.isArray(players) ? players : []).map(p => [p.player_id, p]));
 
     // lookup 用 Map
     const scenariosById = new Map(scenariosSafe.map(s => [s.id, s]));
@@ -85,6 +87,16 @@ async function main() {
       const card = document.createElement("article");
       card.className = "sessions-card";
 
+      let gmName = run.gm ?? "";
+      if (run.gm_id && playersById.has(run.gm_id)) {
+          gmName = playersById.get(run.gm_id).player_name;
+      }
+
+      let plNames = run.players ?? [];
+      if (run.player_ids && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
+          plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
+      }
+
       card.innerHTML = `
         <img
           class="sessions-cover"
@@ -104,7 +116,7 @@ async function main() {
 
         <div class="sessions-meta">
           <div>シナリオ: ${Utils.escapeHtml(scenario?.title ?? "（不明なシナリオ）")}</div>
-          <div>参加者: ${Utils.escapeHtml(run.gm ?? "")} (GM) / ${Utils.escapeHtml((run.players ?? []).join(" / "))}</div>
+          <div>参加者: ${Utils.escapeHtml(gmName)} (GM) / ${Utils.escapeHtml(plNames.join(" / "))}</div>
         </div>
 
         <ul class="sessions-list">

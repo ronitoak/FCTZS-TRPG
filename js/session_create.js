@@ -18,6 +18,11 @@ Utils.domReady(async () => {
         ]);
         allCharacters = characters;
 
+        const playersById = new Map();
+        if (Array.isArray(players)) {
+            players.forEach(p => playersById.set(p.player_id, p.player_name));
+        }
+
         const gmSelect = document.getElementById("gm-select");
         const extraPlayerSelect = document.getElementById("extra-player-select");
         
@@ -47,17 +52,23 @@ Utils.domReady(async () => {
 
         // キャラクター選択（カード形式）
         // ★修正: inputタグに data-player-id 属性を追加
-        charGrid.innerHTML = characters.map(c => `
+        charGrid.innerHTML = characters.map(c => {
+            // IDがあれば名前を辞書から取得し、無ければ過去の c.player(テキスト) を使い、どちらも無ければ '未設定'
+            const playerName = (c.player_id && playersById.has(c.player_id)) 
+                ? playersById.get(c.player_id) 
+                : (c.player || '未設定');
+
+            return `
             <label class="skill-input-item" style="cursor:pointer; display:flex; gap:10px; align-items:center;">
                 <input type="checkbox" name="char_id" value="${c.id}" 
-                       data-player="${Utils.escapeHtml(c.player || '')}" 
                        data-player-id="${Utils.escapeHtml(c.player_id || '')}">
                 <div>
                     <div style="font-weight:bold;">${Utils.escapeHtml(c.name)}</div>
-                    <small style="color:#666;">PL: ${Utils.escapeHtml(c.player || '未設定')}</small>
+                    <small style="color:#666;">PL: ${Utils.escapeHtml(playerName)}</small>
                 </div>
             </label>
-        `).join('');
+            `;
+        }).join('');
     } catch (err) {
         console.error(err);
         charGrid.innerHTML = "<p>データの取得に失敗しました</p>";

@@ -84,8 +84,16 @@ function renderOngoing(container, runs, scenariosById, sessionsByRunId) {
     const scenarioTitle = Utils.escapeHtml(scenario?.title || r.scenario_id || "（不明）");
     const runTitle = Utils.escapeHtml(r.title || r.id || "（卓）");
     
-    const players = Array.isArray(r.players) ? r.players : [];
-    const playersText = players.length ? players.map(Utils.escapeHtml).join(" / ") : "";
+    let playersText = "";
+    if (r.player_ids && Array.isArray(r.player_ids) && r.player_ids.length > 0) {
+        playersText = r.player_ids.map(id => {
+            const p = playersById?.get(id);
+            return p ? p.player_name : id;
+        }).map(Utils.escapeHtml).join(" / ");
+    } else {
+        const players = Array.isArray(r.players) ? r.players : [];
+        playersText = players.length ? players.map(Utils.escapeHtml).join(" / ") : "";
+    }
 
     // このrunに紐づくsession一覧から「次回」を取る
     const runSessions = sessionsByRunId?.get(r.id) ?? [];

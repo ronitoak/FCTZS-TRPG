@@ -1125,6 +1125,7 @@ export default {
   },
 
   // セッション通知処理
+  // セッション通知処理
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       try {
@@ -1135,7 +1136,7 @@ export default {
         const startDate = encodeURIComponent(now.toISOString());
         const endDate = encodeURIComponent(tomorrow.toISOString());
 
-        // 2. 直近のセッションを取得（sessionsからid,start,run_id,titleを取得）
+        // 2. 直近のセッションを取得
         const sessionUrl = `/rest/v1/sessions?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`;
         const sessionRes = await fetch(`${env.SUPABASE_URL}${sessionUrl}`, {
           headers: {
@@ -1162,9 +1163,10 @@ export default {
         let runsMap = new Map();
         
         if (runIds.length > 0) {
-          const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-          // 2. 卓情報を取得（runsからid,title,gm,playersを取得）
-          const runsUrl = `/rest/v1/runs?select=id,title,gm,players&id=in.${runIdsParam}`;
+          // ★修正: カッコ自体はエンコードせず、IDだけをエンコードする
+          const runIdsParam = `(${runIds.map(id => encodeURIComponent(id)).join(',')})`;
+          // ★修正: gm_id や player_ids が使われているケースに備えてカラムを追加取得
+          const runsUrl = `/rest/v1/runs?select=id,title,gm,players,gm_id,player_ids&id=in.${runIdsParam}`;
           const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
             headers: {
               apikey: env.SUPABASE_ANON_KEY,
@@ -1177,20 +1179,23 @@ export default {
           }
         }
 
-        // 4. プレイヤー情報を取得（playersからplayer_name,discord_idを取得）
-        const mapRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?select=player_name,discord_id`, {
+        // 4. プレイヤー情報を一括取得
+        const mapRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?select=player_id,player_name,discord_id`, {
           headers: {
             apikey: env.SUPABASE_ANON_KEY,
             Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
           }
         });
         const allPlayers = mapRes.ok ? await mapRes.json() : [];
-        const discordMap = new Map(allPlayers.map(p => [p.player_name, p.discord_id]));
+        
+        // ★修正: IDからも名前からも引けるようにMapを準備
+        const playerMapById = new Map(allPlayers.map(p => [p.player_id, p]));
+        const playerMapByName = new Map(allPlayers.map(p => [p.player_name, p]));
 
         // キャラクター一覧を1度だけ取得しておく
         const availableCharacters = await getCharacterList(env);
 
-        // 5. 通知の送信（メンションを箱の外に出す修正版）
+        // 5. 通知の送信
         for (const session of upcomingSessions) {
           const run = runsMap.get(session.run_id) || {};
           const runTitle = run.title || "名称未設定の卓";
@@ -1200,72 +1205,71 @@ export default {
           const sessionStart = new Date(session.start);
           const timeString = sessionStart.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
 
-          // --- 1. 通知用メンションの作成（箱の外に出す用） ---
+          // ★修正: GMの名前とDiscordIDを安全に解決
+          const gmObj = playerMapById.get(run.gm_id) || playerMapByName.get(run.gm);
+          const gmName = gmObj ? gmObj.player_name : (run.gm || 'GM未定');
+          const gmDiscordId = gmObj ? gmObj.discord_id : null;
+
+          // ★修正: PLの名前リストとDiscordIDを安全に解決
+          const displayPlayers = [];
+          const playerDiscordIds = [];
+          const targetPlayers = (Array.isArray(run.player_ids) && run.player_ids.length > 0) ? run.player_ids : (Array.isArray(run.players) ? run.players : []);
+
+          targetPlayers.forEach(identifier => {
+            const pObj = playerMapById.get(identifier) || playerMapByName.get(identifier);
+            if (pObj) {
+              displayPlayers.push(`- ${pObj.player_name}`);
+              if (pObj.discord_id) playerDiscordIds.push(pObj.discord_id);
+            } else {
+              displayPlayers.push(`- ${identifier}`); 
+            }
+          });
+
+          const displayPlayerList = displayPlayers.length > 0 ? displayPlayers.join("\n") : "- 参加者情報なし";
+
+          // --- 1. 通知用メンションの作成 ---
           const mentions = [];
-          
-          // GMのDiscord ID取得
-          const gmName = run.gm || 'GM未定';
-          const gmDiscordId = discordMap.get(gmName);
           if (gmDiscordId) mentions.push(`<@${gmDiscordId}>`);
+          playerDiscordIds.forEach(dId => mentions.push(`<@${dId}>`));
 
-          // プレイヤーのDiscord ID取得
-          if (Array.isArray(run.players)) {
-            run.players.forEach(pName => {
-              const dId = discordMap.get(pName);
-              if (dId) mentions.push(`<@${dId}>`);
-            });
-          }
-
-          // 重複削除してスペース区切りに
           const notificationLine = mentions.length > 0 ? [...new Set(mentions)].join(" ") : "";
 
-          // --- 2. 箱の中（Embed）に表示するテキストの作成 ---
-          // こちらはメンションにせず、そのままの名前を表示します
-          const displayGm = gmName; 
-          const displayPlayerList = (Array.isArray(run.players) && run.players.length > 0)
-            ? run.players.map(p => `- ${p}`).join("\n")
-            : "- 参加者情報なし";
-
-          // ★修正: 取得済みのリストからランダムに1件選ぶ（API通信なし）
+          // --- 2. 乱数でキャラクターを取得 ---
           let randomChar = null;
           if (availableCharacters.length > 0) {
             const randomIndex = Math.floor(Math.random() * availableCharacters.length);
             randomChar = availableCharacters[randomIndex];
           }
 
-          let customName = "右坂 弦介"; // 固定の名前
+          let customName = "右坂 弦介"; 
           let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/c-001.png?raw=true";
 
           if (randomChar) {
             const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
-            
             try {
-              // fetchの HEAD メソッドで画像が存在するか軽くチェック
               const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
-              
               if (imgCheck.ok) {
-                // 画像が正しく存在した場合のみ、キャラクター名と立ち絵で上書きする
                 customName = randomChar.name;
                 customAvatar = targetUrl;
               }
             } catch (err) {
               console.error("画像チェックエラー:", err);
-              // エラー時はフォールバック（固定値）のまま進行するので安全です
             }
           }
+
           // --- 3. 送信 ---
           await sendDiscordNotification(
             `${notificationLine}\n🔔 **セッション通知**`,
             {
               title: `卓名：${runTitle} （${sessionTitle}）`,
-              description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${displayGm}\n\n**【PL】**\n${displayPlayerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
+              description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${gmName}\n\n**【PL】**\n${displayPlayerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
               color: 15158332,
               url: `https://ronitoak.github.io/FCTZS-TRPG/sessions/detail.html?id=${session.run_id}`
             },
             env,
-            env.DISCORD_WEBHOOK_URL, // 通知先を分けるための引数追加（後述）
-            customName,    // ★追加: カスタム名
-            customAvatar   // ★追加: カスタム画像
+            env.DISCORD_WEBHOOK_URL, 
+            customName,   
+            customAvatar  
           );
         }
       } catch (err) {
@@ -1276,13 +1280,11 @@ export default {
       // ---- 1ヶ月経過した募集の自動削除 ----
       // ==========================================
       try {
-        // 現在時刻から1ヶ月前の日時を計算
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         const thresholdISO = oneMonthAgo.toISOString();
 
-        // 1ヶ月以上前に作成された募集のIDのみを取得（created_at を基準にします）
-        const fetchOldRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id,owner_player_id`, {
+        const fetchOldRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id,owner_player_id,scenario_id`, {
           headers: {
             apikey: env.SUPABASE_ANON_KEY,
             Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -1293,15 +1295,15 @@ export default {
           const oldRecruits = await fetchOldRes.json();
           
           if (oldRecruits && oldRecruits.length > 0) {
-            // 募集主のDiscord IDを取得するためのリスト作成とAPIコール
-            const ownerIds = [...new Set(oldRecruits.map(r => r.owner_player_id).filter(id => id))];
-            const scenarioIds = [...new Set(oldRecruits.map(r => r.scenario_id).filter(id => id))];
+            const ownerIds = [...new Set(oldRecruits.map(r => r.owner_player_id).filter(Boolean))];
+            const scenarioIds = [...new Set(oldRecruits.map(r => r.scenario_id).filter(Boolean))];
             let discordIdMap = new Map();
             let scenarioTitleMap = new Map();
 
             if (ownerIds.length > 0) {
-              const idsQuery = `(${ownerIds.join(',')})`;
-              const playersRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=in.${encodeURIComponent(idsQuery)}&select=player_id,discord_id`, {
+              // ★修正: カッコをエンコードしない安全な結合
+              const idsQuery = `(${ownerIds.map(id => encodeURIComponent(id)).join(',')})`;
+              const playersRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=in.${idsQuery}&select=player_id,discord_id`, {
                 headers: {
                   apikey: env.SUPABASE_ANON_KEY,
                   Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -1317,8 +1319,9 @@ export default {
             }
 
             if (scenarioIds.length > 0) {
-              const scenariosQuery = `(${scenarioIds.join(',')})`;
-              const scenariosRes = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=in.${encodeURIComponent(scenariosQuery)}&select=id,title`, {
+              // ★修正: カッコをエンコードしない安全な結合
+              const scenariosQuery = `(${scenarioIds.map(id => encodeURIComponent(id)).join(',')})`;
+              const scenariosRes = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=in.${scenariosQuery}&select=id,title`, {
                 headers: {
                   apikey: env.SUPABASE_ANON_KEY,
                   Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -1333,12 +1336,11 @@ export default {
               }
             }
 
-            // 削除対象のIDをカンマ区切りの文字列にする: (id1,id2,...)
             const oldIds = oldRecruits.map(r => r.id);
-            const idsQuery = `(${oldIds.join(',')})`;
+            // ★修正: カッコをエンコードしない安全な結合
+            const deleteIdsQuery = `(${oldIds.map(id => encodeURIComponent(id)).join(',')})`;
 
-            // 1. 先に紐づく応募者データを一括削除 (外部キー制約エラー回避)
-            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants?recruitment_id=in.${encodeURIComponent(idsQuery)}`, {
+            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants?recruitment_id=in.${deleteIdsQuery}`, {
               method: 'DELETE',
               headers: {
                 apikey: env.SUPABASE_ANON_KEY,
@@ -1346,8 +1348,7 @@ export default {
               }
             });
 
-            // 2. 募集本体を一括削除
-            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=in.${encodeURIComponent(idsQuery)}`, {
+            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=in.${deleteIdsQuery}`, {
               method: 'DELETE',
               headers: {
                 apikey: env.SUPABASE_ANON_KEY,
@@ -1355,7 +1356,6 @@ export default {
               }
             });
 
-            // ★修正処理: メンションを配列にまとめ、重複を排除して1回の通知で送信する
             const mentions = [];
             const scenarioTitles = [];
             for (const recruit of oldRecruits) {
@@ -1382,24 +1382,20 @@ export default {
                 randomChar = availableCharacters[randomIndex];
               }
 
-              let customName = "右坂 弦介"; // 固定の名前
+              let customName = "右坂 弦介"; 
               let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/c-001.png?raw=true";
 
               if (randomChar) {
                 const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
                 
                 try {
-                  // fetchの HEAD メソッドで画像が存在するか軽くチェック
                   const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
-                  
                   if (imgCheck.ok) {
-                    // 画像が正しく存在した場合のみ、キャラクター名と立ち絵で上書きする
                     customName = randomChar.name;
                     customAvatar = targetUrl;
                   }
                 } catch (err) {
                   console.error("画像チェックエラー:", err);
-                  // エラー時はフォールバック（固定値）のまま進行するので安全です
                 }
               }
 
@@ -1413,8 +1409,8 @@ export default {
                 },
                 env,
                 env.DISCORD_WEBHOOK_URL,
-                customName,    // ★追加: カスタム名
-                customAvatar   // ★追加: カスタム画像
+                customName,    
+                customAvatar   
               );
             }
 

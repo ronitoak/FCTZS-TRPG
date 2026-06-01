@@ -308,19 +308,26 @@ async function updateCharacterSelectOptions() {
     if (!charSelect) return;
 
     try {
-      // 全件取得（あるいはキャッシュから取得）[cite: 2]
       const allCharacters = await Utils.apiGet("characters");
       
-      // フロントエンド側でプレイヤー名一致をフィルタリング[cite: 6]
+      // 選択されたプレイヤーのキャラクターのみに絞り込む処理
+      // tempPlayers（プレイヤーIDの配列）と、キャラクターが持つ player_id を比較します
+      // （旧データのために c.player でのテキスト比較も安全策として残しています）
       const filtered = tempPlayers.length > 0 
-        ? allCharacters.filter(c => tempPlayers.includes(c.player))
+        ? allCharacters.filter(c => tempPlayers.includes(c.player_id) || tempPlayers.includes(c.player))
         : allCharacters;
 
       charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-        filtered.map(c => `
+        filtered.map(c => {
+          // グローバル変数の allPlayers を使ってIDから正しいプレイヤー名を逆引き
+          const playerObj = allPlayers.find(p => p.player_id === c.player_id);
+          const playerName = playerObj ? playerObj.player_name : (c.player || '未設定');
+          
+          return `
           <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
-              ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(c.player)})
-          </option>`).join('');
+              ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(playerName)})
+          </option>`;
+        }).join('');
     } catch (e) {
       console.error("キャラクター候補の取得に失敗:", e);
     }

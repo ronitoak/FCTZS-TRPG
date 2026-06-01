@@ -37,6 +37,25 @@ async function sendDiscordNotification(content, embed, env, webhookUrl, customUs
   });
 }
 
+// charactersテーブルからリストを取得する関数に変更
+async function getCharacterList(env) {
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/characters?select=id,name`, {
+      headers: {
+        apikey: env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+      }
+    });
+    if (res.ok) {
+      const characters = await res.json();
+      return characters && characters.length > 0 ? characters : [];
+    }
+  } catch (err) {
+    console.error("キャラクター取得エラー:", err);
+  }
+  return [];
+}
+
 // charactersテーブルからランダムに1件取得する関数
 async function getRandomCharacter(env) {
   try {
@@ -1168,6 +1187,9 @@ export default {
         const allPlayers = mapRes.ok ? await mapRes.json() : [];
         const discordMap = new Map(allPlayers.map(p => [p.player_name, p.discord_id]));
 
+        // キャラクター一覧を1度だけ取得しておく
+        const availableCharacters = await getCharacterList(env);
+
         // 5. 通知の送信（メンションを箱の外に出す修正版）
         for (const session of upcomingSessions) {
           const run = runsMap.get(session.run_id) || {};
@@ -1204,9 +1226,33 @@ export default {
             ? run.players.map(p => `- ${p}`).join("\n")
             : "- 参加者情報なし";
 
-          const randomChar = await getRandomCharacter(env);
-          const customName = randomChar ? randomChar.name : null;
-          const customAvatar = randomChar ? `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true` : null;
+          // ★修正: 取得済みのリストからランダムに1件選ぶ（API通信なし）
+          let randomChar = null;
+          if (availableCharacters.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableCharacters.length);
+            randomChar = availableCharacters[randomIndex];
+          }
+
+          let customName = "右坂 弦介"; // 固定の名前
+          let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/c-001.png?raw=true";
+
+          if (randomChar) {
+            const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
+            
+            try {
+              // fetchの HEAD メソッドで画像が存在するか軽くチェック
+              const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
+              
+              if (imgCheck.ok) {
+                // 画像が正しく存在した場合のみ、キャラクター名と立ち絵で上書きする
+                customName = randomChar.name;
+                customAvatar = targetUrl;
+              }
+            } catch (err) {
+              console.error("画像チェックエラー:", err);
+              // エラー時はフォールバック（固定値）のまま進行するので安全です
+            }
+          }
           // --- 3. 送信 ---
           await sendDiscordNotification(
             `${notificationLine}\n🔔 **セッション通知**`,
@@ -1329,10 +1375,33 @@ export default {
             const uniqueScenarioTitles = [...new Set(scenarioTitles)].join(", ");
 
             if (uniqueMentions) {
-              // ★追加: 乱数でキャラクターを取得
-              const randomChar = await getRandomCharacter(env);
-              const customName = randomChar ? randomChar.name : null;
-              const customAvatar = randomChar ? `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true` : null;
+              const availableCharacters = await getCharacterList(env);
+              let randomChar = null;
+              if (availableCharacters.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableCharacters.length);
+                randomChar = availableCharacters[randomIndex];
+              }
+
+              let customName = "右坂 弦介"; // 固定の名前
+              let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/c-001.png?raw=true";
+
+              if (randomChar) {
+                const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
+                
+                try {
+                  // fetchの HEAD メソッドで画像が存在するか軽くチェック
+                  const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
+                  
+                  if (imgCheck.ok) {
+                    // 画像が正しく存在した場合のみ、キャラクター名と立ち絵で上書きする
+                    customName = randomChar.name;
+                    customAvatar = targetUrl;
+                  }
+                } catch (err) {
+                  console.error("画像チェックエラー:", err);
+                  // エラー時はフォールバック（固定値）のまま進行するので安全です
+                }
+              }
 
               await sendDiscordNotification(
                 `${uniqueMentions}\n**募集終了通知**`,

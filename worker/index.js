@@ -1459,3 +1459,109 @@ async function syncCharacterScenarios(runData, env) {
     body: JSON.stringify(records),
   });
 }
+
+// ==========================================
+// 募集が満員に達したかチェックし、ステータス更新＆通知を行う共通関数
+// ==========================================
+async function checkAndNotifyIfFulfilled(recruitmentId, env) {
+  if (!recruitmentId) return;
+
+  try {
+    // 1. 募集の「目標人数」「ステータス」「募集主」「シナリオ」を取得
+    const recruitRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=eq.${recruitmentId}&select=target_count,owner_player_id,scenario_id,status`, {
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
+    });
+    
+    // 2. 現在の応募者リストを取得
+    const applicantsRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants?recruitment_id=eq.${recruitmentId}&select=player_id`, {
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
+    });
+
+    if (recruitRes.ok && applicantsRes.ok) {
+      const recruits = await recruitRes.json();
+      const applicants = await applicantsRes.json();
+
+      if (recruits.length > 0) {
+        const recruit = recruits[0];
+        
+        // ★ まだ「募集中 (open)」であり、かつ目標人数に達した場合のみ処理を実行
+        if (recruit.status === "open" && applicants.length >= recruit.target_count) {
+          
+          // ① ステータスを「満員 (fulfilled)」に自動更新 (PATCH)
+          await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=eq.${recruitmentId}`, {
+            method: 'PATCH',
+            headers: { 
+              apikey: env.SUPABASE_ANON_KEY, 
+              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: "fulfilled" })
+          });
+
+          // ② 募集主のDiscord IDを取得
+          let ownerDiscordId = null;
+          const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=eq.${recruit.owner_player_id}&select=discord_id`, {
+            headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
+          });
+          if (playerRes.ok) {
+            const players = await playerRes.json();
+            if (players.length > 0) ownerDiscordId = players[0].discord_id;
+          }
+
+          // ③ シナリオ名を取得
+          let scenarioTitle = "未定・オリジナル";
+          if (recruit.scenario_id) {
+            const scRes = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${recruit.scenario_id}&select=title`, {
+              headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
+            });
+            if (scRes.ok) {
+              const scData = await scRes.json();
+              if (scData.length > 0) scenarioTitle = scData[0].title;
+            }
+          }
+
+          // ④ ランダムキャラの取得とアイコン判定
+          const availableCharacters = await getCharacterList(env);
+          let randomChar = null;
+          if (availableCharacters.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableCharacters.length);
+            randomChar = availableCharacters[randomIndex];
+          }
+
+          let customName = "右坂 弦介"; // フォールバック固定値
+          let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/c-001.png?raw=true";
+          
+          if (randomChar) {
+            const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
+            try {
+              const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
+              if (imgCheck.ok) {
+                customName = randomChar.name;
+                customAvatar = targetUrl;
+              }
+            } catch (e) {
+              console.error("画像チェックエラー:", e);
+            }
+          }
+
+          // ⑤ Discordへ通知
+          const mention = ownerDiscordId ? `<@${ownerDiscordId}>` : `(募集主様)`;
+          await sendDiscordNotification(
+            `${mention}\n🎉 **募集が満員になりました！**`,
+            {
+              title: `✅ 募集満員：${scenarioTitle}`,
+              description: `目標人数（${recruit.target_count}人）に達したため、募集ステータスを「満員」に自動更新しました！\n詳細画面のコメント欄などで、メンバーと日程の調整を進めてください。`,
+              color: 3066993 // 緑色
+            },
+            env,
+            env.DISCORD_WEBHOOK_URL,
+            customName,
+            customAvatar
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.error("満員通知エラー:", err);
+  }
+}

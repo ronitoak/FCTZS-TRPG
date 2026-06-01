@@ -503,12 +503,9 @@ async function main() {
           }]);
 
           alert("セッション予定を追加しました！");
-          closeModal("add-session-modal");
-          e.target.reset(); // フォームをクリア
           
-          // カレンダーを再取得して表示を更新
-          await fetchScheduleData();
-          btn.disabled = false;
+          // ★変更: カレンダーを再描画するのではなく、追加した卓（Run）の詳細画面へ即座にジャンプする
+          window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
 
       } catch (err) {
           console.error("セッション追加エラー:", err);

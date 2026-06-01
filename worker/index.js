@@ -1191,6 +1191,128 @@ export default {
       } catch (err) {
         console.error("定期実行エラー:", err);
       }
+
+      // ==========================================
+      // ---- 1ヶ月経過した募集の自動削除 ----
+      // ==========================================
+      try {
+        // 現在時刻から1ヶ月前の日時を計算
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const thresholdISO = oneMonthAgo.toISOString();
+
+        // 1ヶ月以上前に作成された募集のIDのみを取得（created_at を基準にします）
+        const fetchOldRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id,owner_player_id`, {
+          headers: {
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+          }
+        });
+        
+        if (fetchOldRes.ok) {
+          const oldRecruits = await fetchOldRes.json();
+          
+          if (oldRecruits && oldRecruits.length > 0) {
+            // 募集主のDiscord IDを取得するためのリスト作成とAPIコール
+            const ownerIds = [...new Set(oldRecruits.map(r => r.owner_player_id).filter(id => id))];
+            const scenarioIds = [...new Set(oldRecruits.map(r => r.scenario_id).filter(id => id))];
+            let discordIdMap = new Map();
+            let scenarioTitleMap = new Map();
+
+            if (ownerIds.length > 0) {
+              const idsQuery = `(${ownerIds.join(',')})`;
+              const playersRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=in.${encodeURIComponent(idsQuery)}&select=player_id,discord_id`, {
+                headers: {
+                  apikey: env.SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+                }
+              });
+              
+              if (playersRes.ok) {
+                const playersData = await playersRes.json();
+                playersData.forEach(p => {
+                  if (p.discord_id) discordIdMap.set(p.player_id, p.discord_id);
+                });
+              }
+            }
+
+            if (scenarioIds.length > 0) {
+              const scenariosQuery = `(${scenarioIds.join(',')})`;
+              const scenariosRes = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=in.${encodeURIComponent(scenariosQuery)}&select=id,title`, {
+                headers: {
+                  apikey: env.SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+                }
+              });
+
+              if (scenariosRes.ok) {
+                const scenariosData = await scenariosRes.json();
+                scenariosData.forEach(s => {
+                  scenarioTitleMap.set(s.id, s.title);
+                });
+              }
+            }
+
+            // 削除対象のIDをカンマ区切りの文字列にする: (id1,id2,...)
+            const oldIds = oldRecruits.map(r => r.id);
+            const idsQuery = `(${oldIds.join(',')})`;
+
+            // 1. 先に紐づく応募者データを一括削除 (外部キー制約エラー回避)
+            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants?recruitment_id=in.${encodeURIComponent(idsQuery)}`, {
+              method: 'DELETE',
+              headers: {
+                apikey: env.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+              }
+            });
+
+            // 2. 募集本体を一括削除
+            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=in.${encodeURIComponent(idsQuery)}`, {
+              method: 'DELETE',
+              headers: {
+                apikey: env.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+              }
+            });
+
+            // ★修正処理: メンションを配列にまとめ、重複を排除して1回の通知で送信する
+            const mentions = [];
+            const scenarioTitles = [];
+            for (const recruit of oldRecruits) {
+              const discordId = discordIdMap.get(recruit.owner_player_id);
+              const scenarioTitle = scenarioTitleMap.get(recruit.scenario_id);
+              if (discordId) {
+                mentions.push(`<@${discordId}>`);
+              } else {
+                mentions.push(`(Discord未連携の募集主様)`);
+              }
+              if (scenarioTitle) {
+                scenarioTitles.push(scenarioTitle);
+              }
+            }
+            
+            const uniqueMentions = [...new Set(mentions)].join(" ");
+            const uniqueScenarioTitles = [...new Set(scenarioTitles)].join(", ");
+
+            if (uniqueMentions) {
+              await sendDiscordNotification(
+                `${uniqueMentions}\n**募集終了通知**`,
+                {
+                  title: "🗑️ 募集の自動削除",
+                  description: "長期間経過した募集データを整理しました。引き続き募集を行う場合は、再作成をお願いします。",
+                  color: 15158332,
+                  fields: uniqueScenarioTitles ? [{ name: "削除された募集のシナリオ", value: uniqueScenarioTitles }] : []
+                },
+                env
+              );
+            }
+
+            console.log(`${oldRecruits.length}件の募集を自動削除しました。`);
+          }
+        }
+      } catch (err) {
+        console.error("募集の自動削除エラー:", err);
+      }
     })());
   }
 };

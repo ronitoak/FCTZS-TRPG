@@ -99,17 +99,11 @@ function renderDetail() {
           <h2 class="scenario-detail-h2">募集情報</h2>
           <div class="scenario-info-meta">
             <div><strong>募集主:</strong> ${Utils.escapeHtml(ownerName)}</div>
-            <div><strong>ステータス:</strong> ${statusText} （現在の応募: ${currentApplicants.length}人 / 目標: ${currentRecruit.target_count}人）</div>
+            <div><strong>募集人数:</strong> ${currentRecruit.target_count}人 （現在の応募: ${currentApplicants.length}人）</div>
+            <div><strong>自由記入欄:</strong> ${renderMultilineText(currentRecruit.memo || "特記事項なし")}</div>
           </div>
         </div>
       </section>
-
-      <article class="scenario-detail-panel scenario-detail-intro-card">
-        <h2 class="scenario-detail-h2">自由記入欄</h2>
-        <p class="scenario-detail-desc">
-          ${renderMultilineText(currentRecruit.memo || "特記事項なし")}
-        </p>
-      </article>
 
       <section class="scenario-detail-section">
         <h2 class="scenario-detail-h2">現在の応募者</h2>

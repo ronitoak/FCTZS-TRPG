@@ -15,11 +15,11 @@ async function main() {
     }
 
     try {
-        // マスターデータと対象の募集データを一括取得
         const [players, scenarios, recruitments, applicants] = await Promise.all([
             Utils.apiGet("players"),
             Utils.apiGet("scenarios"),
             Utils.apiGet("recruitments", `id=eq.${recruitId}`),
+            // ★修正: recruit_id ではなく recruitment_id で取得
             Utils.apiGet("recruitment_applicants", `recruitment_id=eq.${recruitId}`)
         ]);
 
@@ -36,8 +36,6 @@ async function main() {
         renderDetail();
         setupActionForms();
 
-        // comments.js の初期化 (第一引数にテーブル名か識別子、第二引数にIDを渡す想定)
-        // ※comments.jsの実装に合わせて適宜調整してください
         if (typeof initComments === "function") {
             initComments("recruitments", recruitId, "comments-root", allPlayers);
         }
@@ -51,47 +49,79 @@ async function main() {
 function renderDetail() {
     const root = document.getElementById("recruit-detail-root");
 
-    // プレイヤー名とシナリオ名の解決
     const ownerObj = allPlayers.find(p => p.player_id === currentRecruit.owner_player_id);
     const ownerName = ownerObj ? ownerObj.player_name : "不明なプレイヤー";
 
     const scenarioObj = allScenarios.find(s => s.id === currentRecruit.scenario_id);
     const scenarioName = scenarioObj ? scenarioObj.title : "未定・オリジナル";
+    const scenarioImage = scenarioObj && scenarioObj.image_url ? scenarioObj.image_url : "../images/default_scenario.jpg"; // 画像がない場合のデフォルト
 
-    // 応募者の名前リストを作成
     const applicantNames = currentApplicants.map(app => {
         const pObj = allPlayers.find(p => p.player_id === app.player_id);
         return pObj ? pObj.player_name : app.player_id;
     });
 
     const isGMWanted = currentRecruit.recruit_role === "GM";
-    const roleBadge = isGMWanted ? `<span class="recruit-role-badge" style="background:#fff5f5; color:#c53030;">GM募集</span>` : `<span class="recruit-role-badge">PL募集</span>`;
+    const roleBadge = isGMWanted ? `<span class="recruit-role-badge" style="background:#fff5f5; color:#c53030; border: 1px solid #fc8181;">GM募集</span>` : `<span class="recruit-role-badge">PL募集</span>`;
     
-    // ステータスの表示
     let statusText = "募集中";
     if (currentRecruit.status === "fulfilled") statusText = "満員";
     if (currentRecruit.status === "closed") statusText = "終了";
 
+    // シナリオ詳細画面に準じたレイアウト構造
     root.innerHTML = `
-        <div class="profile-card" style="border-left: 4px solid ${isGMWanted ? '#e53e3e' : 'var(--primary-color)'};">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2>${Utils.escapeHtml(scenarioName)}</h2>
-                ${roleBadge}
+        <section class="profile-header">
+            <div class="profile-image-container" style="text-align: center;">
+                <img src="${Utils.escapeHtml(scenarioImage)}" alt="Scenario" style="max-width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px;" onerror="this.src='../images/default_scenario.jpg';">
             </div>
-            <p><strong>募集主:</strong> ${Utils.escapeHtml(ownerName)}</p>
-            <p><strong>ステータス:</strong> ${statusText} （現在の応募: ${currentApplicants.length}人 / 目標: ${currentRecruit.target_count}人）</p>
-            <div style="margin-top: 10px; background: #f9f9f9; padding: 10px; border-radius: 4px; white-space: pre-wrap;">${Utils.escapeHtml(currentRecruit.memo || "特記事項なし")}</div>
             
-            <h4 style="margin-top: 15px;">現在の応募者</h4>
-            <div class="tag-container">
+            <div class="profile-info">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                    <h2 style="margin: 0;">${Utils.escapeHtml(scenarioName)}</h2>
+                    ${roleBadge}
+                </div>
+                <p><strong>募集主:</strong> ${Utils.escapeHtml(ownerName)}</p>
+                <p><strong>ステータス:</strong> ${statusText} （現在の応募: ${currentApplicants.length}人 / 目標: ${currentRecruit.target_count}人）</p>
+                
+                <h4 style="margin-top: 15px; margin-bottom: 5px;">自由記入欄</h4>
+                <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-size: 0.95em; border: 1px solid #eee; min-height: 60px;">${Utils.escapeHtml(currentRecruit.memo || "特記事項なし")}</div>
+            </div>
+        </section>
+
+        <section class="profile-details" style="margin-top: 30px;">
+            <h3>現在の応募者</h3>
+            <div class="tag-container" style="margin-bottom: 20px;">
                 ${applicantNames.length > 0 ? applicantNames.map(name => `<span class="tag">${Utils.escapeHtml(name)}</span>`).join('') : '<small style="color:#666;">まだ応募はありません</small>'}
             </div>
-        </div>
+
+            <fieldset class="form-section">
+                <legend>参加 / 参加取り消し</legend>
+                <div class="input-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <select id="action-player-select" class="form-control" style="max-width: 250px;">
+                        <option value="">-- プレイヤーを選択 --</option>
+                    </select>
+                    <button type="button" id="btn-apply" class="primary-btn">応募する</button>
+                    <button type="button" id="btn-cancel-apply" class="secondary-btn" style="color: #c53030; border-color: #fc8181;">参加を取り消す</button>
+                </div>
+            </fieldset>
+
+            <fieldset class="form-section" style="margin-top: 20px; border: 1px solid #fc8181; background: #fff5f5;">
+                <legend style="color: #c53030;">募集の管理（募集主用）</legend>
+                <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none;">この募集を削除する</button>
+            </fieldset>
+        </section>
+
+        <hr style="margin: 30px 0;" />
+        <div id="comments-root"></div>
+        
+        <footer>
+          <hr />
+          <small><a href="./index.html">Back to Recruitments</a></small>
+        </footer>
     `;
 }
 
 function setupActionForms() {
-    // プレイヤー選択プルダウンの構築
     const select = document.getElementById("action-player-select");
     if (select) {
         allPlayers.forEach(p => {
@@ -107,16 +137,15 @@ function setupActionForms() {
         const playerId = select.value;
         if (!playerId) return alert("プレイヤーを選択してください。");
 
-        if (currentRecruit.status !== "open") {
-            return alert("この募集は現在受け付けていません。");
-        }
+        if (currentRecruit.status !== "open") return alert("この募集は現在受け付けていません。");
+        if (currentApplicants.some(a => a.player_id === playerId)) return alert("すでにこの募集に応募しています。");
 
-        const isAlreadyApplied = currentApplicants.some(a => a.player_id === playerId);
-        if (isAlreadyApplied) return alert("すでにこの募集に応募しています。");
+        const btn = document.getElementById("btn-apply");
+        btn.disabled = true;
 
         try {
             await Utils.apiPost("recruitment_applicants", [{
-                recruit_id: currentRecruit.id,
+                recruitment_id: currentRecruit.id, // ★修正: recruitment_id に統一
                 player_id: playerId
             }]);
             alert("応募しました！");
@@ -124,6 +153,7 @@ function setupActionForms() {
         } catch (err) {
             console.error(err);
             alert("応募に失敗しました。");
+            btn.disabled = false;
         }
     });
 
@@ -131,34 +161,45 @@ function setupActionForms() {
     document.getElementById("btn-cancel-apply")?.addEventListener("click", async () => {
         const playerId = select.value;
         if (!playerId) return alert("プレイヤーを選択してください。");
-
-        const isAlreadyApplied = currentApplicants.some(a => a.player_id === playerId);
-        if (!isAlreadyApplied) return alert("この募集には応募していません。");
-
+        if (!currentApplicants.some(a => a.player_id === playerId)) return alert("この募集には応募していません。");
         if (!confirm("本当に参加を取り消しますか？")) return;
 
+        const btn = document.getElementById("btn-cancel-apply");
+        btn.disabled = true;
+
         try {
-            // recruit_id と player_id の組み合わせで削除（SupabaseのRESTに準拠）
-            await Utils.apiDelete("recruitment_applicants", `recruit_id=eq.${currentRecruit.id}&player_id=eq.${playerId}`);
+            // ★修正: recruitment_id に統一
+            await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}&player_id=eq.${playerId}`);
             alert("参加を取り消しました。");
             location.reload();
         } catch (err) {
             console.error(err);
             alert("取り消しに失敗しました。");
+            btn.disabled = false;
         }
     });
 
-    // 募集の削除ボタン（募集主・管理者用）
+    // 募集の削除ボタン
     document.getElementById("btn-delete-recruit")?.addEventListener("click", async () => {
-        if (!confirm("本当にこの募集を削除（中止）しますか？\n※応募データやコメントも一緒に消去されます（設定による）。")) return;
+        if (!confirm("本当にこの募集を削除（中止）しますか？\n※応募データも一緒に消去されます。")) return;
         
+        const btn = document.getElementById("btn-delete-recruit");
+        btn.disabled = true;
+
         try {
+            // ★修正: 外部キー制約エラーを回避するため、先に応募者レコードを消す
+            if (currentApplicants.length > 0) {
+                await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}`);
+            }
+            
+            // その後、募集本体を消す
             await Utils.apiDelete("recruitments", `id=eq.${currentRecruit.id}`);
             alert("募集を削除しました。");
-            location.href = "./index.html"; // 一覧画面へ戻る
+            location.href = "./index.html"; 
         } catch (err) {
             console.error(err);
-            alert("削除に失敗しました。");
+            alert("削除に失敗しました。コンソールを確認してください。");
+            btn.disabled = false;
         }
     });
 }

@@ -11,41 +11,16 @@
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
 
-    <section id="recruit-detail-root">
+    <div id="recruit-detail-root">
         <p>読み込み中…</p>
-    </section>
+    </div>
 
-    <section class="form-section" style="margin-top: 20px;">
-        <legend>参加 / 参加取り消し</legend>
-        <div class="input-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <select id="action-player-select" class="form-control" style="max-width: 200px;">
-                <option value="">-- プレイヤーを選択 --</option>
-            </select>
-            <button type="button" id="btn-apply" class="primary-btn">応募する</button>
-            <button type="button" id="btn-cancel-apply" class="secondary-btn" style="color: #c53030; border-color: #fc8181;">参加を取り消す</button>
-        </div>
-    </section>
-
-    <section class="form-section" style="margin-top: 20px; border: 1px solid #fc8181; background: #fff5f5;">
-        <legend style="color: #c53030;">募集の管理（募集主用）</legend>
-        <div style="padding: 10px;">
-            <p style="font-size: 0.9em; margin-bottom: 10px;">※募集を取りやめる場合は削除してください。</p>
-            <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none;">この募集を削除する</button>
-        </div>
-    </section>
-
-    <hr style="margin: 30px 0;" />
-
-    <div id="comments-root"></div>
-
-    <footer>
-      <hr />
-      <small><a href="./index.html">Back to Recruitments</a></small>
-    </footer>
-  </div>
+    </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/init-supabase.js"></script>
   <script src="../js/utils.js"></script>
-  <script src="../js/comments.js"></script> <script src="../js/recruit_detail.js"></script> </body>
+  <script src="../js/comments.js"></script> 
+  <script src="../js/recruit_detail.js"></script> 
+</body>
 </html>

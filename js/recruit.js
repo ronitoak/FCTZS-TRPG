@@ -130,7 +130,7 @@ function renderRecruitments() {
             </div>
 
             <div style="margin-top: 15px; text-align: right;">
-                    <a href="./detail.html?id=${r.id}" class="secondary-btn" style="text-decoration: none; display: inline-block;">詳細を見る / 応募する</a>
+                <a href="./detail.html?id=${recruit.id}" class="secondary-btn" style="text-decoration: none; display: inline-block;">詳細を見る / 応募する</a>
             </div>
             
             ${!isFulfilled ? `

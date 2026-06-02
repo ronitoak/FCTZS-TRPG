@@ -23,13 +23,25 @@ async function main() {
   }
 
   try {
-    const [scenarios, runs, sessions, characters, characterIds] = await Promise.all([
+    // ★修正1: プレイヤー情報（players）も一緒に取得する
+    const [scenarios, runs, sessions, characters, characterIds, playersData] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
       Utils.apiGet("characters"),
       Utils.apiGet(`character_scenarios?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
+      Utils.apiGet("players").catch(() => []), 
     ]);
+
+    // ★修正2: プレイヤー情報のID/名前解決用マップを作成
+    const playerMapById = new Map();
+    const playerMapByName = new Map();
+    if (Array.isArray(playersData)) {
+        playersData.forEach(p => {
+            playerMapById.set(p.player_id, p);
+            playerMapByName.set(p.player_name, p);
+        });
+    }
 
     const editBtn = `<button id="btn-open-scenario-edit" class="btn-secondary btn-edit-small">📝</button>`;
     const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === id);
@@ -132,6 +144,7 @@ async function main() {
       : `<p class="scenario-detail-muted"><small>通過キャラクターはまだ登録されていません</small></p>`;
 
     // ===== 既存HTML（クラス名完全維持） =====
+    // ★修正3: renderRunCard にプレイヤーマップを渡すように変更
     root.innerHTML = `
       <header class="scenario-detail-header">
         <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
@@ -179,7 +192,7 @@ async function main() {
             <h3 class="scenario-detail-h3">進行中セッション</h3>
             ${activeRuns.length 
               ? `<div class="scenario-detail-runs-grid">
-                  ${activeRuns.map(r => renderRunCard(r, "進行中", "active", nextByRunId)).join("")}
+                  ${activeRuns.map(r => renderRunCard(r, "進行中", "active", nextByRunId, playerMapById, playerMapByName)).join("")}
                 </div>` 
               : `<p class="scenario-detail-muted"><small>進行中の卓はありません</small></p>`}
           </section>
@@ -188,7 +201,7 @@ async function main() {
             <h3 class="scenario-detail-h3">計画中セッション</h3>
             ${planningRuns.length 
               ? `<div class="scenario-detail-runs-grid">
-                  ${planningRuns.map(r => renderRunCard(r, "計画中", "planning", nextByRunId)).join("")}
+                  ${planningRuns.map(r => renderRunCard(r, "計画中", "planning", nextByRunId, playerMapById, playerMapByName)).join("")}
                 </div>` 
               : `<p class="scenario-detail-muted"><small>計画中の卓はありません</small></p>`}
           </section>
@@ -197,7 +210,7 @@ async function main() {
             <h3 class="scenario-detail-h3">終了済セッション</h3>
             ${doneRuns.length 
               ? `<div class="scenario-detail-runs-grid">
-                  ${doneRuns.map(r => renderRunCard(r, "終了済", "done", nextByRunId)).join("")}
+                  ${doneRuns.map(r => renderRunCard(r, "終了済", "done", nextByRunId, playerMapById, playerMapByName)).join("")}
                 </div>` 
               : `<p class="scenario-detail-muted"><small>終了済の卓はありません</small></p>`}
           </section>
@@ -258,10 +271,22 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
 /**
  * セッション（卓）のカードを生成するヘルパー関数
  */
-function renderRunCard(r, statusLabel, statusClass, nextByRunId) {
+// ★修正4: 引数に playerMap を追加し、内部で名前解決を行う
+function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, playerMapByName) {
   const title = Utils.escapeHtml(r.title ?? r.id);
-  const gm = Utils.escapeHtml(r.gm ?? "—");
-  const players = Utils.escapeHtml((r.players ?? []).join(" / ") || "—");
+  
+  // ★GMの解決
+  const gmObj = playerMapById.get(r.gm_id) || playerMapByName.get(r.gm);
+  const gmName = gmObj ? gmObj.player_name : (r.gm || '—');
+  const gm = Utils.escapeHtml(gmName);
+  
+  // ★PLの解決
+  const targetPlayers = (Array.isArray(r.player_ids) && r.player_ids.length > 0) ? r.player_ids : (Array.isArray(r.players) ? r.players : []);
+  const resolvedPlayers = targetPlayers.map(identifier => {
+      const pObj = playerMapById.get(identifier) || playerMapByName.get(identifier);
+      return pObj ? pObj.player_name : identifier;
+  });
+  const players = Utils.escapeHtml(resolvedPlayers.length > 0 ? resolvedPlayers.join(" / ") : "—");
   
   // 次回予定の取得と整形
   const next = nextByRunId.get(r.id);

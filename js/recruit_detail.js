@@ -136,8 +136,8 @@ function renderDetail() {
                 ※募集を完全に中止・削除する場合は「削除する」を押してください。
             </p>
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <button type="button" id="btn-extend-recruit" class="primary-btn">募集期間を延長する</button>
-                <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none;">この募集を削除する</button>
+                <button type="button" id="btn-extend-recruit" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">募集期間を延長する</button>
+                <button type="button" id="btn-delete-recruit" class="btn-cancel" style="padding: 6px 12px; font-size: 0.95em;">この募集を削除する</button>
             </div>
         </fieldset>
       </section>

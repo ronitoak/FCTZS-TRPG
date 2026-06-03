@@ -129,11 +129,18 @@ function renderDetail() {
       </section>
 
         <section class="scenario-detail-section" style="margin-top: 30px;">
-            <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
-                <legend style="color: #c53030; font-weight: bold;">募集の削除</legend>
-                <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none; width: 100%; padding: 20px; font-size: 1.3rem; font-weight: bold; cursor: pointer; border-radius: 5px;">この募集を削除する</button>
-            </fieldset>
-        </section>
+        <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
+            <legend style="color: #c53030; font-weight: bold;">募集の管理（募集主用）</legend>
+            <p style="font-size: 0.9em; margin-bottom: 10px; color: #666;">
+                ※募集開始から1ヶ月経過すると自動削除されます。延長する場合は下のボタンを押してください。<br>
+                ※募集を完全に中止・削除する場合は「削除する」を押してください。
+            </p>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <button type="button" id="btn-extend-recruit" class="primary-btn">募集期間を延長する</button>
+                <button type="button" id="btn-delete-recruit" class="secondary-btn" style="background: #e53e3e; color: white; border: none;">この募集を削除する</button>
+            </div>
+        </fieldset>
+      </section>
     `;
 }
 
@@ -219,5 +226,30 @@ function setupActionForms() {
         }
     });
 }
+
+// ==========================================
+// 募集の延長ボタン
+// ==========================================
+document.getElementById("btn-extend-recruit")?.addEventListener("click", async () => {
+    if (!confirm("募集期限を今日からさらに1ヶ月後まで延長しますか？")) return;
+    
+    const btn = document.getElementById("btn-extend-recruit");
+    btn.disabled = true;
+
+    try {
+        // 現在時刻を取得し、ISO形式（Supabaseが保存できる形式）に変換
+        const nowIso = new Date().toISOString();
+        
+        // created_at を現在時刻で上書き（PATCH）
+        await Utils.apiPatch("recruitments", { created_at: nowIso }, `id=eq.${currentRecruit.id}`);
+        
+        alert("募集期間を延長しました！");
+        location.reload();
+    } catch (err) {
+        console.error(err);
+        alert("延長に失敗しました。コンソールを確認してください。");
+        btn.disabled = false;
+    }
+});
 
 Utils.domReady(main);

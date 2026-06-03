@@ -1426,8 +1426,14 @@ export default {
 
 // character_scenarios を同期する共通関数
 async function syncCharacterScenarios(runData, env) {
-  const { scenario_id, characters, user_id } = runData;
+  // ★ステータス（status）も受け取るように追加
+  const { scenario_id, characters, user_id, status } = runData;
   
+  // ★追加: 卓が「完了(done)」になった時のみ通過履歴として一括登録する（自動化）
+  if (status !== 'done') {
+    return;
+  }
+
   if (!scenario_id || !Array.isArray(characters) || characters.length === 0) {
     return;
   }

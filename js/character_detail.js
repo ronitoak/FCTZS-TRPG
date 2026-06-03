@@ -18,7 +18,6 @@ function renderMultilineText(text) {
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
   if (!u) return "";
-  // https:// などを想定。escapeHtmlして属性に入れる
   const safe = Utils.escapeHtml(u);
   const text = Utils.escapeHtml(label ?? u);
   return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
@@ -45,11 +44,8 @@ async function main() {
     const [characters, scenarios, runs, scenarioIds, skillRows] = await Promise.all([
       Utils.apiGet("characters"),
       Utils.apiGet("scenarios"),
-      // フォールバック用（character_scenarios が未整備でも通過シナリオ表示できる）
       Utils.apiGet("runs"),
-      // 正規化：キャラ→シナリオ（無ければ空に）
       Utils.apiGet(`character_scenarios?character_id=${encodeURIComponent(id)}`).catch(() => []),
-      // 正規化：キャラ技能（無ければ空に）
       Utils.apiGet(`character_skill_list?character_id=${encodeURIComponent(id)}`).catch(() => []),
     ]);
 
@@ -57,7 +53,6 @@ async function main() {
     const skillsEditBtn = `<button id="btn-open-skills-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const paramsEditBtn = `<button id="btn-open-params-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const emotionsEditBtn = `<button id="btn-open-emotions-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
-    const scenarioEditBtn = `<button id="btn-open-scenarios-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const charactersSafe = Array.isArray(characters) ? characters : [];
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
     const runsSafe = Array.isArray(runs) ? runs : [];
@@ -70,11 +65,10 @@ async function main() {
       return;
     }
 
-        // プレイヤー一覧を取得してセレクトボックスに詰める
     const players = await Utils.apiGet("players");
     const playerSelect = document.getElementById("player-select");
     if (playerSelect) {
-        playerSelect.innerHTML = '<option value="">選択してください</option>'; // 初期化
+        playerSelect.innerHTML = '<option value="">選択してください</option>'; 
         players.forEach(p => {
             const opt = document.createElement("option");
             opt.value = p.player_id;
@@ -83,10 +77,9 @@ async function main() {
         });
     }
 
-    currentCharData = c; // 編集モーダルで使用するためグローバルに保持
-    currentSkillRows = Array.isArray(skillRows) ? skillRows : []; // 技能編集モーダル用
+    currentCharData = c; 
+    currentSkillRows = Array.isArray(skillRows) ? skillRows : []; 
 
-    // ここから汎用属性（system_attributes / character_attributes）
     const [systemAttrDefs, characterAttrRows] = await Promise.all([
       Utils.apiGet(`system_attributes?system=${encodeURIComponent(c.system ?? "")}`).catch(() => []),
       Utils.apiGet(`character_attributes?character_id=${encodeURIComponent(id)}`).catch(() => []),
@@ -98,12 +91,9 @@ async function main() {
     currentCharAttrsMap = attrMap
 
     const hasGeneric = sysDefsSafe.length > 0;
-
-    // 画像（規約生成）
     const src = Utils.getCharacterImagePath(c.id);
     const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
 
-    // プロフィール（columns）
     const rawProfileRows = [
       { label: "職業", value: c.job },
       { label: "年齢", value: c.age },
@@ -115,18 +105,15 @@ async function main() {
       { label: "システム", value: c.system }
     ];
 
-    // ★ガイアケアTRPGの場合のみ追加
     if (c.system === "ガイアケアTRPG") {
       rawProfileRows.push({ label: "種族", value: c.race, isSpoiler: true });
       rawProfileRows.push({ label: "原種", value: c.original_species, isSpoiler: true });
     }
 
-    // HTMLの行(tr)要素として組み立てる
     const profileRowsHtml = rawProfileRows
       .filter(r => r.value !== undefined && r.value !== null && String(r.value).trim() !== "")
       .map(r => {
         const escapedVal = Utils.escapeHtml(String(r.value));
-        // スポイラー設定がある場合は span で囲む
         const valHtml = r.isSpoiler ? `<span class="spoiler-field">${escapedVal}</span>` : escapedVal;
         return `
           <tr>
@@ -136,8 +123,6 @@ async function main() {
         `;
       }).join("");
 
-
-    // 能力値（ability_* columns -> object）
     const abilities = {
       STR: toIntOrNull(c.ability_str),
       CON: toIntOrNull(c.ability_con),
@@ -154,8 +139,6 @@ async function main() {
 
     const memo = c.memo ?? "";
 
-    // 技能（DBの view: character_skill_list を前提）
-    // 想定カラム: name, base_value, override_value, display_value
     const skillList = (Array.isArray(skillRows) ? skillRows : [])
       .map(r => {
         const name = r?.name;
@@ -164,8 +147,6 @@ async function main() {
         const base = toIntOrNull(r?.base_value);
         const override = toIntOrNull(r?.override_value);
         const display = toIntOrNull(r?.display_value);
-
-        // display_value が無い/壊れてる場合の最終フォールバック
         const finalValue = display ?? override ?? base;
 
         if (finalValue === null) return null;
@@ -179,20 +160,18 @@ async function main() {
       })
       .filter(Boolean);
 
-    // ▼表示ポリシー（デフォ：初期値から上がってる技能だけ＝overrideがあるもの）
-    // 「全部表示」にしたいなら、この filter を消す（または別UIで切替）
     const skillEntries = skillList;
 
-    // 通過シナリオ：character_scenarios が優先。空なら runs逆引きにフォールバック
+    // ★修正: 自動生成された character_scenarios を優先しつつ、未同期の過去データは「終了済みの卓」からフォールバック取得
     let passedScenarioIds = Array.isArray(scenarioIds) ? scenarioIds : [];
     if (passedScenarioIds.length === 0) {
       const relatedRuns = runsSafe
-        .filter(r => Array.isArray(r?.characters) && r.characters.includes(c.id));
+        .filter(r => r.status === 'done' && Array.isArray(r?.characters) && r.characters.includes(c.id));
       passedScenarioIds = [...new Set(relatedRuns.map(r => r?.scenario_id).filter(Boolean))];
     }
 
-    allScenarios = scenariosById; // 編集モーダルで使用するためグローバルに保持
-    currentCharacterScenarios = passedScenarioIds; // 編集モーダルで使用するためグローバルに保持
+    allScenarios = scenariosById; 
+    currentCharacterScenarios = passedScenarioIds; 
 
     const iacharaLinkHtml = c.iachara_url
       ? `<section class="character-detail-url">
@@ -206,9 +185,8 @@ async function main() {
     const passedHtml = passedScenarioIds.length
     ? `<ul class="character-detail-scenario-list">
         ${passedScenarioIds.map(row => {
-          // row がオブジェクトなら scenario_id を、文字列ならそのまま ID として扱う
           const sid = (typeof row === 'object' && row !== null) ? row.scenario_id : row;
-          if (!sid) return ""; // IDが取れない場合はスキップ
+          if (!sid) return ""; 
 
           const s = scenariosById.get(sid);
           const title = s?.title ?? sid;
@@ -221,6 +199,7 @@ async function main() {
       </ul>`
     : `<p class="character-detail-muted">なし</p>`;
 
+    // ★修正: 通過シナリオの手動編集ボタン（scenarioEditBtn）を削除
     root.innerHTML = `
       <header class="character-detail-header">
         <h1 class="character-detail-title">${Utils.escapeHtml(c.name)}</h1>
@@ -312,18 +291,14 @@ async function main() {
       </section>
 
       <section class="character-detail-scenarios">
-        <h2 class="character-detail-h2">通過シナリオ${scenarioEditBtn}</h2>
+        <h2 class="character-detail-h2">通過シナリオ</h2>
         ${passedHtml}
       </section>
 
-      
         ${iacharaLinkHtml}
-      
     `;
 
-    // --- 編集モーダルを開く処理 ---
     document.addEventListener('click', (e) => {
-      // クリックされた要素のIDが 'btn-open-char-edit' かどうか判定
       if (e.target && e.target.id === 'btn-open-char-edit') {
           const modal = document.getElementById('edit-character-modal');
           const form = document.getElementById('edit-character-form');
@@ -333,7 +308,6 @@ async function main() {
               return;
           }
           
-          // フォームに値をセット
           form.name.value = currentCharData.name || "";
           form.player_id.value = currentCharData.player_id || "";
           form.state.value = currentCharData.state || "survived";
@@ -348,24 +322,20 @@ async function main() {
           
           modal.style.display = 'block';
       }
-        // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
         const modal = document.getElementById('edit-character-modal');
         if (e.target === modal) {
           modal.style.display = 'none';
         }
 
-      // キャンセルボタンの判定
       if (e.target && e.target.id === 'btn-close-char-edit') {
           document.getElementById('edit-character-modal').style.display = 'none';
       }
     });
 
-    // --- 更新実行処理 ---
     document.getElementById('edit-character-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
         
-        // 全項目をpayloadにまとめる
         const payload = {
             name: fd.get("name"),
             player_id: fd.get("player_id"),
@@ -390,7 +360,6 @@ async function main() {
         }
     });
 
-    // 技能行を追加する補助関数
     function addSkillInputRow(name = "", value = 0) {
         const container = document.getElementById('edit-skills-container');
         const div = document.createElement('div');
@@ -405,38 +374,29 @@ async function main() {
         container.appendChild(div);
     }
 
-    // イベントリスナー
     document.addEventListener('click', (e) => {
-        // モーダルを開く
         if (e.target.id === 'btn-open-skills-edit') {
             const modal = document.getElementById('edit-skills-modal');
             const container = document.getElementById('edit-skills-container');
             container.innerHTML = '';
-            
-            // 現在の技能データを回して入力欄を作成
             currentSkillRows.forEach(s => addSkillInputRow(s.name, s.display_value));
-            
             modal.style.display = 'block';
         }
 
-        // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
         const modal = document.getElementById('edit-skills-modal');
         if (e.target === modal) {
           modal.style.display = 'none';
         }
 
-        // キャンセル
         if (e.target.id === 'btn-close-skills-edit') {
             document.getElementById('edit-skills-modal').style.display = 'none';
         }
     });
 
-    // 技能追加ボタン
     document.getElementById('btn-add-skill-row')?.addEventListener('click', () => {
         addSkillInputRow("", 0);
     });
 
-    // 技能保存実行
     document.getElementById('edit-skills-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
@@ -450,7 +410,6 @@ async function main() {
         })).filter(s => s.name !== "");
 
         try {
-            // Worker経由でUpsert実行
             await Utils.apiPost("character_skills", skillsPayload);
             alert("技能値を更新しました");
             location.reload();
@@ -467,7 +426,6 @@ async function main() {
 }
 
 document.addEventListener('click', (e) => {
-    // --- 能力値（数値）モーダルを開く ---
     if (e.target.id === 'btn-open-params-edit') {
         const container = document.getElementById('edit-params-container');
         container.innerHTML = '';
@@ -478,22 +436,18 @@ document.addEventListener('click', (e) => {
         document.getElementById('edit-params-modal').style.display = 'block';
     }
 
-    // --- 共鳴感情モーダルを開く ---
     if (e.target.id === 'btn-open-emotions-edit') {
         const container = document.getElementById('edit-emotions-container');
         container.innerHTML = '';
         
-        // 感情(emotion)属性のみをフィルタリング
         currentSystemAttrs.filter(d => d.kind === 'emotion').forEach(def => {
             const attr = currentCharAttrsMap.get(def.key) || {};
-            // 第4引数を 'select' に変更
             appendAttrInput(container, def, attr.value_emotion || '', 'select', 'attr_value_emo');
         });
         
         document.getElementById('edit-emotions-modal').style.display = 'block';
     }
 
-    // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
     const paramsModal = document.getElementById('edit-params-modal');
     if (e.target === paramsModal) {
       paramsModal.style.display = 'none';
@@ -502,68 +456,16 @@ document.addEventListener('click', (e) => {
     if (e.target === emotionsModal) {
       emotionsModal.style.display = 'none';
     }
-    // キャンセルボタン
     if (e.target.id === 'btn-close-params-edit') document.getElementById('edit-params-modal').style.display = 'none';
     if (e.target.id === 'btn-close-emotions-edit') document.getElementById('edit-emotions-modal').style.display = 'none';
 });
 
-// イベントリスナー
-document.addEventListener('click', (e) => {
-    if (e.target.id === 'btn-open-scenarios-edit') {
-        const container = document.getElementById('edit-scenarios-container');
-        container.innerHTML = '';
-        
-        // 現在の通過シナリオを表示
-        if (currentCharacterScenarios.length > 0) {
-            currentCharacterScenarios.forEach(id => addScenarioInputRow(id));
-        } else {
-            addScenarioInputRow(); // 空の行を1つ出す
-        }
-        document.getElementById('edit-scenarios-modal').style.display = 'block';
-    }
-
-    const scenariosModal = document.getElementById('edit-scenarios-modal');
-    if (e.target === scenariosModal) {
-      scenariosModal.style.display = 'none';
-    }
-
-    if (e.target.id === 'btn-close-scenarios-edit') {
-        document.getElementById('edit-scenarios-modal').style.display = 'none';
-    }
-});
-
-document.getElementById('btn-add-scenario-row')?.addEventListener('click', () => addScenarioInputRow());
-
-// 保存処理
-document.getElementById('edit-scenarios-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const ids = fd.getAll("scenario_id").filter(id => id !== "");
-
-    const payload = ids.map(id => ({
-        character_id: currentCharData.id,
-        scenario_id: id
-    }));
-
-    try {
-        // ※ character_scenariosへのPOST (Upsert) を実行
-        await Utils.apiPost("character_scenarios", payload);
-        alert("通過シナリオを更新しました");
-        location.reload();
-    } catch (err) {
-        console.error(err);
-        alert("更新に失敗しました");
-    }
-});
-
-// 隠しフィールドをクリックしたら開示する
 document.addEventListener('click', (e) => {
     if (e.target && e.target.classList.contains('spoiler-field')) {
         e.target.classList.toggle('revealed');
     }
 });
 
-// データの流し込み（例）
 function renderDetail(data) {
     const raceEl = document.getElementById('display-race');
     const originEl = document.getElementById('display-original-species');
@@ -572,7 +474,6 @@ function renderDetail(data) {
     if (originEl) originEl.textContent = data.original_species || '未設定';
 }
 
-// 入力行を生成する共通補助関数（select対応版）
 function appendAttrInput(container, def, value, inputType, inputName) {
     const div = document.createElement('div');
     div.className = 'form-group';
@@ -580,7 +481,6 @@ function appendAttrInput(container, def, value, inputType, inputName) {
 
     let inputHtml = "";
     if (inputType === 'select') {
-        // Utils.emotions をループして option を作成
         const options = Utils.emotions.map(emo => {
             const selected = (emo === value) ? 'selected' : '';
             return `<option value="${Utils.escapeHtml(emo)}" ${selected}>${Utils.escapeHtml(emo)}</option>`;
@@ -603,35 +503,6 @@ function appendAttrInput(container, def, value, inputType, inputName) {
     container.appendChild(div);
 }
 
-// シナリオ入力行を追加する関数
-function addScenarioInputRow(selectedId = "") {
-    const container = document.getElementById('edit-scenarios-container');
-    const div = document.createElement('div');
-    div.className = 'scenario-edit-item';
-    div.style = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
-    
-    // --- 修正ポイント：Mapから配列に変換してループする ---
-    const scenariosArray = (allScenarios instanceof Map) 
-        ? Array.from(allScenarios.values()) 
-        : (Array.isArray(allScenarios) ? allScenarios : []);
-
-    const options = scenariosArray.map(s => {
-        const selected = (String(s.id) === String(selectedId)) ? 'selected' : '';
-        return `<option value="${Utils.escapeHtml(String(s.id))}" ${selected}>${Utils.escapeHtml(s.title)}</option>`;
-    }).join("");
-
-    div.innerHTML = `
-        <select name="scenario_id" class="form-control" style="flex: 1;">
-            <option value="">-- シナリオを選択 --</option>
-            ${options}
-        </select>
-        <button type="button" class="btn-delete-row" style="background:none; border:none; color:var(--danger-color); cursor:pointer;">×</button>
-    `;
-    div.querySelector('.btn-delete-row').onclick = () => div.remove();
-    container.appendChild(div);
-}
-
-// 能力値（数値）保存
 document.getElementById('edit-params-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -645,7 +516,6 @@ document.getElementById('edit-params-form')?.addEventListener('submit', async (e
     await saveAttributes(payload);
 });
 
-// 共鳴感情保存
 document.getElementById('edit-emotions-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -683,17 +553,14 @@ function buildCharacterAttributeMap(rows) {
   return map;
 }
 
-// 統合版：数値・感情の両方に対応する属性レンダリング関数
 function renderGenericAttributes(system, defs, attrMap, targetKind) {
   const safeDefs = (Array.isArray(defs) ? defs : [])
     .slice()
     .sort((a, b) => (Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0)));
 
-  // 指定されたkind（int または emotion）でフィルタリング
   const targetDefs = safeDefs.filter(d => d?.kind === targetKind);
   const chips = [];
 
-  // 派生値（HP/MP）の計算処理（数値モードの時のみ実行）
   if (targetKind === "int" && (system === "エモクロアTRPG" || system === "ガイアケアTRPG")) {
     const body = Number(attrMap.get("body")?.value_int);
     const spirit = Number(attrMap.get("spirit")?.value_int);
@@ -709,7 +576,6 @@ function renderGenericAttributes(system, defs, attrMap, targetKind) {
     const v = attrMap.get(key);
     let display = "—";
     
-    // kindに応じて取得する値を切り替え
     if (targetKind === "int") {
         const n = Number(v?.value_int);
         if (Number.isFinite(n)) display = String(n);
@@ -718,80 +584,6 @@ function renderGenericAttributes(system, defs, attrMap, targetKind) {
         if (e !== null && e !== undefined && String(e).trim() !== "") display = String(e);
     }
     
-    chips.push([label, display]);
-  }
-
-  if (chips.length === 0) return `<p class="character-detail-muted">未登録</p>`;
-
-  return `
-    <div class="character-detail-chips">
-      ${chips.map(([k, v]) => `
-        <span class="character-detail-chip">
-          <span class="character-detail-chip-key">${Utils.escapeHtml(String(k))}</span>
-          <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
-        </span>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderGenericIntAttributes(system, defs, attrMap) {
-  const safeDefs = (Array.isArray(defs) ? defs : [])
-    .slice()
-    .sort((a, b) => (Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0)));
-
-  const intDefs = safeDefs.filter(d => d?.kind === "int");
-  const chips = [];
-
-  // ★修正：派生値（HP/MP）の計算処理のスコープエラーを解消
-  if (system === "エモクロアTRPG" || system === "ガイアケアTRPG") {
-    const body = Number(attrMap.get("body")?.value_int);
-    const spirit = Number(attrMap.get("spirit")?.value_int);
-    const intellect = Number(attrMap.get("intellect")?.value_int);
-
-    if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
-    if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
-  }
-
-  for (const d of intDefs) {
-    const key = String(d.key);
-    const label = d.label ?? key;
-    const v = attrMap.get(key);
-    let display = "—";
-    const n = Number(v?.value_int);
-    if (Number.isFinite(n)) display = String(n);
-    chips.push([label, display]);
-  }
-
-  if (chips.length === 0) return `<p class="character-detail-muted">未登録</p>`;
-
-  return `
-    <div class="character-detail-chips">
-      ${chips.map(([k, v]) => `
-        <span class="character-detail-chip">
-          <span class="character-detail-chip-key">${Utils.escapeHtml(String(k))}</span>
-          <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
-        </span>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderGenericEmotionAttributes(defs, attrMap) {
-  const safeDefs = (Array.isArray(defs) ? defs : [])
-    .slice()
-    .sort((a, b) => (Number(a?.sort_order ?? 0) - Number(b?.sort_order ?? 0)));
-
-  const emoDefs = safeDefs.filter(d => d?.kind === "emotion");
-  const chips = [];
-
-  for (const d of emoDefs) {
-    const key = String(d.key);
-    const label = d.label ?? key;
-    const v = attrMap.get(key);
-    let display = "—";
-    const e = v?.value_emotion;
-    if (e !== null && e !== undefined && String(e).trim() !== "") display = String(e);
     chips.push([label, display]);
   }
 

@@ -23,17 +23,17 @@ async function main() {
   }
 
   try {
-    // ★修正1: プレイヤー情報（players）も一緒に取得する
+    // ★修正: players（プレイヤーマスタ）も取得して名前解決に使う
     const [scenarios, runs, sessions, characters, characterIds, playersData] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
-      Utils.apiGet("characters"),
+      Utils.apiGet("characters").catch(() => []),
       Utils.apiGet(`character_scenarios?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
-      Utils.apiGet("players").catch(() => []), 
+      Utils.apiGet("players").catch(() => []) 
     ]);
 
-    // ★修正2: プレイヤー情報のID/名前解決用マップを作成
+    // ★修正: プレイヤー情報のID/名前解決用マップを作成
     const playerMapById = new Map();
     const playerMapByName = new Map();
     if (Array.isArray(playersData)) {
@@ -50,12 +50,11 @@ async function main() {
       return;
     }
 
-    currentScenarioId = scenario.id; // IDを保持
+    currentScenarioId = scenario.id; 
 
     const coverPath = Utils.getScenarioCoverPath(scenario.id);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
-       // プロフィール（columns）
     const infoRows = [
       ["タイトル", scenario.title],
       ["システム", scenario.system],
@@ -63,7 +62,6 @@ async function main() {
       ["基本情報", scenario.notes],
     ].filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
 
-    // このシナリオのrunだけ
     const relatedRuns = (Array.isArray(runs) ? runs : []).filter(
       r => r?.scenario_id === id
     );
@@ -72,7 +70,6 @@ async function main() {
     const activeRuns = relatedRuns.filter(r => r?.status === "active");
     const doneRuns = relatedRuns.filter(r => r?.status === "done");
 
-    // run_id -> 次回予定（最も近い scheduled&未来）
     const now = new Date();
     const nextByRunId = new Map();
     for (const s of (Array.isArray(sessions) ? sessions : [])) {
@@ -85,7 +82,6 @@ async function main() {
       if (!cur || d < cur._start) nextByRunId.set(s.run_id, { ...s, _start: d });
     }
 
-    // 並び替え（元コード完全踏襲）
     activeRuns.sort((a, b) => {
       const an = nextByRunId.get(a.id)?._start?.getTime() ?? Infinity;
       const bn = nextByRunId.get(b.id)?._start?.getTime() ?? Infinity;
@@ -102,21 +98,26 @@ async function main() {
       return an - bn;
     });
 
-    // ===== 通過キャラクター（追加部分） =====
+    // ===== 通過キャラクター =====
     const charactersById = new Map(
       (Array.isArray(characters) ? characters : []).map(c => [c.id, c])
     );
 
-    const passedCharacters = (Array.isArray(characterIds) ? characterIds : [])
-    .map(row => {
-      // APIから返る行データ(row)から character_id を抽出して Map から検索
-      const id = row?.character_id; 
-      return charactersById.get(id);
-    })
-    .filter(Boolean) // Mapに見つからなかった場合(null)を除外
-    .sort((a, b) =>
-      String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja")
-    );
+    // 一元化により自動生成された character_scenarios から取得
+    let passedCharIds = (Array.isArray(characterIds) ? characterIds : [])
+      .map(row => row?.character_id)
+      .filter(Boolean);
+    
+    // ★追加: もし未同期の古いデータがあれば、「終了済(done)」の卓情報から自動でかき集めるフォールバック処理
+    if (passedCharIds.length === 0) {
+        const doneRunCharIds = doneRuns.flatMap(r => Array.isArray(r.characters) ? r.characters : []);
+        passedCharIds = [...new Set(doneRunCharIds)];
+    }
+
+    const passedCharacters = passedCharIds
+      .map(id => charactersById.get(id))
+      .filter(Boolean)
+      .sort((a, b) => String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja"));
 
     const passedCharactersHtml = passedCharacters.length
       ? `
@@ -143,8 +144,7 @@ async function main() {
       `
       : `<p class="scenario-detail-muted"><small>通過キャラクターはまだ登録されていません</small></p>`;
 
-    // ===== 既存HTML（クラス名完全維持） =====
-    // ★修正3: renderRunCard にプレイヤーマップを渡すように変更
+    // ★修正: renderRunCardにプレイヤーマップを渡す
     root.innerHTML = `
       <header class="scenario-detail-header">
         <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
@@ -217,32 +217,31 @@ async function main() {
         </div>
       </section>
     `;
+
     document.addEventListener('click', (e) => {
-    if (e.target && e.target.id === 'btn-open-scenario-edit') {
+      if (e.target && e.target.id === 'btn-open-scenario-edit') {
+        const modal = document.getElementById('edit-scenario-modal');
+        const form = document.getElementById('edit-scenario-form');
+        
+        if (!modal || !form) return;
+
+        form.title.value = scenario.title || "";
+        form.system.value = scenario.system || "";
+        form.author.value = scenario.author || "";
+        form.description.value = scenario.description || "";
+        form.notes.value = scenario.notes || "";
+
+        modal.style.display = 'block';
+      }
+
+      if (e.target && e.target.id === 'btn-close-scenario-edit') {
+        document.getElementById('edit-scenario-modal').style.display = 'none';
+      }
       const modal = document.getElementById('edit-scenario-modal');
-      const form = document.getElementById('edit-scenario-form');
-      
-      if (!modal || !form) return;
-
-      // フォームに現在の値をセット
-      form.title.value = scenario.title || "";
-      form.system.value = scenario.system || "";
-      form.author.value = scenario.author || "";
-      form.description.value = scenario.description || "";
-      form.notes.value = scenario.notes || "";
-
-      modal.style.display = 'block';
-    }
-
-    // キャンセルボタンまたはモーダル外クリックで閉じる
-    if (e.target && e.target.id === 'btn-close-scenario-edit') {
-      document.getElementById('edit-scenario-modal').style.display = 'none';
-    }
-    const modal = document.getElementById('edit-scenario-modal');
-    if (e.target === modal) {
-      modal.style.display = 'none';
-    }
-  });
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
 
   } catch (e) {
     console.error(e);
@@ -258,7 +257,6 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     if (!currentScenarioId) return;
 
     try {
-        // Utils.apiPatch を使用して更新
         await Utils.apiPatch("scenarios", payload, `id=eq.${currentScenarioId}`);
         alert("シナリオ情報を更新しました");
         location.reload();
@@ -268,10 +266,7 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     }
 });
 
-/**
- * セッション（卓）のカードを生成するヘルパー関数
- */
-// ★修正4: 引数に playerMap を追加し、内部で名前解決を行う
+// ★修正: playerMapを引数で受け取り、名前解決を行う
 function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, playerMapByName) {
   const title = Utils.escapeHtml(r.title ?? r.id);
   
@@ -288,7 +283,6 @@ function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, 
   });
   const players = Utils.escapeHtml(resolvedPlayers.length > 0 ? resolvedPlayers.join(" / ") : "—");
   
-  // 次回予定の取得と整形
   const next = nextByRunId.get(r.id);
   const nextText = next?._start
     ? `${next._start.toLocaleDateString("ja-JP")} ${next._start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`

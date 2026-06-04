@@ -1166,7 +1166,7 @@ export default {
           // ★修正: カッコ自体はエンコードせず、IDだけをエンコードする
           const runIdsParam = `(${runIds.map(id => encodeURIComponent(id)).join(',')})`;
           // ★修正: gm_id や player_ids が使われているケースに備えてカラムを追加取得
-          const runsUrl = `/rest/v1/runs?select=id,title,gm,players,gm_id,player_ids&id=in.${runIdsParam}`;
+          const runsUrl = `/rest/v1/runs?select=id,title,gm_id,player_ids&id=in.${runIdsParam}`;
           const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
             headers: {
               apikey: env.SUPABASE_ANON_KEY,

@@ -650,11 +650,12 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/runs") {
       let queryParams = [];
 
-      const gm = url.searchParams.get("gm");
+      // ★修正: gm -> gm_id に変更
+      const gmId = url.searchParams.get("gm_id"); 
       const status = url.searchParams.get("status");
       const keyword = url.searchParams.get("keyword");
 
-      if (gm) queryParams.push(`gm=eq.${encodeURIComponent(gm)}`);
+      if (gmId) queryParams.push(`gm_id=eq.${encodeURIComponent(gmId)}`);
       if (status) queryParams.push(`status=eq.${encodeURIComponent(status)}`);
       
       if (keyword) {
@@ -935,7 +936,7 @@ export default {
       const resource = url.pathname.replace("/api/", ""); // "runs", "characters" 等を取得
       
       // 許可するリソースのホワイトリスト（セキュリティのため）
-      const allowedResources = ["runs", "sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants"];
+      const allowedResources = ["sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants"];
       
       if (allowedResources.includes(resource)) {
         try {
@@ -1009,13 +1010,6 @@ export default {
     if (request.method === "PATCH" && url.pathname === "/api/runs") {
       const id = url.searchParams.get("id");
       const body = await request.json();
-
-      // 更新対象のカラムを明示的に指定
-      const updateData = {};
-      if (body.title) updateData.title = body.title;
-      if (body.gm) updateData.gm = body.gm;
-      if (body.players) updateData.players = body.players; // text[] として送信
-      if (body.characters) updateData.characters = body.characters; // text[] として送信
 
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs?id=eq.${id}`, {
         method: "PATCH",
@@ -1166,7 +1160,7 @@ export default {
           // ★修正: カッコ自体はエンコードせず、IDだけをエンコードする
           const runIdsParam = `(${runIds.map(id => encodeURIComponent(id)).join(',')})`;
           // ★修正: gm_id や player_ids が使われているケースに備えてカラムを追加取得
-          const runsUrl = `/rest/v1/runs?select=id,title,gm_id,player_ids&id=in.${runIdsParam}`;
+          const runsUrl = `/rest/v1/runs?select=id,title,gm,players,gm_id,player_ids&id=in.${runIdsParam}`;
           const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
             headers: {
               apikey: env.SUPABASE_ANON_KEY,

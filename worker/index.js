@@ -851,6 +851,19 @@ export default {
           },
           body: JSON.stringify(body),
         });
+
+        // ★ 追加: データベースへの登録が成功したら満員チェックを走らせる
+        if (res.ok) {
+          // bodyが配列( [ {} ] )で来る場合とオブジェクト( {} )で来る場合の両方に対応
+          const payload = Array.isArray(body) ? body[0] : body;
+          const recruitmentId = payload.recruitment_id || payload.recruit_id;
+          
+          if (recruitmentId) {
+             // ユーザーを待たせないように裏側（waitUntil）で実行
+             ctx.waitUntil(checkAndNotifyIfFulfilled(recruitmentId, env));
+          }
+        }
+
         return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
@@ -924,6 +937,10 @@ export default {
           // 重複エラー以外のエラーが発生した場合は例外を投げる
           throw new Error(`Insert failed: ${errorText}`);
         }
+
+        // ★ 追加: 登録成功時に満員チェックを走らせる
+        // （この関数自体がすでにctx.waitUntilの中で呼ばれているので、awaitでそのまま実行してOKです）
+        await checkAndNotifyIfFulfilled(recruitmentId, env);
 
         return { success: true, playerName: player.player_name };
       } catch (e) {

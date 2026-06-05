@@ -1,6 +1,6 @@
 "use strict";
 
-const API_BASE = "https://fctzs-trpg.daruji65.workers.dev";
+const API_BASE = "https://fctzs-trpg.daruji.workers.dev";
 
 const statusMap = {
   active: "進行中",

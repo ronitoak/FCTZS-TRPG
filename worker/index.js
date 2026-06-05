@@ -492,6 +492,14 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/comments/recent") {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
+      const apiUrl = `/rest/v1/comments?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
+      const { res, text } = await sbGet(apiUrl, request);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+
         // ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
       let queryParams = [];
@@ -831,13 +839,6 @@ async function handlePost(request, env, ctx, url) {
         body: JSON.stringify([body]),
       });
       return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/comments/recent") {
-      const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
-      const apiUrl = `/rest/v1/comments?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
-      const { res, text } = await sbGet(apiUrl, request);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
         // Characters作成API

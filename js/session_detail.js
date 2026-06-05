@@ -362,7 +362,7 @@ Utils.domReady(() => {
       
       const payload = {
           title: runForm.title ? runForm.title.value : document.getElementById('edit-run-title')?.value || "",
-          gm_id: gmSelect ? gmSelect.value : null,
+          gm_id: (gmSelect && gmSelect.value) ? gmSelect.value : null, 
           player_ids: tempPlayers,
           characters: tempCharacters.map(c => c.id)
       };

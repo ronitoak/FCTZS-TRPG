@@ -139,7 +139,7 @@ export default {
     try {
       if (request.method === "GET")    return await handleGet(request, env, url);
       if (request.method === "POST")   return await handlePost(request, env, ctx, url);
-      if (request.method === "PATCH")  return await handlePatch(request, env, url);
+      if (request.method === "PATCH")  return await handlePatch(request, env, ctx, url); 
       if (request.method === "DELETE") return await handleDelete(request, env, url);
 
       return new Response("Method not allowed", { status: 405 });
@@ -1332,7 +1332,7 @@ async function handlePost(request, env, ctx, url) {
 
 }
 
-async function handlePatch(request, env, url) {
+async function handlePatch(request, env, ctx, url) {
 
   if (request.method === "PATCH") {
     const resource = url.pathname.replace("/api/", ""); // "runs", "characters" 等を取得

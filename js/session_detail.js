@@ -357,22 +357,25 @@ Utils.domReady(() => {
       const submitBtn = runForm.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true; // 連打防止
       
-    const payload = {
-      title: runForm.title.value,
-      gm_id: runForm.gm_id.value || null, // ★修正: gm -> gm_id
-      player_ids: tempPlayers,            // ★修正: players -> player_ids
-      characters: tempCharacters.map(c => c.id) // 送信時は ID 配列に戻す
-    };
+      // ★修正: HTMLのname属性に依存せず、確実にIDから値を取得する
+      const gmSelect = document.getElementById('edit-gm-select');
+      
+      const payload = {
+          title: runForm.title ? runForm.title.value : document.getElementById('edit-run-title')?.value || "",
+          gm_id: gmSelect ? gmSelect.value : null,
+          player_ids: tempPlayers,
+          characters: tempCharacters.map(c => c.id)
+      };
 
-    try {
-        await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
-        alert("卓情報を更新しました");
-        location.reload();
-    } catch (err) {
-        console.error(err);
-        alert("更新に失敗しました");
-        if (submitBtn) submitBtn.disabled = false;
-    }
+      try {
+          await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
+          alert("卓情報を更新しました");
+          location.reload();
+      } catch (err) {
+          console.error(err);
+          alert("更新に失敗しました: " + err.message);
+          if (submitBtn) submitBtn.disabled = false;
+      }
   });
   
   // 編集フォームの送信

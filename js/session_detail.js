@@ -74,128 +74,9 @@ async function main() {
     }
 
     root.innerHTML = `
-      <header class="session-detail-header">
-        <h1 class="session-detail-title">${Utils.escapeHtml(run.title ?? run.id)}</h1>
-        <span class="session-detail-badge ${statusClass}">${Utils.escapeHtml(statusJa)}</span>
-      </header>
-
-      <section class="session-detail-top">
-
-        <div class="session-detail-imagewrap">
-          <img
-            class="session-detail-cover"
-            src="${coverPath}"
-            onerror="this.onerror=null; this.src='${fallback}';"
-            alt="${Utils.escapeHtml(scenario?.title ?? run.title ?? run.id)}"
-            loading="lazy"
-          >
-        </div>
-        
-        <div class="session-detail-profile">
-          <h2 class="session-detail-h2">卓情報${editRunBtn}</h2> 
-
-          <table class="session-detail-table">
-            <tbody>
-              <tr><th>シナリオ</th><td>${
-                scenario
-                  ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(scenario.id)}">${Utils.escapeHtml(scenario.title ?? scenario.id)}</a>`
-                  : "（不明）"
-              }</td></tr>
-              <tr><th>GM</th><td>${Utils.escapeHtml(gmName)}</td></tr>
-              <tr><th>PL</th><td>${Utils.escapeHtml(plNames.join(" / ")) || "—"}</td></tr>
-              <tr><th>次回</th><td>${
-                run.status === "active"
-                  ? (upcoming[0]?._start ? Utils.escapeHtml(Utils.formatDateTime(upcoming[0]._start)) : "未定")
-                  : "—"
-              }</td></tr>
-              <tr><th>最終</th><td>${
-                lastDone?._start ? Utils.escapeHtml(lastDone._start.toLocaleDateString("ja-JP")) : (run.status === "done" ? "未記録" : "—")
-              }</td></tr>
-            </tbody>
-          </table>
-
-          ${
-            runChars.length
-              ? `<h3 class="session-detail-h3">参加キャラクター</h3>
-                 <div class="session-detail-chips">
-                   ${runChars.map(c => {
-                      const name = Utils.escapeHtml(c.name ?? c.id);
-                      const img = Utils.getCharacterImagePath(c.id);
-                      const fallbackImg = Utils.DEFAULT_CHARACTER_IMAGE;
-
-                      return `
-                        <a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}">
-                          <img
-                            class="character-chip-icon" 
-                            src="${img}"
-                            onerror="this.onerror=null; this.src='${fallbackImg}';"
-                            alt="${name}"
-                            loading="lazy"
-                          >
-                          <span class="character-chip-name">${name}</span>
-                        </a>
-                      `;
-                    }).join("")}
-
-                 </div>`
-              : ""
-          }
-        </div>
-
-      </section>
-
-      <section class="session-detail-log">
-        <h2 class="session-detail-h2">セッション履歴</h2>
-        ${
-          runSessions.length
-            ? `<ul class="session-detail-list">
-                ${runSessions.map(s => {
-                  const stateLabels = {
-                    "scheduled": "予定",
-                    "done": "終了",
-                    "cancelled": "中止" // 追加
-                  };
-                  const stateJa = stateLabels[s.status] || "不明";
-                  const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
-
-                  const linksHtml = (s.replay_url || s.stream_url)
-                    ? `
-                      <div class="session-links">
-                        ${s.stream_url ? `${Utils.renderLink(s.stream_url, "アーカイブ")}` : ""}
-                      </div>
-                    `
-                    : "";
-
-                  return `
-                    <li class="session-detail-item ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
-                      <div class="session-item-row">
-                        <span class="session-item-state ${Utils.escapeHtml(s.status)}">
-                          ${Utils.escapeHtml(stateJa)}
-                        </span>
-                        
-                        <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>
-                        
-                        <span class="session-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
-                        
-                        <span class="session-item-links">${linksHtml}</span>
-
-                        <button class="btn-edit-session" 
-                                data-id="${s.id}" 
-                                data-title="${Utils.escapeHtml(s.title ?? "")}" 
-                                data-start="${s.start}"
-                                data-status="${s.status}">
-                          📝
-                        </button>
-                      </div>
-                    </li>
-                  `;
-                  
-                }).join("")}
-
-              </ul>`
-            : `<p class="session-detail-muted">この卓のセッションがありません</p>`
-        }
-      </section>
+      ${buildSessionHeaderHtml(run, statusClass, statusJa)}
+      ${buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars, editRunBtn)}
+      ${buildSessionLogHtml(runSessions)}
     `;
 
     renderCompletionGuide(runSessions, run);
@@ -602,3 +483,63 @@ Utils.domReady(() => {
     }
 });
 });
+
+// ==========================================
+// --- HTML生成コンポーネント ---
+// ==========================================
+
+function buildSessionHeaderHtml(run, statusClass, statusJa) {
+  return `
+    <header class="session-detail-header">
+      <h1 class="session-detail-title">${Utils.escapeHtml(run.title ?? run.id)}</h1>
+      <span class="session-detail-badge ${statusClass}">${Utils.escapeHtml(statusJa)}</span>
+    </header>
+  `;
+}
+
+function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars, editRunBtn) {
+  return `
+    <section class="session-detail-top">
+      <div class="session-detail-imagewrap">
+        <img class="session-detail-cover" src="${coverPath}" onerror="this.onerror=null; this.src='${fallback}';" alt="${Utils.escapeHtml(scenario?.title ?? run.title ?? run.id)}" loading="lazy">
+      </div>
+      <div class="session-detail-profile">
+        <h2 class="session-detail-h2">卓情報${editRunBtn}</h2> 
+        <table class="session-detail-table">
+          <tbody>
+            <tr><th>シナリオ</th><td>${scenario ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(scenario.id)}">${Utils.escapeHtml(scenario.title ?? scenario.id)}</a>` : "（不明）"}</td></tr>
+            <tr><th>GM</th><td>${Utils.escapeHtml(gmName)}</td></tr>
+            <tr><th>PL</th><td>${Utils.escapeHtml(plNames.join(" / ")) || "—"}</td></tr>
+            <tr><th>次回</th><td>${run.status === "active" ? (upcoming[0]?._start ? Utils.escapeHtml(Utils.formatDateTime(upcoming[0]._start)) : "未定") : "—"}</td></tr>
+            <tr><th>最終</th><td>${lastDone?._start ? Utils.escapeHtml(lastDone._start.toLocaleDateString("ja-JP")) : (run.status === "done" ? "未記録" : "—")}</td></tr>
+          </tbody>
+        </table>
+        ${runChars.length ? `<h3 class="session-detail-h3">参加キャラクター</h3><div class="session-detail-chips">${runChars.map(c => `<a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}"><img class="character-chip-icon" src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" alt="${Utils.escapeHtml(c.name ?? c.id)}" loading="lazy"><span class="character-chip-name">${Utils.escapeHtml(c.name ?? c.id)}</span></a>`).join("")}</div>` : ""}
+      </div>
+    </section>
+  `;
+}
+
+function buildSessionLogHtml(runSessions) {
+  return `
+    <section class="session-detail-log">
+      <h2 class="session-detail-h2">セッション履歴</h2>
+      ${runSessions.length ? `<ul class="session-detail-list">${runSessions.map(s => {
+        const stateLabels = { "scheduled": "予定", "done": "終了", "cancelled": "中止" };
+        const stateJa = stateLabels[s.status] || "不明";
+        const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
+        const linksHtml = (s.replay_url || s.stream_url) ? `<div class="session-links">${s.stream_url ? `${Utils.renderLink(s.stream_url, "配信or動画")}` : ""}</div>` : "";
+        return `
+          <li class="session-detail-item ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
+            <div class="session-item-row">
+              <span class="session-item-state ${Utils.escapeHtml(s.status)}">${Utils.escapeHtml(stateJa)}</span>
+              <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>
+              <span class="session-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
+              <span class="session-item-links">${linksHtml}</span>
+              <button class="btn-edit-session" data-id="${s.id}" data-title="${Utils.escapeHtml(s.title ?? "")}" data-start="${s.start}" data-status="${s.status}">📝</button>
+            </div>
+          </li>`;
+      }).join("")}</ul>` : `<p class="session-detail-muted">この卓のセッションがありません</p>`}
+    </section>
+  `;
+}

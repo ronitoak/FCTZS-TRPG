@@ -191,103 +191,15 @@ async function main() {
       </ul>`
     : `<p class="character-detail-muted">なし</p>`;
 
-    // ★修正: 通過シナリオの手動編集ボタン（scenarioEditBtn）を削除
     root.innerHTML = `
-      <header class="character-detail-header">
-        <h1 class="character-detail-title">${Utils.escapeHtml(c.name)}</h1>
-        ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
-      </header>
-
-      <section class="character-detail-top">
-        <div class="character-detail-imagewrap">
-          <img class="character-detail-image"
-            src="${src}"
-            onerror="this.onerror=null; this.src='${fallback}';"
-            alt="${Utils.escapeHtml(c.name ?? c.id ?? "")}"
-            loading="lazy"
-          >
-        </div>
-
-        <article class="character-detail-panel character-detail-profile">
-          <h2 class="character-detail-h2">プロフィール${editBtn}</h2>
-
-          <table class="character-detail-table">
-            <tbody>
-              ${profileRowsHtml}
-            </tbody>
-          </table>
-        </article>
-      </section>
-
-      <section class="character-detail-bottom">
-        <div class="character-detail-panels">
-          <div class="character-detail-tripanel">
-            <article class="character-detail-panel">
-              <h2 class="character-detail-h2">能力値${paramsEditBtn}</h2>
-
-              ${hasGeneric
-                ? renderGenericAttributes(c.system, sysDefsSafe, attrMap, "int")
-                : (
-                  Object.keys(abilities).length
-                    ? `
-                      <div class="character-detail-chips">
-                        ${Object.entries(abilities).map(([k, v]) => `
-                          <span class="character-detail-chip">
-                            <span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span>
-                            <span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span>
-                          </span>
-                        `).join("")}
-                      </div>
-                    `
-                    : `<p class="character-detail-muted">未登録</p>`
-                )
-              }
-            </article>
-
-            ${hasGeneric && c.system === "エモクロアTRPG" ? `
-              <article class="character-detail-panel character-detail-emotions">
-                <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
-                ${renderGenericAttributes(c.system, sysDefsSafe, attrMap, "emotion")}
-              </article>
-            ` : ``}
-
-            ${hasGeneric && c.system === "ガイアケアTRPG" ? `
-              <article class="character-detail-panel character-detail-emotions">
-                <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
-                ${renderGenericAttributes(c.system, sysDefsSafe, attrMap, "emotion")}
-              </article>
-            ` : ``}
-
-            <article class="character-detail-panel">
-              <h2 class="character-detail-h2">技能${skillsEditBtn}</h2>
-              ${skillEntries.length ? `
-                <div class="character-detail-chips">
-                  ${skillEntries.map(s => `
-                    <span class="character-detail-chip character-detail-chip--skill">
-                      <span class="character-detail-chip-key">${Utils.escapeHtml(s.name)}</span>
-                      <span class="character-detail-chip-val">${Utils.escapeHtml(String(s.display_value))}</span>
-                    </span>
-                  `).join("")}
-                </div>
-              ` : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`}
-            </article>
-          </div>
-          <article class="character-detail-panel character-detail-panel--full">
-            <h2 class="character-detail-h2">メモ</h2>
-            ${memo && String(memo).trim() !== ""
-              ? `<p class="character-detail-memo">${Utils.renderMultilineText(memo)}</p>`
-              : `<p class="character-detail-muted">未登録</p>`}
-          </article>
-
-        </div>
-      </section>
-
+      ${buildCharacterHeaderHtml(c)}
+      ${buildCharacterTopHtml(c, src, fallback, profileRowsHtml, editBtn)}
+      ${buildCharacterBottomHtml(c, hasGeneric, sysDefsSafe, attrMap, abilities, skillEntries, memo, paramsEditBtn, emotionsEditBtn, skillsEditBtn)}
       <section class="character-detail-scenarios">
         <h2 class="character-detail-h2">通過シナリオ</h2>
         ${passedHtml}
       </section>
-
-        ${iacharaLinkHtml}
+      ${iacharaLinkHtml}
     `;
 
     document.addEventListener('click', (e) => {
@@ -415,6 +327,78 @@ async function main() {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
+}
+
+// ==========================================
+// --- HTML生成コンポーネント ---
+// ==========================================
+
+function buildCharacterHeaderHtml(c) {
+  return `
+    <header class="character-detail-header">
+      <h1 class="character-detail-title">${Utils.escapeHtml(c.name)}</h1>
+      ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
+    </header>
+  `;
+}
+
+function buildCharacterTopHtml(c, src, fallback, profileRowsHtml, editBtn) {
+  return `
+    <section class="character-detail-top">
+      <div class="character-detail-imagewrap">
+        <img class="character-detail-image" src="${src}" onerror="this.onerror=null; this.src='${fallback}';" alt="${Utils.escapeHtml(c.name ?? c.id ?? "")}" loading="lazy">
+      </div>
+      <article class="character-detail-panel character-detail-profile">
+        <h2 class="character-detail-h2">プロフィール${editBtn}</h2>
+        <table class="character-detail-table">
+          <tbody>${profileRowsHtml}</tbody>
+        </table>
+      </article>
+    </section>
+  `;
+}
+
+function buildCharacterBottomHtml(c, hasGeneric, sysDefsSafe, attrMap, abilities, skillEntries, memo, paramsEditBtn, emotionsEditBtn, skillsEditBtn) {
+  const paramsHtml = hasGeneric 
+    ? renderGenericAttributes(c.system, sysDefsSafe, attrMap, "int")
+    : (Object.keys(abilities).length ? `<div class="character-detail-chips">${Object.entries(abilities).map(([k, v]) => `<span class="character-detail-chip"><span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span><span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span></span>`).join("")}</div>` : `<p class="character-detail-muted">未登録</p>`);
+
+  const emotionHtml = (hasGeneric && (c.system === "エモクロアTRPG" || c.system === "ガイアケアTRPG"))
+    ? `<article class="character-detail-panel character-detail-emotions">
+         <h2 class="character-detail-h2">共鳴感情${emotionsEditBtn}</h2>
+         ${renderGenericAttributes(c.system, sysDefsSafe, attrMap, "emotion")}
+       </article>`
+    : ``;
+
+  const skillsHtml = skillEntries.length 
+    ? `<div class="character-detail-chips">${skillEntries.map(s => `<span class="character-detail-chip character-detail-chip--skill"><span class="character-detail-chip-key">${Utils.escapeHtml(s.name)}</span><span class="character-detail-chip-val">${Utils.escapeHtml(String(s.display_value))}</span></span>`).join("")}</div>`
+    : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`;
+
+  const memoHtml = memo && String(memo).trim() !== "" 
+    ? `<p class="character-detail-memo">${Utils.renderMultilineText(memo)}</p>` 
+    : `<p class="character-detail-muted">未登録</p>`;
+
+  return `
+    <section class="character-detail-bottom">
+      <div class="character-detail-panels">
+        <div class="character-detail-tripanel">
+          <article class="character-detail-panel">
+            <h2 class="character-detail-h2">能力値${paramsEditBtn}</h2>
+            ${paramsHtml}
+          </article>
+          ${emotionHtml}
+          <article class="character-detail-panel">
+            <h2 class="character-detail-h2">技能${skillsEditBtn}</h2>
+            ${skillsHtml}
+          </article>
+        </div>
+        <article class="character-detail-panel character-detail-panel--full">
+          <h2 class="character-detail-h2">メモ</h2>
+          ${memoHtml}
+        </article>
+      </div>
+    </section>
+  `;
 }
 
 document.addEventListener('click', (e) => {

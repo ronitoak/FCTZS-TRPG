@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scenarios | FCTZS TRPG部</title>
+    <link rel="stylesheet" href="../css/style.css">
+
+</head>
+<body>
+    <div class="container">
+        <nav id="common-nav" class="top-nav"></nav>
+        <hr />
+        <section id="scenario-detail">
+          <p>読み込み中…</p>
+        </section>
+        <div id="edit-scenario-modal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 600px;">
+                <h3>シナリオ情報の編集</h3>
+                <form id="edit-scenario-form">
+                <div class="form-group">
+                    <label>タイトル</label>
+                    <input type="text" name="title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>システム</label>
+                    <input type="text" name="system" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>作者</label>
+                    <input type="text" name="author" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>基本情報</label>
+                    <textarea name="notes" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>概要</label>
+                    <textarea name="description" class="form-control" rows="5"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">保存</button>
+                    <button type="button" id="btn-close-scenario-edit" class="btn-secondary">キャンセル</button>
+                </div>
+                </form>
+            </div>
+            </div>
+        <div id="comments-root"></div>
+        <footer>
+            <hr />
+            <small><a href="../scenarios/index.html">Back</a></small>
+        </footer>
+    </div>
+      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/scenario_detail.js"></script>
+    <script src="../js/comments.js"></script>
+    <script>
+        Comments.mount("comments-root", "scenario");
+    </script>
+
+</body>
+</html>
+
+

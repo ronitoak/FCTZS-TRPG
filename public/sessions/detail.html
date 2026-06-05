@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sessions | FCTZS TRPG部</title>
+    <link rel="stylesheet" href="../css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <nav id="common-nav" class="top-nav"></nav>
+      <hr />
+      <section id="session-detail">
+        <p>読み込み中…</p>
+      </section>
+
+      <section id="add-session-record" style="margin-top: 30px;">
+        <h3>セッション記録を追加</h3>
+        <form id="sub-session-form" class="profile-grid">
+          <div class="form-group">
+            <label for="new-session-date">開催日時</label>
+            <input type="datetime-local" id="new-session-start" name="start" class="form-control" required>
+        </div>
+          <div class="form-group">
+            <label>セッションタイトル</label>
+            <input type="text" name="title" required class="form-control" placeholder="例：Part1">
+          </div>
+
+          <div class="form-group">
+            <label>配信URL</label>
+            <input type="url" name="stream_url" class="form-control" placeholder="https://youtube.com/...">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>備考</label>
+            <textarea name="notes" rows="3" class="form-control"></textarea>
+          </div>
+          <div style="grid-column: 1 / -1; margin-top: 10px;">
+            <button type="submit" class="btn-primary">記録を保存</button>
+          </div>
+        </form>
+      </section>
+
+      <div id="edit-session-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>セッション情報の編集</h3>
+          <form id="edit-session-form">
+            <input type="hidden" name="session_id">
+            <div class="form-group">
+              <label>タイトル</label>
+              <input type="text" name="title" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>開催日時</label>
+              <input type="datetime-local" name="start" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>配信URL</label>
+              <input type="url" name="stream_url" class="form-control" placeholder="https://youtube.com/...">
+            </div>
+            <div class="form-group">
+              <label>ステータス</label>
+              <select name="status" class="form-control">
+                <option value="scheduled">予定</option>
+                <option value="done">終了</option>
+                <option value="cancelled">中止</option>
+              </select>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" class="btn-primary">更新</button>
+              <button type="button" id="btn-close-edit" class="btn-secondary">キャンセル</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="edit-run-modal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 500px;">
+          <h3>卓情報の編集</h3>
+          <form id="edit-run-form">
+            <div class="form-group">
+              <label>卓名</label>
+              <input type="text" name="title" class="form-control" required style="margin-bottom: 10px;">
+              <label>GM</label>
+              <select name="gm_id" id="edit-gm-select" class="form-control" required>
+                  <option value="">選択してください</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>参加プレイヤー</label>
+              <div id="edit-players-list" class="tag-container"></div>
+              <div class="input-group">
+                <select id="add-player-select" class="form-control"></select>
+                <button type="button" id="btn-add-player" class="btn-secondary">追加</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>参加キャラクター</label>
+              <div id="edit-characters-list" class="tag-container"></div>
+              <div class="input-group">
+                <select id="add-character-select" class="form-control"></select>
+                <button type="button" id="btn-add-character" class="btn-secondary">追加</button>
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <button type="submit" class="btn-primary">更新</button>
+              <button type="button" id="btn-close-run-edit" class="btn-secondary">キャンセル</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="comments-root"></div>
+
+      <footer>
+        <hr />
+        <small><a href="../sessions/index.html">Back</a></small>
+      </footer>
+    </div>
+      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/session_detail.js"></script>
+    <script src="../js/comments.js"></script>
+  </body>
+</html>
+
+

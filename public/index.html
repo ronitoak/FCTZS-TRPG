@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FCTZS TRPG部</title>
+
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+    <h1>FCTZS TRPG部</h1>
+    <!--<p>Webデザインとかの練習も込みで記録用ページを作成中<br>あんまり設計とか技術面気にして見ないでね</p> -->
+    <p style="background: #e53e3e; color: white; border: none; font-size: 32px; text-align: center;">募集機能大幅改修完了‼️<br>募集開始から１か月経過で自動で消すから気を付けて‼️‼️</p>
+  </main>
+    <!-- 直近の予定 -->
+    <section aria-labelledby="next-session-title">
+      <h2 id="next-session-title">直近の予定</h2>
+      <div id="next-session">
+        <p>予定を読み込み中…</p>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- 進行中のシナリオ -->
+    <section aria-labelledby="ongoing-title">
+      <h2 id="ongoing-title">進行中のシナリオ</h2>
+      <div id="ongoing-scenarios">
+        <p>進行中シナリオを読み込み中…</p>
+      </div>
+    </section>
+
+    <hr />
+
+    <!-- こんなとこ見るな！ -->
+    <section aria-labelledby="notes-title">
+      <h2 id="notes-title">今後の開発予定</h2>
+      <ul>
+        <li>キャラ詳細ページにルビを追加 <small>- 未着手</small></li>
+        <li>キャラとセッションとかシナリオの紐づきまわり <small>- 俺の手に負えず仕様変更 手動編集不可にしました</small></li>
+        <li>スケジュール画面にセッション予定作成機能追加 <small>- 実装！</small></li>
+        <li>募集の削除延長機能 <small>- 着手中</small></li>
+        <li>コメント機能 <small>- 現在調査中 各画面で入力したものは現在Home画面のみに表示されます</small></li>
+      </ul>
+    </section>
+    <section>
+      <h2>新着コメント</h2>
+    <div id="top-comments-root"></div>
+    </section>
+
+    <div id="user-info" style="display: none;">
+      <img id="user-avatar" src="" width="50" style="border-radius: 50%;">
+      <span id="user-name"></span>
+      <button id="logout-btn">ログアウト</button>
+    </div>
+
+  </main>
+
+  <footer>
+    <hr />
+    <a href="./nightreign.html"><small>†最強†マルチゲーミングチーム </small></a><a href="./nightreign_sim.html"></small>FCTZS</small></a>
+  </footer>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/init-supabase.js"></script>
+  <script src="js/utils.js"></script>
+  <script type="module" src="./js/home.js"></script>
+  <script src="./js/top_comments.js"></script>
+  <script>
+  TopComments.mount("top-comments-root");
+  </script>
+
+</body>
+</html>
+
+
+
+
+
+
+

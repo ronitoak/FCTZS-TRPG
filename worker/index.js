@@ -133,6 +133,20 @@ export default {
       }
     }
 
+    // ==========================================
+    // 各メソッドへの振り分け（ルーティング）
+    // ==========================================
+    try {
+      if (request.method === "GET")    return await handleGet(request, env, url);
+      if (request.method === "POST")   return await handlePost(request, env, ctx, url);
+      if (request.method === "PATCH")  return await handlePatch(request, env, url);
+      if (request.method === "DELETE") return await handleDelete(request, env, url);
+
+      return new Response("Method not allowed", { status: 405 });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    }
+
   },
 
   // セッション通知処理
@@ -453,8 +467,23 @@ function handleOptions() {
 }
 
 async function handleGet(request, env, url) {
-  // ★ここに既存の `if (request.method === "GET") { ... }` の「中身」を丸ごと移動
-      // ---- Comments (既存保持) ----
+      // ---- helpers ----
+    async function sbGet(pathAndQuery, request) { // 第2引数に request を追加
+      // フロントから届いた Authorization ヘッダーを抽出
+      const authHeader = request.headers.get("Authorization");
+
+      const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, {
+        headers: {
+          apikey: env.SUPABASE_ANON_KEY,
+          // ログイン中ならその人のトークンを、未ログインなら ANON_KEY を転送
+          Authorization: authHeader || `Bearer ${env.SUPABASE_ANON_KEY}`,
+        },
+      });
+      const text = await res.text();
+      return { res, text };
+    }
+
+    // ---- Comments (既存保持) ----
     if (request.method === "GET" && url.pathname === "/api/comments") {
       const target_type = url.searchParams.get("target_type");
       const target_id = url.searchParams.get("target_id");
@@ -1219,29 +1248,6 @@ async function handlePost(request, env, ctx, url) {
         return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/interactions") {
-      const interaction = await request.json();
-
-      // 1. Discordからの認証チェック（※後述のセキュリティ設定が必須）
-      // 2. ボタン押下イベントの判定
-      if (interaction.type === 3) { // 3 = MESSAGE_COMPONENT (ボタン等)
-        const customId = interaction.data.custom_id;
-        const discordUser = interaction.member.user; // 誰が押したか
-
-        if (customId.startsWith("join_")) {
-          const recruitmentId = customId.replace("join_", "");
-          
-          // ここでSupabaseを更新する処理を呼び出す
-          ctx.waitUntil(registerParticipant(recruitmentId, discordUser, env));
-
-          return new Response(JSON.stringify({
-            type: 4, // 4 = CHANNEL_MESSAGE_WITH_SOURCE
-            data: { content: `<@${discordUser.id}> さん、参加希望を受け付けました！`, flags: 64 } // 64 = 本人にしか見えないメッセージ
-          }), { headers: { "Content-Type": "application/json" } });
-        }
       }
     }
 

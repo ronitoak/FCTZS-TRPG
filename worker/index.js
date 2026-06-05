@@ -1367,10 +1367,10 @@ async function handlePatch(request, env, url) {
   }
 
   if (request.method === "PATCH" && url.pathname === "/api/runs") {
-  const id = url.searchParams.get("id");
+  // ★ id を取り出して再結合するのをやめて、直接 url.search (?id=eq.xxx) を渡す
   const body = await request.json();
 
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs?id=eq.${id}`, {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs${url.search}`, {
     method: "PATCH",
     headers: {
       "apikey": env.SUPABASE_ANON_KEY,

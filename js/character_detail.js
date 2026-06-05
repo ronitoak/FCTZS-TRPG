@@ -314,7 +314,14 @@ async function main() {
         })).filter(s => s.name !== "");
 
         try {
-            await Utils.apiPost("character_skills", skillsPayload);
+            // ★修正: 先にこのキャラクターの既存の技能をすべて削除する
+            await Utils.apiDelete("character_skills", `character_id=eq.${currentCharData.id}`);
+
+            // ★修正: 保存する技能が1つ以上ある場合のみ追加(POST)を実行する
+            if (skillsPayload.length > 0) {
+                await Utils.apiPost("character_skills", skillsPayload);
+            }
+            
             alert("技能値を更新しました");
             location.reload();
         } catch (err) {

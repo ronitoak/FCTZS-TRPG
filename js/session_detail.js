@@ -6,14 +6,6 @@ let tempPlayers = [];
 let tempCharacters = [];
 let allPlayers = [];
 
-function renderLink(url, label) {
-  const u = String(url ?? "").trim();
-  if (!u) return "";
-  const safe = Utils.escapeHtml(u);
-  const text = Utils.escapeHtml(label ?? u);
-  return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-}
-
 async function main() {
   const root = document.getElementById("session-detail");
   if (!root) return;
@@ -169,7 +161,7 @@ async function main() {
                   const linksHtml = (s.replay_url || s.stream_url)
                     ? `
                       <div class="session-links">
-                        ${s.stream_url ? `${renderLink(s.stream_url, "アーカイブ")}` : ""}
+                        ${s.stream_url ? `${Utils.renderLink(s.stream_url, "アーカイブ")}` : ""}
                       </div>
                     `
                     : "";

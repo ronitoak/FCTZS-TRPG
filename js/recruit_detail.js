@@ -5,15 +5,6 @@ let allPlayers = [];
 let allScenarios = [];
 let currentApplicants = [];
 
-// 改行を <br> に変換するヘルパー（シナリオ詳細と同じもの）
-function renderMultilineText(text) {
-  const normalized = String(text ?? "")
-    .replaceAll("\r\n", "\n")
-    .replaceAll("\\n", "\n");
-  const escaped = Utils.escapeHtml(normalized);
-  return escaped.replaceAll("\n", "<br>");
-}
-
 async function main() {
     await Utils.initAuthAndHeader('common-nav', '../');
 
@@ -103,7 +94,7 @@ function renderDetail() {
                 <div><strong>募集人数:</strong> ${currentRecruit.target_count}人 （現在の応募: ${currentApplicants.length}人）</div>
             </div>
                 <div class="scenario-base-info">
-                <div><strong>自由記入欄:</strong><br>${renderMultilineText(currentRecruit.memo)}</div>
+                <div><strong>自由記入欄:</strong><br>${Utils.renderMultilineText(currentRecruit.memo)}</div>
             </div>
         </div>
       </section>

@@ -2,14 +2,6 @@
 
 let currentScenarioId = null;
 
-function renderMultilineText(text) {
-  const normalized = String(text ?? "")
-    .replaceAll("\r\n", "\n")
-    .replaceAll("\\n", "\n");
-  const escaped = Utils.escapeHtml(normalized);
-  return escaped.replaceAll("\n", "<br>");
-}
-
 async function main() {
   const root = document.getElementById("scenario-detail");
   if (!root) return;
@@ -167,7 +159,7 @@ async function main() {
             ${scenario.author ? `<div><strong>作者:</strong> ${Utils.escapeHtml(scenario.author)}</div>` : ""}
           </div>
           <div class="scenario-base-info">
-            ${scenario.notes ? `<div><strong>基本情報:</strong><br>${renderMultilineText(scenario.notes)}</div>` : ""}
+            ${scenario.notes ? `<div><strong>基本情報:</strong><br>${Utils.renderMultilineText(scenario.notes)}</div>` : ""}
           </div>
         </div>
       </section>
@@ -175,7 +167,7 @@ async function main() {
       <article class="scenario-detail-panel scenario-detail-intro-card">
         <h2 class="scenario-detail-h2">イントロダクション</h2>
         <p class="scenario-detail-desc">
-        ${scenario.description ? `${renderMultilineText(scenario.description)}` : ""}
+        ${scenario.description ? `${Utils.renderMultilineText(scenario.description)}` : ""}
         </p>
       </article>
 

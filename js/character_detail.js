@@ -7,14 +7,6 @@ let currentCharAttrsMap = new Map();
 let allScenarios = []; // 全シナリオマスタ
 let currentCharacterScenarios = []; // このキャラが通過済みのIDリスト
 
-function renderMultilineText(text) {
-  const normalized = String(text)
-    .replaceAll("\r\n", "\n")
-    .replaceAll("\\n", "\n");
-  const escaped = Utils.escapeHtml(normalized);
-  return escaped.replaceAll("\n", "<br>");
-}
-
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
   if (!u) return "";
@@ -283,7 +275,7 @@ async function main() {
           <article class="character-detail-panel character-detail-panel--full">
             <h2 class="character-detail-h2">メモ</h2>
             ${memo && String(memo).trim() !== ""
-              ? `<p class="character-detail-memo">${renderMultilineText(memo)}</p>`
+              ? `<p class="character-detail-memo">${Utils.renderMultilineText(memo)}</p>`
               : `<p class="character-detail-muted">未登録</p>`}
           </article>
 

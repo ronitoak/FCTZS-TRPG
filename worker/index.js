@@ -188,10 +188,10 @@ export default {
         let runsMap = new Map();
         
         if (runIds.length > 0) {
-          // ★修正: カッコ自体はエンコードせず、IDだけをエンコードする
-          const runIdsParam = `(${runIds.map(id => encodeURIComponent(id)).join(',')})`;
-          // ★修正: gm_id や player_ids が使われているケースに備えてカラムを追加取得
-          const runsUrl = `/rest/v1/runs?select=id,title,gm,players,gm_id,player_ids&id=in.${runIdsParam}`;
+          // ★修正: in句のカッコごと安全にURLエンコードする
+          const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
+          // ★修正: 存在しない旧カラムを指定するとエラーになるため、安全に select=* に変更
+          const runsUrl = `/rest/v1/runs?select=*&id=in.${runIdsParam}`;
           const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
             headers: {
               apikey: env.SUPABASE_ANON_KEY,
@@ -200,7 +200,11 @@ export default {
           });
           if (runsRes.ok) {
             const runsData = await runsRes.json();
-            runsMap = new Map(runsData.map(r => [r.id, r]));
+            // ★修正: IDが文字列と数値でズレて取得できないのを防ぐため、String() で統一して辞書化
+            runsMap = new Map(runsData.map(r => [String(r.id), r]));
+          } else {
+            // 万が一エラーになった場合はログを残す
+            console.error("Supabase APIエラー(Runs):", await runsRes.text());
           }
         }
 
@@ -213,8 +217,8 @@ export default {
         });
         const allPlayers = mapRes.ok ? await mapRes.json() : [];
         
-        // ★修正: IDからも名前からも引けるようにMapを準備
-        const playerMapById = new Map(allPlayers.map(p => [p.player_id, p]));
+        // ★修正: IDの照合ズレを防ぐため、キーを String() で統一
+        const playerMapById = new Map(allPlayers.map(p => [String(p.player_id), p]));
         const playerMapByName = new Map(allPlayers.map(p => [p.player_name, p]));
 
         // キャラクター一覧を1度だけ取得しておく
@@ -222,7 +226,8 @@ export default {
 
         // 5. 通知の送信
         for (const session of upcomingSessions) {
-          const run = runsMap.get(session.run_id) || {};
+          // ★修正: 取得時も String() に統一して確実に取り出す
+          const run = runsMap.get(String(session.run_id)) || {};
           const runTitle = run.title || "名称未設定の卓";
           const sessionTitle = session.title || session.name || "名称未設定のセッション";
           const streamURL = session.stream_url || "";
@@ -230,18 +235,18 @@ export default {
           const sessionStart = new Date(session.start);
           const timeString = sessionStart.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
 
-          // ★修正: GMの名前とDiscordIDを安全に解決
-          const gmObj = playerMapById.get(run.gm_id) || playerMapByName.get(run.gm);
+          // ★修正: 安全にGMを検索する
+          const gmObj = (run.gm_id ? playerMapById.get(String(run.gm_id)) : null) || (run.gm ? playerMapByName.get(run.gm) : null);
           const gmName = gmObj ? gmObj.player_name : (run.gm || 'GM未定');
           const gmDiscordId = gmObj ? gmObj.discord_id : null;
 
-          // ★修正: PLの名前リストとDiscordIDを安全に解決
+          // ★修正: PLリストを安全に処理
           const displayPlayers = [];
           const playerDiscordIds = [];
           const targetPlayers = (Array.isArray(run.player_ids) && run.player_ids.length > 0) ? run.player_ids : (Array.isArray(run.players) ? run.players : []);
 
           targetPlayers.forEach(identifier => {
-            const pObj = playerMapById.get(identifier) || playerMapByName.get(identifier);
+            const pObj = playerMapById.get(String(identifier)) || playerMapByName.get(identifier);
             if (pObj) {
               displayPlayers.push(`- ${pObj.player_name}`);
               if (pObj.discord_id) playerDiscordIds.push(pObj.discord_id);

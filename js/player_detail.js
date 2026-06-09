@@ -6,7 +6,8 @@ async function main() {
 
   await Utils.initAuthAndHeader('common-nav', '../');
 
-  const playerId = Utils.getQueryParam("id");
+  const playerId = "p-001";
+  //const playerId = Utils.getQueryParam("id");
   if (!playerId) {
     root.innerHTML = "<p>プレイヤーIDが指定されていません</p>";
     return;

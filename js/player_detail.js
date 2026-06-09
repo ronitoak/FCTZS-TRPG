@@ -45,8 +45,8 @@ async function main() {
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-        ${buildScenariosHtml("通過済シナリオ", "今後、通過履歴データと連携して表示します。")}
-        ${buildScenariosHtml("GM可能（所有）シナリオ", "今後、所持ルルブ・シナリオデータを連携して表示します。")}
+        ${buildScenariosHtml("通過済シナリオ", "今後、キャラクターデータから頑張って引っ張ります。")}
+        ${buildScenariosHtml("所有ルルブ・シナリオ", "今後、所持ルルブ・シナリオデータを編集できるようにします。")}
       </div>
     `;
 
@@ -66,7 +66,7 @@ function buildPlayerProfileHtml(player) {
 
   return `
     <section class="player-profile" style="display: flex; align-items: center; gap: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <img src="${Utils.escapeHtml(iconSrc)}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+      <img src="${Utils.escapeHtml(iconSrc)}" alt="画像はどうしようね" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
       <div>
         <h1 style="margin: 0; font-size: 1.8rem; color: #2d3748;">${Utils.escapeHtml(player.player_name)}</h1>
         <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>
@@ -77,11 +77,11 @@ function buildPlayerProfileHtml(player) {
 
 function buildCustomAreaHtml(player) {
   // TODO: 次のステップでデータベースを拡張し、本物の自己紹介データを表示します
-  const profileText = player.profile_text || "まだ自己紹介が登録されていません。（※今後のアップデートで編集できるようになります）";
+  const profileText = player.profile_text || "まだ最強キャラが登録されていません。（※今後のアップデートで編集できるようになります）";
 
   return `
     <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">🎪 催事場（自己紹介・傾向）</h2>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">🎪 催事場（最強キャラランキング）</h2>
       <p style="white-space: pre-wrap; color: #4a5568;">${Utils.escapeHtml(profileText)}</p>
     </section>
   `;
@@ -113,7 +113,7 @@ function buildScheduleHtml(player, runs, sessions) {
     <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">📅 スケジュール・予定卓</h2>
       <div style="color: #718096; padding: 20px 0; text-align: center;">
-        <p>近日中のセッション予定と、稼働可能な空き日程がここに表示されます。</p>
+        <p>自分の予定が入ったカレンダーがここに表示されます。</p>
         <p style="font-size: 0.8rem;">（※今後のアップデートで実装予定）</p>
       </div>
     </section>

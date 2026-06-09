@@ -95,6 +95,8 @@ function buildMyCharactersHtml(characters) {
         <a href="../character/detail.html?id=${c.id}" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; color: inherit; transition: background 0.2s;">
           <img src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
           <span style="font-weight: bold;">${Utils.escapeHtml(c.name)}</span>
+          <span style="">${Utils.escapeHtml(c.job)}</span>
+          <span style="">${Utils.escapeHtml(c.system)}</span>
         </a>
       `).join("")
     : "<p style='color: #a0aec0;'>作成したキャラクターはまだありません。</p>";

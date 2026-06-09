@@ -29,7 +29,9 @@ async function main() {
     }
 
     // このプレイヤーが作成したキャラクター
-    const myCharacters = characters.filter(c => c.player_id === playerId || c.player === player.player_name);
+    const myCharacters = characters
+      .filter(c => c.player_id === playerId || c.player === player.player_name)
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
     // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `

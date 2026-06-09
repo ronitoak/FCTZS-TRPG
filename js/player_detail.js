@@ -66,7 +66,7 @@ function buildPlayerProfileHtml(player) {
 
   return `
     <section class="player-profile" style="display: flex; align-items: center; gap: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <img src="${Utils.escapeHtml(iconSrc)}" alt="画像はどうしようね" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+      <img src="${Utils.escapeHtml(iconSrc)}" alt="画像はどうしようね" style="width: 100px; height: 100px; border-radius: 5%; object-fit: cover; border: 2px solid #e2e8f0;">
       <div>
         <h1 style="margin: 0; font-size: 1.8rem; color: #2d3748;">${Utils.escapeHtml(player.player_name)}</h1>
         <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>

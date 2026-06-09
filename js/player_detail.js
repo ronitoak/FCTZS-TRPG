@@ -33,12 +33,15 @@ async function main() {
 
     // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `
-      ${buildPlayerProfileHtml(player)}
+      <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        ${buildPlayerProfileHtml(player)}
+        ${buildScheduleHtml(player, runs, sessions)}
+      </div>
+
       ${buildCustomAreaHtml(player)}
       
-      <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+      <div style="margin-top: 20px;">
         ${buildMyCharactersHtml(myCharacters)}
-        ${buildScheduleHtml(player, runs, sessions)}
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">

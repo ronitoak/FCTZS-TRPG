@@ -15,37 +15,39 @@ async function main() {
 
   try {
     // 既存のテーブルから並行してデータを取得
-    const [players, profiles, characters, runs, sessions] = await Promise.all([
+    const [players, profiles, characters, runs, sessions, availabilities] = await Promise.all([
       Utils.apiGet("players"),
-      Utils.apiGet("player_profiles").catch(() => []), // ★追加
+      Utils.apiGet("player_profiles").catch(() => []),
       Utils.apiGet("characters").catch(() => []),
       Utils.apiGet("runs").catch(() => []),
-      Utils.apiGet("sessions").catch(() => [])
+      Utils.apiGet("sessions").catch(() => []),
+      Utils.apiGet("player_availability").catch(() => []) // ★追加
     ]);
 
-// プレイヤー情報の特定
+    // --- (中略：既存のプレイヤー・キャラクター特定のコード) ---
     const basePlayer = players.find(p => p.player_id === playerId);
     if (!basePlayer) {
       root.innerHTML = "<p>プレイヤーが見つかりません</p>";
       return;
     }
+    const profileData = profiles.find(p => p.player_id === playerId) || {};
+    const player = { ...basePlayer, ...profileData };
 
-    // ★修正：プロフィール情報を取得し、基本情報と合体させる
-    const profileData = profiles.find(p => p.player_id === playerId);
-    const hasProfileRecord = !!profileData; // プロフィールが既にDBにあるかどうかのフラグ
-    const player = { ...basePlayer, ...(profileData || {}) }; // 空の場合は {} を合体
-
-    // このプレイヤーが作成したキャラクター
     const myCharacters = characters
       .filter(c => c.player_id === playerId || c.player === player.player_name)
       .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+
+    // ★追加：自分の空き日程と、参加しているセッションを抽出
+    const myAvailabilities = availabilities.filter(a => a.player_id === playerId);
+    const myRuns = runs.filter(r => r.gm_id === playerId || (r.player_ids && r.player_ids.includes(playerId)));
+    const myRunIds = myRuns.map(r => r.id);
+    const mySessions = sessions.filter(s => myRunIds.includes(s.run_id) && s._start);
 
     // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
         ${buildPlayerProfileHtml(player)}
-        ${buildScheduleHtml(player, runs, sessions)}
-      </div>
+        ${buildScheduleHtml(player, myAvailabilities, mySessions, myRuns)} </div>
 
       ${buildCustomAreaHtml(player)}
       
@@ -54,8 +56,8 @@ async function main() {
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-        ${buildScenariosHtml("通過済シナリオ", "今後、キャラクターデータから頑張って引っ張ります。")}
-        ${buildScenariosHtml("所有ルルブ・シナリオ", "今後、所持ルルブ・シナリオデータを編集できるようにします。")}
+        ${buildScenariosHtml("通過済シナリオ", "今後、通過履歴データと連携して表示します。")}
+        ${buildScenariosHtml("GM可能（所有）シナリオ", "今後、所持ルルブ・シナリオデータを連携して表示します。")}
       </div>
     `;
 
@@ -173,14 +175,81 @@ function buildMyCharactersHtml(characters) {
   `;
 }
 
-function buildScheduleHtml(player, runs, sessions) {
-  // TODO: 次のステップで正式なスケジュール検索ロジックを組み込みます
+function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
+
+  // 時間帯とステータスの表示用定義
+  const slotLabels = { 'morning': '朝', 'afternoon': '昼', 'night': '夜', 'midnight': '深' };
+  const slotOrder = ['morning', 'afternoon', 'night', 'midnight'];
+  const statusMarks = { 
+    'ok': '<span style="color: #38b2ac; font-weight: bold;">〇</span>', 
+    'maybe': '<span style="color: #d69e2e; font-weight: bold;">△</span>', 
+    'ng': '<span style="color: #e53e3e; font-weight: bold;">×</span>' 
+  };
+
+  let calendarHtml = `
+    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
+      ${["日", "月", "火", "水", "木", "金", "土"].map((d, i) => 
+        `<div style="background: ${i===0 ? '#fed7d7' : i===6 ? '#bee3f8' : '#f7fafc'}; text-align: center; font-weight: bold; padding: 5px; font-size: 0.8rem;">${d}</div>`
+      ).join("")}
+  `;
+
+  for (let i = 0; i < firstDay; i++) {
+    calendarHtml += `<div style="background: #fff; padding: 5px;"></div>`;
+  }
+
+  for (let d = 1; d <= lastDate; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    
+    // 1. その日の空き日程（time_slotごと）を取得してバッジ化
+    const todaysAvails = availabilities.filter(a => a.target_date === dateStr);
+    let availHtml = "";
+    if (todaysAvails.length > 0) {
+      availHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
+      slotOrder.forEach(slot => {
+        const a = todaysAvails.find(x => x.time_slot === slot);
+        if (a && statusMarks[a.status]) {
+          availHtml += `<span style="font-size: 0.65rem; background: #f7fafc; border: 1px solid #cbd5e0; border-radius: 2px; padding: 1px 2px; line-height: 1;">${slotLabels[slot]}${statusMarks[a.status]}</span>`;
+        }
+      });
+      availHtml += `</div>`;
+    }
+
+    // 2. その日のセッションを取得してバッジ化
+    const todaysSessions = mySessions.filter(s => s._start && s._start.startsWith(dateStr));
+    let sessionHtml = "";
+    todaysSessions.forEach(s => {
+      const run = myRuns.find(r => r.id === s.run_id);
+      const title = run ? run.title : "不明な卓";
+      sessionHtml += `<div style="font-size: 0.7rem; background: #4299e1; color: white; border-radius: 2px; padding: 2px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${Utils.escapeHtml(title)}">${Utils.escapeHtml(title)}</div>`;
+    });
+
+    // 今日の日付なら背景色を少し変える
+    const isToday = (d === today.getDate()) ? "background: #fffff0;" : "background: #fff;";
+
+    calendarHtml += `
+      <div style="${isToday} padding: 4px; min-height: 70px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0;">
+        <div style="font-size: 0.8rem; font-weight: bold; text-align: left;">${d}</div>
+        ${availHtml}
+        <div style="flex-grow: 1;">${sessionHtml}</div>
+      </div>
+    `;
+  }
+
+  calendarHtml += `</div>`;
+
   return `
     <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">📅 スケジュール・予定卓</h2>
-      <div style="color: #718096; padding: 20px 0; text-align: center;">
-        <p>自分の予定が入ったカレンダーがここに表示されます。</p>
-        <p style="font-size: 0.8rem;">（※今後のアップデートで実装予定）</p>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+        <span>📅 スケジュール (${year}年${month + 1}月)</span>
+      </h2>
+      <div style="margin-top: 10px;">
+        ${calendarHtml}
       </div>
     </section>
   `;

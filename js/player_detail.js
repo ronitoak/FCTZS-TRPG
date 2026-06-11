@@ -291,20 +291,6 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
   `;
 }
 
-  calendarHtml += `</div>`;
-
-  return `
-    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
-        <span>📅 スケジュール (${year}年${month + 1}月)</span>
-      </h2>
-      <div style="margin-top: 10px;">
-        ${calendarHtml}
-      </div>
-    </section>
-  `;
-}
-
 function buildScenariosHtml(title, description) {
   return `
     <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">

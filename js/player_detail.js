@@ -52,7 +52,7 @@ async function main() {
     
     // 全てのIDを文字列に統一して比較用の配列を作る
     const myRunIds = myRuns.map(r => String(r.id)); 
-    const mySessions = sessions.filter(s => s._start && myRunIds.includes(String(s.run_id)));
+    const mySessions = sessions.filter(s => s.start && myRunIds.includes(String(s.run_id)));
 
     // ★デバッグ用（F12キーの開発者ツール > Consoleでデータが取れているか確認できます）
     console.log("自分が参加する卓:", myRuns);
@@ -237,8 +237,8 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
 
     // 2. その日のセッションを取得してバッジ化
     const todaysSessions = mySessions.filter(s => {
-      if (!s._start) return false;
-      const sDate = new Date(s._start); // どんな形式の日付でもパースする
+      if (!s.start) return false;
+      const sDate = new Date(s.start); // どんな形式の日付でもパースする
       return !isNaN(sDate) && 
              sDate.getFullYear() === year && 
              sDate.getMonth() === month && 

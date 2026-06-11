@@ -238,30 +238,58 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
     // 2. その日のセッションを取得してバッジ化
     const todaysSessions = mySessions.filter(s => {
       if (!s.start) return false;
-      const sDate = new Date(s.start); // どんな形式の日付でもパースする
+      const sDate = new Date(s.start);
       return !isNaN(sDate) && 
              sDate.getFullYear() === year && 
              sDate.getMonth() === month && 
              sDate.getDate() === d;
     });
+
     let sessionHtml = "";
-    todaysSessions.forEach(s => {
-      const run = myRuns.find(r => r.id === s.run_id);
-      const title = run ? run.title : "不明な卓";
-      sessionHtml += `<div style="font-size: 0.7rem; background: #4299e1; color: white; border-radius: 2px; padding: 2px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${Utils.escapeHtml(title)}">${Utils.escapeHtml(title)}</div>`;
-    });
+    if (todaysSessions.length > 0) {
+      // はみ出さないように折り返し（flex-wrap）を設定
+      sessionHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
+      todaysSessions.forEach(s => {
+        const run = myRuns.find(r => r.id === s.run_id);
+        const title = run ? run.title : "不明な卓";
+        
+        // マウスオーバー時に表示するテキスト（開始時間 ＋ 卓タイトル）
+        const sTime = new Date(s.start);
+        const timeStr = `${String(sTime.getHours()).padStart(2, '0')}:${String(sTime.getMinutes()).padStart(2, '0')}`;
+        const tooltipText = `[${timeStr}] ${title}`;
+
+        // 昼夜〇×と同じようなコンパクトなバッジ（文字は「卓」で固定）
+        sessionHtml += `<span style="font-size: 0.65rem; background: #4299e1; color: white; border-radius: 2px; padding: 1px 3px; line-height: 1; cursor: help; display: inline-block;" title="${Utils.escapeHtml(tooltipText)}">卓</span>`;
+      });
+      sessionHtml += `</div>`;
+    }
 
     // 今日の日付なら背景色を少し変える
     const isToday = (d === today.getDate()) ? "background: #fffff0;" : "background: #fff;";
 
+    // ★重要: カレンダーのマスが絶対に広がらないように min-width: 0; と overflow: hidden; を追加
     calendarHtml += `
-      <div style="${isToday} padding: 4px; min-height: 70px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0;">
+      <div style="${isToday} padding: 4px; min-height: 70px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0; min-width: 0; overflow: hidden;">
         <div style="font-size: 0.8rem; font-weight: bold; text-align: left;">${d}</div>
         ${availHtml}
         <div style="flex-grow: 1;">${sessionHtml}</div>
       </div>
     `;
   }
+
+  calendarHtml += `</div>`;
+
+  return `
+    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+        <span>📅 スケジュール (${year}年${month + 1}月)</span>
+      </h2>
+      <div style="margin-top: 10px;">
+        ${calendarHtml}
+      </div>
+    </section>
+  `;
+}
 
   calendarHtml += `</div>`;
 

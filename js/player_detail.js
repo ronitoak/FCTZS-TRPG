@@ -15,19 +15,25 @@ async function main() {
 
   try {
     // 既存のテーブルから並行してデータを取得
-    const [players, characters, runs, sessions] = await Promise.all([
+    const [players, profiles, characters, runs, sessions] = await Promise.all([
       Utils.apiGet("players"),
+      Utils.apiGet("player_profiles").catch(() => []), // ★追加
       Utils.apiGet("characters").catch(() => []),
       Utils.apiGet("runs").catch(() => []),
       Utils.apiGet("sessions").catch(() => [])
     ]);
 
-    // プレイヤー情報の特定
-    const player = players.find(p => p.player_id === playerId);
-    if (!player) {
+// プレイヤー情報の特定
+    const basePlayer = players.find(p => p.player_id === playerId);
+    if (!basePlayer) {
       root.innerHTML = "<p>プレイヤーが見つかりません</p>";
       return;
     }
+
+    // ★修正：プロフィール情報を取得し、基本情報と合体させる
+    const profileData = profiles.find(p => p.player_id === playerId);
+    const hasProfileRecord = !!profileData; // プロフィールが既にDBにあるかどうかのフラグ
+    const player = { ...basePlayer, ...(profileData || {}) }; // 空の場合は {} を合体
 
     // このプレイヤーが作成したキャラクター
     const myCharacters = characters
@@ -53,6 +59,61 @@ async function main() {
       </div>
     `;
 
+  // === プロフィール編集機能のセットアップ ===
+    const editBtn = document.getElementById("btn-edit-profile");
+    const modal = document.getElementById("edit-profile-modal");
+    const closeBtn = document.getElementById("close-profile-modal");
+    const form = document.getElementById("edit-profile-form");
+
+    if (editBtn && modal) {
+      // 編集ボタンを押したらモーダルを開く
+      editBtn.addEventListener("click", () => {
+        form.icon_url.value = player.icon_url || "";
+        form.profile_text.value = player.profile_text || "";
+        form.owned_scenarios.value = player.owned_scenarios || "";
+        form.tier_list_first.value = player.tier_list_first || "";
+        form.tier_list_second.value = player.tier_list_second || "";
+        form.tier_list_third.value = player.tier_list_third || "";
+        modal.showModal();
+      });
+
+      // 閉じるボタン
+      closeBtn.addEventListener("click", () => modal.close());
+
+      // 保存処理
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector("button[type='submit']");
+        submitBtn.disabled = true;
+
+        const payload = {
+          player_id: playerId,
+          icon_url: form.icon_url.value.trim(),
+          profile_text: form.profile_text.value.trim(),
+          owned_scenarios: form.owned_scenarios.value.trim(),
+          tier_list_first: form.tier_list_first.value.trim(),
+          tier_list_second: form.tier_list_second.value.trim(),
+          tier_list_third: form.tier_list_third.value.trim()
+        };
+
+        try {
+          if (hasProfileRecord) {
+            // すでにデータがある場合は更新 (PATCH)
+            await Utils.apiPatch("player_profiles", payload, `player_id=eq.${playerId}`);
+          } else {
+            // 初めて設定する場合は新規作成 (POST)
+            await Utils.apiPost("player_profiles", payload);
+          }
+          alert("プロフィールを更新しました！");
+          location.reload();
+        } catch (err) {
+          console.error(err);
+          alert("更新に失敗しました: " + err.message);
+          submitBtn.disabled = false;
+        }
+      });
+    }
+
   } catch (err) {
     console.error(err);
     root.innerHTML = "<p>データの読み込みに失敗しました。</p>";
@@ -64,16 +125,16 @@ async function main() {
 // ==========================================
 
 function buildPlayerProfileHtml(player) {
-  // アイコン画像がない場合のフォールバック（デフォルト画像）
   const iconSrc = player.icon_url || "../img/default_player_icon.png"; 
 
   return `
-    <section class="player-profile" style="display: flex; align-items: center; gap: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <img src="${Utils.escapeHtml(iconSrc)}" alt="画像はどうしようね" style="width: 100px; height: 100px; border-radius: 5%; object-fit: cover; border: 2px solid #e2e8f0;">
+    <section class="player-profile" style="position: relative; display: flex; align-items: center; gap: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <img src="${Utils.escapeHtml(iconSrc)}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
       <div>
         <h1 style="margin: 0; font-size: 1.8rem; color: #2d3748;">${Utils.escapeHtml(player.player_name)}</h1>
         <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>
       </div>
+      <button id="btn-edit-profile" style="position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: #4a5568; color: #fff; border: none; border-radius: 4px; cursor: pointer;">📝</button>
     </section>
   `;
 }

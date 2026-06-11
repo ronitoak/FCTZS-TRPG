@@ -39,9 +39,24 @@ async function main() {
 
     // ★追加：自分の空き日程と、参加しているセッションを抽出
     const myAvailabilities = availabilities.filter(a => a.player_id === playerId);
-    const myRuns = runs.filter(r => r.gm_id === playerId || (r.player_ids && r.player_ids.includes(playerId)));
-    const myRunIds = myRuns.map(r => r.id);
-    const mySessions = sessions.filter(s => myRunIds.includes(s.run_id) && s._start);
+    const myRuns = runs.filter(r => {
+      const isGM = String(r.gm_id) === String(playerId);
+      let isPL = false;
+      if (Array.isArray(r.player_ids)) {
+        isPL = r.player_ids.some(id => String(id) === String(playerId));
+      } else if (typeof r.player_ids === 'string') {
+        isPL = r.player_ids.includes(String(playerId));
+      }
+      return isGM || isPL;
+    });
+    
+    // 全てのIDを文字列に統一して比較用の配列を作る
+    const myRunIds = myRuns.map(r => String(r.id)); 
+    const mySessions = sessions.filter(s => s._start && myRunIds.includes(String(s.run_id)));
+
+    // ★デバッグ用（F12キーの開発者ツール > Consoleでデータが取れているか確認できます）
+    console.log("自分が参加する卓:", myRuns);
+    console.log("卓に紐づくセッション:", mySessions);
 
     // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `
@@ -221,7 +236,14 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
     }
 
     // 2. その日のセッションを取得してバッジ化
-    const todaysSessions = mySessions.filter(s => s._start && s._start.startsWith(dateStr));
+    const todaysSessions = mySessions.filter(s => {
+      if (!s._start) return false;
+      const sDate = new Date(s._start); // どんな形式の日付でもパースする
+      return !isNaN(sDate) && 
+             sDate.getFullYear() === year && 
+             sDate.getMonth() === month && 
+             sDate.getDate() === d;
+    });
     let sessionHtml = "";
     todaysSessions.forEach(s => {
       const run = myRuns.find(r => r.id === s.run_id);

@@ -184,8 +184,8 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
   const lastDate = new Date(year, month + 1, 0).getDate();
 
   // 時間帯とステータスの表示用定義
-  const slotLabels = { 'morning': '朝', 'afternoon': '昼', 'night': '夜', 'midnight': '深' };
-  const slotOrder = ['morning', 'afternoon', 'night', 'midnight'];
+  const slotLabels = {'afternoon': '昼', 'night': '夜'};
+  const slotOrder = ['afternoon', 'night'];
   const statusMarks = { 
     'ok': '<span style="color: #38b2ac; font-weight: bold;">〇</span>', 
     'maybe': '<span style="color: #d69e2e; font-weight: bold;">△</span>', 

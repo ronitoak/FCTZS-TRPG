@@ -587,14 +587,10 @@ async function main() {
           const timeMatch = rawDateStr.match(/(\d{1,2}):(\d{2})/);
           if (timeMatch) {
               const hour = parseInt(timeMatch[1], 10);
-              if (hour >= 5 && hour < 12) timeSlot = "morning";
-              else if (hour >= 12 && hour < 18) timeSlot = "afternoon";
-              else if (hour >= 18 && hour <= 23) timeSlot = "night";
-              else timeSlot = "midnight";
+              if (hour < 18) timeSlot = "afternoon";
+              else timeSlot = "night";
           } else {
-              if (rawDateStr.includes("朝")) timeSlot = "morning";
-              else if (rawDateStr.includes("昼")) timeSlot = "afternoon";
-              else if (rawDateStr.includes("深夜")) timeSlot = "midnight";
+              if (rawDateStr.includes("昼")) timeSlot = "afternoon";
               else if (rawDateStr.includes("夜")) timeSlot = "night";
           }
 

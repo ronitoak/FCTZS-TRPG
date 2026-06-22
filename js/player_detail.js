@@ -95,8 +95,8 @@ async function main() {
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-        ${buildScenariosHtml("通過済シナリオ", passedScenarios)}
-        ${buildScenariosHtml("GM可能（所有）シナリオ", gmScenarios, "GM履歴はまだありません。")}
+        ${buildScenariosHtml("PL通過済シナリオ", passedScenarios)}
+        ${buildScenariosHtml("GM経験済シナリオ", gmScenarios, "GM履歴はまだありません。")}
       </div>
     `;
 

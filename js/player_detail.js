@@ -188,7 +188,7 @@ function buildCustomAreaHtml(player) {
 
   return `
     <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">🎪 催事場（最強キャラランキング）</h2>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">最強キャラランキング</h2>
       <p style="white-space: pre-wrap; color: #4a5568;">${Utils.escapeHtml(profileText)}</p>
     </section>
   `;
@@ -208,7 +208,7 @@ function buildMyCharactersHtml(characters) {
 
   return `
     <section class="player-characters" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">👥 作成キャラクター</h2>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">作成キャラクター</h2>
       <div style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
         ${charsList}
       </div>
@@ -294,7 +294,7 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns, year, mon
   return `
     <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%;">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
-        <span>📅 スケジュール</span>
+        <span>スケジュール</span>
         <!-- ★ ヘッダーに切り替えボタンを追加 -->
         <div style="display: flex; align-items: center; gap: 10px; font-size: 1rem;">
           <button id="btn-prev-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">◀</button>

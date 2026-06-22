@@ -133,21 +133,6 @@ function renderRecruitments() {
                 <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">現在の参加者:</div>
                 <div class="applicant-list">${applicantsHtml}</div>
             </div>
-            
-            ${!isFulfilled ? `
-                <div style="margin-top: 16px; display: flex; gap: 8px;">
-                    <select class="form-control join-player-select" style="flex: 1;">
-                        <option value="">-- 参加するプレイヤー --</option>
-                        ${unjoinedPlayers.map(p => `<option value="${Utils.escapeHtml(p.player_id)}">${Utils.escapeHtml(p.player_name)}</option>`).join("")}
-                    </select>
-                    <button class="btn-primary btn-join" data-id="${recruit.id}" style="white-space: nowrap;">参加する</button>
-                </div>
-            ` : `
-                <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <a href="../schedule/index.html" class="btn-secondary" style="font-size: 0.85rem;">日程調整へ進む ▶</a>
-                    <button class="btn-close-recruit" data-id="${recruit.id}" style="font-size: 0.8rem; background: none; border: 1px solid #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px;">募集を終了する</button>
-                </div>
-            `}
         `;
 
         container.appendChild(card);

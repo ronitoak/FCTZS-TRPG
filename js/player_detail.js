@@ -60,9 +60,14 @@ async function main() {
 
     // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `
-      <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-        ${buildPlayerProfileHtml(player)}
-        ${buildScheduleHtml(player, myAvailabilities, mySessions, myRuns)} </div>
+      <div class="player-detail-grid" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+        <div style="flex: 1 1 300px; max-width: 450px;">
+          ${buildPlayerProfileHtml(player)}
+        </div>
+        <div style="flex: 2 1 500px;">
+          ${buildScheduleHtml(player, myAvailabilities, mySessions, myRuns)}
+        </div>
+      </div>
 
       ${buildCustomAreaHtml(player)}
       

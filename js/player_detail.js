@@ -21,7 +21,7 @@ async function main() {
       Utils.apiGet("characters").catch(() => []),
       Utils.apiGet("runs").catch(() => []),
       Utils.apiGet("sessions").catch(() => []),
-      Utils.apiGet("player_availability").catch(() => []) // ★追加
+      Utils.apiGet(`player_availability?player_id=eq.${playerId}`).catch(() => [])
     ]);
 
     // --- (中略：既存のプレイヤー・キャラクター特定のコード) ---

@@ -40,7 +40,7 @@ async function main() {
 
     // ★追加：自分の空き日程と、参加しているセッションを抽出
     const myAvailabilities = availabilities.filter(a => a.player_id === playerId);
-    const myRuns = runs.filter(r => {
+    const myRunsGM = runs.filter(r => {
       const isGM = String(r.gm_id) === String(playerId);
       let isPL = false;
       if (Array.isArray(r.player_ids)) {
@@ -48,17 +48,34 @@ async function main() {
       } else if (typeof r.player_ids === 'string') {
         isPL = r.player_ids.includes(String(playerId));
       }
-      return isGM || isPL;
+      return isGM;
     });
     
-    // 全てのIDを文字列に統一して比較用の配列を作る
-    const myRunIds = myRuns.map(r => String(r.id)); 
+    const myRunsGM = runs.filter(r => String(r.gm_id) === String(playerId));
+    const myRunsPL = runs.filter(r => {
+      let isPL = false;
+      if (Array.isArray(r.player_ids)) {
+        isPL = r.player_ids.some(id => String(id) === String(playerId));
+      } else if (typeof r.player_ids === 'string') {
+        isPL = r.player_ids.includes(String(playerId));
+      }
+      return isPL;
+    });
+    
+    // 全てのIDを文字列に統一して比較用の配列を作る（GMとPL両方を合体！）
+    const myRunsAll = [...myRunsGM, ...myRunsPL];
+    const myRunIds = myRunsAll.map(r => String(r.id));
     const mySessions = sessions.filter(s => s.start && myRunIds.includes(String(s.run_id)));
 
-    // ★追加2：通過済（ステータスが 'done'）の卓からシナリオ情報を抽出する
-    const passedRuns = myRuns.filter(r => r.status === "done" && r.scenario_id);
+    // 通過済（PLとして参加し、ステータスが 'done'）のシナリオを抽出
+    const passedRuns = myRunsPL.filter(r => r.status === "done" && r.scenario_id);
     const passedScenarioIds = [...new Set(passedRuns.map(r => r.scenario_id))]; // 重複を排除
     const passedScenarios = (scenarios || []).filter(s => passedScenarioIds.includes(s.id));
+
+    // ★追加：GM可能（GMとして参加予定、または完了済）のシナリオを抽出
+    const gmRuns = myRunsGM.filter(r => r.scenario_id);
+    const gmScenarioIds = [...new Set(gmRuns.map(r => r.scenario_id))]; // 重複を排除
+    const gmScenarios = (scenarios || []).filter(s => gmScenarioIds.includes(s.id));
 
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth();
@@ -66,7 +83,8 @@ async function main() {
     function renderSchedule() {
       const wrapper = document.getElementById("schedule-wrapper");
       if (wrapper) {
-        wrapper.innerHTML = buildScheduleHtml(player, myAvailabilities, mySessions, myRuns, currentYear, currentMonth);
+        // ★修正：myRunsPL ではなく myRunsAll を渡すことでGM卓もカレンダーにタイトル表示
+        wrapper.innerHTML = buildScheduleHtml(player, myAvailabilities, mySessions, myRunsAll, currentYear, currentMonth);
       }
     }
 
@@ -76,9 +94,8 @@ async function main() {
         <div style="flex: 1 1 300px; max-width: 450px;">
           ${buildPlayerProfileHtml(player)}
         </div>
-        <!-- ★修正2：idを追加し、引数に年月を渡す -->
         <div id="schedule-wrapper" style="flex: 2 1 500px;">
-          ${buildScheduleHtml(player, myAvailabilities, mySessions, myRuns, currentYear, currentMonth)}
+          ${buildScheduleHtml(player, myAvailabilities, mySessions, myRunsAll, currentYear, currentMonth)}
         </div>
       </div>
 
@@ -90,7 +107,7 @@ async function main() {
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
         ${buildScenariosHtml("通過済シナリオ", passedScenarios)}
-        ${buildScenariosHtml("GM可能（所有）シナリオ", [], "今後、所持ルルブ・シナリオデータを連携して表示します。")}
+        ${buildScenariosHtml("GM可能（所有）シナリオ", gmScenarios, "GM履歴はまだありません。")}
       </div>
     `;
 
@@ -222,7 +239,7 @@ function buildMyCharactersHtml(characters) {
 }
 
 // ★修正4：引数に year と month を追加
-function buildScheduleHtml(player, availabilities, mySessions, myRuns, year, month) {
+function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, month) {
   const today = new Date();
   const firstDay = new Date(year, month, 1).getDay();
   const lastDate = new Date(year, month + 1, 0).getDate();
@@ -272,7 +289,7 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns, year, mon
     if (todaysSessions.length > 0) {
       sessionHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
       todaysSessions.forEach(s => {
-        const run = myRuns.find(r => r.id === s.run_id);
+        const run = myRunsAll.find(r => r.id === s.run_id);
         const title = run ? run.title : "不明な卓";
         const sTime = new Date(s.start);
         const timeStr = `${String(sTime.getHours()).padStart(2, '0')}:${String(sTime.getMinutes()).padStart(2, '0')}`;

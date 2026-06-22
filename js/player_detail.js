@@ -21,7 +21,8 @@ async function main() {
       Utils.apiGet("characters").catch(() => []),
       Utils.apiGet("runs").catch(() => []),
       Utils.apiGet("sessions").catch(() => []),
-      Utils.apiGet(`player_availability?player_id=eq.${playerId}`).catch(() => [])
+      Utils.apiGet(`player_availability?player_id=eq.${playerId}`).catch(() => []),
+      Utils.apiGet("scenarios").catch(() => []) // ★追加
     ]);
 
     // --- (中略：既存のプレイヤー・キャラクター特定のコード) ---
@@ -54,7 +55,11 @@ async function main() {
     const myRunIds = myRuns.map(r => String(r.id)); 
     const mySessions = sessions.filter(s => s.start && myRunIds.includes(String(s.run_id)));
 
-    // ★追加1：カレンダーの表示年月を管理する変数と再描画関数
+    // ★追加2：通過済（ステータスが 'done'）の卓からシナリオ情報を抽出する
+    const passedRuns = myRuns.filter(r => r.status === "done" && r.scenario_id);
+    const passedScenarioIds = [...new Set(passedRuns.map(r => r.scenario_id))]; // 重複を排除
+    const passedScenarios = (scenarios || []).filter(s => passedScenarioIds.includes(s.id));
+
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth();
 
@@ -84,8 +89,8 @@ async function main() {
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-        ${buildScenariosHtml("通過済シナリオ", "今後、通過履歴データと連携して表示します。")}
-        ${buildScenariosHtml("GM可能（所有）シナリオ", "今後、所持ルルブ・シナリオデータを連携して表示します。")}
+        ${buildScenariosHtml("通過済シナリオ", passedScenarios)}
+        ${buildScenariosHtml("GM可能（所有）シナリオ", [], "今後、所持ルルブ・シナリオデータを連携して表示します。")}
       </div>
     `;
 
@@ -309,12 +314,26 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns, year, mon
   `;
 }
 
-function buildScenariosHtml(title, description) {
+function buildScenariosHtml(title, scenariosList, fallbackText = "通過履歴はまだありません。") {
+  let contentHtml = "";
+  
+  if (scenariosList && scenariosList.length > 0) {
+    contentHtml = `<ul style="margin: 0; padding-left: 25px; color: #4a5568; line-height: 1.8;">`;
+    scenariosList.forEach(s => {
+      // システム名（CoC6など）がある場合は横に小さく表示
+      const systemTag = s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">${Utils.escapeHtml(s.system)}</span>` : "";
+      contentHtml += `<li><span style="font-weight: bold;">${Utils.escapeHtml(s.title)}</span>${systemTag}</li>`;
+    });
+    contentHtml += `</ul>`;
+  } else {
+    contentHtml = `<p style="text-align: center; color: #a0aec0;">${Utils.escapeHtml(fallbackText)}</p>`;
+  }
+
   return `
-    <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">📚 ${Utils.escapeHtml(title)}</h2>
-      <div style="color: #718096; padding: 20px 0; text-align: center;">
-        <p>${Utils.escapeHtml(description)}</p>
+      <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 250px;">
+        ${contentHtml}
       </div>
     </section>
   `;

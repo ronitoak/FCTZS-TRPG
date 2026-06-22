@@ -89,6 +89,7 @@ function renderDetail() {
         <div class="scenario-detail-info">
             <h2 class="scenario-detail-h2">募集情報</h2>
             <div class="scenario-info-meta">
+                <div><strong>シナリオ</strong> ${scenarioObj ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(currentRecruit.scenario_id)}">${Utils.escapeHtml(scenarioName ?? currentRecruit.scenario_id)}</a>` : "（不明）"}</div>
                 <div><strong>募集主:</strong> ${Utils.escapeHtml(ownerName)}</div>
                 <div><strong>募集状態:</strong> ${Utils.escapeHtml(statusText)}</div>
                 <div><strong>募集人数:</strong> ${currentRecruit.target_count}人 （現在の応募: ${currentApplicants.length}人）</div>

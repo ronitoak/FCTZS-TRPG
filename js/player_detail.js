@@ -337,7 +337,7 @@ function buildScenariosHtml(title, scenariosList, fallbackText = "通過履歴�
 
   return `
     <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;"> ${Utils.escapeHtml(title)} ${scenariosList ? `(${scenariosList.length})` : ''}</h2>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;"> ${Utils.escapeHtml(title)} ${scenariosList ? `(${scenariosList.length})本` : ''}</h2>
       <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 250px;">
         ${contentHtml}
       </div>

@@ -40,17 +40,6 @@ async function main() {
 
     // ★追加：自分の空き日程と、参加しているセッションを抽出
     const myAvailabilities = availabilities.filter(a => a.player_id === playerId);
-    const myRunsGM = runs.filter(r => {
-      const isGM = String(r.gm_id) === String(playerId);
-      let isPL = false;
-      if (Array.isArray(r.player_ids)) {
-        isPL = r.player_ids.some(id => String(id) === String(playerId));
-      } else if (typeof r.player_ids === 'string') {
-        isPL = r.player_ids.includes(String(playerId));
-      }
-      return isGM;
-    });
-    
     const myRunsGM = runs.filter(r => String(r.gm_id) === String(playerId));
     const myRunsPL = runs.filter(r => {
       let isPL = false;

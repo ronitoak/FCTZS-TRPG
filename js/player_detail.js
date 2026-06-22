@@ -126,9 +126,6 @@ async function main() {
 
     if (editBtn && modal) {
       editBtn.addEventListener("click", () => {
-        form.icon_url.value = player.icon_url || "";
-        form.profile_text.value = player.profile_text || "";
-        form.owned_scenarios.value = player.owned_scenarios || "";
         form.tier_list_first.value = player.tier_list_first || "";
         form.tier_list_second.value = player.tier_list_second || "";
         form.tier_list_third.value = player.tier_list_third || "";
@@ -153,9 +150,6 @@ async function main() {
 
         const payload = {
           player_id: playerId,
-          icon_url: form.icon_url.value.trim(),
-          profile_text: form.profile_text.value.trim(),
-          owned_scenarios: form.owned_scenarios.value.trim(),
           tier_list_first: form.tier_list_first.value.trim(),
           tier_list_second: form.tier_list_second.value.trim(),
           tier_list_third: form.tier_list_third.value.trim(),
@@ -195,12 +189,11 @@ async function main() {
 // ==========================================
 
 function buildPlayerProfileHtml(player) {
-  const iconSrc = player.icon_url || "../img/default_player_icon.png"; 
 
   return `
     <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
       <div style="display: flex; align-items: center; gap: 20px;">
-        <img src="${Utils.escapeHtml(iconSrc)}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+        <img src="${Utils.DEFAULT_CHARACTER_IMAGE}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
         <div>
           <h1 style="margin: 0; font-size: 1.8rem; color: #2d3748;">${Utils.escapeHtml(player.player_name)}</h1>
           <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>

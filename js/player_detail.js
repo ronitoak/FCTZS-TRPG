@@ -15,7 +15,7 @@ async function main() {
 
   try {
     // 既存のテーブルから並行してデータを取得
-    const [players, profiles, characters, runs, sessions, availabilities] = await Promise.all([
+    const [players, profiles, characters, runs, sessions, availabilities, scenarios] = await Promise.all([
       Utils.apiGet("players"),
       Utils.apiGet("player_profiles").catch(() => []),
       Utils.apiGet("characters").catch(() => []),

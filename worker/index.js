@@ -561,6 +561,13 @@ async function handleGet(request, env, url) {
     }
 
     // ---- Schedule & Players ----
+    // ★追加：プレイヤープロフィールの取得を開通
+    if (request.method === "GET" && url.pathname === "/api/player_profiles") {
+      const apiUrl = `/rest/v1/player_profiles${url.search || "?select=*"}`;
+      const { res, text } = await sbGet(apiUrl, request);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
     // プレイヤー一覧の取得
     if (request.method === "GET" && url.pathname === "/api/players") {
       const apiUrl = `/rest/v1/players${url.search || "?select=*"}`;

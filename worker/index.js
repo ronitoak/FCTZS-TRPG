@@ -314,7 +314,7 @@ export default {
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         const thresholdISO = oneMonthAgo.toISOString();
 
-        const fetchOldRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id,owner_player_id,scenario_id`, {
+        const fetchOldRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id,owner_player_id,scenario_id,status`, {
           headers: {
             apikey: env.SUPABASE_ANON_KEY,
             Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -389,15 +389,17 @@ export default {
             const mentions = [];
             const scenarioTitles = [];
             for (const recruit of oldRecruits) {
-              const discordId = discordIdMap.get(recruit.owner_player_id);
-              const scenarioTitle = scenarioTitleMap.get(recruit.scenario_id);
-              if (discordId) {
-                mentions.push(`<@${discordId}>`);
-              } else {
-                mentions.push(`(Discord未連携の募集主様)`);
-              }
-              if (scenarioTitle) {
-                scenarioTitles.push(scenarioTitle);
+              if (recruit.status === 'open') {
+                const discordId = discordIdMap.get(recruit.owner_player_id);
+                const scenarioTitle = scenarioTitleMap.get(recruit.scenario_id);
+                if (discordId) {
+                  mentions.push(`<@${discordId}>`);
+                } else {
+                  mentions.push(`(Discord未連携の募集主様)`);
+                }
+                if (scenarioTitle) {
+                  scenarioTitles.push(scenarioTitle);
+                }
               }
             }
             
@@ -1257,63 +1259,6 @@ async function handlePost(request, env, ctx, url) {
       }
     }
 
-    async function registerParticipant(recruitmentId, discordUser, env) {
-      try {
-        // 1. Discord ID を使って players テーブルから player_id を検索
-        // ※ players テーブルに discord_id カラムがあることを前提としています
-        const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?discord_id=eq.${discordUser.id}&select=player_id,player_name`, {
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-          }
-        });
-
-        if (!playerRes.ok) {
-          throw new Error(`Player lookup failed: ${await playerRes.text()}`);
-        }
-
-        const playerData = await playerRes.json();
-        const player = playerData[0];
-
-        // システム（playersテーブル）に登録がないユーザーがボタンを押した場合
-        if (!player) {
-          throw new Error("PLAYER_NOT_FOUND");
-        }
-
-        // 2. recruitment_applicants テーブルへ登録（インサート）
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            // 複合主キーによる重複（二重登録）があった場合はエラーにせず無視する設定
-            "Prefer": "return=representation,resolution=ignore-duplicates"
-          },
-          body: JSON.stringify({
-            recruitment_id: recruitmentId,
-            player_id: player.player_id
-          })
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          // 重複エラー以外のエラーが発生した場合は例外を投げる
-          throw new Error(`Insert failed: ${errorText}`);
-        }
-
-        // ★ 追加: 登録成功時に満員チェックを走らせる
-        // （この関数自体がすでにctx.waitUntilの中で呼ばれているので、awaitでそのまま実行してOKです）
-        await checkAndNotifyIfFulfilled(recruitmentId, env);
-
-        return { success: true, playerName: player.player_name };
-      } catch (e) {
-        console.error("registerParticipant 内でエラー:", e.message);
-        throw e; // 上位の interaction 処理でエラーを検知させるため
-      }
-    }
-
-
     // ---- ここからナイトレインツール ----
     // ユーザー所持遺物の登録
     if (request.method === "POST" && url.pathname === "/api/nightreign/user_relics") {
@@ -1336,6 +1281,7 @@ async function handlePost(request, env, ctx, url) {
     }
 
 }
+
 
 async function handlePatch(request, env, ctx, url) {
 
@@ -1468,6 +1414,65 @@ async function syncCharacterScenarios(runData, env) {
     },
     body: JSON.stringify(records),
   });
+}
+
+// ==========================================
+// 参加登録の共通関数（★ここにお引っ越し！）
+// ==========================================
+async function registerParticipant(recruitmentId, discordUser, env) {
+  try {
+    // 1. Discord ID を使って players テーブルから player_id を検索
+    // ※ players テーブルに discord_id カラムがあることを前提としています
+    const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?discord_id=eq.${discordUser.id}&select=player_id,player_name`, {
+      headers: {
+        apikey: env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+      }
+    });
+
+    if (!playerRes.ok) {
+      throw new Error(`Player lookup failed: ${await playerRes.text()}`);
+    }
+
+    const playerData = await playerRes.json();
+    const player = playerData[0];
+
+    // システム（playersテーブル）に登録がないユーザーがボタンを押した場合
+    if (!player) {
+      throw new Error("PLAYER_NOT_FOUND");
+    }
+
+    // 2. recruitment_applicants テーブルへ登録（インサート）
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants`, {
+      method: "POST",
+      headers: {
+        apikey: env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        // 複合主キーによる重複（二重登録）があった場合はエラーにせず無視する設定
+        "Prefer": "return=representation,resolution=ignore-duplicates"
+      },
+      body: JSON.stringify({
+        recruitment_id: recruitmentId,
+        player_id: player.player_id
+      })
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      // 重複エラー以外のエラーが発生した場合は例外を投げる
+      throw new Error(`Insert failed: ${errorText}`);
+    }
+
+    // ★ 追加: 登録成功時に満員チェックを走らせる
+    // （この関数自体がすでにctx.waitUntilの中で呼ばれているので、awaitでそのまま実行してOKです）
+    await checkAndNotifyIfFulfilled(recruitmentId, env);
+
+    return { success: true, playerName: player.player_name };
+  } catch (e) {
+    console.error("registerParticipant 内でエラー:", e.message);
+    throw e; // 上位の interaction 処理でエラーを検知させるため
+  }
 }
 
 // ==========================================

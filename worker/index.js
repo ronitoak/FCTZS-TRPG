@@ -1119,6 +1119,31 @@ async function handlePost(request, env, ctx, url) {
     }
   }
 
+  // ---- players ----
+  if (request.method === "POST" && url.pathname === "/api/player_profiles") {
+    try {
+      const body = await request.json();
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/player_profiles`, {
+        method: "POST",
+        headers: {
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation"
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        return new Response(JSON.stringify({ error: "Player profile creation failed", detail: err }), { status: res.status, headers: jsonHeaders });
+      }
+
+      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    }
+  }
 
     async function recruited(data, env) {
     try {
@@ -1289,7 +1314,7 @@ async function handlePatch(request, env, ctx, url) {
     const resource = url.pathname.replace("/api/", ""); // "runs", "characters" 等を取得
     
     // 許可するリソースのホワイトリスト（セキュリティのため）
-    const allowedResources = ["sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants"];
+    const allowedResources = ["sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants", "player_profiles"];
     
     if (allowedResources.includes(resource)) {
       try {

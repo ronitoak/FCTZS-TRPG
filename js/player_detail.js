@@ -31,8 +31,10 @@ async function main() {
       root.innerHTML = "<p>プレイヤーが見つかりません</p>";
       return;
     }
-    const profileData = profiles.find(p => p.player_id === playerId) || {};
-    const player = { ...basePlayer, ...profileData };
+    // ★修正：プロフィールデータが存在するかどうかをチェックして変数に保存する
+    const profileData = profiles.find(p => p.player_id === playerId);
+    const hasProfileRecord = profileData !== undefined; // データがあれば true、なければ false
+    const player = { ...basePlayer, ...(profileData || {}) };
 
     const myCharacters = characters
       .filter(c => c.player_id === playerId || c.player === player.player_name)

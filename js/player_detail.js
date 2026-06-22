@@ -54,9 +54,16 @@ async function main() {
     const myRunIds = myRuns.map(r => String(r.id)); 
     const mySessions = sessions.filter(s => s.start && myRunIds.includes(String(s.run_id)));
 
-    // ★デバッグ用（F12キーの開発者ツール > Consoleでデータが取れているか確認できます）
-    console.log("自分が参加する卓:", myRuns);
-    console.log("卓に紐づくセッション:", mySessions);
+    // ★追加1：カレンダーの表示年月を管理する変数と再描画関数
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
+
+    function renderSchedule() {
+      const wrapper = document.getElementById("schedule-wrapper");
+      if (wrapper) {
+        wrapper.innerHTML = buildScheduleHtml(player, myAvailabilities, mySessions, myRuns, currentYear, currentMonth);
+      }
+    }
 
     // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `
@@ -64,8 +71,9 @@ async function main() {
         <div style="flex: 1 1 300px; max-width: 450px;">
           ${buildPlayerProfileHtml(player)}
         </div>
-        <div style="flex: 2 1 500px;">
-          ${buildScheduleHtml(player, myAvailabilities, mySessions, myRuns)}
+        <!-- ★修正2：idを追加し、引数に年月を渡す -->
+        <div id="schedule-wrapper" style="flex: 2 1 500px;">
+          ${buildScheduleHtml(player, myAvailabilities, mySessions, myRuns, currentYear, currentMonth)}
         </div>
       </div>
 
@@ -80,6 +88,19 @@ async function main() {
         ${buildScenariosHtml("GM可能（所有）シナリオ", "今後、所持ルルブ・シナリオデータを連携して表示します。")}
       </div>
     `;
+
+    // ★追加3：カレンダーの月切り替えイベント
+    root.addEventListener("click", (e) => {
+      if (e.target.closest("#btn-prev-month")) {
+        currentMonth--;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        renderSchedule();
+      } else if (e.target.closest("#btn-next-month")) {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        renderSchedule();
+      }
+    });
 
   // === プロフィール編集機能のセットアップ ===
     const editBtn = document.getElementById("btn-edit-profile");
@@ -195,15 +216,12 @@ function buildMyCharactersHtml(characters) {
   `;
 }
 
-function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
+// ★修正4：引数に year と month を追加
+function buildScheduleHtml(player, availabilities, mySessions, myRuns, year, month) {
   const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-
   const firstDay = new Date(year, month, 1).getDay();
   const lastDate = new Date(year, month + 1, 0).getDate();
 
-  // 時間帯とステータスの表示用定義
   const slotLabels = {'afternoon': '昼', 'night': '夜'};
   const slotOrder = ['afternoon', 'night'];
   const statusMarks = { 
@@ -226,7 +244,6 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
   for (let d = 1; d <= lastDate; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     
-    // 1. その日の空き日程（time_slotごと）を取得してバッジ化
     const todaysAvails = availabilities.filter(a => a.target_date === dateStr);
     let availHtml = "";
     if (todaysAvails.length > 0) {
@@ -240,39 +257,29 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
       availHtml += `</div>`;
     }
 
-    // 2. その日のセッションを取得してバッジ化
     const todaysSessions = mySessions.filter(s => {
       if (!s.start) return false;
       const sDate = new Date(s.start);
-      return !isNaN(sDate) && 
-             sDate.getFullYear() === year && 
-             sDate.getMonth() === month && 
-             sDate.getDate() === d;
+      return !isNaN(sDate) && sDate.getFullYear() === year && sDate.getMonth() === month && sDate.getDate() === d;
     });
 
     let sessionHtml = "";
     if (todaysSessions.length > 0) {
-      // はみ出さないように折り返し（flex-wrap）を設定
       sessionHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
       todaysSessions.forEach(s => {
         const run = myRuns.find(r => r.id === s.run_id);
         const title = run ? run.title : "不明な卓";
-        
-        // マウスオーバー時に表示するテキスト（開始時間 ＋ 卓タイトル）
         const sTime = new Date(s.start);
         const timeStr = `${String(sTime.getHours()).padStart(2, '0')}:${String(sTime.getMinutes()).padStart(2, '0')}`;
         const tooltipText = `[${timeStr}] ${title}`;
-
-        // 昼夜〇×と同じようなコンパクトなバッジ（文字は「卓」で固定）
         sessionHtml += `<span style="font-size: 0.65rem; background: #4299e1; color: white; border-radius: 2px; padding: 1px 3px; line-height: 1; cursor: help; display: inline-block;" title="${Utils.escapeHtml(tooltipText)}">卓</span>`;
       });
       sessionHtml += `</div>`;
     }
 
-    // 今日の日付なら背景色を少し変える
-    const isToday = (d === today.getDate()) ? "background: #fffff0;" : "background: #fff;";
+    // ★ 今日の日付判定も、表示している年・月が現在と一致しているかを考慮する
+    const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? "background: #fffff0;" : "background: #fff;";
 
-    // ★重要: カレンダーのマスが絶対に広がらないように min-width: 0; と overflow: hidden; を追加
     calendarHtml += `
       <div style="${isToday} padding: 4px; min-height: 70px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0; min-width: 0; overflow: hidden;">
         <div style="font-size: 0.8rem; font-weight: bold; text-align: left;">${d}</div>
@@ -285,9 +292,15 @@ function buildScheduleHtml(player, availabilities, mySessions, myRuns) {
   calendarHtml += `</div>`;
 
   return `
-    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%;">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
-        <span>📅 スケジュール (${year}年${month + 1}月)</span>
+        <span>📅 スケジュール</span>
+        <!-- ★ ヘッダーに切り替えボタンを追加 -->
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 1rem;">
+          <button id="btn-prev-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">◀</button>
+          <span style="font-weight: bold; width: 80px; text-align: center;">${year}年${month + 1}月</span>
+          <button id="btn-next-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">▶</button>
+        </div>
       </h2>
       <div style="margin-top: 10px;">
         ${calendarHtml}

@@ -46,10 +46,41 @@
           <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🥉 Tier 3</label>
           <input type="text" name="tier_list_third" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
+        <hr style="margin: 10px 0; border: none; border-top: 1px dashed #ccc;">
+        
+        <h3 style="margin: 0 0 10px 0; font-size: 1rem; text-align: center;">プレイスタイル傾向</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">🎭 化身欲</label>
+            <input type="range" name="desire_avatar" min="1" max="5" value="3" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">✨ 活躍欲</label>
+            <input type="range" name="desire_active" min="1" max="5" value="3" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">🌪 混沌欲</label>
+            <input type="range" name="desire_chaos" min="1" max="5" value="3" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">📖 物語欲</label>
+            <input type="range" name="desire_story" min="1" max="5" value="3" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">🤝 協調欲</label>
+            <input type="range" name="desire_harmony" min="1" max="5" value="3" style="width: 100%;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px;">🧩 攻略欲</label>
+            <input type="range" name="desire_clear" min="1" max="5" value="3" style="width: 100%;">
+          </div>
+        </div>
         <button type="submit" style="padding: 10px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px;">保存する</button>
       </form>
     </dialog>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/init-supabase.js"></script>
     <script src="../js/utils.js"></script>

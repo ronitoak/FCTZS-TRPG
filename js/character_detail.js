@@ -213,6 +213,7 @@ async function main() {
           }
           
           form.name.value = currentCharData.name || "";
+          form.reading.value = currentCharData.reading || "";
           form.player_id.value = currentCharData.player_id || "";
           form.state.value = currentCharData.state || "survived";
           form.job.value = currentCharData.job || "";
@@ -250,6 +251,7 @@ async function main() {
             height: toIntOrNull(fd.get("height")),
             weight: toIntOrNull(fd.get("weight")),
             origin: fd.get("origin"),
+            reading: fd.get("reading"),
             iachara_url: fd.get("iachara_url"),
             memo: fd.get("memo")
         };
@@ -343,7 +345,7 @@ async function main() {
 function buildCharacterHeaderHtml(c) {
   return `
     <header class="character-detail-header">
-      <h1 class="character-detail-title">${Utils.escapeHtml(c.name)}</h1>
+      <h1 class="character-detail-title">${Utils.escapeHtml(c.name)} <span class="character-detail-reading">(${Utils.escapeHtml(c.reading)})</span></h1>
       ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
     </header>
   `;

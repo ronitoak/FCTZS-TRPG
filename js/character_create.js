@@ -141,6 +141,7 @@ Utils.domReady(async () => {
             // A. プロフィール抽出
             const profileFields = {
                 name: /名前:\s*([^/(\n]+)/,
+                reading: /読み仮名:\s*([^/(\n]+)/,
                 job: /職業:\s*([^/(\n]+)/,
                 age: /年齢:\s*([^/\n]+)/,
                 gender: /性別:\s*([^/\n]+)/,
@@ -153,7 +154,7 @@ Utils.domReady(async () => {
                 const m = text.match(regex);
                 if (m) {
                     const val = m[1].trim();
-                    result.profile[key] = (['name', 'job', 'gender', 'origin'].includes(key)) 
+                    result.profile[key] = (['name', 'reading', 'job', 'gender', 'origin'].includes(key)) 
                         ? val : (parseInt(val) || null);
                 }
             }
@@ -209,6 +210,7 @@ Utils.domReady(async () => {
 
             // プロフィールとメモの反映
             if (data.profile.name) form.name.value = data.profile.name;
+            if (data.profile.reading) form.reading.value = data.profile.reading;
             if (data.profile.job) form.job.value = data.profile.job;
             if (data.profile.age) form.age.value = data.profile.age;
             if (data.profile.gender) form.gender.value = data.profile.gender;

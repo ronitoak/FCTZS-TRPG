@@ -362,6 +362,7 @@ Utils.domReady(async () => {
         const payload = {
             character: {
                 name: form.name.value,
+                reading: form.reading.value,
                 player_id: form.player_id.value,
                 system: systemSelect.value,
                 job: form.job.value,

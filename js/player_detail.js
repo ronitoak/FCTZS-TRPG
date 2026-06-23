@@ -210,6 +210,7 @@ async function main() {
 
         const payload = {
           player_id: playerId,
+          icon_url: form.icon_url.value || null,
           tier_list_first: form.tier_list_first.value.trim(),
           tier_list_second: form.tier_list_second.value.trim(),
           tier_list_third: form.tier_list_third.value.trim(),

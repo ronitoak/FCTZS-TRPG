@@ -279,15 +279,15 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
     `;
   }
 
-  // 👑 殿堂入りキャラクターのHTML組み立て
+  // 最強キャラHTML組み立て
   let charsHtml = "";
   if (favChars.length > 0) {
     charsHtml = `
-      <h3 style="margin: 15px 0 10px; font-size: 1.1rem; color: #2d3748; border-left: 4px solid #ecc94b; padding-left: 8px;">最強キャラ</h3>
+      <h3 style="margin: 15px 0 10px; font-size: 1.1rem; color: #2d3748; padding-left: 8px;">最強キャラ</h3>
       <div style="display: flex; flex-wrap: wrap; gap: 15px;">
         ${favChars.map(c => `
           <a href="../character/detail.html?id=${c.id}" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; width: 90px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-            <img src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #ecc94b; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <span style="font-size: 0.85rem; font-weight: bold; text-align: center; margin-top: 8px; word-break: break-all; line-height: 1.2;">${Utils.escapeHtml(c.name)}</span>
           </a>
         `).join("")}
@@ -295,16 +295,16 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
     `;
   }
 
-  // 🌟 人生を変えたシナリオのHTML組み立て
+  // 最強シナリオHTML組み立て
   let scensHtml = "";
   if (favScens.length > 0) {
     scensHtml = `
-      <h3 style="margin: 25px 0 10px; font-size: 1.1rem; color: #2d3748; border-left: 4px solid #ecc94b; padding-left: 8px;">最強シナリオ</h3>
+      <h3 style="margin: 25px 0 10px; font-size: 1.1rem; color: #2d3748; padding-left: 8px;">最強シナリオ</h3>
       <div style="display: flex; flex-wrap: wrap; gap: 10px;">
         ${favScens.map(s => `
-          <span style="font-size: 0.9rem; background: #fffcf0; border: 1px solid #ecc94b; color: #b7791f; padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <a href="../scenario/detail.html?id=${s.id}" style="font-size: 0.9rem; background: #fffcf0; border: 1px solid #ecc94b; color: #b7791f; padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             ★ ${Utils.escapeHtml(s.title)}
-          </span>
+          </a>
         `).join("")}
       </div>
     `;

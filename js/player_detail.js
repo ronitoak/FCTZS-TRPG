@@ -430,7 +430,7 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
         <!-- ★ ヘッダーに切り替えボタンを追加 -->
         <div style="display: flex; align-items: center; gap: 10px; font-size: 1rem;">
           <button id="btn-prev-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">◀</button>
-          <span style="font-weight: bold; width: 80px; text-align: center;">${year}年${month + 1}月</span>
+          <span style="font-weight: bold; width: 90px; text-align: center;">${year}年${month + 1}月</span>
           <button id="btn-next-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">▶</button>
         </div>
       </h2>

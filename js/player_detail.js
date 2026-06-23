@@ -302,7 +302,7 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
       <h3 style="margin: 25px 0 10px; font-size: 1.1rem; color: #2d3748; padding-left: 8px;">最強シナリオ</h3>
       <div style="display: flex; flex-wrap: wrap; gap: 10px;">
         ${favScens.map(s => `
-          <a href="../scenario/detail.html?id=${s.id}" style="font-size: 0.9rem; background: #fffcf0; border: 1px solid #ecc94b; color: #b7791f; padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <a href="../scenario/detail.html?id=${s.id}" style="font-size: 0.9rem; background: #daebf0; border: 1px solid #5c97ff; color: #2d3748; padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             ★ ${Utils.escapeHtml(s.title)}
           </a>
         `).join("")}

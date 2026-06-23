@@ -251,7 +251,7 @@ async function main() {
 
 function buildPlayerProfileHtml(player) {
 
-  const profileImage = Utils.getCharacterImagePath(player.icon_url) ? player.icon_url : Utils.DEFAULT_PROFILE_IMAGE;
+  const profileImage = Utils.getCharacterImagePath(player.icon_url) ? player.icon_url : Utils.DEFAULT_CHARACTER_IMAGE;
 
   return `
     <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px; ">

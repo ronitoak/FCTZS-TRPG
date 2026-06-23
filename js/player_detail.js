@@ -170,17 +170,27 @@ async function main() {
     renderRadarChart(player);
 
   // === プロフィール編集機能のセットアップ ===
+    const charSelect = document.getElementById('icon-character-select');
     const editBtn = document.getElementById("btn-edit-profile");
     const modal = document.getElementById("edit-profile-modal");
     const closeBtn = document.getElementById("close-profile-modal");
     const form = document.getElementById("edit-profile-form");
+
+    charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+      myCharacters.forEach(c => {          
+          return `
+          <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
+              ${Utils.escapeHtml(c.name)})
+          </option>`;
+        }).join('');
+
 
     if (editBtn && modal) {
       editBtn.addEventListener("click", () => {
         form.tier_list_first.value = player.tier_list_first || "";
         form.tier_list_second.value = player.tier_list_second || "";
         form.tier_list_third.value = player.tier_list_third || "";
-        
+        charSelect.value = player.icon_url || "";
         // ★追加：スライダーに現在の値をセット
         form.desire_avatar.value = player.desire_avatar || 3;
         form.desire_active.value = player.desire_active || 3;
@@ -241,10 +251,12 @@ async function main() {
 
 function buildPlayerProfileHtml(player) {
 
+  const profileImage = player.icon_url || Utils.DEFAULT_CHARACTER_IMAGE;
+
   return `
     <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px; ">
       <div style="display: flex; align-items: center; gap: 20px;">
-        <img src="${Utils.DEFAULT_CHARACTER_IMAGE}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+        <img src="${profileImage}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
         <div>
           <h1 style="margin: 0; font-size: 1.8rem; color: #2d3748;">${Utils.escapeHtml(player.player_name)}</h1>
           <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>

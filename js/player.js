@@ -21,7 +21,7 @@ async function initPlayerOptions() {
 }
 
 // 検索を実行する関数
-async function fetchAndRender() {
+async function getPlayerPage() {
 try {
     const playerVal = document.getElementById("select-player")?.value || "";
 
@@ -43,7 +43,7 @@ async function main() {
   // イベントリスナーの登録
   const searchBtn = document.getElementById("select-button");
   if (searchBtn) {
-    searchBtn.addEventListener("click", fetchAndRender);
+    searchBtn.addEventListener("click", getPlayerPage);
   }
 }
 

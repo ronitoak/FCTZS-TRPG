@@ -413,7 +413,7 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
     const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? "background: #fffff0;" : "background: #fff;";
 
     calendarHtml += `
-      <div style="${isToday} padding: 4px; min-height: 40px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0; min-width: 0; overflow: hidden;">
+      <div style="${isToday} padding: 4px; min-height: 40px; max-height: 40px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0; min-width: 0; overflow: hidden;">
         <div style="font-size: 0.8rem; font-weight: bold; text-align: left;">${d}</div>
         ${availHtml}
         <div style="flex-grow: 1;">${sessionHtml}</div>

@@ -22,15 +22,18 @@ async function initPlayerOptions() {
 
 // 検索を実行する関数
 async function getPlayerPage() {
-try {
-    const playerVal = document.getElementById("select-player")?.value || "";
+    try {
+        const playerVal = document.getElementById("select-player")?.value || "";
 
-    const playerId = playerVal ? `?player_id=${encodeURIComponent(playerVal)}` : "";
+        if (!playerVal) {
+            alert("プレイヤーを選択してください");
+            return;
+        }
 
-    window.location.href = './detail.html' + playerId;
-} catch (err) {
-    console.error(err);
-}
+        window.location.href = `./detail.html?id=${encodeURIComponent(playerVal)}`;
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 async function main() {

@@ -10,7 +10,7 @@ async function main() {
   list.textContent = "読み込み中…";
 
   try {
-    const res = await fetch(`${API_BASE}/api/posts`, { cache: "no-store" });
+    const res = await Utils.apiGet("scenarios");
     if (!res.ok) {
       list.innerHTML = `<p>読み込みに失敗しました（${Utils.escapeHtml(res.status)}）</p>`;
       return;

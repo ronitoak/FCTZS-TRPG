@@ -20,25 +20,25 @@ async function initPlayerOptions() {
   }
 }
 
+// 検索を実行する関数
+async function fetchAndRender() {
+try {
+    const playerVal = document.getElementById("select-player")?.value || "";
+
+    const playerId = playerVal ? `?player_id=${encodeURIComponent(playerVal)}` : "";
+
+    window.location.href = './player_detail.html' + playerId;
+} catch (err) {
+    console.error(err);
+}
+}
+
 async function main() {
 
   await Utils.initAuthAndHeader('common-nav', '../');
   
   // ★ まず最初に、プルダウンの選択肢を構築する
   await initPlayerOptions();
-
-  // 検索を実行する関数
-  async function fetchAndRender() {
-    try {
-      const playerVal = document.getElementById("select-player")?.value || "";
-
-      const playerId = playerVal ? `?player_id=${encodeURIComponent(playerVal)}` : "";
-
-      window.location.href = './player_detail.html' + playerId;
-    } catch (err) {
-      console.error(err);
-    }
-  }
 
   // イベントリスナーの登録
   const searchBtn = document.getElementById("select-button");

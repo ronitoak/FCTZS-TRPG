@@ -242,7 +242,7 @@ async function main() {
 function buildPlayerProfileHtml(player) {
 
   return `
-    <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px; ">
       <div style="display: flex; align-items: center; gap: 20px;">
         <img src="${Utils.DEFAULT_CHARACTER_IMAGE}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
         <div>

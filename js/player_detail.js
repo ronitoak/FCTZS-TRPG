@@ -94,7 +94,7 @@ async function main() {
         </div>
       </div>
 
-      ${buildCustomAreaHtml(player)}
+      ${buildCustomAreaHtml(player, characters, scenarios)}
       
       <div style="margin-top: 20px;">
         ${buildMyCharactersHtml(myCharacters, favChars)}
@@ -260,14 +260,61 @@ function buildPlayerProfileHtml(player) {
   `;
 }
 
-function buildCustomAreaHtml(player) {
-  // TODO: 次のステップでデータベースを拡張し、本物の自己紹介データを表示します
-  const profileText = player.profile_text || "まだ最強キャラが登録されていません。";
+// ★引数に allCharacters と allScenarios を追加し、お気に入りを抽出して描画
+function buildCustomAreaHtml(player, allCharacters, allScenarios) {
+  const favCharIds = player.favorite_character_ids || [];
+  const favScenIds = player.favorite_scenario_ids || [];
+
+  // IDリストから実際のデータを抽出
+  const favChars = (allCharacters || []).filter(c => favCharIds.includes(String(c.id)));
+  const favScens = (allScenarios || []).filter(s => favScenIds.includes(String(s.id)));
+
+  // もしお気に入りが1つも設定されていない場合は、案内テキストを出す
+  if (favChars.length === 0 && favScens.length === 0) {
+    return `
+      <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+        <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">最強キャラランキング</h2>
+        <p style="color: #a0aec0; margin-top: 20px; font-weight: bold;">まだ最強キャラが登録されていません。</p>
+      </section>
+    `;
+  }
+
+  // 👑 殿堂入りキャラクターのHTML組み立て
+  let charsHtml = "";
+  if (favChars.length > 0) {
+    charsHtml = `
+      <h3 style="margin: 15px 0 10px; font-size: 1.1rem; color: #2d3748; border-left: 4px solid #ecc94b; padding-left: 8px;">最強キャラ</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+        ${favChars.map(c => `
+          <a href="../character/detail.html?id=${c.id}" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; width: 90px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <img src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #ecc94b; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <span style="font-size: 0.85rem; font-weight: bold; text-align: center; margin-top: 8px; word-break: break-all; line-height: 1.2;">${Utils.escapeHtml(c.name)}</span>
+          </a>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  // 🌟 人生を変えたシナリオのHTML組み立て
+  let scensHtml = "";
+  if (favScens.length > 0) {
+    scensHtml = `
+      <h3 style="margin: 25px 0 10px; font-size: 1.1rem; color: #2d3748; border-left: 4px solid #ecc94b; padding-left: 8px;">最強シナリオ</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        ${favScens.map(s => `
+          <span style="font-size: 0.9rem; background: #fffcf0; border: 1px solid #ecc94b; color: #b7791f; padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            ★ ${Utils.escapeHtml(s.title)}
+          </span>
+        `).join("")}
+      </div>
+    `;
+  }
 
   return `
     <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">最強キャラランキング</h2>
-      <p style="white-space: pre-wrap; color: #4a5568;">${Utils.escapeHtml(profileText)}</p>
+      ${charsHtml}
+      ${scensHtml}
     </section>
   `;
 }
@@ -293,7 +340,7 @@ function buildMyCharactersHtml(characters, favoriteIds = []) {
 
   return `
     <section class="player-characters" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">🎭 作成キャラクター</h2>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">作成キャラクター</h2>
       <div style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
         ${charsList}
       </div>
@@ -419,7 +466,7 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
 
   return `
     <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">📚 ${Utils.escapeHtml(title)} ${scenariosList ? `(${scenariosList.length})本` : ''}</h2>
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">${Utils.escapeHtml(title)} ${scenariosList ? `(${scenariosList.length})本` : ''}</h2>
       <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 250px;">
         ${contentHtml}
       </div>

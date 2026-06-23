@@ -176,13 +176,12 @@ async function main() {
     const closeBtn = document.getElementById("close-profile-modal");
     const form = document.getElementById("edit-profile-form");
 
-    charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-      myCharacters.forEach(c => {          
-          return `
-          <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
-              ${Utils.escapeHtml(c.name)})
-          </option>`;
-        }).join('');
+      myCharacters.forEach(c => {        
+        charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+        `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
+            ${Utils.escapeHtml(c.name)})
+        </option>`;
+      }).join('');
 
 
     if (editBtn && modal) {

@@ -424,7 +424,7 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
   calendarHtml += `</div>`;
 
   return `
-    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%;">
+    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px;">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
         <span>スケジュール</span>
         <!-- ★ ヘッダーに切り替えボタンを追加 -->

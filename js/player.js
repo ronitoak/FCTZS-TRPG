@@ -21,8 +21,6 @@ async function initPlayerOptions() {
 }
 
 async function main() {
-  const root = document.getElementById("character-list");
-  if (!root) return;
 
   await Utils.initAuthAndHeader('common-nav', '../');
   

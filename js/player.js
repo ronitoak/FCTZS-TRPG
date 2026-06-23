@@ -37,12 +37,8 @@ async function main() {
       window.location.href = './player_detail.html' + playerId;
     } catch (err) {
       console.error(err);
-      root.innerHTML = "<p>読み込みに失敗しました</p>";
     }
   }
-
-  // 初回読み込み時の実行
-  await fetchAndRender();
 
   // イベントリスナーの登録
   const searchBtn = document.getElementById("select-button");

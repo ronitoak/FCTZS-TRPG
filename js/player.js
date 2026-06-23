@@ -27,7 +27,7 @@ try {
 
     const playerId = playerVal ? `?player_id=${encodeURIComponent(playerVal)}` : "";
 
-    window.location.href = './player_detail.html' + playerId;
+    window.location.href = './detail.html' + playerId;
 } catch (err) {
     console.error(err);
 }

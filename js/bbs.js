@@ -1,24 +1,51 @@
 "use strict";
 
 let characterList = [];
+let playerList = [];
 
-// 1. キャラクターリストを取得してセレクトボックスを作る
-async function loadCharacters() {
+// 1. プレイヤーとキャラクターの両方を一度に取得する
+async function loadMasterData() {
   try {
-    characterList = await Utils.apiGet("characters");
-    const select = document.getElementById("bbs-character");
-    if (!select) return;
+    // APIから並行してデータを取得
+    [playerList, characterList] = await Promise.all([
+      Utils.apiGet("players"),
+      Utils.apiGet("characters")
+    ]);
 
-    select.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-      characterList.map(c => 
-        `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">${Utils.escapeHtml(c.name)}</option>`
-      ).join('');
+    // プレイヤーのセレクトボックスを構築
+    const playerSelect = Utils.$("bbs-player");
+    if (playerSelect && Array.isArray(playerList)) {
+      playerSelect.innerHTML = '<option value="">-- すべてのプレイヤー --</option>' + 
+        playerList.map(p => 
+          `<option value="${p.player_id}">${Utils.escapeHtml(p.player_name)}</option>`
+        ).join('');
+    }
+
+    // 初回は絞り込みなしで全キャラクターを描画
+    renderCharacterSelect("");
+
   } catch (e) {
-    console.error("キャラクター取得エラー:", e);
+    console.error("マスタデータ取得エラー:", e);
   }
 }
 
-// 2. タイムライン（投稿一覧）を読み込んで描画する
+// 2. 指定されたプレイヤーIDでキャラクターを絞り込んで描画する
+function renderCharacterSelect(playerIdFilter) {
+  const select = Utils.$("bbs-character");
+  if (!select || !Array.isArray(characterList)) return;
+
+  // プレイヤーIDが指定されていれば絞り込み、指定がなければ全員表示
+  const filteredChars = playerIdFilter 
+    ? characterList.filter(c => String(c.player_id) === String(playerIdFilter))
+    : characterList;
+
+  select.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+    filteredChars.map(c => 
+      `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">${Utils.escapeHtml(c.name)}</option>`
+    ).join('');
+}
+
+// 3. タイムライン（投稿一覧）を読み込んで描画する
 async function loadPosts() {
   const list = Utils.$("bbs-list");
   try {
@@ -29,7 +56,6 @@ async function loadPosts() {
       return;
     }
 
-    // チャット風のカードUIで描画
     list.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 15px;">
         ${data.map(p => {
@@ -58,13 +84,21 @@ async function loadPosts() {
   }
 }
 
-// 3. メイン処理と送信イベント
+// 4. メイン処理と送信イベント
 async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
   
-  // 初期データの読み込み
-  await loadCharacters();
+  // 初期データの読み込み（ここで連携プルダウンのセットアップが完了します）
+  await loadMasterData();
   await loadPosts();
+
+  // ★追加：プレイヤーを選択した瞬間にキャラクターを絞り込むイベント
+  const playerSelect = Utils.$("bbs-player");
+  if (playerSelect) {
+    playerSelect.addEventListener("change", (e) => {
+      renderCharacterSelect(e.target.value);
+    });
+  }
 
   const form = Utils.$("bbs-form");
   const msg = Utils.$("bbs-msg");
@@ -79,7 +113,6 @@ async function main() {
     
     if (!charId || !body) return;
 
-    // 選択されたキャラクターの名前を data-name 属性から取得
     const selectedOption = charSelect.options[charSelect.selectedIndex];
     const authorName = selectedOption.getAttribute("data-name");
 
@@ -89,26 +122,25 @@ async function main() {
 
     const payload = {
       character_id: charId,
-      author: authorName, // DBにはキャラクター名をそのまま保存
+      author: authorName,
       body: body,
     };
 
     try {
       await Utils.apiPost("posts", payload);
 
-      // 送信成功時の処理
       Utils.$("bbs-body").value = "";
       msg.textContent = "投稿しました！";
       msg.style.color = "#38a169";
 
-      await loadPosts(); // リストを再読み込みして最新を表示
+      await loadPosts(); 
     } catch (err) {
       console.error(err);
       msg.textContent = "投稿に失敗しました";
       msg.style.color = "#e53e3e";
     } finally {
       btn.disabled = false;
-      setTimeout(() => { msg.textContent = ""; }, 3000); // 3秒後にメッセージを消す
+      setTimeout(() => { msg.textContent = ""; }, 3000); 
     }
   });
 }

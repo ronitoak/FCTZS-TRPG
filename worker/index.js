@@ -859,501 +859,105 @@ async function handleGet(request, env, url) {
 }
 
 async function handlePost(request, env, ctx, url) {
-  // ★ここに既存の `if (request.method === "POST") { ... }` の「中身」を丸ごと移動
-  // （募集機能や満員通知の処理もここに入ります）
-      // ---- Comments (既存保持) ----
-    if (request.method === "POST" && url.pathname === "/api/comments") {
-      const body = await request.json();
-      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/comments`, {
-        method: "POST",
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify([body]),
-      });
-      return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
+  try {
+    const body = await request.json();
+
+    // ---- Comments ----
+    if (url.pathname === "/api/comments") {
+      const { res, text } = await sbFetch(env, request, "/rest/v1/comments", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
-        // Characters作成API
-    if (request.method === "POST" && url.pathname === "/api/character_full") {
-      try {
-        const body = await request.json();
-        const { character, attributes, skills } = body;
-
-        const charRes = await fetch(`${env.SUPABASE_URL}/rest/v1/characters`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-          },
-          body: JSON.stringify([character]),
-        });
-
-        if (!charRes.ok) {
-          const err = await charRes.text();
-          return new Response(JSON.stringify({ error: "Character creation failed", detail: err }), { status: charRes.status, headers: jsonHeaders });
-        }
-
-        const charData = await charRes.json();
-        const newCharId = charData[0].id;
-
-        if (attributes?.length > 0) {
-          await fetch(`${env.SUPABASE_URL}/rest/v1/character_attributes`, {
-            method: "POST",
-            headers: {
-              apikey: env.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(attributes.map(a => ({ ...a, character_id: newCharId }))),
-          });
-        }
-
-        if (skills?.length > 0) {
-          await fetch(`${env.SUPABASE_URL}/rest/v1/character_skills`, {
-            method: "POST",
-            headers: {
-              apikey: env.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-              "Content-Type": "application/json",
-              "Prefer": "resolution=merge-duplicates"
-            },
-            body: JSON.stringify(skills.map(s => ({ ...s, character_id: newCharId }))),
-          });
-        }
-
-        return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/character_skills") {
-      try {
-        const body = await request.json(); // フロントから届く技能配列
-        
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_skills`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            // ★ 既存データがあれば更新、なければ挿入する設定
-            "Prefer": "resolution=merge-duplicates"
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          return new Response(JSON.stringify({ error: "character_skills Upsert Failed", detail: errText }), { 
-            status: res.status, 
-            headers: jsonHeaders 
-          });
-        }
-
-        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/character_scenarios") {
-      try {
-        const body = await request.json(); // フロントから届く技能配列
-        
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            // ★ 既存データがあれば更新、なければ挿入する設定
-            "Prefer": "resolution=merge-duplicates"
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          return new Response(JSON.stringify({ error: "character_scenarios Upsert Failed", detail: errText }), { 
-            status: res.status, 
-            headers: jsonHeaders 
-          });
-        }
-
-        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/character_attributes") {
-      try {
-        const body = await request.json(); // フロントから届く技能配列
-        
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/character_attributes`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            // ★ 既存データがあれば更新、なければ挿入する設定
-            "Prefer": "resolution=merge-duplicates"
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          return new Response(JSON.stringify({ error: "character_attributes Upsert Failed", detail: errText }), { 
-            status: res.status, 
-            headers: jsonHeaders 
-          });
-        }
-
-        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    // ==========================================
-    // ---- Schedule & Players (スケジュール・プレイヤー機能) ----
-    // ==========================================
-
-
-    // 3. プレイヤーの予定を保存・更新（一括保存対応）
-    if (request.method === "POST" && url.pathname === "/api/player_availability") {
-      try {
-        const body = await request.json();
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/player_availability`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates" // 複合主キーが一致すれば上書き
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          return new Response(JSON.stringify({ error: "Availability Upsert Failed", detail: errText }), { status: res.status, headers: jsonHeaders });
-        }
-        return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-  
-  // ---- scenarios ----
-  if (request.method === "POST" && url.pathname === "/api/scenarios") {
-    try {
-      const body = await request.json();
+    // ---- Characters (一括作成) ----
+    if (url.pathname === "/api/character_full") {
+      const { character, attributes, skills } = body;
+      const { res: charRes, text: charText } = await sbFetch(env, request, "/rest/v1/characters", { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
+      if (!charRes.ok) return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
       
-      // DB定義に合わせて、不要なデータを除去し、必要な項目だけをSupabaseに送る
-      const scenarioData = {
-        title: body.title,
-        system: body.system,
-        author: body.author,
-        description: body.description,
-        notes: body.notes
-      };
+      const newCharId = JSON.parse(charText)[0].id;
 
-      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios`, {
-        method: "POST",
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=representation",
-        },
-        body: JSON.stringify([scenarioData]),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: errText }), { status: res.status, headers: jsonHeaders });
+      if (attributes?.length > 0) {
+        await sbFetch(env, request, "/rest/v1/character_attributes", { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
       }
-
-      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-    } catch (e) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      if (skills?.length > 0) {
+        await sbFetch(env, request, "/rest/v1/character_skills", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
+      }
+      return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
     }
-  }
 
+    // ---- 各種 Upsert (更新付き追加) 系 ----
+    const upsertEndpoints = {
+      "/api/character_skills": "/rest/v1/character_skills",
+      "/api/character_scenarios": "/rest/v1/character_scenarios",
+      "/api/character_attributes": "/rest/v1/character_attributes",
+      "/api/player_availability": "/rest/v1/player_availability"
+    };
 
-  // ---- sessions ----
-  if (request.method === "POST" && url.pathname === "/api/runs") {
-    try {
-      const body = await request.json();
-      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs`, {
-        method: "POST",
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=representation",
-        },
-        body: JSON.stringify([body]), // 1件挿入
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        return new Response(JSON.stringify({ error: "Run creation failed", detail: err }), { status: res.status, headers: jsonHeaders });
-      }
-
-      const insertedData = await res.json();
-      
-      if (insertedData && insertedData[0]) {
-        ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
-      }
-
-      return new Response(JSON.stringify(insertedData), { status: 201, headers: jsonHeaders });
-    } catch (e) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    if (upsertEndpoints[url.pathname]) {
+      const { res, text } = await sbFetch(env, request, upsertEndpoints[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
+      if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      return new Response(text, { status: 201, headers: jsonHeaders });
     }
-  }
 
-  if (request.method === "POST" && url.pathname === "/api/sessions") {
-    try {
-      const body = await request.json();
-      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/sessions`, {
-        method: "POST",
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=representation",
-        },
-        body: JSON.stringify([body]),
-      });
-      
-      if (!res.ok) {
-          const err = await res.text();
-          return new Response(JSON.stringify({ error: "Insert failed", detail: err }), { status: res.status, headers: jsonHeaders });
-      }
-      
-      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-    } catch (e) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    // ---- 通常の Insert 系 ----
+    if (url.pathname === "/api/scenarios") {
+      const scenarioData = { title: body.title, system: body.system, author: body.author, description: body.description, notes: body.notes };
+      const { res, text } = await sbFetch(env, request, "/rest/v1/scenarios", { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
+      if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      return new Response(text, { status: 201, headers: jsonHeaders });
     }
-  }
 
-  // ---- players ----
-  if (request.method === "POST" && url.pathname === "/api/player_profiles") {
-    try {
-      const body = await request.json();
-      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/player_profiles`, {
-        method: "POST",
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=representation"
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        return new Response(JSON.stringify({ error: "Player profile creation failed", detail: err }), { status: res.status, headers: jsonHeaders });
-      }
-
-      return new Response(await res.text(), { status: 201, headers: jsonHeaders });
-    } catch (e) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    if (url.pathname === "/api/runs") {
+      const { res, text } = await sbFetch(env, request, "/rest/v1/runs", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      const insertedData = JSON.parse(text);
+      if (insertedData && insertedData[0]) ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
+      return new Response(text, { status: 201, headers: jsonHeaders });
     }
-  }
 
-    async function recruited(data, env) {
-    try {
-    // 1. 募集者名とシナリオ名をIDから取得する
-    // playersテーブルとscenariosテーブルを同時に引きに行きます
-    const [playerRes, scenarioRes] = await Promise.all([
-      fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=eq.${data.owner_player_id}&select=player_name`, {
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
+    // ★ 募集関係の処理の呼び出し
+    if (url.pathname === "/api/recruitments") {
+      const { res, text } = await sbFetch(env, request, "/rest/v1/recruitments", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      if (res.ok) {
+        const insertedData = JSON.parse(text);
+        const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
+        ctx.waitUntil(recruited({ ...record, ...body }, env));
+      }
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (url.pathname === "/api/recruitment_applicants") {
+      const { res, text } = await sbFetch(env, request, "/rest/v1/recruitment_applicants", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      if (res.ok) {
+        const payload = Array.isArray(body) ? body[0] : body;
+        if (payload.recruitment_id || payload.recruit_id) {
+          ctx.waitUntil(checkAndNotifyIfFulfilled(payload.recruitment_id || payload.recruit_id, env));
         }
-      }),
-      data.scenario_id ? fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title`, {
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-        }
-      }) : Promise.resolve(null)
-    ]);
-
-    // 2. データのパース
-    const playerData = playerRes.ok ? await playerRes.json() : [];
-    const scenarioData = (scenarioRes && scenarioRes.ok) ? await scenarioRes.json() : [];
-    const scenarioId = data.scenario_id || "default";
-    const scenarioImageUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/${scenarioId}.png?raw=true`;
-
-    // 3. 表示名の決定（データがない場合のフォールバック付き）
-    const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
-    const scenarioTitle = scenarioData[0]?.title || data.scenario_id || "シナリオ未設定";
-    
-    const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
-    const count = data.target_count;
-    const memo = data.memo || "詳細情報なし";
-    
-    // 詳細URLの作成
-    const detailUrl = `https://ronitoak.github.io/FCTZS-TRPG/recruit/index.html`;
-
-    // 4. Discord通知の送信
-    const res = await fetch(`https://discord.com/api/v10/channels/${env.RECRUIT_CHANNEL_ID}/messages`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, // ここが重要
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        content: `**新規募集**`,
-        embeds: [{
-            image: { url: scenarioImageUrl },
-            title: `【${role}募集】${scenarioTitle}`,
-            description: `**【募集主】\n- ${recruiterName}**\n**【募集人数】**\n- ${count}人\n**【メモ】**\n${memo}`,
-            color: 3447003,
-            url: detailUrl,
-        }],
-        components: [
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                style: 1,
-                label: "参加希望",
-                custom_id: `join_${data.id}`
-              }
-            ]
-          }
-        ]
-      })
-    });
-    
-    } catch (err) {
-      console.error("募集通知エラー:", err);
+      }
+      return new Response(text, { status: res.status, headers: jsonHeaders });
     }
+
+    // ---- シンプルなInsert系 ----
+    const simpleInsertEndpoints = {
+      "/api/sessions": "/rest/v1/sessions",
+      "/api/player_profiles": "/rest/v1/player_profiles",
+      "/api/posts": "/rest/v1/posts",
+      "/api/nightreign/user_relics": "/rest/v1/nightreign_user_relics"
+    };
+
+    if (simpleInsertEndpoints[url.pathname]) {
+      const targetUrl = simpleInsertEndpoints[url.pathname];
+      const requestBody = url.pathname === "/api/player_profiles" ? body : [body];
+      const { res, text } = await sbFetch(env, request, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
+      if (!res.ok) return new Response(JSON.stringify({ error: "Insert failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      return new Response(text, { status: 201, headers: jsonHeaders });
+    }
+
+    return new Response("Not found", { status: 404, headers: jsonHeaders });
+
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
   }
-
-    // ---- recruit ----
-    if (request.method === "POST" && url.pathname === "/api/recruitments") {
-      try {
-        const body = await request.json();
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-          },
-          body: JSON.stringify(body),
-        });
-
-        const resultText = await res.text();
-        
-        // Supabaseへの保存が成功(201 Created)した場合のみ通知を実行
-        if (res.ok) {
-          const insertedData = JSON.parse(resultText);
-          // 配列で返ってくるため、最初の1件を渡す
-          const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
-          
-          // フロントから送られたbodyに名前が含まれている場合、recordにマージして渡すと親切です
-          ctx.waitUntil(recruited({ ...record, ...body }, env));
-        }
-
-        return new Response(resultText, { status: res.status, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    // 応募（参加）の登録
-    if (request.method === "POST" && url.pathname === "/api/recruitment_applicants") {
-      try {
-        const body = await request.json();
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-          },
-          body: JSON.stringify(body),
-        });
-
-        // ★ 追加: データベースへの登録が成功したら満員チェックを走らせる
-        if (res.ok) {
-          // bodyが配列( [ {} ] )で来る場合とオブジェクト( {} )で来る場合の両方に対応
-          const payload = Array.isArray(body) ? body[0] : body;
-          const recruitmentId = payload.recruitment_id || payload.recruit_id;
-          
-          if (recruitmentId) {
-             // ユーザーを待たせないように裏側（waitUntil）で実行
-             ctx.waitUntil(checkAndNotifyIfFulfilled(recruitmentId, env));
-          }
-        }
-
-        return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    // ---- Posts (なりきりチャット) ----
-    if (request.method === "POST" && url.pathname === "/api/posts") {
-      try {
-        const body = await request.json();
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/posts`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: request.headers.get("Authorization") || `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-          },
-          body: JSON.stringify([body]),
-        });
-        return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
-    // ---- ここからナイトレインツール ----
-    // ユーザー所持遺物の登録
-    if (request.method === "POST" && url.pathname === "/api/nightreign/user_relics") {
-      try {
-        const body = await request.json();
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/nightreign_user_relics`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-          },
-          body: JSON.stringify([body]),
-        });
-        return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-      }
-    }
-
 }
 
 
@@ -1511,6 +1115,67 @@ async function registerParticipant(recruitmentId, discordUser, env) {
   } catch (e) {
     console.error("registerParticipant 内でエラー:", e.message);
     throw e; // 上位の interaction 処理でエラーを検知させるため
+  }
+}
+
+// ==========================================
+// 募集時のDiscord通知処理（復活＆スリム化）
+// ==========================================
+async function recruited(data, env) {
+  try {
+    // 1. 募集者名とシナリオ名をIDから取得する (sbFetchを使用)
+    const [playerRes, scenarioRes] = await Promise.all([
+      sbFetch(env, null, `/rest/v1/players?player_id=eq.${data.owner_player_id}&select=player_name`),
+      data.scenario_id ? sbFetch(env, null, `/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title`) : Promise.resolve(null)
+    ]);
+
+    const playerData = playerRes.res.ok ? JSON.parse(playerRes.text) : [];
+    const scenarioData = (scenarioRes && scenarioRes.res.ok) ? JSON.parse(scenarioRes.text) : [];
+    
+    const scenarioId = data.scenario_id || "default";
+    const scenarioImageUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/${scenarioId}.png?raw=true`;
+
+    const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
+    const scenarioTitle = scenarioData[0]?.title || data.scenario_id || "シナリオ未設定";
+    
+    const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
+    const count = data.target_count;
+    const memo = data.memo || "詳細情報なし";
+    const detailUrl = `https://ronitoak.github.io/FCTZS-TRPG/recruit/index.html`;
+
+    // 2. Discordへ通知 (Bot Tokenを使用するためここは直接fetch)
+    await fetch(`https://discord.com/api/v10/channels/${env.RECRUIT_CHANNEL_ID}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: `**新規募集**`,
+        embeds: [{
+            image: { url: scenarioImageUrl },
+            title: `【${role}募集】${scenarioTitle}`,
+            description: `**【募集主】\n- ${recruiterName}**\n**【募集人数】**\n- ${count}人\n**【メモ】**\n${memo}`,
+            color: 3447003,
+            url: detailUrl,
+        }],
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 1,
+                label: "参加希望",
+                custom_id: `join_${data.id}`
+              }
+            ]
+          }
+        ]
+      })
+    });
+  } catch (err) {
+    console.error("募集通知エラー:", err);
   }
 }
 

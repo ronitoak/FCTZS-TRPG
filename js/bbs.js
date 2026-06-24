@@ -92,6 +92,25 @@ async function main() {
   await loadMasterData();
   await loadPosts();
 
+  // ★追加：ログイン状態をチェック
+  const { data: { session } } = await window.supabase.auth.getSession();
+  const form = Utils.$("bbs-form");
+  
+  // ログインしていない場合は、フォームの中身を丸ごと「ログイン案内」に差し替える
+  if (!session) {
+    if (form) {
+      form.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: #e53e3e; font-weight: bold; margin-bottom: 10px;">⚠️ 投稿するにはログインが必要です</p>
+          <p style="font-size: 0.9rem; color: #4a5568;">右上のボタンから Discord Login を行ってください。</p>
+        </div>
+      `;
+    }
+    return; // ここで処理を止める（以下の送信イベント等は登録しない）
+  }
+
+  // === 以下はログイン済みの時だけ実行される ===
+
   // ★追加：プレイヤーを選択した瞬間にキャラクターを絞り込むイベント
   const playerSelect = Utils.$("bbs-player");
   if (playerSelect) {

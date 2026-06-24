@@ -473,36 +473,49 @@ function handleOptions() {
   });
 }
 
-async function handleGet(request, env, url) {
-      // ---- helpers ----
-    async function sbGet(pathAndQuery, request) { // 第2引数に request を追加
-      // フロントから届いた Authorization ヘッダーを抽出
-      const authHeader = request.headers.get("Authorization");
+/**
+ * SupabaseへのAPI通信を共通化・正規化するラッパー関数
+ */
+async function sbFetch(env, request, pathAndQuery, options = {}) {
+  const url = `${env.SUPABASE_URL}${pathAndQuery}`;
+  const authHeader = request.headers.get("Authorization");
 
-      const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, {
-        headers: {
-          apikey: env.SUPABASE_ANON_KEY,
-          // ログイン中ならその人のトークンを、未ログインなら ANON_KEY を転送
-          Authorization: authHeader || `Bearer ${env.SUPABASE_ANON_KEY}`,
-        },
-      });
-      const text = await res.text();
-      return { res, text };
-    }
+  const headers = {
+    "apikey": env.SUPABASE_ANON_KEY,
+    "Authorization": authHeader || `Bearer ${env.SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+
+  const fetchOptions = {
+    method: options.method || "GET",
+    headers: headers,
+  };
+
+  if (options.body) {
+    fetchOptions.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+  }
+
+  const res = await fetch(url, fetchOptions);
+  const text = await res.text();
+  return { res, text };
+}
+
+async function handleGet(request, env, url) {
 
     // ---- Comments (既存保持) ----
     if (request.method === "GET" && url.pathname === "/api/comments") {
       const target_type = url.searchParams.get("target_type");
       const target_id = url.searchParams.get("target_id");
       const apiUrl = `/rest/v1/comments?select=*&target_type=eq.${target_type}&target_id=eq.${target_id}&order=created_at.asc`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/comments/recent") {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
       const apiUrl = `/rest/v1/comments?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -551,12 +564,12 @@ async function handleGet(request, env, url) {
       queryParams.push("order=id.desc");
 
       const apiUrl = `/rest/v1/characters?${queryParams.join("&")}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_last_session") {
-      const { res, text } = await sbGet("/rest/v1/character_last_session?select=*", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/character_last_session?select=*");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -564,14 +577,14 @@ async function handleGet(request, env, url) {
     // ★追加：プレイヤープロフィールの取得を開通
     if (request.method === "GET" && url.pathname === "/api/player_profiles") {
       const apiUrl = `/rest/v1/player_profiles${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // プレイヤー一覧の取得
     if (request.method === "GET" && url.pathname === "/api/players") {
       const apiUrl = `/rest/v1/players${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -579,7 +592,7 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/player_availability") {
       // フロントから送られたクエリパラメータ（?select=...&player_id=...）をそのままSupabaseに渡す
       const apiUrl = `/rest/v1/player_availability${url.search}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -594,7 +607,7 @@ async function handleGet(request, env, url) {
       const playerIds = playerIdsStr.split(",");
       const encodedIds = playerIds.map(id => encodeURIComponent(id)).join(",");
       
-      const { res, text } = await sbGet(`/rest/v1/player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`);
       
       if (!res.ok) return new Response(text, { status: res.status, headers: jsonHeaders });
 
@@ -649,7 +662,7 @@ async function handleGet(request, env, url) {
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/scenarios?${queryParams.join("&")}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -670,14 +683,14 @@ async function handleGet(request, env, url) {
         apiUrl += `&character_id=eq.${encodeURIComponent(cleanCharId)}`;
       }
 
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // scenario_list ビュー（もしDB側でビューを使っている場合）の取得
     if (request.method === "GET" && url.pathname === "/api/scenario_list") {
       // ビューの定義もDB側で更新が必要ですが、Worker側でも安全にカラムを指定します
-      const { res, text } = await sbGet("/rest/v1/scenario_list?select=id,title,system,author,updated_at", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/scenario_list?select=id,title,system,author,updated_at");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -704,7 +717,7 @@ async function handleGet(request, env, url) {
       const apiUrl = `/rest/v1/runs?${queryParams.join("&")}`;
       
       // 1. 従来通りruns（セッションデータ）をSupabaseから取得
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       
       // もし通信エラーなどの場合はそのまま返す
       if (!res.ok) {
@@ -717,7 +730,7 @@ async function handleGet(request, env, url) {
       if (Array.isArray(runs) && runs.length > 0) {
         try {
           // 2. プレイヤーの名前マスタ（IDと名前のセット）を紐づけ用に一括取得
-          const { text: playersText } = await sbGet("/rest/v1/players?select=player_id,player_name", request);
+          const { text: playersText } = await sbFetch(env, request,"/rest/v1/players?select=player_id,player_name");
           const players = JSON.parse(playersText);
           
           if (Array.isArray(players)) {
@@ -752,31 +765,31 @@ async function handleGet(request, env, url) {
     // 募集一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitments") {
       const apiUrl = `/rest/v1/recruitments${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
         // 応募者一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitment_applicants") {
       const apiUrl = `/rest/v1/recruitment_applicants${url.search || "?select=*"}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- sessions ---- 
         if (request.method === "GET" && url.pathname === "/api/sessions") {
-      const { res, text } = await sbGet("/rest/v1/sessions?select=*", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/sessions?select=*");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/session_list") {
-      const { res, text } = await sbGet("/rest/v1/session_list?select=*", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/session_list?select=*");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/sessions/detail") {
       const id = url.searchParams.get("id");
-      const { res, text } = await sbGet(`/rest/v1/sessions?select=*&id=eq.${id}`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/sessions?select=*&id=eq.${id}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -784,26 +797,26 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/system_attributes") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
-      const { res, text } = await sbGet(`/rest/v1/system_attributes${query}`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/system_attributes${query}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/system_skill_bases") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
-      const { res, text } = await sbGet(`/rest/v1/system_skill_bases${query}`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/system_skill_bases${query}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_skill_list") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbGet(`/rest/v1/character_skill_list?character_id=eq.${charId}`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/character_skill_list?character_id=eq.${charId}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_attributes") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbGet(`/rest/v1/character_attributes?character_id=eq.${charId}`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/character_attributes?character_id=eq.${charId}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -812,14 +825,14 @@ async function handleGet(request, env, url) {
       // 最新の50件を取得
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 100);
       const apiUrl = `/rest/v1/posts?select=*&order=created_at.desc&limit=${limit}`;
-      const { res, text } = await sbGet(apiUrl, request);
+      const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- ここからナイトレインツール ----
     // キャラクターマスタ取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/characters") {
-      const { res, text } = await sbGet("/rest/v1/nightreign_characters?select=*&order=id.asc", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/nightreign_characters?select=*&order=id.asc");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -828,19 +841,19 @@ async function handleGet(request, env, url) {
       const charId = url.searchParams.get("character_id");
       if (!charId) return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
       
-      const { res, text } = await sbGet(`/rest/v1/nightreign_slot_presets?select=*&character_id=eq.${charId}&order=created_at.asc`, request);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/nightreign_slot_presets?select=*&character_id=eq.${charId}&order=created_at.asc`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // 遺物効果マスタ取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/relic_effects") {
-      const { res, text } = await sbGet("/rest/v1/nightreign_relic_effects?select=*&order=category.asc,effect_name.asc", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/nightreign_relic_effects?select=*&order=category.asc,effect_name.asc");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ユーザー所持遺物の取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/user_relics") {
-      const { res, text } = await sbGet("/rest/v1/nightreign_user_relics?select=*&order=created_at.desc", request);
+      const { res, text } = await sbFetch(env, request,"/rest/v1/nightreign_user_relics?select=*&order=created_at.desc");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 }
@@ -1319,7 +1332,7 @@ async function handlePost(request, env, ctx, url) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
       }
     }
-    
+
     // ---- ここからナイトレインツール ----
     // ユーザー所持遺物の登録
     if (request.method === "POST" && url.pathname === "/api/nightreign/user_relics") {
@@ -1345,93 +1358,58 @@ async function handlePost(request, env, ctx, url) {
 
 
 async function handlePatch(request, env, ctx, url) {
-
   if (request.method === "PATCH") {
-    const resource = url.pathname.replace("/api/", ""); // "runs", "characters" 等を取得
-    
-    // 許可するリソースのホワイトリスト（セキュリティのため）
+    const resource = url.pathname.replace("/api/", ""); 
     const allowedResources = ["sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants", "player_profiles"];
     
+    // ① ホワイトリストに合致する汎用PATCH処理
     if (allowedResources.includes(resource)) {
       try {
         const body = await request.json();
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${resource}${url.search}`, {
+        const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, {
           method: "PATCH",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-          },
-          body: JSON.stringify(body),
+          headers: { "Prefer": "return=representation" },
+          body: body
         });
+        if (!res.ok) return new Response(JSON.stringify({ error: `${resource} update failed`, detail: text }), { status: res.status, headers: jsonHeaders });
+        return new Response(text, { status: 200, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
 
-        if (!res.ok) {
-          const err = await res.text();
-          return new Response(JSON.stringify({ error: `${resource} update failed`, detail: err }), { status: res.status, headers: jsonHeaders });
+    // ② 特殊処理（runs更新時はシナリオ通過履歴の同期を走らせる）
+    if (url.pathname === "/api/runs") {
+      try {
+        const body = await request.json();
+        const { res, text } = await sbFetch(env, request, `/rest/v1/runs${url.search}`, {
+          method: "PATCH",
+          headers: { "Prefer": "return=representation" },
+          body: body
+        });
+        if (res.ok) {
+          const updatedData = JSON.parse(text);
+          if (updatedData && updatedData[0]) ctx.waitUntil(syncCharacterScenarios(updatedData[0], env));
+          return new Response(text, { status: 200, headers: jsonHeaders });
         }
-
-        return new Response(await res.text(), { status: 200, headers: jsonHeaders });
+        return new Response(text, { status: res.status, headers: jsonHeaders });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
       }
     }
   }
-
-  if (request.method === "PATCH" && url.pathname === "/api/runs") {
-  // ★ id を取り出して再結合するのをやめて、直接 url.search (?id=eq.xxx) を渡す
-  const body = await request.json();
-
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/runs${url.search}`, {
-    method: "PATCH",
-    headers: {
-      "apikey": env.SUPABASE_ANON_KEY,
-      "Authorization": request.headers.get("Authorization") || `Bearer ${env.SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation"
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (res.ok) {
-    const updatedData = await res.json();
-    
-    if (updatedData && updatedData[0]) {
-      ctx.waitUntil(syncCharacterScenarios(updatedData[0], env));
-    }
-    return new Response(JSON.stringify(updatedData), { status: 200, headers: jsonHeaders });
-  }
-  return new Response(null, { status: res.status, headers: jsonHeaders });
-}
-
 }
 
 async function handleDelete(request, env, url) {
-  // ---- DELETE ----
   if (request.method === "DELETE") {
     const resource = url.pathname.replace("/api/", ""); 
-    
-    // PATCHと同じく、許可するリソースのホワイトリスト
     const allowedResources = ["runs", "sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants"];
     
     if (allowedResources.includes(resource)) {
       try {
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${resource}${url.search}`, {
-          method: "DELETE",
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-          }
-        });
-
-        if (!res.ok) {
-          const err = await res.text();
-          return new Response(JSON.stringify({ error: `${resource} delete failed`, detail: err }), { status: res.status, headers: jsonHeaders });
-        }
-
-        // DELETEリクエストはボディ(レスポンス)が空の場合があるため、text()で安全に受け取る
-        return new Response(await res.text(), { status: 200, headers: jsonHeaders });
+        const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
+        if (!res.ok) return new Response(JSON.stringify({ error: `${resource} delete failed`, detail: text }), { status: res.status, headers: jsonHeaders });
+        return new Response(text, { status: 200, headers: jsonHeaders });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
       }

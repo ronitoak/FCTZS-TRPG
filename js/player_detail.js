@@ -167,7 +167,7 @@ async function main() {
     });
 
     // ★追加：HTMLを流し込んだ直後にチャートを描画！
-    Utils.renderRadarChart(player);
+    Utils.renderRadarChart(player, "desire-radar-chart");
 
   // === プロフィール編集機能のセットアップ ===
     const charSelect = document.getElementById('icon-character-select');

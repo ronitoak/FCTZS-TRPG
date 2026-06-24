@@ -167,7 +167,7 @@ async function main() {
     });
 
     // ★追加：HTMLを流し込んだ直後にチャートを描画！
-    renderRadarChart(player);
+    Utils.renderRadarChart(player);
 
   // === プロフィール編集機能のセットアップ ===
     const charSelect = document.getElementById('icon-character-select');
@@ -486,8 +486,6 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
   `;
 }
 
-// ★追加：レーダーチャートを描画する関数
-Utils.renderRadarChart(c, canvasId);
 
 // 実行
 Utils.domReady(main);

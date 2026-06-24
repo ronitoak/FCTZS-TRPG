@@ -83,7 +83,7 @@ function renderPlayers(players) {
     cardLink.appendChild(card);
     grid.appendChild(cardLink);
 
-    renderRadarChart(c, canvasId);
+    Utils.renderRadarChart(c, canvasId);
   }
 }
 
@@ -102,9 +102,6 @@ async function getPlayerPage() {
         console.error(err);
     }
 }
-
-// ★追加：レーダーチャートを描画する関数
-Utils.renderRadarChart(c, canvasId);
 
 async function main() {
 

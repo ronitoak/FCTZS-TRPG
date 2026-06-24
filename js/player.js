@@ -50,7 +50,6 @@ function renderPlayers(players) {
 
   for (const c of list) {
     const name = Utils.escapeHtml(c.player_name ?? "");
-    const iconSrc = Utils.escapeHtml(c.icon_url ?? "");
     const imagePath = Utils.getCharacterImagePath(c.icon_url);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
@@ -68,7 +67,7 @@ function renderPlayers(players) {
 
     card.innerHTML = `
       <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; height: 100%;">
-        <img src="${iconSrc}" 
+        <img src="${imagePath}" 
              onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" 
              alt="${name}" 
              style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">

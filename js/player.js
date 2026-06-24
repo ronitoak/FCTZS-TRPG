@@ -22,7 +22,7 @@ async function initPlayerOptions() {
         });
     }
 
-    renderPlayers(joinedProfiles, lastByCharId);
+    renderPlayers(joinedProfiles);
 
   } catch (e) {
     console.error("何かに失敗しました", e);
@@ -30,7 +30,7 @@ async function initPlayerOptions() {
 }
 
 // クエリ引数(query)を削除し、純粋に「渡された配列を描画する」だけの関数にします
-function renderPlayers(players, lastByCharId) {
+function renderPlayers(players) {
   const root = document.getElementById("character-list");
   if (!root) return;
 

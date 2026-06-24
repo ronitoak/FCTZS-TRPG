@@ -12,38 +12,34 @@
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
     <header class="page-header">
-      <h1>掲示板</h1>
-      <p><small>ログイン不要で投稿できます</small></p>
+      <h1>なりきりチャット</h1>
+      <p><small>キャラクターを選択して発言しましょう</small></p>
     </header>
 
       <section class="bbs-postbox">
-        <h2>投稿</h2>
-
-        <form id="bbs-form">
-          <div class="bbs-field">
-            <label for="bbs-author">名前</label>
-            <input id="bbs-author" type="text" maxlength="50" required />
+        <form id="bbs-form" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+          
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="bbs-character" style="font-weight: bold; font-size: 0.9rem;">🎭 キャラクター（発言者）</label>
+            <select id="bbs-character" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+              <option value="">-- キャラクターを選択 --</option>
+            </select>
           </div>
 
-          <div class="bbs-field">
-            <label for="bbs-title">タイトル</label>
-            <input id="bbs-title" type="text" maxlength="100" required />
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="bbs-body" style="font-weight: bold; font-size: 0.9rem;">💬 メッセージ</label>
+            <textarea id="bbs-body" rows="4" maxlength="4000" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"></textarea>
           </div>
 
-          <div class="bbs-field">
-            <label for="bbs-body">本文</label>
-            <textarea id="bbs-body" rows="6" maxlength="4000" required></textarea>
-          </div>
-
-          <div class="bbs-actions">
-            <button type="submit" id="bbs-submit">投稿</button>
-            <span id="bbs-msg" class="bbs-msg"></span>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <button type="submit" id="bbs-submit" class="btn-primary" style="padding: 10px 30px;">送信</button>
+            <span id="bbs-msg" style="font-weight: bold;"></span>
           </div>
         </form>
       </section>
 
       <section class="bbs-list">
-        <h2>投稿一覧</h2>
+        <h2 style="font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">タイムライン</h2>
         <div id="bbs-list">読み込み中…</div>
       </section>
 
@@ -55,6 +51,5 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/init-supabase.js"></script>
     <script src="../js/utils.js"></script>
-    <script src="../js/recruit.js"></script>
-</body>
+    <script src="../js/bbs.js"></script> </body>
 </html>

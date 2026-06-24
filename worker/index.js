@@ -807,6 +807,15 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    // ---- Posts (なりきりチャット) ----
+    if (request.method === "GET" && url.pathname === "/api/posts") {
+      // 最新の50件を取得
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 100);
+      const apiUrl = `/rest/v1/posts?select=*&order=created_at.desc&limit=${limit}`;
+      const { res, text } = await sbGet(apiUrl, request);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
     // ---- ここからナイトレインツール ----
     // キャラクターマスタ取得
     if (request.method === "GET" && url.pathname === "/api/nightreign/characters") {
@@ -1291,6 +1300,26 @@ async function handlePost(request, env, ctx, url) {
       }
     }
 
+    // ---- Posts (なりきりチャット) ----
+    if (request.method === "POST" && url.pathname === "/api/posts") {
+      try {
+        const body = await request.json();
+        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/posts`, {
+          method: "POST",
+          headers: {
+            apikey: env.SUPABASE_ANON_KEY,
+            Authorization: request.headers.get("Authorization") || `Bearer ${env.SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+          },
+          body: JSON.stringify([body]),
+        });
+        return new Response(await res.text(), { status: res.status, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+    
     // ---- ここからナイトレインツール ----
     // ユーザー所持遺物の登録
     if (request.method === "POST" && url.pathname === "/api/nightreign/user_relics") {

@@ -70,7 +70,7 @@ function renderPlayers(players) {
     const card = document.createElement("article");
 
     card.innerHTML = `
-      <img class="player-thumb"
+      <img class="character-thumb"
         src="${imagePath}"
         onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';"
         alt="${name}"

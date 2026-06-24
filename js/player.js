@@ -5,6 +5,13 @@ async function initPlayerOptions() {
   try {
    // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
     const players = await Utils.apiGet("players");
+    const playerProfiles = await Utils.apiGet("player_profiles");
+
+    const joinedProfiles = playerProfiles
+      .filter(playerProfile => players.some(player => player.player_id === playerProfile.player_id))
+      .map(profile => {const player = players.find(p => p.player_id === profile.player_id); // 対応するデータを取得
+      return { ...profile, ...player }; // データを結合
+    });
     const filterPlayer = document.getElementById("select-player");
     if (filterPlayer) {
         players.forEach(p => {
@@ -15,7 +22,7 @@ async function initPlayerOptions() {
         });
     }
 
-    renderPlayers(players, lastByCharId);
+    renderPlayers(joinedProfiles, lastByCharId);
 
   } catch (e) {
     console.error("何かに失敗しました", e);
@@ -27,18 +34,10 @@ function renderPlayers(players, lastByCharId) {
   const root = document.getElementById("character-list");
   if (!root) return;
 
-  const playerProfiles = await Utils.apiGet("player_profiles");
-
-  const joinedProfiles = playerProfiles
-    .filter(playerProfile => players.some(player => player.player_id === playerProfile.player_id))
-    .map(profile => {const player = players.find(p => p.player_id === profile.player_id); // 対応するデータを取得
-    return { ...profile, ...player }; // データを結合
-  });
-
 
   root.innerHTML = "";
 
-  const list = Array.isArray(joinedProfiles) ? joinedProfiles : [];
+  const list = Array.isArray(players) ? players : [];
 
   if (list.length === 0) {
     root.innerHTML = "<p>何かに失敗しました</p>";

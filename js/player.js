@@ -45,18 +45,12 @@ function renderPlayers(players) {
   }
 
   const grid = document.createElement("div");
-  grid.className = "player-grid";
+  grid.className = "card-grid";
   root.appendChild(grid);
 
   for (const c of list) {
     const name = Utils.escapeHtml(c.player_name ?? "");
-    const icon = Utils.escapeHtml(c.icon_url ?? "");
-    const desire_avatar = Utils.escapeHtml(c.desire_avatar ?? "");
-    const desire_story = Utils.escapeHtml(c.desire_story ?? "");
-    const desire_clear = Utils.escapeHtml(c.desire_clear ?? "");
-    const desire_chaos = Utils.escapeHtml(c.desire_chaos ?? "");
-    const desire_active = Utils.escapeHtml(c.desire_active ?? "");
-    const desire_harmony = Utils.escapeHtml(c.desire_harmony ?? "");
+    const iconSrc = Utils.escapeHtml(c.icon_url ?? "");
     const imagePath = Utils.getCharacterImagePath(c.icon_url);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
@@ -68,24 +62,29 @@ function renderPlayers(players) {
     cardLink.style.display = "block";
 
     const card = document.createElement("article");
+    card.className = "card";
+
+    const canvasId = `radar-${c.player_id}`;
 
     card.innerHTML = `
-      <img class="character-thumb"
-        src="${imagePath}"
-        onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';"
-        alt="${name}"
-        loading="lazy"
-      >
-      <h2 class="player-title">${name}</h2>
-      <div style="margin-top: 20px; width: 100%; max-width: 320px; align-self: center;">
-        <canvas id="desire-radar-chart"></canvas>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; height: 100%;">
+        <img src="${iconSrc}" 
+             onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" 
+             alt="${name}" 
+             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+        
+        <h2 style="margin: 0; font-size: 1.2rem; border: none; padding: 0;">${name}</h2>
+        
+        <div style="width: 100%; max-width: 250px; margin-top: auto;">
+          <canvas id="${canvasId}"></canvas>
+        </div>
       </div>
     `;
 
     cardLink.appendChild(card);
     grid.appendChild(cardLink);
 
-    renderRadarChart(c);
+    renderRadarChart(c, canvasId);
   }
 }
 
@@ -106,8 +105,8 @@ async function getPlayerPage() {
 }
 
 // ★追加：レーダーチャートを描画する関数
-function renderRadarChart(player) {
-  const ctx = document.getElementById('desire-radar-chart');
+function renderRadarChart(player, canvasId) {
+  const ctx = document.getElementById(canvasId);
   if (!ctx) return;
 
   // DBの値を取得（未設定ならすべて真ん中の3）

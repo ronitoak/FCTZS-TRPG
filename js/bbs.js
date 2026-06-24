@@ -119,7 +119,6 @@ async function main() {
     });
   }
 
-  const form = Utils.$("bbs-form");
   const msg = Utils.$("bbs-msg");
   const btn = Utils.$("bbs-submit");
 

@@ -68,7 +68,6 @@ function renderPlayers(players) {
     cardLink.style.display = "block";
 
     const card = document.createElement("article");
-    card.className = `player-card ${state}`.trim();
 
     card.innerHTML = `
       <img class="player-thumb"

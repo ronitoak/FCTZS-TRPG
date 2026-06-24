@@ -31,7 +31,7 @@ async function initPlayerOptions() {
 
 // クエリ引数(query)を削除し、純粋に「渡された配列を描画する」だけの関数にします
 function renderPlayers(players) {
-  const root = document.getElementById("character-list");
+  const root = document.getElementById("player-list");
   if (!root) return;
 
 

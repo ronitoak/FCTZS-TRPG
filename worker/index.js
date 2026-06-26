@@ -478,7 +478,9 @@ function handleOptions() {
  */
 async function sbFetch(env, request, pathAndQuery, options = {}) {
   const url = `${env.SUPABASE_URL}${pathAndQuery}`;
-  const authHeader = request.headers.get("Authorization");
+  
+  // ★修正：request に「?」をつけて、nullの時はそのままnullにする（安全確認）
+  const authHeader = request?.headers?.get("Authorization");
 
   const headers = {
     "apikey": env.SUPABASE_ANON_KEY,

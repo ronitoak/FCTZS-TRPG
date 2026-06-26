@@ -123,7 +123,7 @@ async function main() {
     }
 
     // イベントリスナー
-    // イベントリスナー
+// イベントリスナー
     root.addEventListener("click", (e) => {
       // カレンダーの月切り替え
       if (e.target.closest("#btn-prev-month")) {
@@ -145,12 +145,42 @@ async function main() {
           modal.showModal();
         }
       }
+
+      // ★復活：キャラのお気に入り（★）ボタンが押された時
+      const favCharBtn = e.target.closest(".btn-fav-char");
+      if (favCharBtn) {
+        e.preventDefault();
+        const id = favCharBtn.getAttribute("data-id");
+        if (favChars.includes(id)) {
+          favChars = favChars.filter(x => x !== id); // 配列から外す
+          favCharBtn.style.color = "#e2e8f0";        // グレーにする
+        } else {
+          favChars.push(id);                         // 配列に入れる
+          favCharBtn.style.color = "#ecc94b";        // ゴールドにする
+        }
+        updateFavoritesSilent("favorite_character_ids", favChars);
+      }
+
+      // ★復活：シナリオのお気に入り（★）ボタンが押された時
+      const favScenarioBtn = e.target.closest(".btn-fav-scenario");
+      if (favScenarioBtn) {
+        e.preventDefault();
+        const id = favScenarioBtn.getAttribute("data-id");
+        if (favScenarios.includes(id)) {
+          favScenarios = favScenarios.filter(x => x !== id);
+          favScenarioBtn.style.color = "#e2e8f0";
+        } else {
+          favScenarios.push(id);
+          favScenarioBtn.style.color = "#ecc94b";
+        }
+        updateFavoritesSilent("favorite_scenario_ids", favScenarios);
+      }
     });
     
     // ★追加：HTMLを流し込んだ直後にチャートを描画！
     Utils.renderRadarChart(player, "desire-radar-chart");
 
-  // === プロフィール編集機能のセットアップ ===
+    // === プロフィール編集機能のセットアップ ===
     const charSelect = document.getElementById('icon-character-select');
     const editBtn = document.getElementById("btn-edit-profile");
     const modal = document.getElementById("edit-profile-modal");
@@ -163,7 +193,6 @@ async function main() {
           ${Utils.escapeHtml(c.name)}
       </option>`
     ).join('');
-
 
     if (editBtn && modal) {
       editBtn.addEventListener("click", () => {
@@ -220,14 +249,12 @@ async function main() {
       });
     }
 
-    document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
-
-  // ★修正：キャンセル（閉じる）ボタンの処理も追加
+    // ★修正：重複していた処理を1つに統合
     document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
     document.getElementById("close-modal-btn")?.addEventListener("click", () => {
       document.getElementById("availability-modal")?.close();
     });
-
+    
   } catch (err) {
     console.error(err);
     root.innerHTML = "<p>データの読み込みに失敗しました。</p>";

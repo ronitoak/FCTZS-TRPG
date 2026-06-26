@@ -123,6 +123,7 @@ async function main() {
     }
 
     // イベントリスナー
+    // イベントリスナー
     root.addEventListener("click", (e) => {
       // カレンダーの月切り替え
       if (e.target.closest("#btn-prev-month")) {
@@ -135,37 +136,17 @@ async function main() {
         renderSchedule();
       }
 
-      // ★追加：キャラのお気に入り（★）ボタンが押された時
-      const favCharBtn = e.target.closest(".btn-fav-char");
-      if (favCharBtn) {
-        e.preventDefault();
-        const id = favCharBtn.getAttribute("data-id");
-        if (favChars.includes(id)) {
-          favChars = favChars.filter(x => x !== id); // 配列から外す
-          favCharBtn.style.color = "#e2e8f0";        // グレーにする
-        } else {
-          favChars.push(id);                         // 配列に入れる
-          favCharBtn.style.color = "#ecc94b";        // ゴールドにする
+      // ★追加：予定入力ボタンが押された時
+      if (e.target.closest("#bulk-input-btn")) {
+        const modal = document.getElementById("availability-modal");
+        if (modal) {
+          // 現在カレンダーで表示している年・月を渡してグリッドを描画する
+          renderBulkInputGrid(playerId, currentYear, currentMonth);
+          modal.showModal();
         }
-        updateFavoritesSilent("favorite_character_ids", favChars);
-      }
-
-      // ★追加：シナリオのお気に入り（★）ボタンが押された時
-      const favScenarioBtn = e.target.closest(".btn-fav-scenario");
-      if (favScenarioBtn) {
-        e.preventDefault();
-        const id = favScenarioBtn.getAttribute("data-id");
-        if (favScenarios.includes(id)) {
-          favScenarios = favScenarios.filter(x => x !== id);
-          favScenarioBtn.style.color = "#e2e8f0";
-        } else {
-          favScenarios.push(id);
-          favScenarioBtn.style.color = "#ecc94b";
-        }
-        updateFavoritesSilent("favorite_scenario_ids", favScenarios);
       }
     });
-
+    
     // ★追加：HTMLを流し込んだ直後にチャートを描画！
     Utils.renderRadarChart(player, "desire-radar-chart");
 
@@ -240,6 +221,12 @@ async function main() {
     }
 
     document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
+
+  // ★修正：キャンセル（閉じる）ボタンの処理も追加
+    document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
+    document.getElementById("close-modal-btn")?.addEventListener("click", () => {
+      document.getElementById("availability-modal")?.close();
+    });
 
   } catch (err) {
     console.error(err);
@@ -489,6 +476,14 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
   `;
 }
 
+// --- 予定入力モーダル用の補助関数 ---
+function getStatusSymbol(status) {
+  if (status === "ok") return "〇";
+  if (status === "maybe") return "△";
+  if (status === "ng") return "×";
+  return "";
+}
+
 async function saveBulkAvailability() {
   const playerId = Utils.getQueryParam("id");
   if (!playerId) return;
@@ -509,24 +504,20 @@ async function saveBulkAvailability() {
     }
   });
 
+  const modal = document.getElementById("availability-modal");
+
   if (payload.length === 0) {
      alert("変更された予定データがありません。");
-     closeModal('availability-modal');
+     if (modal) modal.close();
      return;
   }
 
   try {
     const res = await Utils.apiPost("player_availability", payload);
     if (res) {
-      closeModal('availability-modal');
-      
-      if (compareMode) {
-        await runComparison();
-      } else {
-        await fetchScheduleData();
-      }
-      
-      alert("予定を保存しました");
+      if (modal) modal.close();
+      alert("予定を保存しました！");
+      location.reload(); // リロードしてカレンダーの表示を更新
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
@@ -534,12 +525,8 @@ async function saveBulkAvailability() {
   }
 }
 
-async function renderBulkInputGrid() {
-  const playerId = Utils.getQueryParam("id");
-  if (!playerId) return;
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+// 引数で year と month、playerId を受け取るように修正
+async function renderBulkInputGrid(playerId, year, month) {
   const lastDay = new Date(year, month + 1, 0).getDate();
 
   const monthLabel = document.getElementById("bulk-month-label");

@@ -6,7 +6,6 @@ async function main() {
 
   await Utils.initAuthAndHeader('common-nav', '../');
 
-  //const playerId = "p-001";
   const playerId = Utils.getQueryParam("id");
   if (!playerId) {
     root.innerHTML = "<p>プレイヤーIDが指定されていません</p>";
@@ -14,7 +13,6 @@ async function main() {
   }
 
   try {
-    // 既存のテーブルから並行してデータを取得
     const [players, profiles, characters, runs, sessions, availabilities, scenarios] = await Promise.all([
       Utils.apiGet("players"),
       Utils.apiGet("player_profiles").catch(() => []),
@@ -22,25 +20,24 @@ async function main() {
       Utils.apiGet("runs").catch(() => []),
       Utils.apiGet("sessions").catch(() => []),
       Utils.apiGet(`player_availability?player_id=eq.${playerId}`).catch(() => []),
-      Utils.apiGet("scenarios").catch(() => []) // ★追加
+      Utils.apiGet("scenarios").catch(() => []) 
     ]);
 
-    // --- (中略：既存のプレイヤー・キャラクター特定のコード) ---
     const basePlayer = players.find(p => p.player_id === playerId);
     if (!basePlayer) {
       root.innerHTML = "<p>プレイヤーが見つかりません</p>";
       return;
     }
-    // ★修正：プロフィールデータが存在するかどうかをチェックして変数に保存する
+    
     const profileData = profiles.find(p => p.player_id === playerId);
-    const hasProfileRecord = profileData !== undefined; // データがあれば true、なければ false
+    // ★修正1：後で再代入できるように let で定義する（★ボタンのエラー解消）
+    let hasProfileRecord = profileData !== undefined; 
     const player = { ...basePlayer, ...(profileData || {}) };
 
     const myCharacters = characters
       .filter(c => c.player_id === playerId || c.player === player.player_name)
       .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
-    // ★追加：自分の空き日程と、参加しているセッションを抽出
     const myAvailabilities = availabilities.filter(a => a.player_id === playerId);
     const myRunsGM = runs.filter(r => String(r.gm_id) === String(playerId));
     const myRunsPL = runs.filter(r => {
@@ -53,19 +50,16 @@ async function main() {
       return isPL;
     });
     
-    // 全てのIDを文字列に統一して比較用の配列を作る（GMとPL両方を合体！）
     const myRunsAll = [...myRunsGM, ...myRunsPL];
     const myRunIds = myRunsAll.map(r => String(r.id));
     const mySessions = sessions.filter(s => s.start && myRunIds.includes(String(s.run_id)));
 
-    // 通過済（PLとして参加し、ステータスが 'done'）のシナリオを抽出
     const passedRuns = myRunsPL.filter(r => r.status === "done" && r.scenario_id);
-    const passedScenarioIds = [...new Set(passedRuns.map(r => r.scenario_id))]; // 重複を排除
+    const passedScenarioIds = [...new Set(passedRuns.map(r => r.scenario_id))]; 
     const passedScenarios = (scenarios || []).filter(s => passedScenarioIds.includes(s.id));
 
-    // ★追加：GM可能（GMとして参加予定、または完了済）のシナリオを抽出
     const gmRuns = myRunsGM.filter(r => r.scenario_id);
-    const gmScenarioIds = [...new Set(gmRuns.map(r => r.scenario_id))]; // 重複を排除
+    const gmScenarioIds = [...new Set(gmRuns.map(r => r.scenario_id))]; 
     const gmScenarios = (scenarios || []).filter(s => gmScenarioIds.includes(s.id));
 
     let currentYear = new Date().getFullYear();
@@ -74,16 +68,13 @@ async function main() {
     function renderSchedule() {
       const wrapper = document.getElementById("schedule-wrapper");
       if (wrapper) {
-        // ★修正：myRunsPL ではなく myRunsAll を渡すことでGM卓もカレンダーにタイトル表示
         wrapper.innerHTML = buildScheduleHtml(player, myAvailabilities, mySessions, myRunsAll, currentYear, currentMonth);
       }
     }
 
-    // ★追加：データベースからお気に入り配列を取得（なければ空の配列）
     let favChars = player.favorite_character_ids || [];
     let favScenarios = player.favorite_scenario_ids || [];
 
-    // ★ HTMLの組み立てと描画 ★
     root.innerHTML = `
       <div class="player-detail-grid" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
         <div style="flex: 1 1 300px; max-width: 450px;">
@@ -106,14 +97,13 @@ async function main() {
       </div>
     `;
 
-    // ★裏側でこっそり保存する関数
     async function updateFavoritesSilent(column, arrayData) {
       const payload = { [column]: arrayData };
       try {
         if (!hasProfileRecord) {
           payload.player_id = playerId;
           await Utils.apiPost("player_profiles", payload);
-          hasProfileRecord = true; // 次回からは上書きになるように更新
+          hasProfileRecord = true; 
         } else {
           await Utils.apiPatch("player_profiles", payload, `player_id=eq.${playerId}`);
         }
@@ -122,10 +112,7 @@ async function main() {
       }
     }
 
-    // イベントリスナー
-// イベントリスナー
     root.addEventListener("click", (e) => {
-      // カレンダーの月切り替え
       if (e.target.closest("#btn-prev-month")) {
         currentMonth--;
         if (currentMonth < 0) { currentMonth = 11; currentYear--; }
@@ -136,32 +123,28 @@ async function main() {
         renderSchedule();
       }
 
-      // ★追加：予定入力ボタンが押された時
       if (e.target.closest("#bulk-input-btn")) {
         const modal = document.getElementById("availability-modal");
         if (modal) {
-          // 現在カレンダーで表示している年・月を渡してグリッドを描画する
           renderBulkInputGrid(playerId, currentYear, currentMonth);
           modal.showModal();
         }
       }
 
-      // ★復活：キャラのお気に入り（★）ボタンが押された時
       const favCharBtn = e.target.closest(".btn-fav-char");
       if (favCharBtn) {
         e.preventDefault();
         const id = favCharBtn.getAttribute("data-id");
         if (favChars.includes(id)) {
-          favChars = favChars.filter(x => x !== id); // 配列から外す
-          favCharBtn.style.color = "#e2e8f0";        // グレーにする
+          favChars = favChars.filter(x => x !== id);
+          favCharBtn.style.color = "#e2e8f0";        
         } else {
-          favChars.push(id);                         // 配列に入れる
-          favCharBtn.style.color = "#ecc94b";        // ゴールドにする
+          favChars.push(id);                         
+          favCharBtn.style.color = "#ecc94b";        
         }
         updateFavoritesSilent("favorite_character_ids", favChars);
       }
 
-      // ★復活：シナリオのお気に入り（★）ボタンが押された時
       const favScenarioBtn = e.target.closest(".btn-fav-scenario");
       if (favScenarioBtn) {
         e.preventDefault();
@@ -177,30 +160,29 @@ async function main() {
       }
     });
     
-    // ★追加：HTMLを流し込んだ直後にチャートを描画！
     Utils.renderRadarChart(player, "desire-radar-chart");
 
-    // === プロフィール編集機能のセットアップ ===
     const charSelect = document.getElementById('icon-character-select');
     const editBtn = document.getElementById("btn-edit-profile");
-    const modal = document.getElementById("edit-profile-modal");
+    const editModal = document.getElementById("edit-profile-modal");
     const closeBtn = document.getElementById("close-profile-modal");
     const form = document.getElementById("edit-profile-form");
 
-    charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-    myCharacters.map(c => 
-      `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
-          ${Utils.escapeHtml(c.name)}
-      </option>`
-    ).join('');
+    if (charSelect) {
+      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+      myCharacters.map(c => 
+        `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
+            ${Utils.escapeHtml(c.name)}
+        </option>`
+      ).join('');
+    }
 
-    if (editBtn && modal) {
+    if (editBtn && editModal) {
       editBtn.addEventListener("click", () => {
         form.tier_list_first.value = player.tier_list_first || "";
         form.tier_list_second.value = player.tier_list_second || "";
         form.tier_list_third.value = player.tier_list_third || "";
         charSelect.value = player.icon_url || "";
-        // ★追加：スライダーに現在の値をセット
         form.desire_avatar.value = player.desire_avatar || 3;
         form.desire_active.value = player.desire_active || 3;
         form.desire_chaos.value = player.desire_chaos || 3;
@@ -208,10 +190,10 @@ async function main() {
         form.desire_harmony.value = player.desire_harmony || 3;
         form.desire_clear.value = player.desire_clear || 3;
 
-        modal.showModal();
+        editModal.showModal();
       });
 
-      closeBtn.addEventListener("click", () => modal.close());
+      closeBtn.addEventListener("click", () => editModal.close());
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -224,7 +206,6 @@ async function main() {
           tier_list_first: form.tier_list_first.value.trim(),
           tier_list_second: form.tier_list_second.value.trim(),
           tier_list_third: form.tier_list_third.value.trim(),
-          // ★追加：スライダーの値を数値に変換して送信
           desire_avatar: parseInt(form.desire_avatar.value, 10),
           desire_active: parseInt(form.desire_active.value, 10),
           desire_chaos: parseInt(form.desire_chaos.value, 10),
@@ -249,7 +230,6 @@ async function main() {
       });
     }
 
-    // ★修正：重複していた処理を1つに統合
     document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
     document.getElementById("close-modal-btn")?.addEventListener("click", () => {
       document.getElementById("availability-modal")?.close();
@@ -261,12 +241,7 @@ async function main() {
   }
 }
 
-// ==========================================
-// --- HTML生成コンポーネント ---
-// ==========================================
-
 function buildPlayerProfileHtml(player) {
-
   const profileImage = player.icon_url  ? Utils.getCharacterImagePath(player.icon_url) : Utils.DEFAULT_CHARACTER_IMAGE;
 
   return `
@@ -288,16 +263,13 @@ function buildPlayerProfileHtml(player) {
   `;
 }
 
-// ★引数に allCharacters と allScenarios を追加し、お気に入りを抽出して描画
 function buildCustomAreaHtml(player, allCharacters, allScenarios) {
   const favCharIds = player.favorite_character_ids || [];
   const favScenIds = player.favorite_scenario_ids || [];
 
-  // IDリストから実際のデータを抽出
   const favChars = (allCharacters || []).filter(c => favCharIds.includes(String(c.id)));
   const favScens = (allScenarios || []).filter(s => favScenIds.includes(String(s.id)));
 
-  // もしお気に入りが1つも設定されていない場合は、案内テキストを出す
   if (favChars.length === 0 && favScens.length === 0) {
     return `
       <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
@@ -307,7 +279,6 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
     `;
   }
 
-  // 最強キャラHTML組み立て
   let charsHtml = "";
   if (favChars.length > 0) {
     charsHtml = `
@@ -323,7 +294,6 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
     `;
   }
 
-  // 最強シナリオHTML組み立て
   let scensHtml = "";
   if (favScens.length > 0) {
     scensHtml = `
@@ -347,12 +317,11 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
   `;
 }
 
-// ★引数に favoriteIds を追加し、★ボタンを描画
 function buildMyCharactersHtml(characters, favoriteIds = []) {
   const charsList = characters.length > 0 
     ? characters.map(c => {
         const isFav = favoriteIds.includes(String(c.id));
-        const starColor = isFav ? "#ecc94b" : "#e2e8f0"; // ゴールドかグレーか
+        const starColor = isFav ? "#ecc94b" : "#e2e8f0"; 
         return `
         <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; transition: background 0.2s;">
           <button class="btn-fav-char" data-id="${c.id}" style="background: none; border: none; cursor: pointer; font-size: 1.5rem; color: ${starColor}; padding: 0; outline: none; transition: transform 0.1s;">★</button>
@@ -376,7 +345,6 @@ function buildMyCharactersHtml(characters, favoriteIds = []) {
   `;
 }
 
-// ★修正4：引数に year と month を追加
 function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, month) {
   const today = new Date();
   const firstDay = new Date(year, month, 1).getDay();
@@ -404,7 +372,8 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
   for (let d = 1; d <= lastDate; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     
-    const todaysAvails = availabilities.filter(a => a.target_date === dateStr);
+    // ★表示時に "none"（削除扱い）の予定は無視する
+    const todaysAvails = availabilities.filter(a => a.target_date === dateStr && a.status !== "none");
     let availHtml = "";
     if (todaysAvails.length > 0) {
       availHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
@@ -437,7 +406,6 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
       sessionHtml += `</div>`;
     }
 
-    // ★ 今日の日付判定も、表示している年・月が現在と一致しているかを考慮する
     const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? "background: #fffff0;" : "background: #fff;";
 
     calendarHtml += `
@@ -456,7 +424,6 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
         <span>スケジュール</span>
         <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
-        <!-- ★ ヘッダーに切り替えボタンを追加 -->
         <div style="display: flex; align-items: center; gap: 10px; font-size: 1rem;">
           <button id="btn-prev-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">◀</button>
           <span style="font-weight: bold; width: 90px; text-align: center;">${year}年${month + 1}月</span>
@@ -470,12 +437,10 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
   `;
 }
 
-// ★引数に favoriteIds を追加し、箇条書きのリストに★ボタンを統合
 function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText = "通過履歴はまだありません。") {
   let contentHtml = "";
   
   if (scenariosList && scenariosList.length > 0) {
-    // デフォルトの「・」の箇条書きを消して、★を弾頭にする
     contentHtml = `<ul style="margin: 0; padding-left: 0; list-style-type: none; color: #4a5568; line-height: 1.8;">`;
     scenariosList.forEach(s => {
       const isFav = favoriteIds.includes(String(s.id));
@@ -503,7 +468,6 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
   `;
 }
 
-// --- 予定入力モーダル用の補助関数 ---
 function getStatusSymbol(status) {
   if (status === "ok") return "〇";
   if (status === "maybe") return "△";
@@ -520,14 +484,14 @@ async function saveBulkAvailability() {
 
   toggles.forEach(el => {
     if (el.dataset.status !== el.dataset.initial) {
-      if (el.dataset.status !== "") {
-        payload.push({
-          player_id: playerId,
-          target_date: el.dataset.date,
-          time_slot: el.dataset.slot,
-          status: el.dataset.status
-        });
-      }
+      // ★修正2：空白に戻した場合は "none" としてデータベースに上書き保存し、事実上予定を消す
+      const finalStatus = el.dataset.status === "" ? "none" : el.dataset.status;
+      payload.push({
+        player_id: playerId,
+        target_date: el.dataset.date,
+        time_slot: el.dataset.slot,
+        status: finalStatus
+      });
     }
   });
 
@@ -544,7 +508,7 @@ async function saveBulkAvailability() {
     if (res) {
       if (modal) modal.close();
       alert("予定を保存しました！");
-      location.reload(); // リロードしてカレンダーの表示を更新
+      location.reload(); 
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
@@ -552,7 +516,6 @@ async function saveBulkAvailability() {
   }
 }
 
-// 引数で year と month、playerId を受け取るように修正
 async function renderBulkInputGrid(playerId, year, month) {
   const lastDay = new Date(year, month + 1, 0).getDate();
 
@@ -599,7 +562,8 @@ async function renderBulkInputGrid(playerId, year, month) {
       slotDiv.dataset.slot = slot;
 
       const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-      const initialVal = exist ? exist.status : "";
+      // ★修正3："none" で保存されているデータは空白（予定なし）として読み込む
+      const initialVal = (exist && exist.status !== "none") ? exist.status : "";
       
       slotDiv.dataset.status = initialVal;
       slotDiv.dataset.initial = initialVal;
@@ -629,5 +593,4 @@ async function renderBulkInputGrid(playerId, year, month) {
   }
 }
 
-// 実行
 Utils.domReady(main);

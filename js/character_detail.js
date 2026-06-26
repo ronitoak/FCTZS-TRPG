@@ -15,7 +15,9 @@ function renderLink(url, label) {
   return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
 }
 
+// ★修正：空文字や未入力の場合は「0」ではなく、ちゃんと「null（空）」として扱う
 function toIntOrNull(v) {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }

@@ -441,6 +441,7 @@ function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, 
     <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px;">
       <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
         <span>スケジュール</span>
+        <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
         <!-- ★ ヘッダーに切り替えボタンを追加 -->
         <div style="display: flex; align-items: center; gap: 10px; font-size: 1rem;">
           <button id="btn-prev-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">◀</button>
@@ -534,7 +535,7 @@ async function saveBulkAvailability() {
 }
 
 async function renderBulkInputGrid() {
-  const playerId = document.getElementById("modal-player-id")?.value;
+  const playerId = Utils.getQueryParam("id");
   if (!playerId) return;
 
   const year = currentDate.getFullYear();

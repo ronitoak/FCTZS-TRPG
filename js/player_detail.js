@@ -239,6 +239,8 @@ async function main() {
       });
     }
 
+    document.getElementById("save-availability-btn")?.addEventListener("click", saveBulkAvailability);
+
   } catch (err) {
     console.error(err);
     root.innerHTML = "<p>データの読み込みに失敗しました。</p>";
@@ -486,6 +488,131 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
   `;
 }
 
+async function saveBulkAvailability() {
+  const playerId = Utils.getQueryParam("id");
+  if (!playerId) return;
+
+  const toggles = document.querySelectorAll(".bulk-slot-toggle");
+  const payload = [];
+
+  toggles.forEach(el => {
+    if (el.dataset.status !== el.dataset.initial) {
+      if (el.dataset.status !== "") {
+        payload.push({
+          player_id: playerId,
+          target_date: el.dataset.date,
+          time_slot: el.dataset.slot,
+          status: el.dataset.status
+        });
+      }
+    }
+  });
+
+  if (payload.length === 0) {
+     alert("変更された予定データがありません。");
+     closeModal('availability-modal');
+     return;
+  }
+
+  try {
+    const res = await Utils.apiPost("player_availability", payload);
+    if (res) {
+      closeModal('availability-modal');
+      
+      if (compareMode) {
+        await runComparison();
+      } else {
+        await fetchScheduleData();
+      }
+      
+      alert("予定を保存しました");
+    }
+  } catch (err) {
+    console.error("一括保存エラー:", err);
+    alert("保存に失敗しました");
+  }
+}
+
+async function renderBulkInputGrid() {
+  const playerId = document.getElementById("modal-player-id")?.value;
+  if (!playerId) return;
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+
+  const monthLabel = document.getElementById("bulk-month-label");
+  if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
+
+  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
+
+  let existingData = [];
+  try {
+    const res = await Utils.apiGet(`player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}&target_date=gte.${startDate}&target_date=lte.${endDate}`);
+    if (Array.isArray(res)) existingData = res;
+  } catch (e) {
+    console.error("既存予定の取得に失敗:", e);
+  }
+
+  const container = document.getElementById("bulk-input-container");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
+  const slots = ["afternoon", "night"];
+
+  for (let d = 1; d <= lastDay; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dateObj = new Date(year, month, d);
+    const dowIndex = dateObj.getDay();
+
+    const row = document.createElement("div");
+    row.className = "bulk-row";
+
+    const dateLabel = document.createElement("div");
+    dateLabel.className = "bulk-date";
+    if (dowIndex === 0) dateLabel.style.color = "#c62828";
+    if (dowIndex === 6) dateLabel.style.color = "#1565c0";
+    dateLabel.textContent = `${d}日(${dayOfWeekStr[dowIndex]})`;
+    row.appendChild(dateLabel);
+
+    slots.forEach(slot => {
+      const slotDiv = document.createElement("div");
+      slotDiv.className = "bulk-slot-toggle";
+      slotDiv.dataset.date = dateStr;
+      slotDiv.dataset.slot = slot;
+
+      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
+      const initialVal = exist ? exist.status : "";
+      
+      slotDiv.dataset.status = initialVal;
+      slotDiv.dataset.initial = initialVal;
+      slotDiv.textContent = getStatusSymbol(initialVal);
+      if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
+
+      slotDiv.addEventListener("click", () => {
+          const statusOrder = ["", "ok", "maybe", "ng"];
+          let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
+          let nextIndex = (currentIndex + 1) % statusOrder.length;
+          
+          const nextStatus = statusOrder[nextIndex];
+          slotDiv.dataset.status = nextStatus;
+          slotDiv.textContent = getStatusSymbol(nextStatus);
+          
+          slotDiv.className = "bulk-slot-toggle"; 
+          if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
+      });
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "bulk-slot";
+      wrapper.appendChild(slotDiv);
+      row.appendChild(wrapper);
+    });
+
+    container.appendChild(row);
+  }
+}
 
 // 実行
 Utils.domReady(main);

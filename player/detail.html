@@ -103,6 +103,42 @@
       </form>
     </dialog>
 
+    <dialog id="availability-modal" class="modal" style="display: none;">
+      <div class="modal-content bulk-input-content">
+        <h3>予定の一括入力</h3>
+        
+        <div class="form-group">
+          <label for="modal-player-id">プレイヤー</label>
+          <select id="modal-player-id"></select>
+        </div>
+
+        <div class="form-group">
+          <label>対象月: <span id="bulk-month-label"></span></label>
+        </div>
+
+        <div class="bulk-header-row">
+          <div class="bulk-date">日付</div>
+          <div class="bulk-slot">昼</div>
+          <div class="bulk-slot">夜</div>
+        </div>
+
+        <div id="bulk-input-container" class="bulk-input-container">
+        </div>
+
+        <div class="modal-actions">
+          <button id="save-availability-btn" class="primary-btn">保存</button>
+          <button id="close-modal-btn" class="secondary-btn">キャンセル</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="comments-root"></div>
+      <footer>
+        <hr />
+        <small><a href="../player/index.html">Back</a></small>
+      </footer>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/init-supabase.js"></script>

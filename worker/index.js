@@ -864,23 +864,23 @@ async function handlePost(request, env, ctx, url) {
 
     // ---- Comments ----
     if (url.pathname === "/api/comments") {
-      const { res, text } = await sbFetch(env, request, "/rest/v1/comments", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const { res, text } = await sbFetch(env, null, "/rest/v1/comments", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- Characters (一括作成) ----
     if (url.pathname === "/api/character_full") {
       const { character, attributes, skills } = body;
-      const { res: charRes, text: charText } = await sbFetch(env, request, "/rest/v1/characters", { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
+      const { res: charRes, text: charText } = await sbFetch(env, null, "/rest/v1/characters", { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
       if (!charRes.ok) return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
       
       const newCharId = JSON.parse(charText)[0].id;
 
       if (attributes?.length > 0) {
-        await sbFetch(env, request, "/rest/v1/character_attributes", { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
+        await sbFetch(env, null, "/rest/v1/character_attributes", { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
       }
       if (skills?.length > 0) {
-        await sbFetch(env, request, "/rest/v1/character_skills", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
+        await sbFetch(env, null, "/rest/v1/character_skills", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
       }
       return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
     }
@@ -894,7 +894,7 @@ async function handlePost(request, env, ctx, url) {
     };
 
     if (upsertEndpoints[url.pathname]) {
-      const { res, text } = await sbFetch(env, request, upsertEndpoints[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
+      const { res, text } = await sbFetch(env, null, upsertEndpoints[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
       if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -902,13 +902,13 @@ async function handlePost(request, env, ctx, url) {
     // ---- 通常の Insert 系 ----
     if (url.pathname === "/api/scenarios") {
       const scenarioData = { title: body.title, system: body.system, author: body.author, description: body.description, notes: body.notes };
-      const { res, text } = await sbFetch(env, request, "/rest/v1/scenarios", { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
+      const { res, text } = await sbFetch(env, null, "/rest/v1/scenarios", { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
     if (url.pathname === "/api/runs") {
-      const { res, text } = await sbFetch(env, request, "/rest/v1/runs", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const { res, text } = await sbFetch(env, null, "/rest/v1/runs", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
       const insertedData = JSON.parse(text);
       if (insertedData && insertedData[0]) ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
@@ -917,7 +917,7 @@ async function handlePost(request, env, ctx, url) {
 
     // ★ 募集関係の処理の呼び出し
     if (url.pathname === "/api/recruitments") {
-      const { res, text } = await sbFetch(env, request, "/rest/v1/recruitments", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      const { res, text } = await sbFetch(env, null, "/rest/v1/recruitments", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
       if (res.ok) {
         const insertedData = JSON.parse(text);
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
@@ -927,7 +927,7 @@ async function handlePost(request, env, ctx, url) {
     }
 
     if (url.pathname === "/api/recruitment_applicants") {
-      const { res, text } = await sbFetch(env, request, "/rest/v1/recruitment_applicants", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      const { res, text } = await sbFetch(env, null, "/rest/v1/recruitment_applicants", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
       if (res.ok) {
         const payload = Array.isArray(body) ? body[0] : body;
         if (payload.recruitment_id || payload.recruit_id) {
@@ -948,7 +948,11 @@ async function handlePost(request, env, ctx, url) {
     if (simpleInsertEndpoints[url.pathname]) {
       const targetUrl = simpleInsertEndpoints[url.pathname];
       const requestBody = url.pathname === "/api/player_profiles" ? body : [body];
-      const { res, text } = await sbFetch(env, request, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
+      
+      // ★なりきりチャット（/api/posts）の時だけはユーザー証明書を渡す
+      const reqOrNull = url.pathname === "/api/posts" ? request : null;
+      
+      const { res, text } = await sbFetch(env, reqOrNull, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
       if (!res.ok) return new Response(JSON.stringify({ error: "Insert failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -966,11 +970,11 @@ async function handlePatch(request, env, ctx, url) {
     const resource = url.pathname.replace("/api/", ""); 
     const allowedResources = ["sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants", "player_profiles"];
     
-    // ① ホワイトリストに合致する汎用PATCH処理
+    // ① ホワイトリストに合致する汎用PATCH処理（強制ANON_KEY化するため request ではなく null を渡す）
     if (allowedResources.includes(resource)) {
       try {
         const body = await request.json();
-        const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, {
+        const { res, text } = await sbFetch(env, null, `/rest/v1/${resource}${url.search}`, {
           method: "PATCH",
           headers: { "Prefer": "return=representation" },
           body: body
@@ -982,7 +986,7 @@ async function handlePatch(request, env, ctx, url) {
       }
     }
 
-    // ② 特殊処理（runs更新時はシナリオ通過履歴の同期を走らせる）
+    // ② 特殊処理（runsのみ以前からユーザー証明書を使っていたので request を渡す）
     if (url.pathname === "/api/runs") {
       try {
         const body = await request.json();
@@ -1011,7 +1015,8 @@ async function handleDelete(request, env, url) {
     
     if (allowedResources.includes(resource)) {
       try {
-        const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
+        // 強制ANON_KEY化するため null を渡す
+        const { res, text } = await sbFetch(env, null, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
         if (!res.ok) return new Response(JSON.stringify({ error: `${resource} delete failed`, detail: text }), { status: res.status, headers: jsonHeaders });
         return new Response(text, { status: 200, headers: jsonHeaders });
       } catch (e) {
@@ -1020,7 +1025,6 @@ async function handleDelete(request, env, url) {
     }
   }
 }
-
 // character_scenarios を同期する共通関数
 async function syncCharacterScenarios(runData, env) {
   // ★ステータス（status）も受け取るように追加

@@ -473,7 +473,7 @@ function getStatusSymbol(status) {
   if (status === "ok") return "〇";
   if (status === "maybe") return "△";
   if (status === "ng") return "×";
-  return "";
+  return "-";
 }
 
 async function saveBulkAvailability() {

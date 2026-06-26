@@ -112,7 +112,7 @@ async function main() {
       }
     }
 
-    root.addEventListener("click", (e) => {
+    root.addEventListener("click", async (e) => {
       if (e.target.closest("#btn-prev-month")) {
         currentMonth--;
         if (currentMonth < 0) { currentMonth = 11; currentYear--; }
@@ -126,7 +126,8 @@ async function main() {
       if (e.target.closest("#bulk-input-btn")) {
         const modal = document.getElementById("availability-modal");
         if (modal) {
-          renderBulkInputGrid(playerId, currentYear, currentMonth);
+          // ★ await を追加して、グリッドが完全に作られるのを待つ
+          await renderBulkInputGrid(playerId, currentYear, currentMonth);
           modal.showModal();
         }
       }

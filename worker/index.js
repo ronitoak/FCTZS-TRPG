@@ -153,80 +153,62 @@ export default {
   // セッション通知処理
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
+      // ==========================================
+      // ---- 1. 本日のセッション通知処理 ----
+      // ==========================================
       try {
-        // 1. 時間の計算（今 〜 24時間後）
         const now = new Date();
         const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
         const startDate = encodeURIComponent(now.toISOString());
         const endDate = encodeURIComponent(tomorrow.toISOString());
 
-        // 2. 直近のセッションを取得
-        const sessionUrl = `/rest/v1/sessions?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`;
-        const sessionRes = await fetch(`${env.SUPABASE_URL}${sessionUrl}`, {
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-          }
-        });
+        // ★修正1: sbFetchを使って直近のセッションを取得
+        const { res: sessionRes, text: sessionText } = await sbFetch(env, null, `/rest/v1/sessions?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`);
         
         if (!sessionRes.ok) {
-          console.error("Supabase APIエラー(Sessions):", await sessionRes.text());
+          console.error("Supabase APIエラー(Sessions):", sessionText);
           return;
         }
 
-        const upcomingSessions = await sessionRes.json();
+        const upcomingSessions = JSON.parse(sessionText);
 
-        // セッション予定なし
         if (!Array.isArray(upcomingSessions) || upcomingSessions.length === 0) {
           console.log("本日の予定セッションはありません。");
           return;
         }
 
-        // 3. セッション情報から卓情報を取得
+        // --- セッション情報から卓情報を取得 ---
         const runIds = [...new Set(upcomingSessions.map(s => s.run_id).filter(Boolean))];
         let runsMap = new Map();
         
         if (runIds.length > 0) {
-          // ★修正: in句のカッコごと安全にURLエンコードする
           const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-          // ★修正: 存在しない旧カラムを指定するとエラーになるため、安全に select=* に変更
-          const runsUrl = `/rest/v1/runs?select=*&id=in.${runIdsParam}`;
-          const runsRes = await fetch(`${env.SUPABASE_URL}${runsUrl}`, {
-            headers: {
-              apikey: env.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-            }
-          });
+          
+          // ★修正2: sbFetchを使って卓情報を取得
+          const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/runs?select=*&id=in.${runIdsParam}`);
+          
           if (runsRes.ok) {
-            const runsData = await runsRes.json();
-            // ★修正: IDが文字列と数値でズレて取得できないのを防ぐため、String() で統一して辞書化
+            const runsData = JSON.parse(runsText);
             runsMap = new Map(runsData.map(r => [String(r.id), r]));
           } else {
-            // 万が一エラーになった場合はログを残す
-            console.error("Supabase APIエラー(Runs):", await runsRes.text());
+            console.error("Supabase APIエラー(Runs):", runsText);
           }
         }
 
-        // 4. プレイヤー情報を一括取得
-        const mapRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?select=player_id,player_name,discord_id`, {
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-          }
-        });
-        const allPlayers = mapRes.ok ? await mapRes.json() : [];
+        // --- プレイヤー情報を一括取得 ---
+        // ★修正3: sbFetchを使ってプレイヤー情報を取得
+        const { res: mapRes, text: mapText } = await sbFetch(env, null, `/rest/v1/players?select=player_id,player_name,discord_id`);
+        const allPlayers = mapRes.ok ? JSON.parse(mapText) : [];
         
-        // ★修正: IDの照合ズレを防ぐため、キーを String() で統一
         const playerMapById = new Map(allPlayers.map(p => [String(p.player_id), p]));
         const playerMapByName = new Map(allPlayers.map(p => [p.player_name, p]));
 
-        // キャラクター一覧を1度だけ取得しておく
+        // キャラクター一覧を取得
         const availableCharacters = await getCharacterList(env);
 
-        // 5. 通知の送信
+        // --- 通知の作成と送信 ---
         for (const session of upcomingSessions) {
-          // ★修正: 取得時も String() に統一して確実に取り出す
           const run = runsMap.get(String(session.run_id)) || {};
           const runTitle = run.title || "名称未設定の卓";
           const sessionTitle = session.title || session.name || "名称未設定のセッション";
@@ -235,12 +217,10 @@ export default {
           const sessionStart = new Date(session.start);
           const timeString = sessionStart.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
 
-          // ★修正: 安全にGMを検索する
           const gmObj = (run.gm_id ? playerMapById.get(String(run.gm_id)) : null) || (run.gm ? playerMapByName.get(run.gm) : null);
           const gmName = gmObj ? gmObj.player_name : (run.gm || 'GM未定');
           const gmDiscordId = gmObj ? gmObj.discord_id : null;
 
-          // ★修正: PLリストを安全に処理
           const displayPlayers = [];
           const playerDiscordIds = [];
           const targetPlayers = (Array.isArray(run.player_ids) && run.player_ids.length > 0) ? run.player_ids : (Array.isArray(run.players) ? run.players : []);
@@ -257,14 +237,13 @@ export default {
 
           const displayPlayerList = displayPlayers.length > 0 ? displayPlayers.join("\n") : "- 参加者情報なし";
 
-          // --- 1. 通知用メンションの作成 ---
           const mentions = [];
           if (gmDiscordId) mentions.push(`<@${gmDiscordId}>`);
           playerDiscordIds.forEach(dId => mentions.push(`<@${dId}>`));
 
           const notificationLine = mentions.length > 0 ? [...new Set(mentions)].join(" ") : "";
 
-          // --- 2. 乱数でキャラクターを取得 ---
+          // --- 乱数でアバター用キャラクターを取得 ---
           let randomChar = null;
           if (availableCharacters.length > 0) {
             const randomIndex = Math.floor(Math.random() * availableCharacters.length);
@@ -277,7 +256,7 @@ export default {
           if (randomChar) {
             const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
             try {
-              const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
+              const imgCheck = await fetch(targetUrl, { method: 'HEAD' }); // ※ここは画像URLの死活監視なので通常のfetchでOK
               if (imgCheck.ok) {
                 customName = randomChar.name;
                 customAvatar = targetUrl;
@@ -287,7 +266,7 @@ export default {
             }
           }
 
-          // --- 3. 送信 ---
+          // --- Discordへ送信 ---
           await sendDiscordNotification(
             `${notificationLine}\n🔔 **セッション通知**`,
             {
@@ -303,148 +282,28 @@ export default {
           );
         }
       } catch (err) {
-        console.error("定期実行エラー:", err);
+        console.error("定期実行エラー(Session):", err);
       }
 
       // ==========================================
-      // ---- 1ヶ月経過した募集の自動削除 ----
+      // ---- 2. 1ヶ月経過した募集の自動削除 ----
       // ==========================================
       try {
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         const thresholdISO = oneMonthAgo.toISOString();
 
-        const fetchOldRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id,owner_player_id,scenario_id,status`, {
-          headers: {
-            apikey: env.SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-          }
-        });
+        const { res: fetchOldRes, text: fetchOldText } = await sbFetch(env, null, `/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id`);
         
         if (fetchOldRes.ok) {
-          const oldRecruits = await fetchOldRes.json();
+          const oldRecruits = JSON.parse(fetchOldText);
           
           if (oldRecruits && oldRecruits.length > 0) {
-            const ownerIds = [...new Set(oldRecruits.map(r => r.owner_player_id).filter(Boolean))];
-            const scenarioIds = [...new Set(oldRecruits.map(r => r.scenario_id).filter(Boolean))];
-            let discordIdMap = new Map();
-            let scenarioTitleMap = new Map();
-
-            if (ownerIds.length > 0) {
-              // ★修正: カッコをエンコードしない安全な結合
-              const idsQuery = `(${ownerIds.map(id => encodeURIComponent(id)).join(',')})`;
-              const playersRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=in.${idsQuery}&select=player_id,discord_id`, {
-                headers: {
-                  apikey: env.SUPABASE_ANON_KEY,
-                  Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-                }
-              });
-              
-              if (playersRes.ok) {
-                const playersData = await playersRes.json();
-                playersData.forEach(p => {
-                  if (p.discord_id) discordIdMap.set(p.player_id, p.discord_id);
-                });
-              }
-            }
-
-            if (scenarioIds.length > 0) {
-              // ★修正: カッコをエンコードしない安全な結合
-              const scenariosQuery = `(${scenarioIds.map(id => encodeURIComponent(id)).join(',')})`;
-              const scenariosRes = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=in.${scenariosQuery}&select=id,title`, {
-                headers: {
-                  apikey: env.SUPABASE_ANON_KEY,
-                  Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-                }
-              });
-
-              if (scenariosRes.ok) {
-                const scenariosData = await scenariosRes.json();
-                scenariosData.forEach(s => {
-                  scenarioTitleMap.set(s.id, s.title);
-                });
-              }
-            }
-
             const oldIds = oldRecruits.map(r => r.id);
-            // ★修正: カッコをエンコードしない安全な結合
             const deleteIdsQuery = `(${oldIds.map(id => encodeURIComponent(id)).join(',')})`;
 
-            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants?recruitment_id=in.${deleteIdsQuery}`, {
-              method: 'DELETE',
-              headers: {
-                apikey: env.SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-              }
-            });
-
-            await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=in.${deleteIdsQuery}`, {
-              method: 'DELETE',
-              headers: {
-                apikey: env.SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-              }
-            });
-
-            const mentions = [];
-            const scenarioTitles = [];
-            for (const recruit of oldRecruits) {
-              if (recruit.status === 'open') {
-                const discordId = discordIdMap.get(recruit.owner_player_id);
-                const scenarioTitle = scenarioTitleMap.get(recruit.scenario_id);
-                if (discordId) {
-                  mentions.push(`<@${discordId}>`);
-                } else {
-                  mentions.push(`(Discord未連携の募集主様)`);
-                }
-                if (scenarioTitle) {
-                  scenarioTitles.push(scenarioTitle);
-                }
-              }
-            }
-            
-            const uniqueMentions = [...new Set(mentions)].join(" ");
-            const uniqueScenarioTitles = [...new Set(scenarioTitles)].join(", ");
-
-            if (uniqueMentions) {
-              const availableCharacters = await getCharacterList(env);
-              let randomChar = null;
-              if (availableCharacters.length > 0) {
-                const randomIndex = Math.floor(Math.random() * availableCharacters.length);
-                randomChar = availableCharacters[randomIndex];
-              }
-
-              let customName = "右坂 弦介"; 
-              let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/c-001.png?raw=true";
-
-              if (randomChar) {
-                const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
-                
-                try {
-                  const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
-                  if (imgCheck.ok) {
-                    customName = randomChar.name;
-                    customAvatar = targetUrl;
-                  }
-                } catch (err) {
-                  console.error("画像チェックエラー:", err);
-                }
-              }
-
-              await sendDiscordNotification(
-                `${uniqueMentions}\n**募集終了通知**`,
-                {
-                  title: "🗑️ 募集の自動削除",
-                  description: "長期間経過した募集データを整理しました。引き続き募集を行う場合は、再作成をお願いします。",
-                  color: 15158332,
-                  fields: uniqueScenarioTitles ? [{ name: "削除された募集のシナリオ", value: uniqueScenarioTitles }] : []
-                },
-                env,
-                env.DISCORD_WEBHOOK_URL,
-                customName,    
-                customAvatar   
-              );
-            }
+            await sbFetch(env, null, `/rest/v1/recruitment_applicants?recruitment_id=in.${deleteIdsQuery}`, { method: 'DELETE' });
+            await sbFetch(env, null, `/rest/v1/recruitments?id=in.${deleteIdsQuery}`, { method: 'DELETE' });
 
             console.log(`${oldRecruits.length}件の募集を自動削除しました。`);
           }

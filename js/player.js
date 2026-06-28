@@ -39,7 +39,23 @@ function renderPlayers(players) {
 
   const list = Array.isArray(players) ? players : [];
 
-  if (list.length === 0) {
+  // ★追加：レーダーチャートがすべて初期値（3）または未設定のプレイヤーを除外する
+  const filteredList = list.filter(p => {
+    // それぞれのパラメーターが 3 (または undefined/null) であるかを判定
+    const isAllDefault = 
+      (p.desire_avatar == null || p.desire_avatar === 3) &&
+      (p.desire_active == null || p.desire_active === 3) &&
+      (p.desire_chaos == null || p.desire_chaos === 3) &&
+      (p.desire_story == null || p.desire_story === 3) &&
+      (p.desire_harmony == null || p.desire_harmony === 3) &&
+      (p.desire_clear == null || p.desire_clear === 3);
+    
+    // 全てデフォルトなら false (除外)、1つでも違う値があれば true (表示)
+    return !isAllDefault;
+  });
+
+  // ★修正：描画対象を list から filteredList に変更
+  if (filteredList.length === 0) {
     root.innerHTML = "<p>何かに失敗しました</p>";
     return;
   }
@@ -48,7 +64,7 @@ function renderPlayers(players) {
   grid.className = "card-grid";
   root.appendChild(grid);
 
-  for (const c of list) {
+  for (const c of filteredList) {
     const name = Utils.escapeHtml(c.player_name ?? "");
     const imagePath = Utils.getCharacterImagePath(c.icon_url);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;

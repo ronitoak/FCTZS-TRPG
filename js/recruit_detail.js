@@ -217,7 +217,6 @@ function setupActionForms() {
             btn.disabled = false;
         }
     });
-}
 
 // ==========================================
 // 募集の延長ボタン
@@ -243,5 +242,7 @@ document.getElementById("btn-extend-recruit")?.addEventListener("click", async (
         btn.disabled = false;
     }
 });
+
+}
 
 Utils.domReady(main);

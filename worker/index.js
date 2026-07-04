@@ -434,6 +434,12 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/character_details") {
+      const id = url.searchParams.get("id");
+      const { res, text } = await sbFetch(env, request, `/rest/v1/v_character_details?id=eq.${encodeURIComponent(id)}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
     // ---- Schedule & Players ----
     // ★追加：プレイヤープロフィールの取得を開通
     if (request.method === "GET" && url.pathname === "/api/player_profiles") {

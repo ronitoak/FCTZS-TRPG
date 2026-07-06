@@ -562,7 +562,7 @@ document.addEventListener('click', async (e) => {
 // ==========================================
 
 function buildCharacterHeaderHtml(c) {
-  // ★修正: ヘッダーをフレックスボックス化し、ココフォリア出力ボタンを配置
+  // ★修正: ボタンに title="試作品、動作保証なし" を追加
   return `
     <header class="character-detail-header" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
       <h1 class="character-detail-title" style="margin: 0; border: none; padding: 0;">
@@ -570,7 +570,7 @@ function buildCharacterHeaderHtml(c) {
       </h1>
       ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}" style="margin-left: 10px;">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
       
-      <button id="btn-copy-ccfolia" class="btn-primary" style="margin-left: auto; font-size: 0.9rem; padding: 6px 12px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+      <button id="btn-copy-ccfolia" class="btn-primary" title="試作品、動作保証なし" style="margin-left: auto; font-size: 0.9rem; padding: 6px 12px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
         ココフォリア出力
       </button>

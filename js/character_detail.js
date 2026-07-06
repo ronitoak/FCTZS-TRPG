@@ -4,8 +4,8 @@ let currentCharData = null;
 let currentSkillRows = null;
 let currentSystemAttrs = []; 
 let currentCharAttrsMap = new Map();
-let allScenarios = []; // 全シナリオマスタ
-let currentCharacterScenarios = []; // このキャラが通過済みのIDリスト
+let allScenarios = []; 
+let currentCharacterScenarios = []; 
 
 function renderLink(url, label) {
   const u = String(url ?? "").trim();
@@ -15,12 +15,120 @@ function renderLink(url, label) {
   return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
 }
 
-// ★修正：空文字や未入力の場合は「0」ではなく、ちゃんと「null（空）」として扱う
 function toIntOrNull(v) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
+
+// ==========================================
+// ★追加: ココフォリア用データ生成関数
+// ==========================================
+function generateCcfoliaData() {
+  const c = currentCharData;
+  if (!c) return null;
+
+  const data = {
+    name: c.name,
+    memo: c.memo || "",
+    initiative: 0,
+    externalUrl: c.iachara_url || window.location.href, // キャラシURLか現在のページURL
+    status: [],
+    params: [],
+    commands: ""
+  };
+
+  // 1. 基本能力値 (CoC等)
+  const abilities = {
+    STR: toIntOrNull(c.ability_str),
+    CON: toIntOrNull(c.ability_con),
+    POW: toIntOrNull(c.ability_pow),
+    DEX: toIntOrNull(c.ability_dex),
+    APP: toIntOrNull(c.ability_app),
+    SIZ: toIntOrNull(c.ability_siz),
+    INT: toIntOrNull(c.ability_int),
+    EDU: toIntOrNull(c.ability_edu),
+  };
+
+  for (const [k, v] of Object.entries(abilities)) {
+    if (v !== null) data.params.push({ label: k, value: String(v) });
+  }
+
+  // 2. システムごとのステータス/パラメータ
+  for (const def of currentSystemAttrs) {
+    if (def.kind === "int") {
+      const v = currentCharAttrsMap.get(def.key)?.value_int;
+      if (v !== null && v !== undefined) {
+         const keyLower = def.key.toLowerCase();
+         const label = def.label || def.key;
+         // HP, MP, SAN などをステータスバー（盤面ゲージ）に設定
+         if (["hp", "mp", "san", "san値", "正気度"].includes(keyLower)) {
+            data.status.push({ label: label, value: v, max: v });
+         } else {
+            data.params.push({ label: label, value: String(v) });
+         }
+      }
+    }
+  }
+
+  // エモクロア / ガイアケア の特殊HP/MP計算
+  if (c.system === "エモクロアTRPG" || c.system === "ガイアケアTRPG") {
+    const body = currentCharAttrsMap.get("body")?.value_int;
+    const spirit = currentCharAttrsMap.get("spirit")?.value_int;
+    const intellect = currentCharAttrsMap.get("intellect")?.value_int;
+
+    if (Number.isFinite(body)) {
+      const hp = body + 10;
+      if (!data.status.some(s => s.label === "HP")) data.status.push({ label: "HP", value: hp, max: hp });
+    }
+    if (Number.isFinite(spirit) && Number.isFinite(intellect)) {
+      const mp = spirit + intellect;
+      if (!data.status.some(s => s.label === "MP")) data.status.push({ label: "MP", value: mp, max: mp });
+    }
+  }
+
+  // 3. チャットパレット生成
+  const commands = [];
+  
+  if (c.system === "CoC6") {
+    for (const [k, v] of Object.entries(abilities)) {
+      if (v !== null) commands.push(`CCB<=${v * 5} 【${k}×5】`);
+    }
+    commands.push(""); 
+  } else if (c.system === "CoC7") {
+    for (const [k, v] of Object.entries(abilities)) {
+      if (v !== null) {
+        commands.push(`CC<=${v} 【${k}】`);
+        commands.push(`CC<=${Math.floor(v / 2)} 【${k} (ハード)】`);
+      }
+    }
+    commands.push("");
+  }
+
+  for (const s of currentSkillRows) {
+     const v = s.display_value;
+     if (v == null) continue;
+     
+     if (c.system === "CoC6") {
+       commands.push(`CCB<=${v} 【${s.name}】`);
+     } else if (c.system === "CoC7") {
+       commands.push(`CC<=${v} 【${s.name}】`);
+       commands.push(`CC<=${Math.floor(v / 2)} 【${s.name} (ハード)】`);
+     } else if (c.system === "エモクロアTRPG" || c.system === "ガイアケアTRPG") {
+       commands.push(`${v}DM 【${s.name}】`);
+     } else {
+       commands.push(`1D100<=${v} 【${s.name}】`);
+     }
+  }
+  data.commands = commands.join("\n");
+
+  return {
+    kind: "character",
+    data: data
+  };
+}
+// ==========================================
+
 
 async function main() {
   const root = document.getElementById("character-detail");
@@ -156,7 +264,6 @@ async function main() {
 
     const skillEntries = skillList;
 
-    // ★修正: 自動生成された character_scenarios を優先しつつ、未同期の過去データは「終了済みの卓」からフォールバック取得
     let passedScenarioIds = Array.isArray(scenarioIds) ? scenarioIds : [];
     if (passedScenarioIds.length === 0) {
       const relatedRuns = runsSafe
@@ -318,14 +425,10 @@ async function main() {
         })).filter(s => s.name !== "");
 
         try {
-            // ★修正: 先にこのキャラクターの既存の技能をすべて削除する
             await Utils.apiDelete("character_skills", `character_id=eq.${currentCharData.id}`);
-
-            // ★修正: 保存する技能が1つ以上ある場合のみ追加(POST)を実行する
             if (skillsPayload.length > 0) {
                 await Utils.apiPost("character_skills", skillsPayload);
             }
-            
             alert("技能値を更新しました");
             location.reload();
         } catch (err) {
@@ -341,14 +444,136 @@ async function main() {
 }
 
 // ==========================================
+// --- グローバル イベントリスナー群 ---
+// ==========================================
+
+// ★追加: ココフォリアコピーなどのクリック監視
+document.addEventListener('click', async (e) => {
+    // 1. ココフォリアコピーボタン
+    const copyBtn = e.target.closest('#btn-copy-ccfolia');
+    if (copyBtn) {
+        const ccfoliaData = generateCcfoliaData();
+        if (ccfoliaData) {
+            try {
+                await navigator.clipboard.writeText(JSON.stringify(ccfoliaData));
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = "✅ コピーしました！";
+                copyBtn.style.backgroundColor = "var(--success-color)";
+                copyBtn.style.color = "#fff";
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                    copyBtn.style.backgroundColor = "";
+                    copyBtn.style.color = "";
+                }, 2000);
+            } catch (err) {
+                console.error("クリップボードコピーに失敗:", err);
+                alert("コピーに失敗しました。ブラウザの権限を確認してください。");
+            }
+        }
+    }
+
+    // 2. キャラクター情報編集モーダル
+    if (e.target.id === 'btn-open-char-edit') {
+        const modal = document.getElementById('edit-character-modal');
+        const form = document.getElementById('edit-character-form');
+        if (!currentCharData) {
+            alert("データの読み込みが完了していません。リロードしてください。");
+            return;
+        }
+        form.name.value = currentCharData.name || "";
+        form.reading.value = currentCharData.reading || "";
+        form.player_id.value = currentCharData.player_id || "";
+        form.state.value = currentCharData.state || "survived";
+        form.job.value = currentCharData.job || "";
+        form.age.value = currentCharData.age || "";
+        form.gender.value = currentCharData.gender || "";
+        form.height.value = currentCharData.height || "";
+        form.weight.value = currentCharData.weight || "";
+        form.origin.value = currentCharData.origin || "";
+        form.iachara_url.value = currentCharData.iachara_url || "";
+        form.memo.value = currentCharData.memo || "";
+        modal.style.display = 'block';
+    }
+    
+    if (e.target.id === 'btn-close-char-edit') {
+        document.getElementById('edit-character-modal').style.display = 'none';
+    }
+
+    // 3. 技能編集モーダル
+    if (e.target.id === 'btn-open-skills-edit') {
+        const modal = document.getElementById('edit-skills-modal');
+        const container = document.getElementById('edit-skills-container');
+        container.innerHTML = '';
+        currentSkillRows.forEach(s => addSkillInputRow(s.name, s.display_value));
+        modal.style.display = 'block';
+    }
+    if (e.target.id === 'btn-close-skills-edit') {
+        document.getElementById('edit-skills-modal').style.display = 'none';
+    }
+
+    // 4. パラメータ(能力値)編集モーダル
+    if (e.target.id === 'btn-open-params-edit') {
+        const container = document.getElementById('edit-params-container');
+        container.innerHTML = '';
+        currentSystemAttrs.filter(d => d.kind !== 'emotion').forEach(def => {
+            const attr = currentCharAttrsMap.get(def.key) || {};
+            appendAttrInput(container, def, attr.value_int ?? 0, 'number', 'attr_value');
+        });
+        document.getElementById('edit-params-modal').style.display = 'block';
+    }
+    if (e.target.id === 'btn-close-params-edit') {
+        document.getElementById('edit-params-modal').style.display = 'none';
+    }
+
+    // 5. 共鳴感情編集モーダル
+    if (e.target.id === 'btn-open-emotions-edit') {
+        const container = document.getElementById('edit-emotions-container');
+        container.innerHTML = '';
+        currentSystemAttrs.filter(d => d.kind === 'emotion').forEach(def => {
+            const attr = currentCharAttrsMap.get(def.key) || {};
+            appendAttrInput(container, def, attr.value_emotion || '', 'select', 'attr_value_emo');
+        });
+        document.getElementById('edit-emotions-modal').style.display = 'block';
+    }
+    if (e.target.id === 'btn-close-emotions-edit') {
+        document.getElementById('edit-emotions-modal').style.display = 'none';
+    }
+
+    // 6. 隠し項目のトグル（種族など）
+    if (e.target.classList.contains('spoiler-field')) {
+        e.target.classList.toggle('revealed');
+    }
+
+    // 7. モーダルの背景クリックで閉じる
+    const modals = [
+        document.getElementById('edit-character-modal'),
+        document.getElementById('edit-skills-modal'),
+        document.getElementById('edit-params-modal'),
+        document.getElementById('edit-emotions-modal')
+    ];
+    if (modals.includes(e.target)) {
+        e.target.style.display = 'none';
+    }
+});
+
+
+// ==========================================
 // --- HTML生成コンポーネント ---
 // ==========================================
 
 function buildCharacterHeaderHtml(c) {
+  // ★修正: ヘッダーをフレックスボックス化し、ココフォリア出力ボタンを配置
   return `
-    <header class="character-detail-header">
-      <h1 class="character-detail-title">${Utils.escapeHtml(c.name)} <span class="character-detail-reading">(${Utils.escapeHtml(c.reading)})</span></h1>
-      ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
+    <header class="character-detail-header" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+      <h1 class="character-detail-title" style="margin: 0; border: none; padding: 0;">
+        ${Utils.escapeHtml(c.name)} <span class="character-detail-reading">(${Utils.escapeHtml(c.reading)})</span>
+      </h1>
+      ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}" style="margin-left: 10px;">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
+      
+      <button id="btn-copy-ccfolia" class="btn-primary" style="margin-left: auto; font-size: 0.9rem; padding: 6px 12px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        ココフォリア出力
+      </button>
     </header>
   `;
 }
@@ -588,4 +813,4 @@ function renderGenericAttributes(system, defs, attrMap, targetKind) {
   `;
 }
 
-main();
+Utils.domReady(main);

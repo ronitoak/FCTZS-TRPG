@@ -59,6 +59,7 @@ function renderDetail() {
     const scenarioImage = scenarioObj 
         ? Utils.getScenarioCoverPath(scenarioObj.id, scenarioObj.image_url) 
         : Utils.DEFAULT_SCENARIO_COVER;
+    const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
     const applicantNames = currentApplicants.map(app => {
         const pObj = allPlayers.find(p => p.player_id === app.player_id);
@@ -83,7 +84,7 @@ function renderDetail() {
         <div class="scenario-detail-imagewrap">
           <img class="scenario-detail-cover"
             src="${scenarioImage}"
-            onerror="this.onerror=null; this.src='../img/scenario/default.png';"
+            onerror="this.onerror=null; this.src='${fallback}';"
             alt="${Utils.escapeHtml(scenarioName)}"
             loading="lazy">
         </div>

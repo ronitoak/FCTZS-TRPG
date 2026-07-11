@@ -95,9 +95,9 @@ function generateCcfoliaData() {
     // ③ チャットパレット組み立て
     const commands = [];
     commands.push(`1d100<={SAN} 【正気度ロール】`);
-    commands.push(`CC<=${int * 5} 【アイデア】`);
-    commands.push(`CC<=${pow * 5} 【幸運】`);
-    commands.push(`CC<=${edu * 5} 【知識】`);
+    commands.push(`CCB<=${int * 5} 【アイデア】`);
+    commands.push(`CCB<=${pow * 5} 【幸運】`);
+    commands.push(`CCB<=${edu * 5} 【知識】`);
 
     if (currentSkillRows) {
       currentSkillRows.forEach(s => {
@@ -113,7 +113,7 @@ function generateCcfoliaData() {
 
     keys.forEach(k => {
       const val = abilities[k] ?? getAttrInt(k);
-      commands.push(`CC<={${k}}*5 【${k}】`);
+      commands.push(`CCB<={${k}}*5 【${k}】`);
     });
     data.commands = commands.join("\n");
 
@@ -166,7 +166,7 @@ function generateCcfoliaData() {
     if (currentSkillRows) {
       currentSkillRows.forEach(s => {
         const v = s.display_value ?? s.override_value ?? s.base_value;
-        if (v != null) commands.push(`CCB<={${v}} 【${s.name}】`);
+        if (v != null) commands.push(`CC<={${v}} 【${s.name}】`);
       });
     }
 

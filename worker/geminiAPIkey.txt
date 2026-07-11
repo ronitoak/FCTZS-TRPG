@@ -1,0 +1,8 @@
+API キー
+AQ.Ab8RN6L8d8Teuh86qtw_TrAGZD1ZjLyYeDKSeZD8a8VEyL3KrA
+名前
+FCTZS API Key
+プロジェクト名
+projects/546247045390
+プロジェクト番号
+546247045390

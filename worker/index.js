@@ -521,7 +521,7 @@ async function handleGet(request, env, url) {
         queryParams.push(`or=(title.ilike.${kw},author.ilike.${kw})`);
       }
 
-      queryParams.push("select=id,title,system,author,description,notes,updated_at");
+      queryParams.push("select=id,title,system,author,description,notes,image_url,updated_at");
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/scenarios?${queryParams.join("&")}`;

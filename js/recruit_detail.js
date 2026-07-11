@@ -52,11 +52,13 @@ function renderDetail() {
     const ownerObj = allPlayers.find(p => p.player_id === currentRecruit.owner_player_id);
     const ownerName = ownerObj ? ownerObj.player_name : "不明なプレイヤー";
 
-    const scenarioObj = allScenarios.find(s => s.id === currentRecruit.scenario_id);
+    const scenarioObj = allScenarios.find(s => String(s.id) === String(currentRecruit.scenario_id));
     const scenarioName = scenarioObj ? scenarioObj.title : "未定・オリジナル";
     
     // 画像パスの生成（シナリオIDがあればその画像、なければデフォルト）
-    const scenarioImage = scenarioObj ? `../img/scenario/${scenarioObj.id}.png` : "../img/scenario/default.png";
+    const scenarioImage = scenarioObj 
+        ? Utils.getScenarioCoverPath(scenarioObj.id, scenarioObj.image_url) 
+        : Utils.DEFAULT_SCENARIO_COVER;
 
     const applicantNames = currentApplicants.map(app => {
         const pObj = allPlayers.find(p => p.player_id === app.player_id);
@@ -80,7 +82,7 @@ function renderDetail() {
       <section class="scenario-detail-top">
         <div class="scenario-detail-imagewrap">
           <img class="scenario-detail-cover"
-            src="${Utils.escapeHtml(scenarioImage)}"
+            src="${scenarioImage}"
             onerror="this.onerror=null; this.src='../img/scenario/default.png';"
             alt="${Utils.escapeHtml(scenarioName)}"
             loading="lazy">

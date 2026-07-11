@@ -75,9 +75,10 @@ function renderRecruitments() {
         const owner = allPlayers.find(p => p.player_id === recruit.owner_player_id);
         const ownerName = owner ? owner.player_name : "不明なプレイヤー";
 
-        const scenario = allScenarios.find(s => s.id === recruit.scenario_id);
+        // 厳密な型比較による不一致を防ぐためStringキャスト比較
+        const scenario = allScenarios.find(s => String(s.id) === String(recruit.scenario_id));
         const scenarioTitle = scenario ? scenario.title : "未定";
-        const coverPath = Utils.getScenarioCoverPath(scenario.id);
+        const coverPath = scenario ? Utils.getScenarioCoverPath(scenario.id, scenario.image_url) : Utils.DEFAULT_SCENARIO_COVER;
         const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
         const applicantsForThis = allApplicants.filter(a => a.recruitment_id === recruit.id);

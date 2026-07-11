@@ -107,8 +107,10 @@ async function main() {
         } else {
           await Utils.apiPatch("player_profiles", payload, `player_id=eq.${playerId}`);
         }
+        Utils.showToast("お気に入りを更新しました！");
       } catch(err) {
         console.error("お気に入り保存エラー", err);
+        Utils.showToast("保存に失敗しました", "error");
       }
     }
 

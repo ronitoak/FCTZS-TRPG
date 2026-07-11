@@ -200,14 +200,14 @@ function renderRecruitments() {
 
 // 5. 募集作成モーダルの制御
 document.getElementById("btn-open-recruit-modal")?.addEventListener("click", () => {
-    document.getElementById("recruit-modal").style.display = "block";
+    document.getElementById("recruit-modal").classList.add("show");
 });
 
 window.addEventListener("click", (e) => {
-    if (e.target.id === "recruit-modal") e.target.style.display = "none";
+    if (e.target.id === "recruit-modal") e.target.classList.remove("show");
 });
 
-// 6. 募集フォームの送信
+// 6. 募集フォーム of 送信
 document.getElementById("recruit-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -226,7 +226,7 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
         btn.textContent = "送信中...";
         await Utils.apiPost("recruitments", [payload]);
         alert("募集を作成しました！");
-        document.getElementById("recruit-modal").style.display = "none";
+        document.getElementById("recruit-modal").classList.remove("show");
         e.target.reset(); // フォームの中身を空にする
         await loadRecruitments();
     } catch (err) {

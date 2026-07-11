@@ -57,21 +57,21 @@ async function loadPosts() {
     }
 
     list.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 15px;">
+      <div class="bbs-post-list">
         ${data.map(p => {
           const dt = new Date(p.created_at);
           const dtText = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleString("ja-JP");
           const avatarSrc = p.character_id ? Utils.getCharacterImagePath(p.character_id) : Utils.DEFAULT_CHARACTER_IMAGE;
           
           return `
-            <div class="card" style="display: flex; gap: 15px; padding: 15px; background: #fff;">
-              <img src="${avatarSrc}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid #e2e8f0;">
-              <div style="flex-grow: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
-                  <span style="font-weight: bold; color: #2d3748; font-size: 1.1rem;">${Utils.escapeHtml(p.author)}</span>
-                  <span style="font-size: 0.8rem; color: #a0aec0;">${Utils.escapeHtml(dtText)}</span>
+            <div class="bbs-post-card">
+              <img src="${avatarSrc}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" class="bbs-post-avatar">
+              <div class="bbs-post-content">
+                <div class="bbs-post-header">
+                  <span class="bbs-post-author">${Utils.escapeHtml(p.author)}</span>
+                  <span class="bbs-post-time">${Utils.escapeHtml(dtText)}</span>
                 </div>
-                <div style="color: #4a5568; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">${Utils.escapeHtml(p.body)}</div>
+                <div class="bbs-post-body">${Utils.escapeHtml(p.body)}</div>
               </div>
             </div>
           `;

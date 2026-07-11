@@ -102,7 +102,7 @@ function generateCcfoliaData() {
     if (currentSkillRows) {
       currentSkillRows.forEach(s => {
         const v = s.display_value ?? s.override_value ?? s.base_value;
-        if (v != null) commands.push(`CCB<={${v}}*5 【${s.name}】`);
+        if (v != null) commands.push(`CCB<=${v} 【${s.name}】`);
       });
     }
 
@@ -113,7 +113,7 @@ function generateCcfoliaData() {
 
     keys.forEach(k => {
       const val = abilities[k] ?? getAttrInt(k);
-      commands.push(`CC<=${val} 【${k}】`);
+      commands.push(`CC<={${val}}*5 【${k}】`);
     });
     data.commands = commands.join("\n");
 

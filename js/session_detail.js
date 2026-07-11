@@ -40,7 +40,8 @@ async function main() {
     currentRunData = run;
     const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const scenarioId = run?.scenario_id;
-    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
+    // 厳密な型比較(===)による不一致を防ぐため、文字列にキャストして比較
+    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => String(s.id) === String(run.scenario_id)) ?? null;
     const coverPath = run.image_url ? run.image_url : Utils.getScenarioCoverPath(scenarioId ?? "unknown", scenario?.image_url);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
 

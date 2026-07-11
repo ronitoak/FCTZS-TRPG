@@ -33,9 +33,9 @@ async function main() {
     // ★修正1：後で再代入できるように let で定義する（★ボタンのエラー解消）
     let hasProfileRecord = profileData !== undefined; 
 
-    // icon_url (character_id) に対応するキャラクターの image_url を解決する
-    const charactersMap = new Map(characters.map(c => [c.id, c]));
-    const iconCharObj = (profileData && profileData.icon_url) ? charactersMap.get(profileData.icon_url) : null;
+    // 厳密な型比較(Map)による不一致を防ぐため、キーをStringに統一
+    const charactersMap = new Map(characters.map(c => [String(c.id), c]));
+    const iconCharObj = (profileData && profileData.icon_url) ? charactersMap.get(String(profileData.icon_url)) : null;
 
     const player = { 
       ...basePlayer, 

@@ -8,13 +8,14 @@ async function initPlayerOptions() {
     const playerProfiles = await Utils.apiGet("player_profiles");
     const characters = await Utils.apiGet("characters").catch(() => []);
 
-    const charactersMap = new Map(characters.map(c => [c.id, c]));
+    // 厳密な型比較(Map)を避けるため、キーをStringに統一
+    const charactersMap = new Map(characters.map(c => [String(c.id), c]));
 
     const joinedProfiles = playerProfiles
       .filter(playerProfile => players.some(player => player.player_id === playerProfile.player_id))
       .map(profile => {
         const player = players.find(p => p.player_id === profile.player_id); // 対応するデータを取得
-        const charObj = profile.icon_url ? charactersMap.get(profile.icon_url) : null;
+        const charObj = profile.icon_url ? charactersMap.get(String(profile.icon_url)) : null;
         return { 
           ...profile, 
           ...player,

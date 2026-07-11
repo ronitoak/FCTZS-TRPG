@@ -36,7 +36,8 @@ async function main() {
     }
 
     const editBtn = `<button id="btn-open-scenario-edit" class="btn-secondary btn-edit-small">📝</button>`;
-    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === id);
+    // 厳密な型比較(===)による不一致を防ぐため、文字列にキャストして比較
+    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => String(s.id) === String(id));
     if (!scenario) {
       root.innerHTML = "<p>シナリオが見つかりません</p>";
       return;

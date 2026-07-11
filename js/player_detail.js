@@ -32,7 +32,16 @@ async function main() {
     const profileData = profiles.find(p => p.player_id === playerId);
     // ★修正1：後で再代入できるように let で定義する（★ボタンのエラー解消）
     let hasProfileRecord = profileData !== undefined; 
-    const player = { ...basePlayer, ...(profileData || {}) };
+
+    // icon_url (character_id) に対応するキャラクターの image_url を解決する
+    const charactersMap = new Map(characters.map(c => [c.id, c]));
+    const iconCharObj = (profileData && profileData.icon_url) ? charactersMap.get(profileData.icon_url) : null;
+
+    const player = { 
+      ...basePlayer, 
+      ...(profileData || {}),
+      icon_image_url: iconCharObj ? iconCharObj.image_url : null
+    };
 
     const myCharacters = characters
       .filter(c => c.player_id === playerId || c.player === player.player_name)
@@ -245,7 +254,7 @@ async function main() {
 }
 
 function buildPlayerProfileHtml(player) {
-  const profileImage = player.icon_url  ? Utils.getCharacterImagePath(player.icon_url) : Utils.DEFAULT_CHARACTER_IMAGE;
+  const profileImage = player.icon_url  ? Utils.getCharacterImagePath(player.icon_url, player.icon_image_url) : Utils.DEFAULT_CHARACTER_IMAGE;
 
   return `
     <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px; ">

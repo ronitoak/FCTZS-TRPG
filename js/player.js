@@ -6,11 +6,20 @@ async function initPlayerOptions() {
    // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
     const players = await Utils.apiGet("players");
     const playerProfiles = await Utils.apiGet("player_profiles");
+    const characters = await Utils.apiGet("characters").catch(() => []);
+
+    const charactersMap = new Map(characters.map(c => [c.id, c]));
 
     const joinedProfiles = playerProfiles
       .filter(playerProfile => players.some(player => player.player_id === playerProfile.player_id))
-      .map(profile => {const player = players.find(p => p.player_id === profile.player_id); // 対応するデータを取得
-      return { ...profile, ...player }; // データを結合
+      .map(profile => {
+        const player = players.find(p => p.player_id === profile.player_id); // 対応するデータを取得
+        const charObj = profile.icon_url ? charactersMap.get(profile.icon_url) : null;
+        return { 
+          ...profile, 
+          ...player,
+          icon_image_url: charObj ? charObj.image_url : null
+        }; // データを結合
     });
     const filterPlayer = document.getElementById("select-player");
     if (filterPlayer) {
@@ -66,7 +75,7 @@ function renderPlayers(players) {
 
   for (const c of filteredList) {
     const name = Utils.escapeHtml(c.player_name ?? "");
-    const imagePath = Utils.getCharacterImagePath(c.icon_url);
+    const imagePath = Utils.getCharacterImagePath(c.icon_url, c.icon_image_url);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const cardLink = document.createElement("a");

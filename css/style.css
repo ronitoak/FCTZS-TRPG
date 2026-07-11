@@ -51,32 +51,9 @@ body {
     box-shadow: var(--shadow);
 }
 
-.top-nav {
-    margin-bottom: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-}
-.top-nav a {
-    color: var(--text-main);
-    text-decoration: none;
-    background: #edf2f7;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: bold;
-    transition: all 0.2s ease;
-    display: inline-block;
-}
-.top-nav a:hover {
-    background: var(--border-color);
-    text-decoration: none;
-}
-.top-nav a.active {
-    background: var(--primary-color);
-    color: #fff;
-}
+.top-nav { margin-bottom: 20px; }
+.top-nav a { color: var(--text-main); text-decoration: none; margin: 0 10px; }
+.top-nav a:hover { text-decoration: underline; }
 
 h1, h2 { 
     border-bottom: 2px solid #ccc;

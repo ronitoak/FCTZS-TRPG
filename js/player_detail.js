@@ -246,6 +246,10 @@ async function main() {
     document.getElementById("close-modal-btn")?.addEventListener("click", () => {
       document.getElementById("availability-modal")?.close();
     });
+
+    if (window.Comments && typeof window.Comments.mount === "function") {
+      window.Comments.mount("comments-root", "player", playerId);
+    }
     
   } catch (err) {
     console.error(err);

@@ -13,6 +13,8 @@
     if (type === "character") return "キャラクター";
     if (type === "scenario") return "シナリオ";
     if (type === "session") return "セッション";
+    if (type === "recruitment") return "募集";
+    if (type === "player") return "プレイヤー";
     return "";
   }
 
@@ -25,6 +27,10 @@
         return `./scenarios/detail.html?id=${encodeURIComponent(c.target_id)}`;
       case "session":
         return `./sessions/detail.html?id=${encodeURIComponent(c.target_id)}`; // target_id = run_id
+      case "recruitment":
+        return `./recruit/detail.html?id=${encodeURIComponent(c.target_id)}`;
+      case "player":
+        return `./player/detail.html?id=${encodeURIComponent(c.target_id)}`;
       default:
         return "#";
     }
@@ -36,10 +42,12 @@
 
   // ★ 追加：id→名前辞書を作る
 async function fetchNameMaps() {
-  const [characters, scenarios, runs] = await Promise.all([
+  const [characters, scenarios, runs, recruitments, players] = await Promise.all([
     Utils.apiGet("characters"),
     Utils.apiGet("scenarios"),
     Utils.apiGet("runs"),
+    Utils.apiGet("recruitments").catch(() => []),
+    Utils.apiGet("players").catch(() => []),
   ]);
 
   const charMap = new Map();
@@ -57,7 +65,21 @@ async function fetchNameMaps() {
     if (r?.id) runMap.set(String(r.id), String(r.title ?? r.id));
   }
 
-  return { charMap, scenarioMap, runMap };
+  const recruitmentMap = new Map();
+  for (const r of recruitments || []) {
+    if (r?.id) {
+      const roleLabel = r.recruit_role === "GM" ? "GM募集" : "PL募集";
+      const scenTitle = r.scenario_id ? (scenarioMap.get(String(r.scenario_id)) || "シナリオ") : "オリジナル";
+      recruitmentMap.set(String(r.id), `${scenTitle}（${roleLabel}）`);
+    }
+  }
+
+  const playerMap = new Map();
+  for (const p of players || []) {
+    if (p?.player_id) playerMap.set(String(p.player_id), String(p.player_name ?? p.player_id));
+  }
+
+  return { charMap, scenarioMap, runMap, recruitmentMap, playerMap };
 }
 
   function resolveTargetName(c, maps) {
@@ -69,6 +91,9 @@ async function fetchNameMaps() {
 
     // ★ session の target_id は run_id
     if (c.target_type === "session") return maps.runMap.get(id) || id;
+
+    if (c.target_type === "recruitment") return maps.recruitmentMap.get(id) || id;
+    if (c.target_type === "player") return maps.playerMap.get(id) || id;
 
     return id;
   }

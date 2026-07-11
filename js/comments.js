@@ -16,7 +16,7 @@
     async function loadComments(targetType, targetId) {
       return Utils.apiGet(
         "comments",
-        `type=${encodeURIComponent(targetType)}&id=${encodeURIComponent(targetId)}`
+        `target_type=${encodeURIComponent(targetType)}&target_id=${encodeURIComponent(targetId)}`
       );
     }
 
@@ -26,7 +26,7 @@
 
 
   // containerId: どこに差し込むか
-  // targetType: character|scenario|session
+  // targetType: character|scenario|session|recruitment|player
   // fixedTargetId: 明示したい場合だけ渡す（省略可）
   async function mount(containerId, targetType, fixedTargetId) {
     const root = document.getElementById(containerId);

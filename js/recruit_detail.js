@@ -35,9 +35,8 @@ async function main() {
         renderDetail();
         setupActionForms();
 
-        if (typeof initComments === "function") {
-
-            initComments("recruitments", recruitId, "comments-root", allPlayers);
+        if (window.Comments && typeof window.Comments.mount === "function") {
+            window.Comments.mount("comments-root", "recruitment", recruitId);
         }
 
     } catch (err) {

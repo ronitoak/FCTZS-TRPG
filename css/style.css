@@ -1079,3 +1079,151 @@ a { color: inherit; text-decoration: none; }
     white-space: pre-wrap;
     word-break: break-word;
 }
+
+/* 詳細画面コメント欄 */
+.comments {
+    margin-top: 30px;
+    padding: 20px;
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+.comments h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+.comments__msg {
+    font-size: 0.9rem;
+    color: #718096;
+    margin-bottom: 10px;
+}
+.comments__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: var(--radius);
+    border: 1px solid #e2e8f0;
+}
+.comments__row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.comments__row label {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+.comments__row input,
+.comments__row textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.comments__form button[type="submit"] {
+    align-self: flex-start;
+    padding: 8px 20px;
+    background: #3182ce;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.comments__form button[type="submit"]:hover {
+    background: #2b6cb0;
+}
+.comments__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.comments__list li {
+    padding: 12px 15px;
+    background: #f7fafc;
+    border-radius: var(--radius);
+    border: 1px solid #e2e8f0;
+}
+.comments__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: #718096;
+}
+.comments__meta strong {
+    color: #2d3748;
+    font-size: 1rem;
+}
+.comments__body {
+    color: #4a5568;
+    line-height: 1.6;
+    word-break: break-word;
+}
+.comments-muted {
+    color: #a0aec0;
+    font-style: italic;
+}
+
+/* トップページ新着コメント */
+.top-comments {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.top-comments-item {
+    padding: 12px 15px;
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+.top-comments-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+}
+.top-comments-target {
+    font-weight: bold;
+    color: #3182ce;
+    text-decoration: none;
+}
+.top-comments-target:hover {
+    text-decoration: underline;
+}
+.top-comments-author {
+    color: #2d3748;
+    font-weight: bold;
+    text-decoration: none;
+}
+.top-comments-author:hover {
+    text-decoration: underline;
+}
+.top-comments-meta time {
+    color: #a0aec0;
+    margin-left: auto;
+}
+.top-comments-body {
+    color: #4a5568;
+    line-height: 1.6;
+    word-break: break-word;
+}

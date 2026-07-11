@@ -178,7 +178,7 @@ Utils.domReady(async () => {
             const excludeParams = [
                 "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", "IDE", 
                 "HP", "MP", "SAN", "現在SAN", "最大SAN", "アイデア", "幸運", "知識", 
-                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント"
+                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント" , "正気度"
             ];
 
             text.split('\n').forEach(line => {

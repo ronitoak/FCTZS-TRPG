@@ -34,7 +34,7 @@ async function main() {
 
     for (const s of scenarios) {
 
-      const coverPath = Utils.getScenarioCoverPath(s.id);
+      const coverPath = Utils.getScenarioCoverPath(s.id, s.image_url);
       const fallback = Utils.DEFAULT_SCENARIO_COVER;
       const title = Utils.escapeHtml(s.title ?? s.id ?? "（無題）");
       const system = Utils.escapeHtml(s.system ?? "");

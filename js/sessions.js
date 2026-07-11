@@ -69,7 +69,10 @@ async function main() {
       const scenario = scenariosById.get(run.scenario_id);
 
       // ★ ここで cover を決める（run から scenario_id を使う）
-      const coverPath = Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown");
+      // 卓自身の画像URL(R2)があればそれを使い、なければシナリオの画像URLを使う
+      const coverPath = run.image_url 
+        ? run.image_url 
+        : Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown", scenario?.image_url);
       const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
       const runSessionsRaw = sessionsByRunId.get(run.id) ?? [];

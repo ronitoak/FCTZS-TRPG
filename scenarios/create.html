@@ -35,6 +35,13 @@
                         <label>作者</label>
                         <input type="text" name="author" class="form-control" placeholder="(任意)">
                     </div>
+                    <div class="form-group">
+                        <label>シナリオ画像</label>
+                        <input type="file" id="image-file" accept="image/*" class="form-control">
+                        <div id="image-preview-container" style="margin-top: 10px; display: none;">
+                            <img id="image-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
+                        </div>
+                    </div>
                 </div>
             </fieldset>
 

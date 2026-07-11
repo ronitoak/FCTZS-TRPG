@@ -44,7 +44,7 @@ async function main() {
 
     currentScenarioId = scenario.id; 
 
-    const coverPath = Utils.getScenarioCoverPath(scenario.id);
+    const coverPath = Utils.getScenarioCoverPath(scenario.id, scenario.image_url);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
     const infoRows = [
@@ -244,7 +244,36 @@ async function main() {
 document.getElementById('edit-scenario-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const payload = Object.fromEntries(fd.entries());
+    
+    const payload = {
+        title: fd.get("title"),
+        system: fd.get("system"),
+        author: fd.get("author") || null,
+        description: fd.get("description") || null,
+        notes: fd.get("notes") || null
+    };
+
+    const fileInput = e.target.querySelector('input[name="image_file"]');
+    if (fileInput && fileInput.files[0]) {
+        try {
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            formData.append("type", "scenario");
+            
+            const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+                method: "POST",
+                body: formData
+            });
+            if (uploadRes.ok) {
+                const uploadResult = await uploadRes.json();
+                payload.image_url = uploadResult.url;
+            } else {
+                console.error("画像アップロード失敗:", await uploadRes.text());
+            }
+        } catch (err) {
+            console.error("画像アップロードエラー:", err);
+        }
+    }
 
     if (!currentScenarioId) return;
 

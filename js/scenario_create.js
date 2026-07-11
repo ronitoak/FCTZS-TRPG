@@ -6,19 +6,64 @@ Utils.domReady(async () => {
 
     await Utils.initAuthAndHeader('common-nav', '../');
 
+    const imageFileInput = document.getElementById("image-file");
+    const imagePreviewContainer = document.getElementById("image-preview-container");
+    const imagePreview = document.getElementById("image-preview");
+
+    if (imageFileInput && imagePreviewContainer && imagePreview) {
+        imageFileInput.addEventListener("change", () => {
+            const file = imageFileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = "";
+                imagePreviewContainer.style.display = "none";
+            }
+        });
+    }
+
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
-        // FormDataを使えば、HTMLに存在しない要素を読もうとしてもエラーにならず null を返します
         const fd = new FormData(form);
+
+        let imageUrl = null;
+        if (imageFileInput && imageFileInput.files[0]) {
+            try {
+                const formData = new FormData();
+                formData.append("file", imageFileInput.files[0]);
+                formData.append("type", "scenario");
+
+                const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                if (uploadRes.ok) {
+                    const uploadResult = await uploadRes.json();
+                    imageUrl = uploadResult.url;
+                } else {
+                    console.error("画像アップロード失敗:", await uploadRes.text());
+                }
+            } catch (err) {
+                console.error("画像アップロードエラー:", err);
+            }
+        }
+
         const payload = {
             title: fd.get("title"),
             system: fd.get("system"),
             author: fd.get("author") || null,
             description: fd.get("description") || null,
-            notes: fd.get("notes") || null
+            notes: fd.get("notes") || null,
+            image_url: imageUrl
         };
 
         try {

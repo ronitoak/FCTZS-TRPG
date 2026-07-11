@@ -9,6 +9,27 @@ Utils.domReady(async () => {
 
     let allCharacters = [];
 
+    const imageFileInput = document.getElementById("image-file");
+    const imagePreviewContainer = document.getElementById("image-preview-container");
+    const imagePreview = document.getElementById("image-preview");
+
+    if (imageFileInput && imagePreviewContainer && imagePreview) {
+        imageFileInput.addEventListener("change", () => {
+            const file = imageFileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = "";
+                imagePreviewContainer.style.display = "none";
+            }
+        });
+    }
+
     // 1. マスターデータの取得
     try {
         const [scenarios, characters, players] = await Promise.all([
@@ -103,6 +124,29 @@ Utils.domReady(async () => {
 
         submitBtn.disabled = true;
 
+        let imageUrl = null;
+        if (imageFileInput && imageFileInput.files[0]) {
+            try {
+                const formData = new FormData();
+                formData.append("file", imageFileInput.files[0]);
+                formData.append("type", "run");
+
+                const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                if (uploadRes.ok) {
+                    const uploadResult = await uploadRes.json();
+                    imageUrl = uploadResult.url;
+                } else {
+                    console.error("画像アップロード失敗:", await uploadRes.text());
+                }
+            } catch (err) {
+                console.error("画像アップロードエラー:", err);
+            }
+        }
+
         const payload = {
             // IDはDB側のトリガー r-XXX_Y で自動生成されるため不要
             title: form.title.value,
@@ -110,7 +154,8 @@ Utils.domReady(async () => {
             gm_id: form.gm_id ? form.gm_id.value : null, // ★修正: gm_idを取得
             characters: charIds, 
             player_ids: allPlayerIds, // ★修正: players(text)から player_ids に変更
-            status: 'planning'
+            status: 'planning',
+            image_url: imageUrl
         };
 
         try {

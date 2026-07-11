@@ -334,7 +334,7 @@ async function main() {
     currentCharAttrsMap = attrMap;
 
     const hasGeneric = sysDefsSafe.length > 0;
-    const src = Utils.getCharacterImagePath(c.id);
+    const src = Utils.getCharacterImagePath(c.id, c.image_url);
     const fallback = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const rawProfileRows = [
@@ -648,6 +648,31 @@ document.getElementById('btn-add-skill-row')?.addEventListener('click', () => {
 document.getElementById('edit-character-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    
+    const fileInput = e.target.querySelector('input[name="image_file"]');
+    let imageUrl = currentCharData.image_url || null;
+    
+    if (fileInput && fileInput.files[0]) {
+        try {
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            formData.append("type", "character");
+            
+            const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+                method: "POST",
+                body: formData
+            });
+            if (uploadRes.ok) {
+                const uploadResult = await uploadRes.json();
+                imageUrl = uploadResult.url;
+            } else {
+                console.error("画像アップロード失敗:", await uploadRes.text());
+            }
+        } catch (err) {
+            console.error("画像アップロードエラー:", err);
+        }
+    }
+
     const payload = {
         name: fd.get("name"),
         player_id: fd.get("player_id"),
@@ -660,7 +685,8 @@ document.getElementById('edit-character-form')?.addEventListener('submit', async
         origin: fd.get("origin"),
         reading: fd.get("reading"),
         iachara_url: fd.get("iachara_url"),
-        memo: fd.get("memo")
+        memo: fd.get("memo"),
+        image_url: imageUrl
     };
     try {
         await Utils.apiPatch("characters", payload, `id=eq.${currentCharData.id}`);

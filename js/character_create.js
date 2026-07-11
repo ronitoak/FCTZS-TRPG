@@ -11,6 +11,28 @@ Utils.domReady(async () => {
 
     await Utils.initAuthAndHeader('common-nav', '../');
 
+    // 画像プレビュー表示
+    const imageFileInput = document.getElementById("image-file");
+    const imagePreviewContainer = document.getElementById("image-preview-container");
+    const imagePreview = document.getElementById("image-preview");
+
+    if (imageFileInput && imagePreviewContainer && imagePreview) {
+        imageFileInput.addEventListener("change", () => {
+            const file = imageFileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = "";
+                imagePreviewContainer.style.display = "none";
+            }
+        });
+    }
+
     // プレイヤー一覧を取得してセレクトボックスに詰める
     const players = await Utils.apiGet("players");
     const playerSelect = document.getElementById("player-select");
@@ -359,6 +381,29 @@ Utils.domReady(async () => {
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
+        let imageUrl = null;
+        if (imageFileInput && imageFileInput.files[0]) {
+            try {
+                const formData = new FormData();
+                formData.append("file", imageFileInput.files[0]);
+                formData.append("type", "character");
+
+                const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                if (uploadRes.ok) {
+                    const uploadResult = await uploadRes.json();
+                    imageUrl = uploadResult.url;
+                } else {
+                    console.error("画像アップロード失敗:", await uploadRes.text());
+                }
+            } catch (err) {
+                console.error("画像アップロードエラー:", err);
+            }
+        }
+
         const payload = {
             character: {
                 name: form.name.value,
@@ -374,6 +419,7 @@ Utils.domReady(async () => {
                 memo: form.memo.value,
                 race: (systemSelect.value === "ガイアケアTRPG" && form.race.value) ? form.race.value : null,
                 original_species: (systemSelect.value === "ガイアケアTRPG" && form.original_species.value) ? form.original_species.value : null,
+                image_url: imageUrl,
             },
             attributes: [],
             skills: []

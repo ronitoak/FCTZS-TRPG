@@ -34,6 +34,13 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>卓のカバー画像 (任意)</label>
+                    <input type="file" id="image-file" accept="image/*" class="form-control">
+                    <div id="image-preview-container" style="margin-top: 10px; display: none;">
+                        <img id="image-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>追加プレイヤー (キャラ未作成など)</label>
                     <select name="extra_player_ids" id="extra-player-select" multiple class="form-control">
                     </select>

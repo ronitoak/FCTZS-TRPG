@@ -553,7 +553,7 @@ async function handleGet(request, env, url) {
     // scenario_list ビュー（もしDB側でビューを使っている場合）の取得
     if (request.method === "GET" && url.pathname === "/api/scenario_list") {
       // ビューの定義もDB側で更新が必要ですが、Worker側でも安全にカラムを指定します
-      const { res, text } = await sbFetch(env, request,"/rest/v1/scenario_list?select=id,title,system,author,updated_at");
+      const { res, text } = await sbFetch(env, request,"/rest/v1/scenario_list?select=id,title,system,author,image_url,updated_at");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -723,6 +723,42 @@ async function handleGet(request, env, url) {
 
 async function handlePost(request, env, ctx, url) {
   try {
+    // Cloudflare R2 画像アップロード
+    if (url.pathname === "/api/upload") {
+      if (!env.R2_BUCKET) {
+        return new Response(JSON.stringify({ error: "R2_BUCKET is not bound" }), { status: 500, headers: jsonHeaders });
+      }
+      
+      const formData = await request.formData();
+      const file = formData.get("file");
+      const type = formData.get("type") || "general"; // character, scenario, run, general
+      
+      if (!file) {
+        return new Response(JSON.stringify({ error: "No file uploaded" }), { status: 400, headers: jsonHeaders });
+      }
+
+      // ファイルの拡張子を取得
+      const originalName = file.name || "image.png";
+      const extMatch = originalName.match(/\.[^.]+$/);
+      const ext = extMatch ? extMatch[0].toLowerCase() : ".png";
+      
+      // 一意なファイル名を生成
+      const key = `${type}/${crypto.randomUUID()}${ext}`;
+      
+      // R2へアップロード
+      await env.R2_BUCKET.put(key, file.stream(), {
+        httpMetadata: {
+          contentType: file.type || "image/png"
+        }
+      });
+      
+      // 公開URLの組み立て
+      const baseUrl = env.R2_PUBLIC_URL || "";
+      const imageUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}${key}`;
+      
+      return new Response(JSON.stringify({ url: imageUrl }), { status: 201, headers: jsonHeaders });
+    }
+
     const body = await request.json();
 
     // ---- Comments ----
@@ -764,7 +800,7 @@ async function handlePost(request, env, ctx, url) {
 
     // ---- 通常の Insert 系 ----
     if (url.pathname === "/api/scenarios") {
-      const scenarioData = { title: body.title, system: body.system, author: body.author, description: body.description, notes: body.notes };
+      const scenarioData = { title: body.title, system: body.system, author: body.author, description: body.description, notes: body.notes, image_url: body.image_url };
       const { res, text } = await sbFetch(env, null, "/rest/v1/scenarios", { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });

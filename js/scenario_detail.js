@@ -117,7 +117,7 @@ async function main() {
           ${passedCharacters
             .map(c => {
               const name = Utils.escapeHtml(c.name ?? c.id);
-              const img = Utils.getCharacterImagePath(c.id);
+              const img = Utils.getCharacterImagePath(c.id, c.image_url);
               const fallbackImg = Utils.DEFAULT_CHARACTER_IMAGE;
               return `
                 <a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}">

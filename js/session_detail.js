@@ -517,7 +517,7 @@ function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames
             <tr><th>最終</th><td>${lastDone?._start ? Utils.escapeHtml(lastDone._start.toLocaleDateString("ja-JP")) : (run.status === "done" ? "未記録" : "—")}</td></tr>
           </tbody>
         </table>
-        ${runChars.length ? `<h3 class="session-detail-h3">参加キャラクター</h3><div class="session-detail-chips">${runChars.map(c => `<a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}"><img class="character-chip-icon" src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" alt="${Utils.escapeHtml(c.name ?? c.id)}" loading="lazy"><span class="character-chip-name">${Utils.escapeHtml(c.name ?? c.id)}</span></a>`).join("")}</div>` : ""}
+        ${runChars.length ? `<h3 class="session-detail-h3">参加キャラクター</h3><div class="session-detail-chips">${runChars.map(c => `<a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}"><img class="character-chip-icon" src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" alt="${Utils.escapeHtml(c.name ?? c.id)}" loading="lazy"><span class="character-chip-name">${Utils.escapeHtml(c.name ?? c.id)}</span></a>`).join("")}</div>` : ""}
       </div>
     </section>
   `;

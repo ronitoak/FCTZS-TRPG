@@ -43,7 +43,6 @@ async function main() {
     const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
     const coverPath = run.image_url ? run.image_url : Utils.getScenarioCoverPath(scenarioId ?? "unknown", scenario?.image_url);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
-    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
 
     // このrunの全セッション（過去も未来も）
     const runSessions = (Array.isArray(sessions) ? sessions : [])

@@ -61,7 +61,8 @@ async function loadPosts() {
         ${data.map(p => {
           const dt = new Date(p.created_at);
           const dtText = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleString("ja-JP");
-          const avatarSrc = p.character_id ? Utils.getCharacterImagePath(p.character_id) : Utils.DEFAULT_CHARACTER_IMAGE;
+          const matchedChar = p.character_id ? characterList.find(c => String(c.id) === String(p.character_id)) : null;
+          const avatarSrc = p.character_id ? Utils.getCharacterImagePath(p.character_id, matchedChar?.image_url) : Utils.DEFAULT_CHARACTER_IMAGE;
           
           return `
             <div class="bbs-post-card">

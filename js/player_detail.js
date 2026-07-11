@@ -289,7 +289,7 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
       <div style="display: flex; flex-wrap: wrap; gap: 15px;">
         ${favChars.map(c => `
           <a href="../character/detail.html?id=${c.id}" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; width: 90px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-            <img src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <span style="font-size: 0.85rem; font-weight: bold; text-align: center; margin-top: 8px; word-break: break-all; line-height: 1.2;">${Utils.escapeHtml(c.name)}</span>
           </a>
         `).join("")}
@@ -329,7 +329,7 @@ function buildMyCharactersHtml(characters, favoriteIds = []) {
         <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; transition: background 0.2s;">
           <button class="btn-fav-char" data-id="${c.id}" style="background: none; border: none; cursor: pointer; font-size: 1.5rem; color: ${starColor}; padding: 0; outline: none; transition: transform 0.1s;">★</button>
           <a href="../character/detail.html?id=${c.id}" style="display: flex; align-items: center; gap: 10px; flex-grow: 1; text-decoration: none; color: inherit;">
-            <img src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+            <img src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
             <span style="font-weight: bold;">${Utils.escapeHtml(c.name)}</span>
             <span style="font-size: 0.9rem; color: #718096;">${Utils.escapeHtml(c.job || '')}</span>
             <span style="font-size: 0.8rem; background: #edf2f7; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(c.system || '')}</span>

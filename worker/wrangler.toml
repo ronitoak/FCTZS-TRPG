@@ -2,6 +2,9 @@ name = "fctzs-trpg" # 自分のWorker名に合わせて変更
 main = "index.js"
 compatibility_date = "2024-04-01"
 
+[triggers]
+crons = ["0 3 * * *"]
+
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "fctzs-trpg-assets"

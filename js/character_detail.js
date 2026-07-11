@@ -113,7 +113,7 @@ function generateCcfoliaData() {
 
     keys.forEach(k => {
       const val = abilities[k] ?? getAttrInt(k);
-      commands.push(`CC<={${val}}*5 【${k}】`);
+      commands.push(`CC<={${k}}*5 【${k}】`);
     });
     data.commands = commands.join("\n");
 

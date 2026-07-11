@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>なりチャ | FCTZS TRPG部</title>
+    <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+    <header class="page-header">
+      <h1>なりきりチャット</h1>
+      <p><small>俺が荒らしだと判断したら発言削除します。3回削除でアク禁　治安維持のためdiscordログイン必須です。</small></p>
+    </header>
+
+      <section class="bbs-postbox">
+        <form id="bbs-form" style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+          
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="bbs-player" style="font-weight: bold; font-size: 0.9rem;">プレイヤー（絞り込み用）</label>
+            <select id="bbs-player" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+              <option value="">-- すべてのプレイヤー --</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="bbs-character" style="font-weight: bold; font-size: 0.9rem;">キャラクター</label>
+            <select id="bbs-character" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+              <option value="">-- キャラクターを選択 --</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="bbs-body" style="font-weight: bold; font-size: 0.9rem;">メッセージ</label>
+            <textarea id="bbs-body" rows="4" maxlength="4000" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"></textarea>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <button type="submit" id="bbs-submit" class="btn-primary" style="padding: 10px 30px;">送信</button>
+            <span id="bbs-msg" style="font-weight: bold;"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="bbs-list">
+        <h2 style="font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">ログ</h2>
+        <div id="bbs-list">読み込み中…</div>
+      </section>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/bbs.js"></script> </body>
+</html>

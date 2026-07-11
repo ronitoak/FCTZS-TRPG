@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Page | FCTZS-TRPG</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+        <nav id="common-nav" class="top-nav"></nav>
+        <hr />
+    <section id="player-detail-root">
+      <p>読み込み中…</p>
+    </section>
+
+    <dialog id="edit-profile-modal" style="width: 90%; max-width: 500px; padding: 20px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0; font-size: 1.2rem;">プロフィール編集</h2>
+        <button id="close-profile-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      
+      <form id="edit-profile-form" style="display: flex; flex-direction: column; gap: 15px;">
+        <div>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">アイコン画像URL</label>
+          <input type="text" name="icon_url" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="https://...">
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🎪 催事場（自己紹介・傾向）</label>
+          <textarea name="profile_text" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">📚 GM可能（所有）シナリオ</label>
+          <textarea name="owned_scenarios" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🏆 Tier 1 (一番の推し)</label>
+          <input type="text" name="tier_list_first" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🥈 Tier 2</label>
+          <input type="text" name="tier_list_second" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🥉 Tier 3</label>
+          <input type="text" name="tier_list_third" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <button type="submit" style="padding: 10px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px;">保存する</button>
+      </form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/player_detail.js"></script>
+</body>
+</html>

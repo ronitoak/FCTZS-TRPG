@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Schedule</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+    <h1>セッションカレンダー</h1>
+      <p>予定管理用</p>
+
+      <div class="calendar-toolbar">
+        <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
+        <button id="compare-btn" class="primary-btn">予定を比較</button>
+        
+        <button id="btn-import-csv" class="secondary-btn" style="margin-left: 10px; background-color: #2e7d32; color: white; border-color: #2e7d32;">調整さんCSVインポート</button>
+        <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+        <button type="button" id="btn-add-session" class="primary-btn" style="margin-left: 10px;">＋ セッション予定を追加</button>
+      </div>
+
+      <div id="compare-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h3>比較対象を選択</h3>
+          
+          <!-- 追加：卓からメンバーを一括チェックするUI -->
+          <div class="form-group" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <label for="compare-run-select" style="display: block; margin-bottom: 5px; font-weight: bold;">卓から一括選択</label>
+            <select id="compare-run-select" class="form-control">
+              <option value="">-- 卓を選択 --</option>
+            </select>
+          </div>
+
+          <div id="player-checkbox-list" class="checkbox-list">
+            <!-- プレイヤー一覧がここに生成される -->
+          </div>
+          
+          <div class="modal-actions">
+            <button id="run-compare-btn" class="primary-btn">比較実行</button>
+            <button onclick="closeModal('compare-modal')" class="secondary-btn">閉じる</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="csv-mapping-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+          <h2 style="margin-bottom: 15px;">プレイヤーの紐付け</h2>
+          <p style="font-size: 0.9rem; margin-bottom: 15px;">
+              CSVから読み込んだ名前と、システム上のプレイヤーを紐付けてください。<br>
+              ※紐付けない（無視する）列は「取り込まない」を選択してください。
+          </p>
+          
+          <div id="csv-mapping-container" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+          </div>
+
+          <div style="text-align: right;">
+              <button id="btn-execute-import" class="primary-btn">インポート実行</button>
+              <button class="secondary-btn" onclick="document.getElementById('csv-mapping-modal').style.display='none'">キャンセル</button>
+          </div>
+        </div>
+      </div>
+
+      
+
+      <div class="calendar-wrapper">
+        <div class="calendar-header">
+          <button id="prev-month-btn">◀ 先月</button>
+          <h2 id="calendar-month-title">2026年 4月</h2>
+          <button id="next-month-btn">来月 ▶</button>
+        </div>
+
+        <div class="calendar-grid" id="calendar-grid">
+          <div class="calendar-day-header">日</div>
+          <div class="calendar-day-header">月</div>
+          <div class="calendar-day-header">火</div>
+          <div class="calendar-day-header">水</div>
+          <div class="calendar-day-header">木</div>
+          <div class="calendar-day-header">金</div>
+          <div class="calendar-day-header">土</div>
+          
+        </div>
+      </div>
+
+      <div id="availability-modal" class="modal" style="display: none;">
+        <div class="modal-content bulk-input-content">
+          <h3>予定の一括入力</h3>
+          
+          <div class="form-group">
+            <label for="modal-player-id">プレイヤー</label>
+            <select id="modal-player-id"></select>
+          </div>
+
+          <div class="form-group">
+            <label>対象月: <span id="bulk-month-label"></span></label>
+          </div>
+
+          <div class="bulk-header-row">
+            <div class="bulk-date">日付</div>
+            <div class="bulk-slot">昼</div>
+            <div class="bulk-slot">夜</div>
+          </div>
+
+          <div id="bulk-input-container" class="bulk-input-container">
+          </div>
+
+          <div class="modal-actions">
+            <button id="save-availability-btn" class="primary-btn">保存</button>
+            <button id="close-modal-btn" class="secondary-btn">キャンセル</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="add-session-modal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3>セッション予定の追加</h3>
+            <form id="add-session-form">
+                <div class="form-group">
+                    <label>卓（Run）を選択</label>
+                    <select id="add-session-run-id" class="form-control" required>
+                        <option value="">-- 卓を選択 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                  <label for="add-session-start">開催日時</label>
+                  <input type="datetime-local" id="add-session-start" name="start" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label>セッションタイトル</label>
+                  <input type="text" id="add-session-title" name="title" required class="form-control" placeholder="例：Part1">
+                </div>
+
+                <div class="form-group">
+                  <label>配信URL</label>
+                  <input type="url" id="add-session-stream" name="stream_url" class="form-control" placeholder="https://youtube.com/...">
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label>備考</label>
+                  <textarea id="add-session-notes" name="notes" rows="3" class="form-control"></textarea>
+                </div>
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="submit" class="btn-primary">追加</button>
+                    <button type="button" id="close-add-session-btn" class="btn-secondary">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+  <footer>
+    <hr />
+    <small><a href="../index.html">Back to Home</a></small>
+  </footer>
+  </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/schedule.js"></script>
+</body>
+</html>
+

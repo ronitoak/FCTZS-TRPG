@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recruit | FCTZS TRPG部</title>
+    <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* 募集カード特有のスタイル（後でstyle.cssに統合してもOK） */
+        .recruit-card {
+            border-left: 4px solid var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .recruit-card.gm-wanted {
+            border-left-color: #e53e3e; /* GM募集は目立つように赤系 */
+        }
+        .recruit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .recruit-role-badge {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            background: #ebf8ff;
+            color: #2b6cb0;
+        }
+        .recruit-card.gm-wanted .recruit-role-badge {
+            background: #fff5f5;
+            color: #c53030;
+        }
+        .recruit-progress {
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-align: right;
+            color: var(--text-muted);
+        }
+        .applicant-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .applicant-chip {
+            background: #edf2f7;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+    <header class="page-header">
+      <h1>募集</h1>
+      <p>ここで募集してみてね～</p>
+    </header>
+
+    <button id="btn-open-recruit-modal" class="primary-btn">＋ 新しく募集を立てる</button>
+
+    <div id="recruit-list-container" class="card-grid" style="margin-top: 24px;">
+        <p>読み込み中...</p>
+        </div>
+
+    <div id="recruit-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 16px;">新規募集の作成</h2>
+            <form id="recruit-form">
+                <div class="form-group">
+                    <label>募集主</label>
+                    <select id="modal-owner-id" name="owner_player_id" required class="form-control"></select>
+                </div>
+                
+                <div class="form-group">
+                    <label>募集の種類</label>
+                    <select name="recruit_role" required class="form-control">
+                        <option value="PL">PLを募集する</option>
+                        <option value="GM">GMを募集する</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>対象シナリオ</label>
+                    <select id="modal-scenario-id" name="scenario_id" class="form-control"></select>
+                </div>
+
+                <div class="form-group">
+                    <label>募集人数</label>
+                    <input type="number" name="target_count" required min="1" max="10" value="1" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>自由記入欄</label>
+                    <textarea name="memo" rows="3" class="form-control" placeholder="例：傾向、時間、特記事項など"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="primary-btn">募集を開始する</button>
+                    <button type="button" class="secondary-btn" onclick="document.getElementById('recruit-modal').style.display='none'">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/recruit.js"></script>
+</body>
+</html>
+
+
+
+
+

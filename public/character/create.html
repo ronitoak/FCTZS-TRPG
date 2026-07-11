@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>キャラクター新規作成 | FCTZS TRPG部</title>
+    <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+   <div class="container">
+        <nav id="common-nav" class="top-nav"></nav>
+        <hr />
+        <h1>キャラクター新規作成</h1>
+
+        <form id="character-form">
+        <fieldset class="form-section">
+            <legend>外部データインポート（いあきゃらの場合はテキスト出力の内容、エモクロアの場合はCCFOLIA形式でコピーした内容）</legend>
+            <div class="form-group">
+                <textarea id="import-text" class="form-control" rows="5" placeholder="コピーした内容をここに貼り付けてください"></textarea>
+                <button type="button" id="btn-import" class="btn-secondary" style="margin-top: 10px;">データを反映する</button>
+            </div>
+        </fieldset>
+        <fieldset class="form-section">
+            <legend>プロフィール</legend>
+            
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label>システム</label>
+                <select name="system" id="system-select" required class="form-control">
+                    <option value="">選択してください</option>
+                    <option value="CoC6">クトゥルフ神話TRPG(6版)</option>
+                    <option value="CoC7">新クトゥルフ神話TRPG(7版)</option>
+                    <option value="エモクロアTRPG">エモクロアTRPG</option>
+                    <option value="ガイアケアTRPG">ガイアケアTRPG</option>
+                </select>
+            </div>
+            
+            <div class="profile-grid">
+                <div class="form-group"><label>名前</label><input type="text" name="name" required class="form-control"></div>
+                <div class="form-group"><label>職業</label><input type="text" name="job" class="form-control"></div>
+                <div class="form-group"><label>年齢</label><input type="number" name="age" class="form-control"></div>
+                <div class="form-group"><label>性別</label><input type="text" name="gender" class="form-control"></div>
+                <div class="form-group"><label>身長</label><input type="number" name="height" class="form-control"></div>
+                <div class="form-group"><label>体重</label><input type="number" name="weight" class="form-control"></div>
+                <div class="form-group"><label>出身</label><input type="text" name="origin" class="form-control"></div>
+                <div class="form-group">
+                    <label>プレイヤー</label>
+                    <select name="player_id" id="player-select" required class="form-control">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                
+                <div class="form-group gaia-specific-field" style="display: none;">
+                    <label>種族</label>
+                    <select name="race" class="form-control">
+                        <option value="">選択してください</option>
+                        <option value="人間">人間</option>
+                        <option value="亜獣">亜獣</option>
+                        <option value="付喪">付喪</option>
+                        <option value="越境者">越境者</option>
+                    </select>
+                </div>
+                <div class="form-group gaia-specific-field" style="display: none;">
+                    <label>原種</label>
+                    <input type="text" name="original_species" class="form-control">
+                </div>
+            </div>
+        </fieldset>
+
+        <div id="dynamic-fields-container"></div>
+
+        <div id="custom-skill-actions" class="form-actions" style="margin-top: 20px; display: none;">
+            <button type="button" id="btn-add-custom-skill" class="btn-secondary">
+                ＋ オリジナル技能を追加
+            </button>
+        </div>
+
+        <fieldset class="form-section">
+            <div class="form-group">
+            <label>メモ</label>
+            <textarea name="memo" rows="5"></textarea>
+            </div>
+        </fieldset>
+
+        <button type="submit">キャラクターを作成</button>
+        </form>
+
+        <footer>
+                <hr />
+                <small><a href="../character/index.html">Back</a></small>
+        </footer>
+    </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/utils.js"></script>
+    <script src="../js/character_create.js"></script>
+
+</body>
+</html>

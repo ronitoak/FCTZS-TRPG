@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Characters | FCTZS TRPG部</title>
+    <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+        <nav id="common-nav" class="top-nav"></nav>
+        <hr />
+    <section id="character-detail">
+      <p>読み込み中…</p>
+    </section>
+
+    <div id="edit-character-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 600px;"> <h3>キャラクター情報の編集</h3>
+        <form id="edit-character-form">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label>名前</label>
+              <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>プレイヤー</label>
+              <select name="player_id" id="player-select" class="form-control" required>
+                <option value="">選択してください</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>状態</label>
+              <select name="state" class="form-control">
+                <option value="survived">生存</option>
+                <option value="lost">ロスト</option>
+                <option value="rescued">生還（特殊）</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>職業</label>
+              <input type="text" name="job" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>年齢</label>
+              <input type="text" name="age" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>性別</label>
+              <input type="text" name="gender" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>身長</label>
+              <input type="text" name="height" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>体重</label>
+              <input type="text" name="weight" class="form-control">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>出身</label>
+              <input type="text" name="origin" class="form-control">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>いあきゃらURL</label>
+              <input type="url" name="iachara_url" class="form-control">
+            </div>
+          </div>
+          
+          <div class="form-group" style="margin-top: 10px;">
+            <label>メモ</label>
+            <textarea name="memo" rows="4" class="form-control"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary">更新</button>
+            <button type="button" id="btn-close-char-edit" class="btn-secondary">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-skills-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3>技能値の編集</h3>
+        <form id="edit-skills-form">
+          <div id="edit-skills-container">
+            </div>
+          <button type="button" id="btn-add-skill-row" class="btn-secondary" style="width: 100%; margin-top: 10px;">
+            + 技能を追加
+          </button>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">保存</button>
+            <button type="button" id="btn-close-skills-edit" class="btn-secondary">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-params-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 450px;">
+        <h3>能力値の編集</h3>
+        <form id="edit-params-form">
+          <div id="edit-params-container"></div>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">保存</button>
+            <button type="button" id="btn-close-params-edit" class="btn-secondary">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-emotions-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3>共鳴感情の編集</h3>
+        <form id="edit-emotions-form">
+          <div id="edit-emotions-container"></div>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">保存</button>
+            <button type="button" id="btn-close-emotions-edit" class="btn-secondary">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-scenarios-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h3>通過シナリオの編集</h3>
+        <form id="edit-scenarios-form">
+          <div id="edit-scenarios-container">
+            </div>
+          <button type="button" id="btn-add-scenario-row" class="btn-secondary" style="width: 100%; margin-top: 10px;">
+            + シナリオを追加
+          </button>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">保存</button>
+            <button type="button" id="btn-close-scenarios-edit" class="btn-secondary">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="comments-root"></div>
+      <footer>
+        <hr />
+        <small><a href="../character/index.html">Back</a></small>
+      </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/character_detail.js"></script>
+    <script src="../js/comments.js"></script>
+    <script>
+      Comments.mount("comments-root", "character");
+    </script>
+</body>
+</html>
+
+
+

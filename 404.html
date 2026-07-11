@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      // 404になった（＝リポジトリ名が抜け落ちた）場合、
+      // 強制的にリポジトリ名付きのURLへ飛ばし直す
+      var segmentCount = 0;
+      var l = window.location;
+      // access_tokenなどが含まれているハッシュを保持したまま移動
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        '/FCTZS-TRPG/' + l.search + l.hash
+      );
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+</html>

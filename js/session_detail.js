@@ -74,10 +74,21 @@ async function main() {
         plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
     }
 
+    // ログインユーザーのDiscord IDを取得
+    let currentUserDiscordId = null;
+    try {
+      const { data: { session: authSession } } = await window.supabase.auth.getSession();
+      if (authSession) {
+        currentUserDiscordId = authSession?.user?.user_metadata?.sub || authSession?.user?.user_metadata?.provider_id || (authSession?.user?.identities?.find(id => id.provider === 'discord')?.id);
+      }
+    } catch (e) {
+      console.error("ログイン情報の取得に失敗しました", e);
+    }
+
     root.innerHTML = `
       ${buildSessionHeaderHtml(run, statusClass, statusJa)}
       ${buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars, editRunBtn)}
-      ${buildSessionLogHtml(runSessions)}
+      ${buildSessionLogHtml(runSessions, currentUserDiscordId)}
     `;
 
     renderCompletionGuide(runSessions, run);
@@ -484,7 +495,89 @@ Utils.domReady(() => {
         tempCharacters.push({ id, name }); // IDと名前のセットで保持
         renderEditLists();
     }
-});
+  });
+
+  // 4. 観戦希望ボタンのクリックイベント
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-viewer-toggle');
+    if (!btn) return;
+
+    const sessionId = btn.dataset.id;
+    if (!sessionId) return;
+
+    btn.disabled = true;
+
+    try {
+      const { data: { session } } = await window.supabase.auth.getSession();
+      if (!session) {
+        alert("観戦希望するにはDiscordログインが必要です。");
+        btn.disabled = false;
+        return;
+      }
+
+      const discordId = session?.user?.user_metadata?.sub || session?.user?.user_metadata?.provider_id || (session?.user?.identities?.find(id => id.provider === 'discord')?.id);
+      if (!discordId) {
+        alert("DiscordユーザーIDが取得できませんでした。");
+        btn.disabled = false;
+        return;
+      }
+
+      // セッション情報を再取得して最新のnotesをベースにする
+      const sessions = await Utils.apiGet("sessions");
+      const sessionData = (Array.isArray(sessions) ? sessions : []).find(s => s.id === sessionId);
+      if (!sessionData) {
+        alert("セッションが見つかりません。");
+        btn.disabled = false;
+        return;
+      }
+
+      let notes = sessionData.notes || "";
+      const mention = `<@${discordId}>`;
+      const isJoined = btn.dataset.hasJoined === "true";
+
+      if (isJoined) {
+        // 取り消し処理
+        notes = notes.replace(mention, "").trim();
+        // 観戦希望エリアのクリーンアップ
+        // [観戦希望] の後ろにメンションが残っていないか確認
+        const mentionRegex = /<@\d+>/g;
+        const hasOtherMentions = mentionRegex.test(notes);
+        if (!hasOtherMentions) {
+          notes = notes.replace("[観戦希望]", "").trim();
+        }
+        // 連続する空白・改行の整理
+        notes = notes.replace(/\n\s*\n/g, "\n").trim();
+      } else {
+        // 希望処理
+        if (notes.includes("[観戦希望]")) {
+          if (!notes.includes(mention)) {
+            notes = notes.replace("[観戦希望]", `[観戦希望] ${mention}`);
+          }
+        } else {
+          if (notes) {
+            notes += `\n[観戦希望] ${mention}`;
+          } else {
+            notes = `[観戦希望] ${mention}`;
+          }
+        }
+      }
+
+      // 空文字の場合はnullとして保存
+      await Utils.apiPatch("sessions", { notes: notes || null }, `id=eq.${sessionId}`);
+      
+      if (isJoined) {
+        Utils.showToast("観戦希望を取り消しました");
+      } else {
+        Utils.showToast("観戦希望を登録しました！");
+      }
+      
+      location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("処理に失敗しました: " + err.message);
+      btn.disabled = false;
+    }
+  });
 });
 
 // ==========================================
@@ -523,7 +616,7 @@ function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames
   `;
 }
 
-function buildSessionLogHtml(runSessions) {
+function buildSessionLogHtml(runSessions, currentUserDiscordId) {
   return `
     <section class="session-detail-log">
       <h2 class="session-detail-h2">セッション履歴</h2>
@@ -532,6 +625,19 @@ function buildSessionLogHtml(runSessions) {
         const stateJa = stateLabels[s.status] || "不明";
         const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
         const linksHtml = (s.replay_url || s.stream_url) ? `<div class="session-links">${s.stream_url ? `${Utils.renderLink(s.stream_url, "配信or動画")}` : ""}</div>` : "";
+        
+        let viewerBtnHtml = "";
+        if (s.status === "scheduled") {
+          if (currentUserDiscordId) {
+            const hasJoined = s.notes && s.notes.includes(`<@${currentUserDiscordId}>`);
+            const btnClass = hasJoined ? "btn-secondary" : "btn-primary";
+            const btnText = hasJoined ? "👀 観戦取消" : "👀 観戦希望";
+            viewerBtnHtml = `<button class="btn-viewer-toggle ${btnClass}" data-id="${s.id}" data-has-joined="${hasJoined}" style="padding: 2px 8px; font-size: 0.8rem; margin-right: 5px;">${btnText}</button>`;
+          } else {
+            viewerBtnHtml = `<button class="btn-viewer-toggle btn-secondary" disabled title="観戦希望にはDiscordログインが必要です" style="padding: 2px 8px; font-size: 0.8rem; margin-right: 5px; opacity: 0.6;">👀 観戦希望</button>`;
+          }
+        }
+
         return `
           <li class="session-detail-item ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
             <div class="session-item-row">
@@ -539,6 +645,7 @@ function buildSessionLogHtml(runSessions) {
               <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>
               <span class="session-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
               <span class="session-item-links">${linksHtml}</span>
+              ${viewerBtnHtml}
               <button class="btn-edit-session" data-id="${s.id}" data-title="${Utils.escapeHtml(s.title ?? "")}" data-start="${s.start}" data-status="${s.status}">📝</button>
             </div>
           </li>`;

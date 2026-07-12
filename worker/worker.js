@@ -915,8 +915,8 @@ export default {
         const startDate = encodeURIComponent(now.toISOString());
         const endDate = encodeURIComponent(tomorrow.toISOString());
 
-        // 2. 直近のセッションを取得（sessionsからid,start,run_id,titleを取得）
-        const sessionUrl = `/rest/v1/sessions?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`;
+        // 2. 直近のセッションを取得（sessionsからid,start,run_id,title,notesを取得）
+        const sessionUrl = `/rest/v1/sessions?select=id,start,run_id,title,stream_url,notes&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`;
         const sessionRes = await fetch(`${env.SUPABASE_URL}${sessionUrl}`, {
           headers: {
             apikey: env.SUPABASE_SERVICE_ROLE_KEY,
@@ -996,19 +996,39 @@ export default {
           // 重複削除してスペース区切りに
           const notificationLine = mentions.length > 0 ? [...new Set(mentions)].join(" ") : "";
 
+          // 観戦希望のメンションをnotesから抽出
+          const viewerMentions = [];
+          if (session.notes) {
+            const matches = session.notes.match(/<@\d+>/g);
+            if (matches) {
+              viewerMentions.push(...matches);
+            }
+          }
+
+          let contentMsg = notificationLine;
+          const viewerLine = viewerMentions.length > 0 ? [...new Set(viewerMentions)].join(" ") : "";
+          if (viewerLine) {
+            contentMsg += (contentMsg ? "\n" : "") + `👀 観戦希望：${viewerLine}`;
+          }
+          contentMsg += (contentMsg ? "\n" : "") + `🔔 **セッション通知**`;
+
           // --- 2. 箱の中（Embed）に表示するテキストの作成 ---
           // こちらはメンションにせず、そのままの名前を表示します
           const displayGm = gmName; 
           const displayPlayerList = (Array.isArray(run.players) && run.players.length > 0)
             ? run.players.map(p => `- ${p}`).join("\n")
             : "- 参加者情報なし";
+          
+          const displayViewerList = viewerMentions.length > 0 
+            ? viewerMentions.join(", ") 
+            : "なし";
 
           // --- 3. 送信 ---
           await sendDiscordNotification(
-            `${notificationLine}\n🔔 **セッション通知**`,
+            contentMsg,
             {
               title: `卓名：${runTitle} （${sessionTitle}）`,
-              description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${displayGm}\n\n**【PL】**\n${displayPlayerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
+              description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${displayGm}\n\n**【PL】**\n${displayPlayerList}\n\n**【観戦希望】**\n- ${displayViewerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
               color: 15158332,
               url: `https://ronitoak.github.io/FCTZS-TRPG/sessions/detail.html?id=${session.run_id}`
             },

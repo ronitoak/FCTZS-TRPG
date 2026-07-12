@@ -414,7 +414,7 @@ Utils.domReady(() => {
       // datetime-local から値を取得 (例: "2026-03-23T20:00")
       const startVal = subForm.start.value; 
       const titleVal = subForm.title.value;
-      const notesVal = subForm.notes.value;
+
 
       if (!startVal) {
           alert("日時を選択してください。");
@@ -429,7 +429,6 @@ Utils.domReady(() => {
         start: startTimestamp,
         title: titleVal,
         stream_url: subForm.stream_url.value,
-        notes: notesVal,
         status: 'scheduled'
       };
 

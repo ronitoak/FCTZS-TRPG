@@ -37,8 +37,16 @@ Utils.domReady(async () => {
         let imageUrl = null;
         if (imageFileInput && imageFileInput.files[0]) {
             try {
+                const originalFile = imageFileInput.files[0];
+                const compressedBlob = await Utils.compressAndResizeImage(originalFile);
+
                 const formData = new FormData();
-                formData.append("file", imageFileInput.files[0]);
+                const fileBaseName = originalFile.name.includes('.') 
+                    ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) 
+                    : originalFile.name;
+                const fileName = `${fileBaseName}.webp`;
+
+                formData.append("file", compressedBlob, fileName);
                 formData.append("type", "scenario");
 
                 const uploadRes = await fetch(`${API_BASE}/api/upload`, {

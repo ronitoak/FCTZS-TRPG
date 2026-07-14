@@ -570,11 +570,11 @@ document.addEventListener('click', async (e) => {
         form.origin.value = currentCharData.origin || "";
         form.iachara_url.value = currentCharData.iachara_url || "";
         form.memo.value = currentCharData.memo || "";
-        modal.style.display = 'block';
+        modal?.showModal();
     }
     
     if (e.target.id === 'btn-close-char-edit') {
-        document.getElementById('edit-character-modal').style.display = 'none';
+        document.getElementById('edit-character-modal')?.close();
     }
 
     // 3. 技能編集モーダル展開
@@ -585,10 +585,10 @@ document.addEventListener('click', async (e) => {
           container.innerHTML = '';
           currentSkillRows.forEach(s => addSkillInputRow(s.name, s.display_value));
         }
-        if (modal) modal.style.display = 'block';
+        modal?.showModal();
     }
     if (e.target.id === 'btn-close-skills-edit') {
-        document.getElementById('edit-skills-modal').style.display = 'none';
+        document.getElementById('edit-skills-modal')?.close();
     }
 
     // 4. パラメータ(能力値)編集モーダル展開
@@ -601,10 +601,10 @@ document.addEventListener('click', async (e) => {
               appendAttrInput(container, def, attr.value_int ?? 0, 'number', 'attr_value');
           });
         }
-        document.getElementById('edit-params-modal').style.display = 'block';
+        document.getElementById('edit-params-modal')?.showModal();
     }
     if (e.target.id === 'btn-close-params-edit') {
-        document.getElementById('edit-params-modal').style.display = 'none';
+        document.getElementById('edit-params-modal')?.close();
     }
 
     // 5. 共鳴感情編集モーダル展開
@@ -617,10 +617,14 @@ document.addEventListener('click', async (e) => {
               appendAttrInput(container, def, attr.value_emotion || '', 'select', 'attr_value_emo');
           });
         }
-        document.getElementById('edit-emotions-modal').style.display = 'block';
+        document.getElementById('edit-emotions-modal')?.showModal();
     }
     if (e.target.id === 'btn-close-emotions-edit') {
-        document.getElementById('edit-emotions-modal').style.display = 'none';
+        document.getElementById('edit-emotions-modal')?.close();
+    }
+
+    if (e.target.id === 'btn-close-scenarios-edit') {
+        document.getElementById('edit-scenarios-modal')?.close();
     }
 
     // 6. 隠し項目のトグル（種族など）
@@ -629,14 +633,8 @@ document.addEventListener('click', async (e) => {
     }
 
     // 7. モーダルの背景クリックによる閉鎖処理
-    const modals = [
-        document.getElementById('edit-character-modal'),
-        document.getElementById('edit-skills-modal'),
-        document.getElementById('edit-params-modal'),
-        document.getElementById('edit-emotions-modal')
-    ];
-    if (modals.includes(e.target)) {
-        e.target.style.display = 'none';
+    if (e.target.tagName === "DIALOG" && e.target.classList.contains("modal")) {
+        e.target.close();
     }
 });
 

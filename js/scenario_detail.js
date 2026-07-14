@@ -224,15 +224,15 @@ async function main() {
         form.description.value = scenario.description || "";
         form.notes.value = scenario.notes || "";
 
-        modal.style.display = 'block';
+        modal?.showModal();
       }
 
       if (e.target && e.target.id === 'btn-close-scenario-edit') {
-        document.getElementById('edit-scenario-modal').style.display = 'none';
+        document.getElementById('edit-scenario-modal')?.close();
       }
       const modal = document.getElementById('edit-scenario-modal');
       if (e.target === modal) {
-        modal.style.display = 'none';
+        modal?.close();
       }
     });
 

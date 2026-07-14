@@ -278,19 +278,19 @@ Utils.domReady(() => {
       }
 
       form.status.value = btn.dataset.status;
-      modal.style.display = 'block';
+      modal?.showModal();
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
     const modal = document.getElementById('edit-session-modal');
     if (e.target === modal) {
-      modal.style.display = 'none';
+      modal.close();
     }
   });
 
   // キャンセルボタンで閉じる
   document.getElementById('btn-close-edit')?.addEventListener('click', () => {
-    document.getElementById('edit-session-modal').style.display = 'none';
+    document.getElementById('edit-session-modal')?.close();
   });
 
   // 卓編集モーダルを開く
@@ -343,20 +343,20 @@ Utils.domReady(() => {
 
       renderEditLists();
 
-      modal.style.display = 'block';
+      modal?.showModal();
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
     const modal = document.getElementById('edit-run-modal');
     if (e.target === modal) {
-      modal.style.display = 'none';
+      modal.close();
     }
   });
 
   // キャンセルボタン
   document.addEventListener('click', (e) => {
     if (e.target.id === 'btn-close-run-edit') {
-        document.getElementById('edit-run-modal').style.display = 'none';
+        document.getElementById('edit-run-modal')?.close();
     }
   });
 

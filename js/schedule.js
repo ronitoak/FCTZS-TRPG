@@ -329,7 +329,7 @@ async function runComparison() {
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) modal.style.display = "none";
+  if (modal && typeof modal.close === "function") modal.close();
 }
 
 async function initCompareModalData() {
@@ -449,12 +449,12 @@ async function main() {
   }
 
   document.getElementById("bulk-input-btn")?.addEventListener("click", () => {
-    document.getElementById("availability-modal").style.display = "flex";
+    document.getElementById("availability-modal")?.showModal();
     renderBulkInputGrid();
   });
 
   document.getElementById("compare-btn")?.addEventListener("click", () => {
-    document.getElementById("compare-modal").style.display = "flex";
+    document.getElementById("compare-modal")?.showModal();
   });
 
   document.getElementById("close-modal-btn")?.addEventListener("click", () => closeModal("availability-modal"));
@@ -471,7 +471,7 @@ async function main() {
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       document.getElementById("add-session-start").value = now.toISOString().slice(0, 16);
       
-      document.getElementById("add-session-modal").style.display = "flex";
+      document.getElementById("add-session-modal")?.showModal();
   });
 
   document.getElementById("close-add-session-btn")?.addEventListener("click", () => {
@@ -644,8 +644,8 @@ async function main() {
 
 // モーダルの背景（外側）をクリックした時に閉じる処理
 window.addEventListener("click", (e) => {
-  if (e.target.classList.contains("modal")) {
-    e.target.style.display = "none";
+  if (e.target.tagName === "DIALOG" && e.target.classList.contains("modal")) {
+    e.target.close();
   }
 });
 
@@ -686,5 +686,5 @@ function showMappingModal() {
         if (selectedId) rowDiv.querySelector("select").value = selectedId;
     });
 
-    document.getElementById("csv-mapping-modal").style.display = "block";
+    document.getElementById("csv-mapping-modal")?.showModal();
 }

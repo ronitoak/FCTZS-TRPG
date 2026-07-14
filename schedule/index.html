@@ -23,7 +23,7 @@
         <button type="button" id="btn-add-session" class="primary-btn" style="margin-left: 10px;">＋ セッション予定を追加</button>
       </div>
 
-      <div id="compare-modal" class="modal" style="display: none;">
+      <dialog id="compare-modal" class="modal">
         <div class="modal-content">
           <h3>比較対象を選択</h3>
           
@@ -44,9 +44,9 @@
             <button onclick="closeModal('compare-modal')" class="secondary-btn">閉じる</button>
           </div>
         </div>
-      </div>
+      </dialog>
 
-      <div id="csv-mapping-modal" class="modal" style="display: none;">
+      <dialog id="csv-mapping-modal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
           <h2 style="margin-bottom: 15px;">プレイヤーの紐付け</h2>
           <p style="font-size: 0.9rem; margin-bottom: 15px;">
@@ -59,10 +59,10 @@
 
           <div style="text-align: right;">
               <button id="btn-execute-import" class="primary-btn">インポート実行</button>
-              <button class="secondary-btn" onclick="document.getElementById('csv-mapping-modal').style.display='none'">キャンセル</button>
+              <button class="secondary-btn" onclick="closeModal('csv-mapping-modal')">キャンセル</button>
           </div>
         </div>
-      </div>
+      </dialog>
 
       
 
@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <div id="availability-modal" class="modal" style="display: none;">
+      <dialog id="availability-modal" class="modal">
         <div class="modal-content bulk-input-content">
           <h3>予定の一括入力</h3>
           
@@ -112,9 +112,9 @@
             <button id="close-modal-btn" class="secondary-btn">キャンセル</button>
           </div>
         </div>
-      </div>
+      </dialog>
 
-      <div id="add-session-modal" class="modal" style="display:none;">
+      <dialog id="add-session-modal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
             <h3>セッション予定の追加</h3>
             <form id="add-session-form">
@@ -148,7 +148,7 @@
                 </div>
             </form>
         </div>
-    </div>
+    </dialog>
 
   <footer>
     <hr />

@@ -15,7 +15,7 @@
       <p>読み込み中…</p>
     </section>
 
-    <div id="edit-character-modal" class="modal" style="display:none;">
+    <dialog id="edit-character-modal" class="modal">
       <div class="modal-content" style="max-width: 600px;"> <h3>キャラクター情報の編集</h3>
         <form id="edit-character-form">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -86,9 +86,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-skills-modal" class="modal" style="display:none;">
+    <dialog id="edit-skills-modal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <h3>技能値の編集</h3>
         <form id="edit-skills-form">
@@ -103,9 +103,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-params-modal" class="modal" style="display:none;">
+    <dialog id="edit-params-modal" class="modal">
       <div class="modal-content" style="max-width: 450px;">
         <h3>能力値の編集</h3>
         <form id="edit-params-form">
@@ -116,9 +116,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-emotions-modal" class="modal" style="display:none;">
+    <dialog id="edit-emotions-modal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <h3>共鳴感情の編集</h3>
         <form id="edit-emotions-form">
@@ -129,9 +129,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-scenarios-modal" class="modal" style="display:none;">
+    <dialog id="edit-scenarios-modal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <h3>通過シナリオの編集</h3>
         <form id="edit-scenarios-form">
@@ -146,7 +146,7 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
     <div id="comments-root"></div>
       <footer>
@@ -161,6 +161,3 @@
     <script src="../js/character_detail.js"></script>
 </body>
 </html>
-
-
-

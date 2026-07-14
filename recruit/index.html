@@ -69,7 +69,7 @@
         <p>読み込み中...</p>
         </div>
 
-    <div id="recruit-modal" class="modal fade">
+    <dialog id="recruit-modal" class="modal">
         <div class="modal-content">
             <h2 style="margin-bottom: 16px;">新規募集の作成</h2>
             <form id="recruit-form">
@@ -103,11 +103,11 @@
 
                 <div class="modal-actions">
                     <button type="submit" class="btn-primary">募集を開始する</button>
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('recruit-modal').classList.remove('show')">キャンセル</button>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('recruit-modal').close()">キャンセル</button>
                 </div>
             </form>
         </div>
-    </div>
+    </dialog>
 
     <footer>
       <hr />
@@ -120,8 +120,3 @@
     <script src="../js/recruit.js"></script>
 </body>
 </html>
-
-
-
-
-

@@ -201,11 +201,13 @@ function renderRecruitments() {
 
 // 5. 募集作成モーダルの制御
 document.getElementById("btn-open-recruit-modal")?.addEventListener("click", () => {
-    document.getElementById("recruit-modal").classList.add("show");
+    document.getElementById("recruit-modal")?.showModal();
 });
 
 window.addEventListener("click", (e) => {
-    if (e.target.id === "recruit-modal") e.target.classList.remove("show");
+    if (e.target.tagName === "DIALOG" && e.target.classList.contains("modal")) {
+        e.target.close();
+    }
 });
 
 // 6. 募集フォーム of 送信
@@ -227,7 +229,7 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
         btn.textContent = "送信中...";
         await Utils.apiPost("recruitments", [payload]);
         alert("募集を作成しました！");
-        document.getElementById("recruit-modal").classList.remove("show");
+        document.getElementById("recruit-modal")?.close();
         e.target.reset(); // フォームの中身を空にする
         await loadRecruitments();
     } catch (err) {

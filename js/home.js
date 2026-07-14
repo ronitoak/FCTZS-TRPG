@@ -56,7 +56,6 @@ function renderNextSession(container, sessions, runsById, scenariosById) {
     
     <p><strong>${dateStr} ${timeStr}</strong> ${duration ? `(${duration})` : ""}</p>
     <ul><li><p>${runTitle} ${sessionTitle}</p>
-    ${ses.notes ? `<p><small>${Utils.escapeHtml(ses.notes)}</small></p>` : ""}
     </li></ul>
   `;
 }

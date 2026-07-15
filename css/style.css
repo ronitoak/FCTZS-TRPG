@@ -320,6 +320,24 @@ a { color: inherit; text-decoration: none; }
 }
 .character-detail-link:hover, .session-detail-link:hover, .scenarios-link:hover, .character-title-link:hover { text-decoration: underline; }
 
+/* プレイスタイル傾向タグ */
+.trend-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border-radius: 12px;
+    background-color: var(--container-bg, #f3f4f6);
+    color: var(--text-color, #4b5563);
+    border: 1px solid currentColor;
+}
+.trend-story { color: #3b82f6; background-color: #eff6ff; } /* 青 */
+.trend-chaos { color: #ef4444; background-color: #fef2f2; } /* 赤 */
+.trend-avatar { color: #8b5cf6; background-color: #f5f3ff; } /* 紫 */
+.trend-clear { color: #f97316; background-color: #fff7ed; } /* 橙 */
+.trend-harmony { color: #10b981; background-color: #ecfdf5; } /* 緑 */
+.trend-active { color: #ec4899; background-color: #fdf2f8; } /* 桃 */
+
 /* ==========================================
    5. Lists & Tables
    ========================================== */

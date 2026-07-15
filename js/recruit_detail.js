@@ -5,6 +5,19 @@ let allPlayers = [];
 let allScenarios = [];
 let currentApplicants = [];
 
+function getTrendTagsHtml(scenario) {
+  const tags = [];
+  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
+  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
+  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">化身・没入</span>');
+  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
+  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
+  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
+  
+  if (tags.length === 0) return '';
+  return `<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">${tags.join('')}</div>`;
+}
+
 async function main() {
     await Utils.initAuthAndHeader('common-nav', '../');
 
@@ -72,6 +85,8 @@ function renderDetail() {
     if (currentRecruit.status === "fulfilled") statusText = "満員";
     if (currentRecruit.status === "closed") statusText = "終了";
 
+    const trendTagsHtml = scenarioObj ? getTrendTagsHtml(scenarioObj) : "";
+
     // シナリオ詳細に完全に準拠したHTML構造
     root.innerHTML = `
       <header class="scenario-detail-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -96,7 +111,8 @@ function renderDetail() {
                 <div><strong>募集状態:</strong> ${Utils.escapeHtml(statusText)}</div>
                 <div><strong>募集人数:</strong> ${currentRecruit.target_count}人 （現在の応募: ${currentApplicants.length}人）</div>
             </div>
-                <div class="scenario-base-info">
+            ${trendTagsHtml}
+            <div class="scenario-base-info">
                 <div><strong>自由記入欄:</strong><br>${Utils.renderMultilineText(currentRecruit.memo)}</div>
             </div>
         </div>

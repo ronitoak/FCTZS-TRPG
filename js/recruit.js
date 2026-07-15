@@ -5,6 +5,19 @@ let allScenarios = [];
 let allRecruitments = [];
 let allApplicants = [];
 
+function getTrendTagsHtml(scenario) {
+  const tags = [];
+  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
+  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
+  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">化身・没入</span>');
+  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
+  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
+  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
+  
+  if (tags.length === 0) return '';
+  return `<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">${tags.join('')}</div>`;
+}
+
 // 1. 初期データの読み込み（プレイヤーとシナリオ）
 async function initData() {
     await Utils.initAuthAndHeader('common-nav', '../');
@@ -110,6 +123,8 @@ function renderRecruitments() {
 
         const isOwner = true; // 本来はログインユーザーIDと比較: recruit.owner_player_id === currentUserId;
 
+        const trendTagsHtml = scenario ? getTrendTagsHtml(scenario) : "";
+
         card.innerHTML = `
             <div class="recruit-header">
                 <span class="recruit-role-badge">${recruit.recruit_role === 'GM' ? 'GM募集' : 'PL募集'}</span>
@@ -120,13 +135,14 @@ function renderRecruitments() {
             <img class="scenario-detail-cover"
             src="${coverPath}"
             onerror="this.onerror=null; this.src='${fallback}';"
-            alt="${Utils.escapeHtml(scenario.title ?? scenario.id)}"
+            alt="${Utils.escapeHtml(scenarioTitle)}"
             loading="lazy">
-                <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
-            <div style="font-size: 0.9rem; color: var(--text-muted);">
+            <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
+            ${trendTagsHtml}
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
                 募集主: <strong>${Utils.escapeHtml(ownerName)}</strong>
             </div>
-            ${recruit.memo ? `<div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid var(--border-color);">${Utils.escapeHtml(recruit.memo)}</div>` : ''}
+            ${recruit.memo ? `<div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid var(--border-color); margin-top: 8px;">${Utils.escapeHtml(recruit.memo)}</div>` : ''}
             
             <div style="margin-top: 8px;">
                 <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">現在の参加者:</div>

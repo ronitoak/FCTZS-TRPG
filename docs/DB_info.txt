@@ -1,0 +1,201 @@
+| table_name               | column_name            | column_id | data_type                | is_nullable |
+| ------------------------ | ---------------------- | --------- | ------------------------ | ----------- |
+| character_attributes     | character_id           | 1         | text                     | NO          |
+| character_attributes     | key                    | 2         | text                     | NO          |
+| character_attributes     | value_int              | 3         | integer                  | YES         |
+| character_attributes     | value_emotion          | 4         | USER-DEFINED             | YES         |
+| character_attributes     | updated_at             | 5         | timestamp with time zone | NO          |
+| character_attributes     | user_id                | 6         | uuid                     | YES         |
+| character_last_session   | character_id           | 1         | text                     | YES         |
+| character_last_session   | last_session_start     | 2         | timestamp with time zone | YES         |
+| character_scenarios      | character_id           | 1         | text                     | NO          |
+| character_scenarios      | scenario_id            | 2         | text                     | NO          |
+| character_scenarios      | user_id                | 3         | uuid                     | YES         |
+| character_skill_basecalc | character_id           | 1         | text                     | YES         |
+| character_skill_basecalc | system                 | 2         | text                     | YES         |
+| character_skill_basecalc | skill_key              | 3         | text                     | YES         |
+| character_skill_basecalc | name                   | 4         | text                     | YES         |
+| character_skill_basecalc | sort_order             | 5         | integer                  | YES         |
+| character_skill_basecalc | base_value             | 6         | integer                  | YES         |
+| character_skill_list     | character_id           | 1         | text                     | YES         |
+| character_skill_list     | system                 | 2         | text                     | YES         |
+| character_skill_list     | name                   | 3         | text                     | YES         |
+| character_skill_list     | sort_order             | 4         | integer                  | YES         |
+| character_skill_list     | base_value             | 5         | integer                  | YES         |
+| character_skill_list     | override_value         | 6         | integer                  | YES         |
+| character_skill_list     | display_value          | 7         | integer                  | YES         |
+| character_skills         | character_id           | 1         | text                     | NO          |
+| character_skills         | name                   | 2         | text                     | NO          |
+| character_skills         | value                  | 3         | integer                  | NO          |
+| character_skills         | skill_key              | 4         | text                     | YES         |
+| character_skills         | label                  | 5         | text                     | YES         |
+| character_skills         | user_id                | 6         | uuid                     | YES         |
+| characters               | id                     | 1         | text                     | NO          |
+| characters               | name                   | 2         | text                     | NO          |
+| characters               | system                 | 4         | text                     | YES         |
+| characters               | state                  | 5         | text                     | YES         |
+| characters               | updated_at             | 9         | timestamp with time zone | NO          |
+| characters               | job                    | 10        | text                     | YES         |
+| characters               | age                    | 11        | integer                  | YES         |
+| characters               | gender                 | 12        | text                     | YES         |
+| characters               | height                 | 13        | integer                  | YES         |
+| characters               | weight                 | 14        | integer                  | YES         |
+| characters               | origin                 | 15        | text                     | YES         |
+| characters               | memo                   | 16        | text                     | YES         |
+| characters               | iachara_url            | 25        | text                     | YES         |
+| characters               | race                   | 26        | text                     | YES         |
+| characters               | original_species       | 27        | text                     | YES         |
+| characters               | user_id                | 28        | uuid                     | YES         |
+| characters               | player_id              | 29        | text                     | YES         |
+| characters               | reading                | 30        | text                     | YES         |
+| comments                 | id                     | 1         | uuid                     | NO          |
+| comments                 | target_type            | 2         | text                     | NO          |
+| comments                 | target_id              | 3         | text                     | NO          |
+| comments                 | author                 | 4         | text                     | NO          |
+| comments                 | body                   | 5         | text                     | NO          |
+| comments                 | created_at             | 6         | timestamp with time zone | NO          |
+| comments                 | user_id                | 7         | uuid                     | YES         |
+| player_availability      | player_id              | 1         | text                     | NO          |
+| player_availability      | target_date            | 2         | date                     | NO          |
+| player_availability      | time_slot              | 3         | text                     | NO          |
+| player_availability      | status                 | 4         | text                     | NO          |
+| player_availability      | created_at             | 5         | timestamp with time zone | NO          |
+| player_availability      | updated_at             | 6         | timestamp with time zone | NO          |
+| player_availability      | raw_text               | 7         | text                     | YES         |
+| player_availability      | user_id                | 8         | uuid                     | YES         |
+| player_profiles          | player_id              | 1         | text                     | NO          |
+| player_profiles          | icon_url               | 2         | text                     | YES         |
+| player_profiles          | profile_text           | 3         | text                     | YES         |
+| player_profiles          | tier_list_first        | 5         | text                     | YES         |
+| player_profiles          | tier_list_second       | 6         | text                     | YES         |
+| player_profiles          | tier_list_third        | 7         | text                     | YES         |
+| player_profiles          | created_at             | 8         | timestamp with time zone | YES         |
+| player_profiles          | updated_at             | 9         | timestamp with time zone | YES         |
+| player_profiles          | desire_avatar          | 10        | integer                  | YES         |
+| player_profiles          | desire_story           | 11        | integer                  | YES         |
+| player_profiles          | desire_clear           | 12        | integer                  | YES         |
+| player_profiles          | desire_chaos           | 13        | integer                  | YES         |
+| player_profiles          | desire_active          | 14        | integer                  | YES         |
+| player_profiles          | desire_harmony         | 15        | integer                  | YES         |
+| player_profiles          | favorite_character_ids | 16        | ARRAY                    | YES         |
+| player_profiles          | favorite_scenario_ids  | 17        | ARRAY                    | YES         |
+| players                  | player_id              | 1         | text                     | NO          |
+| players                  | player_name            | 2         | text                     | NO          |
+| players                  | discord_id             | 3         | text                     | NO          |
+| players                  | created_at             | 4         | timestamp with time zone | YES         |
+| players                  | memo                   | 5         | text                     | YES         |
+| players                  | user_id                | 6         | uuid                     | YES         |
+| posts                    | id                     | 1         | bigint                   | NO          |
+| posts                    | created_at             | 2         | timestamp with time zone | NO          |
+| posts                    | author                 | 3         | text                     | NO          |
+| posts                    | body                   | 5         | text                     | NO          |
+| posts                    | user_id                | 6         | uuid                     | NO          |
+| posts                    | character_id           | 7         | text                     | YES         |
+| recruitment_applicants   | recruitment_id         | 1         | text                     | NO          |
+| recruitment_applicants   | player_id              | 2         | text                     | NO          |
+| recruitment_applicants   | created_at             | 3         | timestamp with time zone | YES         |
+| recruitment_applicants   | user_id                | 4         | uuid                     | YES         |
+| recruitments             | id                     | 1         | text                     | NO          |
+| recruitments             | owner_player_id        | 2         | text                     | NO          |
+| recruitments             | scenario_id            | 3         | text                     | YES         |
+| recruitments             | recruit_role           | 4         | text                     | NO          |
+| recruitments             | target_count           | 5         | integer                  | NO          |
+| recruitments             | memo                   | 6         | text                     | YES         |
+| recruitments             | status                 | 7         | text                     | NO          |
+| recruitments             | created_at             | 8         | timestamp with time zone | YES         |
+| recruitments             | updated_at             | 9         | timestamp with time zone | YES         |
+| recruitments             | user_id                | 10        | uuid                     | YES         |
+| runs                     | id                     | 1         | text                     | NO          |
+| runs                     | scenario_id            | 2         | text                     | YES         |
+| runs                     | title                  | 4         | text                     | YES         |
+| runs                     | updated_at             | 11        | timestamp with time zone | NO          |
+| runs                     | characters             | 13        | ARRAY                    | YES         |
+| runs                     | status                 | 14        | USER-DEFINED             | NO          |
+| runs                     | user_id                | 15        | uuid                     | YES         |
+| runs                     | gm_id                  | 16        | text                     | YES         |
+| runs                     | player_ids             | 17        | ARRAY                    | YES         |
+| scenario_list            | id                     | 1         | text                     | YES         |
+| scenario_list            | title                  | 2         | text                     | YES         |
+| scenario_list            | system                 | 3         | text                     | YES         |
+| scenario_list            | description            | 4         | text                     | YES         |
+| scenario_list            | notes                  | 5         | text                     | YES         |
+| scenario_list            | updated_at             | 6         | timestamp with time zone | YES         |
+| scenario_list            | author                 | 7         | text                     | YES         |
+| scenario_list            | has_active_run         | 8         | boolean                  | YES         |
+| scenario_list            | next_scheduled_start   | 9         | timestamp with time zone | YES         |
+| scenario_list            | trend_story_chaos      | 10        | text                     | YES         |
+| scenario_list            | trend_avatar_clear     | 11        | text                     | YES         |
+| scenario_list            | trend_harmony_active   | 12        | text                     | YES         |
+| scenarios                | id                     | 1         | text                     | NO          |
+| scenarios                | title                  | 2         | text                     | NO          |
+| scenarios                | system                 | 3         | text                     | YES         |
+| scenarios                | description            | 7         | text                     | YES         |
+| scenarios                | notes                  | 8         | text                     | YES         |
+| scenarios                | updated_at             | 10        | timestamp with time zone | NO          |
+| scenarios                | author                 | 11        | text                     | YES         |
+| scenarios                | user_id                | 12        | uuid                     | YES         |
+| scenarios                | trend_story_chaos      | 13        | text                     | YES         |
+| scenarios                | trend_avatar_clear     | 14        | text                     | YES         |
+| scenarios                | trend_harmony_active   | 15        | text                     | YES         |
+| session_list             | id                     | 1         | text                     | YES         |
+| session_list             | run_id                 | 2         | text                     | YES         |
+| session_list             | start                  | 3         | timestamp with time zone | YES         |
+| session_list             | status                 | 4         | USER-DEFINED             | YES         |
+| session_list             | notes                  | 5         | text                     | YES         |
+| session_list             | updated_at             | 6         | timestamp with time zone | YES         |
+| session_list             | title                  | 7         | text                     | YES         |
+| sessions                 | id                     | 1         | text                     | NO          |
+| sessions                 | run_id                 | 2         | text                     | YES         |
+| sessions                 | start                  | 3         | timestamp with time zone | YES         |
+| sessions                 | title                  | 5         | text                     | YES         |
+| sessions                 | notes                  | 9         | text                     | YES         |
+| sessions                 | updated_at             | 12        | timestamp with time zone | NO          |
+| sessions                 | status                 | 14        | USER-DEFINED             | NO          |
+| sessions                 | replay_url             | 15        | text                     | YES         |
+| sessions                 | stream_url             | 16        | text                     | YES         |
+| sessions                 | user_id                | 17        | uuid                     | YES         |
+| system_attributes        | system                 | 1         | text                     | NO          |
+| system_attributes        | key                    | 2         | text                     | NO          |
+| system_attributes        | label                  | 3         | text                     | NO          |
+| system_attributes        | kind                   | 4         | text                     | NO          |
+| system_attributes        | sort_order             | 5         | integer                  | NO          |
+| system_attributes        | note                   | 6         | text                     | YES         |
+| system_skill_bases       | system                 | 1         | text                     | NO          |
+| system_skill_bases       | name                   | 2         | text                     | NO          |
+| system_skill_bases       | base_value             | 3         | integer                  | NO          |
+| system_skill_bases       | sort_order             | 4         | integer                  | NO          |
+| system_skill_bases       | updated_at             | 5         | timestamp with time zone | NO          |
+| system_skill_bases       | dex_mul                | 6         | numeric                  | YES         |
+| system_skill_bases       | dex_div                | 7         | numeric                  | YES         |
+| system_skill_bases       | edu_mul                | 8         | numeric                  | YES         |
+| system_skill_bases       | edu_div                | 9         | numeric                  | YES         |
+| system_skill_bases       | skill_key              | 10        | text                     | YES         |
+| v_character_details      | id                     | 1         | text                     | YES         |
+| v_character_details      | name                   | 2         | text                     | YES         |
+| v_character_details      | reading                | 3         | text                     | YES         |
+| v_character_details      | system                 | 4         | text                     | YES         |
+| v_character_details      | state                  | 5         | text                     | YES         |
+| v_character_details      | job                    | 6         | text                     | YES         |
+| v_character_details      | age                    | 7         | integer                  | YES         |
+| v_character_details      | gender                 | 8         | text                     | YES         |
+| v_character_details      | height                 | 9         | integer                  | YES         |
+| v_character_details      | weight                 | 10        | integer                  | YES         |
+| v_character_details      | origin                 | 11        | text                     | YES         |
+| v_character_details      | memo                   | 12        | text                     | YES         |
+| v_character_details      | iachara_url            | 13        | text                     | YES         |
+| v_character_details      | race                   | 14        | text                     | YES         |
+| v_character_details      | original_species       | 15        | text                     | YES         |
+| v_character_details      | player_id              | 16        | text                     | YES         |
+| v_character_details      | player_name            | 17        | text                     | YES         |
+| v_character_details      | attributes             | 18        | jsonb                    | YES         |
+| v_character_details      | emotions               | 19        | jsonb                    | YES         |
+| v_character_details      | skills                 | 20        | jsonb                    | YES         |
+| v_character_details      | scenarios              | 21        | jsonb                    | YES         |
+| v_character_list         | id                     | 1         | text                     | YES         |
+| v_character_list         | name                   | 2         | text                     | YES         |
+| v_character_list         | reading                | 3         | text                     | YES         |
+| v_character_list         | system                 | 4         | text                     | YES         |
+| v_character_list         | state                  | 5         | text                     | YES         |
+| v_character_list         | job                    | 6         | text                     | YES         |
+| v_character_list         | player_id              | 7         | text                     | YES         |
+| v_character_list         | updated_at             | 8         | timestamp with time zone | YES         |

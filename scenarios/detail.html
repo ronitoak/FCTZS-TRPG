@@ -39,6 +39,33 @@
                     <label>概要</label>
                     <textarea name="description" class="form-control" rows="5"></textarea>
                 </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label style="font-weight: bold;">プレイスタイル傾向（任意）</label>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">展開軸</label>
+                        <div class="trend-options" style="display: flex; gap: 15px;">
+                            <label style="font-weight: normal;"><input type="radio" name="trend_story_chaos" value="story"> 物語重視</label>
+                            <label style="font-weight: normal;"><input type="radio" name="trend_story_chaos" value=""> 指定なし</label>
+                            <label style="font-weight: normal;"><input type="radio" name="trend_story_chaos" value="chaos"> 混沌歓迎</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">選択軸</label>
+                        <div class="trend-options" style="display: flex; gap: 15px;">
+                            <label style="font-weight: normal;"><input type="radio" name="trend_avatar_clear" value="avatar"> 化身・没入</label>
+                            <label style="font-weight: normal;"><input type="radio" name="trend_avatar_clear" value=""> 指定なし</label>
+                            <label style="font-weight: normal;"><input type="radio" name="trend_avatar_clear" value="clear"> 攻略重視</label>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">立ち回り軸</label>
+                        <div class="trend-options" style="display: flex; gap: 15px;">
+                            <label style="font-weight: normal;"><input type="radio" name="trend_harmony_active" value="harmony"> 協調重視</label>
+                            <label style="font-weight: normal;"><input type="radio" name="trend_harmony_active" value=""> 指定なし</label>
+                            <label style="font-weight: normal;"><input type="radio" name="trend_harmony_active" value="active"> 活躍推奨</label>
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label>シナリオ画像 (変更する場合のみ選択)</label>
                     <input type="file" name="image_file" accept="image/*" class="form-control">

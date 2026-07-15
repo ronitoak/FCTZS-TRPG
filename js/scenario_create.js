@@ -71,7 +71,10 @@ Utils.domReady(async () => {
             author: fd.get("author") || null,
             description: fd.get("description") || null,
             notes: fd.get("notes") || null,
-            image_url: imageUrl
+            image_url: imageUrl,
+            trend_story_chaos: fd.get("trend_story_chaos") || null,
+            trend_avatar_clear: fd.get("trend_avatar_clear") || null,
+            trend_harmony_active: fd.get("trend_harmony_active") || null
         };
 
         try {

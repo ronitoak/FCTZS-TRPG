@@ -1,0 +1,45 @@
+4. 募集管理機能
+4.1. 機能の概要と目的
+目的: サイト上で新しくTRPGをプレイしたい時の「PL募集」または「GM募集」の新規スレッドを立ち上げ、部員からの応募（立候補）を募る。
+
+主な処理:
+
+募集が新規作成（Insert）された際、自動でTRPG部のDiscordサーバーへメンション付きのカード型WebHook通知を送信する。
+
+Discord側に「参加希望」ボタンを生成し、ボタン押下時にDiscordからWorkerへインタラクション（Interaction API）を戻して自動応募（参加登録）を処理する。
+
+応募者が目標人数に達したことを検知すると、募集ステータスを自動的に「満員 (fulfilled)」へ更新し、募集主宛てにDiscordでメンション付き完了通知を送信する。
+
+データの自動クリーンアップ: 定期実行（Cron）により、1ヶ月以上経過した古い募集データを自動削除する。
+
+4.2. 画面イメージ（UI構成要素）
+募集一覧画面:
+
+現在エントリー中の募集スレッドの一覧（ステータスが open（募集中）か fulfilled（満員）か等）。
+
+対象シナリオ、募集役割（PL/GM）、現在の応募人数 / 目標人数、募集主名を表示。
+
+募集詳細・登録画面:
+
+新規募集登録用のフォーム（シナリオ選択、役割セレクト、目標人数、特記事項メモ等の入力項目）。
+
+募集に対する「参加希望（応募）」ボタン。また、既に応募しているプレイヤーの一覧を表示するエリア。
+
+4.3. データ構造（データベース設計）
+recruitments テーブル（募集の親データ）
+カラム名,データ型,Nullable,説明
+id,text,NO,募集ID（主キー）
+owner_player_id,text,NO,募集を立ち上げたプレイヤーID（外部キー）
+scenario_id,text,YES,対象のシナリオID（外部キー）
+recruit_role,text,NO,募集する役割（PL または GM）
+target_count,integer,NO,目標募集人数
+status,text,NO,募集状況（open / fulfilled）
+memo,text,YES,募集に際しての日程候補や要件などのメモ
+created_at,timestamp with tz,YES,自動クリーンアップの条件（1ヶ月）判定に使用
+
+recruitment_applicants テーブル（応募したプレイヤー：子データ）
+カラム名,データ型,Nullable,説明
+recruitment_id,text,NO,対象の募集ID（複合主キー、ON DELETE CASCADE）
+player_id,text,NO,応募（立候補）したプレイヤーID（複合主キー）
+
+

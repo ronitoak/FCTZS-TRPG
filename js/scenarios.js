@@ -1,5 +1,18 @@
 "use strict";
 
+function getTrendTagsHtml(scenario) {
+  const tags = [];
+  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
+  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
+  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">化身・没入</span>');
+  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
+  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
+  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
+  
+  if (tags.length === 0) return '';
+  return `<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">${tags.join('')}</div>`;
+}
+
 async function main() {
   const root = document.getElementById("scenarios-list");
   if (!root) return;
@@ -55,6 +68,7 @@ async function main() {
             ${title}
           </a>
         </h2>
+        ${getTrendTagsHtml(s)}
         <div class="scenarios-meta">
           ${system ? `<div>System: ${system}</div>` : ""}
           <div>Runs: ${runsCount}</div>

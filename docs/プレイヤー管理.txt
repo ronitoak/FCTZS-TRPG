@@ -1,0 +1,57 @@
+1. プレイヤー（メンバー）管理機能
+
+1.1. 機能の概要と目的
+目的: 部内メンバーのプロフィール、TRPGにおけるプレイスタイル（セッションに対する欲求傾向）、スケジュール（空き日程）を一元管理し、卓のセッティングや予定調整を円滑にする。
+
+主な処理:
+
+Discord OAuthを介したソーシャルログインと紐づいたプレイヤー情報の識別。
+
+各種欲求パラメータからプレイスタイルをレーダーチャートで可視化。
+
+メンバー間のカレンダー連動による日程の照合（AND計算による空き予定の抽出）。
+
+1.2. 画面イメージ（UI構成要素）
+プロフィール＆プレイスタイル画面:
+
+プレイヤーのアバター（Discordアイコン）、プレイヤー名、Discord ID、自己紹介テキスト。
+
+プレイスタイル傾向を表現するレーダーチャート（Chart.js）。
+
+「推し設定」としてピン留めされたお気に入りキャラクターや、お気に入りシナリオのリスト。
+
+スケジュール登録・照合画面（カレンダー形式）:
+
+日付ごとに「昼（afternoon）」と「夜（night）」の時間帯スロットを選択し、「〇 (ok)」「△ (maybe)」「× (ng)」を一括入力するフォーム。
+
+複数プレイヤーを指定して日程を照合し、「全員空き（○）」「誰かが不可（×）」「調整中（△と該当者名）」をカラーマッピングで一覧表示するマッチングパネル。
+
+1.3. データ構造（データベース設計）
+players テーブル（基本マスタ）
+カラム名,データ型,Nullable,説明
+player_id,text,NO,プレイヤーの一意の識別ID（主キー）
+player_name,text,NO,プレイヤーの表示名
+discord_id,text,NO,連携されているDiscordのアカウントID
+user_id,uuid,YES,Supabase AuthのユーザーUUID
+
+player_profiles テーブル（詳細・傾向データ）
+カラム名,データ型,Nullable,説明
+player_id,text,NO,プレイヤーID（外部キー）
+profile_text,text,YES,自己紹介テキスト
+desire_story,integer,YES,物語欲（0〜5）
+desire_avatar,integer,YES,化身欲（0〜5）
+desire_harmony,integer,YES,協調欲（0〜5）
+desire_chaos,integer,YES,混沌欲（0〜5）
+desire_clear,integer,YES,攻略欲（0〜5）
+desire_active,integer,YES,活躍欲（0〜5）
+favorite_character_ids,text[] (ARRAY),YES,お気に入りキャラクターIDの配列（推し設定）
+favorite_scenario_ids,text[] (ARRAY),YES,お気に入りシナリオIDの配列（推し設定）
+
+player_availability テーブル（予定データ）
+カラム名,データ型,Nullable,説明
+player_id,text,NO,プレイヤーID（複合主キー）
+target_date,date,NO,対象日（複合主キー）
+time_slot,text,NO,時間帯（afternoon / night、複合主キー）
+status,text,NO,空き状況（ok / maybe / ng）
+raw_text,text,YES,システムやユーザーによるメモ（例: 占有時自動テキスト）
+

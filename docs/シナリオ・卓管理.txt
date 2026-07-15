@@ -1,0 +1,60 @@
+3. シナリオ・卓管理機能
+3.1. 機能の概要と目的
+目的: 部内でプレイされたシナリオのデータベース化、および現在稼働中の「卓（Run）」と、その中で行われる複数回の「セッション（Session）」のスケジュール進行状況を自動連携・記録する。
+
+主な処理:
+
+卓（Run）が「終了済み（done）」に更新された際、参加したキャラクター全員にそのシナリオの通過履歴を自動的に紐付け・一括登録する処理（Worker側でのバックエンドフック）。
+
+セッションが開催される当日に、Discordサーバーの特定チャンネルへ向けて「本日のセッションリマインド通知」を自動送信（WorkerのCronトリガー、毎日定期実行）。
+
+セッション登録時、プレイヤー全員の対象日スケジュールを自動的に「NG（System: Session Booked）」に書き換える、1日占有同期処理。
+
+3.2. 画面イメージ（UI構成要素）
+シナリオ一覧・詳細画面:
+
+部内で過去に回った、あるいは所有しているシナリオのデータベース。
+
+タイトル、システム、作者、概要（説明）、注意事項、カバー画像の表示。
+
+セッション・卓一覧および詳細画面:
+
+稼働中（進行中・計画中・終了済み）の「卓（Run）」の一覧。
+
+誰がGMを務め、どのプレイヤー（PL）がどのキャラクターで参加しているかを表示するメンバーステータス。
+
+1つの卓に紐づく複数回のセッション日程スケジュール、配信・アーカイブURL、およびGM/PL用の日程調整や感想記入のためのコメント（スレッド形式）欄。
+
+3.3. データ構造（データベース設計）
+scenarios テーブル（シナリオマスタ）
+カラム名,データ型,Nullable,説明
+id,text,NO,シナリオID（主キー）
+title,text,NO,シナリオタイトル
+system,text,YES,対応TRPGシステム名
+author,text,YES,シナリオ作者名
+description / notes,text,YES,シナリオ概要（説明） / 注意事項や特記
+
+runs テーブル（立卓された個別の「卓」単位）
+カラム名,データ型,Nullable,説明
+id,text,NO,卓ID（主キー）
+scenario_id,text,YES,プレイするシナリオID（外部キー）
+title,text,YES,卓独自のタイトル（例: 〇〇陣、A班など）
+gm_id,text,YES,ゲームマスターを務めるプレイヤーID
+player_ids,text[] (ARRAY),YES,参加するプレイヤーIDの配列
+characters,text[] (ARRAY),YES,参加するキャラクターIDの配列（順序はplayer_idsに対応）
+status,USER-DEFINED,NO,進行状況（planning / active / done）
+
+sessions テーブル（同一の卓内で実施される「全何回」の1回毎のセッション日程）
+カラム名,データ型,Nullable,説明
+id,text,NO,セッションID（主キー）
+run_id,text,YES,属する卓ID（外部キー）
+title,text,YES,セッション回数や進捗（例: 「第1陣」「最終回」）
+start,timestamp with tz,YES,セッションの開始日時
+status,USER-DEFINED,NO,開催ステータス（scheduled など）
+stream_url / replay_url,text,YES,配信URL / リプレイ（アーカイブ）URL
+
+character_scenarios テーブル（キャラクターの通過履歴・中間テーブル）
+カラム名,データ型,Nullable,説明
+character_id,text,NO,キャラクターID（複合主キー）
+scenario_id,text,NO,通過したシナリオID（複合主キー）
+

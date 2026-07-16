@@ -91,7 +91,7 @@ function renderCalendar() {
 
         if (match) { 
           const matchBadge = document.createElement("div");
-          matchBadge.className = `match-badge ${match.color}`;
+          matchBadge.className = `schedule-match-badge ${match.color}`;
           matchBadge.style.cursor = "pointer"; 
           
           // CSSが未整備でも見やすいようにインラインで色を補強

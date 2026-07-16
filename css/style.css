@@ -857,7 +857,7 @@ dialog.modal::backdrop {
   overflow: hidden;
 }
 
-.match-badge {
+.schedule-match-badge {
     font-size: 0.75rem;
     padding: 2px 6px;
     border-radius: 12px;
@@ -866,9 +866,9 @@ dialog.modal::backdrop {
     font-weight: bold;
     color: #fff;
 }
-.match-badge.green { background-color: #2ecc71; } /* ○ */
-.match-badge.yellow { background-color: #f1c40f; color: #333; } /* △ */
-.match-badge.red { background-color: #e74c3c; } /* × */
+.schedule-match-badge.green { background-color: #2ecc71; } /* ○ */
+.schedule-match-badge.yellow { background-color: #f1c40f; color: #333; } /* △ */
+.schedule-match-badge.red { background-color: #e74c3c; } /* × */
 
 .checkbox-list {
     display: flex;

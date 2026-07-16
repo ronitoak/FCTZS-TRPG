@@ -1311,17 +1311,27 @@ dialog.modal::backdrop {
 }
 
 /* カードの相性ハイライト */
-.scenarios-card.match-high {
+.scenarios-card.match-high,
+.recruit-card.match-high {
     border: 2px solid #ffd700 !important;
     box-shadow: 0 4px 15px rgba(255, 215, 0, 0.25) !important;
 }
 
-.scenarios-card.match-medium {
+.scenarios-card.match-medium,
+.recruit-card.match-medium {
     border: 2px solid #c0c0c0 !important;
     box-shadow: 0 4px 12px rgba(192, 192, 192, 0.2) !important;
 }
 
-.scenarios-card.match-low {
+.scenarios-card.match-low,
+.recruit-card.match-low {
     border: 2px solid #cd7f32 !important;
     box-shadow: 0 4px 8px rgba(205, 127, 50, 0.15) !important;
+}
+
+/* 募集カードでは右上の進捗表示とマッチ度バッジが重ならないよう上部を確保 */
+.recruit-card.match-high,
+.recruit-card.match-medium,
+.recruit-card.match-low {
+    padding-top: 42px;
 }

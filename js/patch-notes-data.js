@@ -4,6 +4,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
+    type: "fix",
+    title: "認証・データ所有権の境界を強化",
+    detail: "画像アップロードのJWT検証、卓参加者だけの通過履歴同期、関連データの所有者RLS、予定比較の通信競合、募集削除時の応募CASCADEを修正しました。"
+  },
+  {
+    date: "2026-07-17",
     type: "improvement",
     title: "DB/API軽量化へ段階移行",
     detail: "一覧・詳細・予定比較を必要範囲だけ取得する新APIへ切り替え、DBビュー未適用時の旧APIフォールバックと書込み時のDiscordログイン確認を追加しました。"
@@ -115,11 +121,5 @@ window.PATCH_NOTES = Object.freeze([
     type: "feature",
     title: "プレイヤー詳細画面を追加",
     detail: "プレイヤー情報と関連データを個別に確認できる詳細ページを実装しました。"
-  },
-  {
-    date: "2026-07-11",
-    type: "fix",
-    title: "Discordの募集参加ボタンを修正",
-    detail: "Discordから募集へ参加する操作が正常に完了するよう連携処理を修正しました。"
   }
 ]);

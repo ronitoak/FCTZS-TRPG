@@ -74,7 +74,11 @@ Utils.domReady(async () => {
             image_url: imageUrl,
             trend_story_chaos: fd.get("trend_story_chaos") || null,
             trend_avatar_clear: fd.get("trend_avatar_clear") || null,
-            trend_harmony_active: fd.get("trend_harmony_active") || null
+            trend_harmony_active: fd.get("trend_harmony_active") || null,
+            min_players: fd.get("min_players") ? parseInt(fd.get("min_players"), 10) : 1,
+            max_players: fd.get("max_players") ? parseInt(fd.get("max_players"), 10) : 4,
+            play_time_minutes: fd.get("play_time_minutes") ? parseInt(fd.get("play_time_minutes"), 10) : 180,
+            lost_rate: fd.get("lost_rate") || 'low'
         };
 
         try {

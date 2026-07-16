@@ -521,7 +521,7 @@ async function handleGet(request, env, url) {
         queryParams.push(`or=(title.ilike.${kw},author.ilike.${kw})`);
       }
 
-      queryParams.push("select=id,title,system,author,description,notes,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active");
+      queryParams.push("select=id,title,system,author,description,notes,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate");
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/scenarios?${queryParams.join("&")}`;
@@ -553,7 +553,7 @@ async function handleGet(request, env, url) {
     // scenario_list ビュー（もしDB側でビューを使っている場合）の取得
     if (request.method === "GET" && url.pathname === "/api/scenario_list") {
       // ビューの定義もDB側で更新が必要ですが、Worker側でも安全にカラムを指定します
-      const { res, text } = await sbFetch(env, request,"/rest/v1/scenario_list?select=id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active");
+      const { res, text } = await sbFetch(env, request,"/rest/v1/scenario_list?select=id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -809,7 +809,11 @@ async function handlePost(request, env, ctx, url) {
         image_url: body.image_url,
         trend_story_chaos: body.trend_story_chaos || null,
         trend_avatar_clear: body.trend_avatar_clear || null,
-        trend_harmony_active: body.trend_harmony_active || null
+        trend_harmony_active: body.trend_harmony_active || null,
+        min_players: body.min_players !== undefined ? parseInt(body.min_players, 10) : 1,
+        max_players: body.max_players !== undefined ? parseInt(body.max_players, 10) : 4,
+        play_time_minutes: body.play_time_minutes !== undefined ? parseInt(body.play_time_minutes, 10) : 180,
+        lost_rate: body.lost_rate || 'low'
       };
       const { res, text } = await sbFetch(env, null, "/rest/v1/scenarios", { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });

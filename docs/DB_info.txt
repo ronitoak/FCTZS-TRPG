@@ -126,6 +126,10 @@
 | scenario_list            | trend_story_chaos      | 10        | text                     | YES         |
 | scenario_list            | trend_avatar_clear     | 11        | text                     | YES         |
 | scenario_list            | trend_harmony_active   | 12        | text                     | YES         |
+| scenario_list            | min_players            | 13        | integer                  | YES         |
+| scenario_list            | max_players            | 14        | integer                  | YES         |
+| scenario_list            | play_time_minutes      | 15        | integer                  | YES         |
+| scenario_list            | lost_rate              | 16        | text                     | YES         |
 | scenarios                | id                     | 1         | text                     | NO          |
 | scenarios                | title                  | 2         | text                     | NO          |
 | scenarios                | system                 | 3         | text                     | YES         |
@@ -137,6 +141,10 @@
 | scenarios                | trend_story_chaos      | 13        | text                     | YES         |
 | scenarios                | trend_avatar_clear     | 14        | text                     | YES         |
 | scenarios                | trend_harmony_active   | 15        | text                     | YES         |
+| scenarios                | min_players            | 16        | integer                  | YES         |
+| scenarios                | max_players            | 17        | integer                  | YES         |
+| scenarios                | play_time_minutes      | 18        | integer                  | YES         |
+| scenarios                | lost_rate              | 19        | text                     | YES         |
 | session_list             | id                     | 1         | text                     | YES         |
 | session_list             | run_id                 | 2         | text                     | YES         |
 | session_list             | start                  | 3         | timestamp with time zone | YES         |

@@ -171,6 +171,9 @@ async function main() {
             ${scenario.title ? `<div><strong>タイトル:</strong> ${Utils.escapeHtml(scenario.title)}</div>` : ""}
             ${scenario.system ? `<div><strong>システム:</strong> ${Utils.escapeHtml(scenario.system)}</div>` : ""}
             ${scenario.author ? `<div><strong>作者:</strong> ${Utils.escapeHtml(scenario.author)}</div>` : ""}
+            <div><strong>プレイ人数:</strong> ${scenario.min_players ?? 1} 〜 ${scenario.max_players ?? 4}人</div>
+            <div><strong>プレイ時間:</strong> ${scenario.play_time_minutes ?? 180}分 (約 ${Math.round((scenario.play_time_minutes ?? 180) / 60 * 10) / 10}時間)</div>
+            <div><strong>ロスト率:</strong> ${scenario.lost_rate === 'high' ? '高' : (scenario.lost_rate === 'mid' ? '中' : '低')}</div>
           </div>
           ${getTrendTagsHtml(scenario)}
           <div class="scenario-base-info">
@@ -237,6 +240,10 @@ async function main() {
         form.author.value = scenario.author || "";
         form.description.value = scenario.description || "";
         form.notes.value = scenario.notes || "";
+        form.min_players.value = scenario.min_players !== undefined ? scenario.min_players : 1;
+        form.max_players.value = scenario.max_players !== undefined ? scenario.max_players : 4;
+        form.play_time_minutes.value = scenario.play_time_minutes !== undefined ? scenario.play_time_minutes : 180;
+        form.lost_rate.value = scenario.lost_rate || "low";
 
         const setRadioValue = (name, val) => {
           const radios = form.querySelectorAll(`input[name="${name}"]`);
@@ -278,7 +285,11 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
         notes: fd.get("notes") || null,
         trend_story_chaos: fd.get("trend_story_chaos") || null,
         trend_avatar_clear: fd.get("trend_avatar_clear") || null,
-        trend_harmony_active: fd.get("trend_harmony_active") || null
+        trend_harmony_active: fd.get("trend_harmony_active") || null,
+        min_players: fd.get("min_players") ? parseInt(fd.get("min_players"), 10) : 1,
+        max_players: fd.get("max_players") ? parseInt(fd.get("max_players"), 10) : 4,
+        play_time_minutes: fd.get("play_time_minutes") ? parseInt(fd.get("play_time_minutes"), 10) : 180,
+        lost_rate: fd.get("lost_rate") || 'low'
     };
 
     const fileInput = e.target.querySelector('input[name="image_file"]');

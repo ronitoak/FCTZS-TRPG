@@ -17,6 +17,42 @@
     </h1>
     <p>この部活動で遊んだシナリオたち</p>
 
+    <!-- 検索・フィルタUI -->
+    <div class="search-filter-panel" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: var(--card-bg, #fcfcfc);">
+        <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">検索・絞り込み</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイ人数</label>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <input type="number" id="filter-min-players" min="1" placeholder="最小" class="form-control" style="width: 80px;">
+                    <span>〜</span>
+                    <input type="number" id="filter-max-players" min="1" placeholder="最大" class="form-control" style="width: 80px;">
+                    <span>人</span>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイ時間</label>
+                <select id="filter-play-time" class="form-control">
+                    <option value="">指定なし</option>
+                    <option value="60">1時間以内</option>
+                    <option value="120">2時間以内</option>
+                    <option value="180">3時間以内</option>
+                    <option value="240">4時間以内</option>
+                    <option value="360">6時間以内</option>
+                    <option value="480">8時間以内</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">ロスト率</label>
+                <select id="filter-lost-rate" class="form-control">
+                    <option value="">指定なし</option>
+                    <option value="low">低 (low)</option>
+                    <option value="mid">中 (mid)</option>
+                    <option value="high">高 (high)</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
     <section id="scenarios-list">
       <p>読み込み中…</p>

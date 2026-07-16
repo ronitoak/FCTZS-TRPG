@@ -117,16 +117,6 @@ function renderRecruitments() {
     // 募集中、または満員のものを表示（取り下げられたものは隠す）
     const activeRecruitments = allRecruitments.filter(r => r.status === "open" || r.status === "fulfilled");
 
-    // プロフィールがある場合は、紐づくシナリオとの相性が高い募集を優先表示
-    if (currentUserProfile) {
-        activeRecruitments.sort((a, b) => {
-            const scoreA = calculateMatchScore(findRecruitmentScenario(a), currentUserProfile);
-            const scoreB = calculateMatchScore(findRecruitmentScenario(b), currentUserProfile);
-            if (scoreA !== scoreB) return scoreB - scoreA;
-            return String(a.id).localeCompare(String(b.id));
-        });
-    }
-
     if (activeRecruitments.length === 0) {
         container.innerHTML = "<p class='u-muted' style='text-align: center; padding: 40px 0;'>現在、募集はありません。<br>右上のボタンから新しく募集を立ててみましょう！</p>";
         return;

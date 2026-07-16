@@ -1,44 +1,19 @@
 "use strict";
 
+// 募集・応募者・シナリオを結合して募集状況を表示し、ログイン利用者との相性表示と新規登録を担う。
+(() => {
+
 let allPlayers = [];
 let allScenarios = [];
 let allRecruitments = [];
 let allApplicants = [];
 let currentUserProfile = null;
 
-function getTrendTagsHtml(scenario) {
-  const tags = [];
-  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
-  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
-  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">RP・没入</span>');
-  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
-  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
-  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
-  
-  if (tags.length === 0) return '';
-  return `<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">${tags.join('')}</div>`;
-}
-
-// シナリオの傾向とログイン中プレイヤーの欲求から相性を0〜3点で算出
-function calculateMatchScore(scenario, profile) {
-    if (!scenario || !profile) return 0;
-
-    let score = 0;
-    if (scenario.trend_story_chaos === "story" && (profile.desire_story === 4 || profile.desire_story === 5)) score++;
-    if (scenario.trend_story_chaos === "chaos" && (profile.desire_chaos === 4 || profile.desire_chaos === 5)) score++;
-    if (scenario.trend_avatar_clear === "avatar" && (profile.desire_avatar === 4 || profile.desire_avatar === 5)) score++;
-    if (scenario.trend_avatar_clear === "clear" && (profile.desire_clear === 4 || profile.desire_clear === 5)) score++;
-    if (scenario.trend_harmony_active === "harmony" && (profile.desire_harmony === 4 || profile.desire_harmony === 5)) score++;
-    if (scenario.trend_harmony_active === "active" && (profile.desire_active === 4 || profile.desire_active === 5)) score++;
-
-    return score;
-}
-
 function findRecruitmentScenario(recruitment) {
     return allScenarios.find(s => String(s.id) === String(recruitment.scenario_id));
 }
 
-// 1. 初期データの読み込み（プレイヤーとシナリオ）
+// 募集カードと登録モーダルが同じ名称を使えるよう、プレイヤーとシナリオを先に共有状態へ読み込む。
 async function initData() {
     await Utils.initAuthAndHeader('common-nav', '../');
     try {
@@ -48,23 +23,9 @@ async function initData() {
         ]);
 
         // ログイン中ユーザーに対応するプレイヤープロフィールを取得
-        currentUserProfile = null;
-        if (window.supabase) {
-            try {
-                const { data: { session } } = await window.supabase.auth.getSession();
-                if (session) {
-                    const myPlayer = allPlayers.find(p => p.user_id === session.user.id);
-                    if (myPlayer) {
-                        const profiles = await Utils.apiGet("player_profiles");
-                        currentUserProfile = Array.isArray(profiles)
-                            ? profiles.find(p => String(p.player_id) === String(myPlayer.player_id)) || null
-                            : null;
-                    }
-                }
-            } catch (err) {
-                console.warn("傾向マッチング用プロフィールの取得に失敗:", err);
-            }
-        }
+        const { profile } = await Utils.getCurrentUserPlayerContext({ players: allPlayers })
+            .catch(() => ({ profile: null }));
+        currentUserProfile = profile;
 
         // モーダル内のプルダウン（募集主）を生成
         const ownerSelect = document.getElementById("modal-owner-id");
@@ -141,18 +102,10 @@ function renderRecruitments() {
         const card = document.createElement("div");
         card.className = `card recruit-card ${recruit.recruit_role === 'GM' ? 'gm-wanted' : ''}`;
 
-        let matchBadgeHtml = "";
-        const matchScore = calculateMatchScore(scenario, currentUserProfile);
-        if (matchScore === 3) {
-            card.classList.add("match-high");
-            matchBadgeHtml = '<div class="match-badge match-3">相性抜群！ ★★★</div>';
-        } else if (matchScore === 2) {
-            card.classList.add("match-medium");
-            matchBadgeHtml = '<div class="match-badge match-2">好相性！ ★★</div>';
-        } else if (matchScore === 1) {
-            card.classList.add("match-low");
-            matchBadgeHtml = '<div class="match-badge match-1">相性良！ ★</div>';
-        }
+        const match = Utils.getMatchPresentation(
+            Utils.calculateMatchScore(scenario, currentUserProfile)
+        );
+        if (match.cardClass) card.classList.add(match.cardClass);
         
         // 参加者のチップ（名前タグ）を生成
         let applicantsHtml = applicantsForThis.map(a => {
@@ -167,18 +120,10 @@ function renderRecruitments() {
             location.href = `./detail.html?id=${recruit.id}`;
         };
 
-        // まだ参加していないプレイヤーの選択肢を作る
-        const unjoinedPlayers = allPlayers.filter(p => 
-            p.player_id !== recruit.owner_player_id && 
-            !applicantsForThis.some(a => a.player_id === p.player_id)
-        );
-
-        const isOwner = true; // 本来はログインユーザーIDと比較: recruit.owner_player_id === currentUserId;
-
-        const trendTagsHtml = scenario ? getTrendTagsHtml(scenario) : "";
+        const trendTagsHtml = scenario ? Utils.getTrendTagsHtml(scenario) : "";
 
         card.innerHTML = `
-            ${matchBadgeHtml}
+            ${match.badgeHtml}
             <div class="recruit-header">
                 <span class="recruit-role-badge">${recruit.recruit_role === 'GM' ? 'GM募集' : 'PL募集'}</span>
                 <span class="recruit-progress" style="color: ${isFulfilled ? 'var(--success-color)' : 'inherit'}">
@@ -312,3 +257,4 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
 
 // 起動！
 Utils.domReady(initData);
+})();

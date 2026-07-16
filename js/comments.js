@@ -1,17 +1,5 @@
+// 各詳細画面で共通利用するコメント欄を組み立て、対象識別子付きの取得・投稿を同じ契約に揃える。
 (function () {
-
-  function esc(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
-
-  function getParam(name) {
-    return new URLSearchParams(location.search).get(name);
-  }
 
     async function loadComments(targetType, targetId) {
       return Utils.apiGet(
@@ -25,14 +13,13 @@
     }
 
 
-  // containerId: どこに差し込むか
-  // targetType: character|scenario|session|recruitment|player
-  // fixedTargetId: 明示したい場合だけ渡す（省略可）
+  // 対象種別とIDを明示して渡し、異なる詳細画面のコメントが混在しないようにする。
+  // fixedTargetId未指定時だけURLのidへフォールバックし、埋め込み側からも再利用可能にする。
   async function mount(containerId, targetType, fixedTargetId) {
     const root = document.getElementById(containerId);
     if (!root) return;
 
-    const targetId = fixedTargetId ?? getParam("id");
+    const targetId = fixedTargetId ?? Utils.getQueryParam("id");
     if (!targetId) {
       root.innerHTML = "<p class='comments-muted'>コメント対象がありません</p>";
       return;
@@ -70,10 +57,10 @@
         const when = c.created_at ? new Date(c.created_at).toLocaleString() : "";
         li.innerHTML = `
           <div class="comments__meta">
-            <strong>${esc(c.author)}</strong>
-            <span>${esc(when)}</span>
+            <strong>${Utils.escapeHtml(String(c.author))}</strong>
+            <span>${Utils.escapeHtml(when)}</span>
           </div>
-          <div class="comments__body">${esc(c.body).replaceAll("\n", "<br>")}</div>
+          <div class="comments__body">${Utils.escapeHtml(String(c.body)).replaceAll("\n", "<br>")}</div>
         `;
         list.appendChild(li);
       }

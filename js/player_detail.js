@@ -1,5 +1,8 @@
 "use strict";
 
+// プレイヤーのプロフィール・参加履歴・所持キャラクター・予定を集約し、閲覧と本人編集を担う。
+(() => {
+
 async function main() {
   const root = document.getElementById("player-detail-root");
   if (!root) return;
@@ -30,7 +33,7 @@ async function main() {
     }
     
     const profileData = profiles.find(p => p.player_id === playerId);
-    // ★修正1：後で再代入できるように let で定義する（★ボタンのエラー解消）
+    // お気に入り操作後の再描画で最新プロフィールへ差し替えるため、参照を更新可能に保つ。
     let hasProfileRecord = profileData !== undefined; 
 
     // 厳密な型比較(Map)による不一致を防ぐため、キーをStringに統一
@@ -148,7 +151,7 @@ async function main() {
       if (e.target.closest("#bulk-input-btn")) {
         const modal = document.getElementById("availability-modal");
         if (modal) {
-          // ★ await を追加して、グリッドが完全に作られるのを待つ
+          // 後続のボタン登録が未生成DOMを参照しないよう、グリッド描画の完了を待つ。
           await renderBulkInputGrid(playerId, currentYear, currentMonth);
           modal.showModal();
         }
@@ -449,18 +452,12 @@ async function saveBulkAvailability() {
 }
 
 async function renderBulkInputGrid(playerId, year, month) {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-
   const monthLabel = document.getElementById("bulk-month-label");
   if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
 
-  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
-
   let existingData = [];
   try {
-    const res = await Utils.apiGet(`player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}&target_date=gte.${startDate}&target_date=lte.${endDate}`);
-    if (Array.isArray(res)) existingData = res;
+    existingData = await Utils.fetchPlayerAvailabilities(playerId, year, month);
   } catch (e) {
     console.error("既存予定の取得に失敗:", e);
   }
@@ -470,3 +467,4 @@ async function renderBulkInputGrid(playerId, year, month) {
 }
 
 Utils.domReady(main);
+})();

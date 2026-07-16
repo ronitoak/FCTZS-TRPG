@@ -9,11 +9,13 @@
 </head>
 <body>
   <div class="container">
+    <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
     <h1>セッションカレンダー</h1>
       <p>予定管理用</p>
 
+      <!-- カレンダー操作群：schedule.js が予定入力・比較・CSV取込・開催追加を制御 -->
       <div class="calendar-toolbar">
         <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
         <button id="compare-btn" class="primary-btn">予定を比較</button>
@@ -23,11 +25,12 @@
         <button type="button" id="btn-add-session" class="primary-btn" style="margin-left: 10px;">＋ セッション予定を追加</button>
       </div>
 
+      <!-- 予定比較モーダル：player-checkbox-list に比較対象を動的生成 -->
       <dialog id="compare-modal" class="modal">
         <div class="modal-content">
           <h3>比較対象を選択</h3>
           
-          <!-- 追加：卓からメンバーを一括チェックするUI -->
+          <!-- 卓単位で参加者を選べるようにし、個別チェックの入力漏れを減らす -->
           <div class="form-group" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
             <label for="compare-run-select" style="display: block; margin-bottom: 5px; font-weight: bold;">卓から一括選択</label>
             <select id="compare-run-select" class="form-control">
@@ -36,7 +39,7 @@
           </div>
 
           <div id="player-checkbox-list" class="checkbox-list">
-            <!-- プレイヤー一覧がここに生成される -->
+            <!-- 比較対象は取得結果に応じて変わるため、schedule.js がここへ候補を生成 -->
           </div>
           
           <div class="modal-actions">
@@ -46,6 +49,7 @@
         </div>
       </dialog>
 
+      <!-- CSV紐付けモーダル：csv-mapping-container に列とプレイヤーの対応欄を生成 -->
       <dialog id="csv-mapping-modal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
           <h2 style="margin-bottom: 15px;">プレイヤーの紐付け</h2>
@@ -66,6 +70,7 @@
 
       
 
+      <!-- 月間カレンダー：schedule.js が calendar-grid に日付・予定・回答状況を描画 -->
       <div class="calendar-wrapper">
         <div class="calendar-header">
           <button id="prev-month-btn">◀ 先月</button>
@@ -76,6 +81,7 @@
         <div class="calendar-grid" id="calendar-grid"></div>
       </div>
 
+      <!-- 予定一括入力モーダル：選択プレイヤーの日別回答を生成・保存 -->
       <dialog id="availability-modal" class="modal">
         <div class="modal-content bulk-input-content">
           <h3>予定の一括入力</h3>
@@ -105,6 +111,7 @@
         </div>
       </dialog>
 
+      <!-- セッション予定追加モーダル：既存卓に開催日時・配信情報を登録 -->
       <dialog id="add-session-modal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
             <h3>セッション予定の追加</h3>

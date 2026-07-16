@@ -1,5 +1,7 @@
-// /js/home.js
+// ホーム画面をゲスト向け概要とログイン利用者向け予定ダッシュボードへ切り替えて描画する。
 "use strict";
+
+(() => {
 
 const homeDashboardState = {
   playerId: null,
@@ -15,10 +17,8 @@ function toValidDate(iso) {
 }
 
 /**
- * Next Session
- * - sessions.json から status==="scheduled" かつ未来のうち最短1件
- * - run_id -> runs 参照（卓名）
- * - scenario_id -> scenarios 参照（シナリオ名）
+ * 開催レコードだけでは名称を持たないため、卓・シナリオの参照表と結合して直近予定を表示する。
+ * 不正な日時を除外してから最短を選び、壊れた1件でダッシュボード全体が止まらないようにする。
  */
 function renderNextSession(container, sessions, runsById, scenariosById) {
   const now = new Date();
@@ -210,18 +210,6 @@ function renderHomeCalendar() {
   });
 }
 
-async function fetchPlayerAvailabilities(playerId, year = null, month = null) {
-  let query = `player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}`;
-  if (Number.isInteger(year) && Number.isInteger(month)) {
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-    query += `&target_date=gte.${start}&target_date=lte.${end}`;
-  }
-  const data = await Utils.apiGet(query);
-  return Array.isArray(data) ? data : [];
-}
-
 async function openHomeAvailabilityModal(selectedDate) {
   const modal = document.getElementById("home-availability-modal");
   const container = document.getElementById("home-bulk-input-container");
@@ -233,7 +221,7 @@ async function openHomeAvailabilityModal(selectedDate) {
   if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
 
   try {
-    const monthlyData = await fetchPlayerAvailabilities(homeDashboardState.playerId, year, month);
+    const monthlyData = await Utils.fetchPlayerAvailabilities(homeDashboardState.playerId, year, month);
     Utils.renderAvailabilityGrid(container, year, month, monthlyData);
     modal.showModal();
 
@@ -262,7 +250,7 @@ async function saveHomeAvailability() {
   try {
     if (saveButton) saveButton.disabled = true;
     await Utils.apiPost("player_availability", payload);
-    homeDashboardState.availabilities = await fetchPlayerAvailabilities(homeDashboardState.playerId);
+    homeDashboardState.availabilities = await Utils.fetchPlayerAvailabilities(homeDashboardState.playerId);
     modal?.close();
     renderHomeCalendar();
     alert("予定を保存しました。");
@@ -367,7 +355,7 @@ async function main() {
     const [recruitments, applicants, availabilities] = await Promise.all([
       Utils.apiGet("recruitments?order=created_at.desc").catch(() => []),
       Utils.apiGet("recruitment_applicants").catch(() => []),
-      fetchPlayerAvailabilities(myPlayer.player_id).catch(() => [])
+      Utils.fetchPlayerAvailabilities(myPlayer.player_id).catch(() => [])
     ]);
 
     homeDashboardState.runs = myRuns;
@@ -393,3 +381,4 @@ async function main() {
 
 document.addEventListener("DOMContentLoaded", main);
 
+})();

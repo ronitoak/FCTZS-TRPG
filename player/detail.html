@@ -9,12 +9,15 @@
 </head>
 <body>
   <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
+    <!-- プレイヤー詳細本体：player_detail.js がプロフィール・傾向・予定を描画 -->
     <section id="player-detail-root">
       <p>読み込み中…</p>
     </section>
 
+    <!-- プロフィール編集モーダル：アイコン・Tier・プレイスタイル傾向を更新 -->
     <dialog id="edit-profile-modal" style="width: 90%; max-width: 500px; padding: 20px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2 style="margin: 0; font-size: 1.2rem;">プロフィール編集 <small>年末の投票で多分ここを使う</small></h2>
@@ -103,6 +106,7 @@
       </form>
     </dialog>
 
+    <!-- 予定一括入力モーダル：bulk-input-container に日別入力欄を動的生成 -->
     <dialog id="availability-modal" class="modal">
       <div class="modal-content bulk-input-content">
         <h3>予定の一括入力</h3>
@@ -127,6 +131,7 @@
       </div>
     </dialog>
 
+    <!-- コメント欄：comments.js の描画先 -->
     <div id="comments-root"></div>
       <footer>
         <hr />

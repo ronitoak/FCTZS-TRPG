@@ -1,10 +1,24 @@
 "use strict";
 
-// 1. グローバル変数として定義
+// 卓情報と複数の開催記録を統合表示し、参加者・開催回それぞれの追加・編集を整合させる。
+(() => {
+
+// モーダル間で同じ卓と一時参加者を参照するため、画面スコープで状態を共有する。
 let currentRunData = null;
 let tempPlayers = [];
 let tempCharacters = [];
 let allPlayers = [];
+
+async function fetchSessionDetailData() {
+  const [runs, scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
+    Utils.apiGet("runs"),
+    Utils.apiGet("scenarios"),
+    Utils.apiGet("sessions"),
+    Utils.apiGet("characters").catch(() => []),
+    Utils.apiGet("players").catch(() => [])
+  ]);
+  return { runs, scenarios, sessions, characters, fetchedPlayers };
+}
 
 async function main() {
   const root = document.getElementById("session-detail");
@@ -19,13 +33,7 @@ async function main() {
   }
 
   try {
-    const [runs, scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
-      Utils.apiGet("runs"),
-      Utils.apiGet("scenarios"),
-      Utils.apiGet("sessions"),
-      Utils.apiGet("characters").catch(() => []),
-      Utils.apiGet("players").catch(() => []) // プレイヤーマスタも念のため取得しておく（失敗しても空配列で続行）
-    ]);
+    const { runs, scenarios, sessions, characters, fetchedPlayers } = await fetchSessionDetailData();
 
     // 取得したプレイヤーデータをグローバル変数に代入
     allPlayers = fetchedPlayers;
@@ -36,7 +44,7 @@ async function main() {
       return;
     }
 
-    // ★重要: ここで取得したデータを外の変数に代入する
+    // 後から開く編集モーダルも同じ取得結果を使えるよう、現在の卓を共有状態へ保持する。
     currentRunData = run;
     const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const scenarioId = run?.scenario_id;
@@ -100,17 +108,6 @@ async function main() {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
-}
-
-async function loadDetail() {
-    const params = new URLSearchParams(location.search);
-    const runId = params.get("id");
-    
-    // APIからRunの詳細を取得
-    const run = await Utils.apiGet(`sessions?id=eq.${runId}`); // ※既存のAPIパスに合わせてください
-    currentRunData = Array.isArray(run) ? run[0] : run;
-    
-    // ... 既存のレンダリング処理 ...
 }
 
 /**
@@ -249,8 +246,8 @@ window.removeTempCharacter = (index) => {
 };
 
 
-// 送信処理の登録
-Utils.domReady(() => {
+// 送信処理と編集イベントの登録
+function registerSessionDetailEvents() {
 
   // まず main を実行
   main();
@@ -307,7 +304,7 @@ Utils.domReady(() => {
       // 現在の値をセット
       form.title.value = currentRunData.title || "";
       
-      // ★修正: GM選択セレクトボックスの構築と初期値セット
+      // 表示名の変更に影響されないよう、GM候補のvalueにはプレイヤーIDを使う。
       const gmSelect = document.getElementById('edit-gm-select');
       if (gmSelect) {
           gmSelect.innerHTML = '<option value="">選択してください</option>';
@@ -320,7 +317,7 @@ Utils.domReady(() => {
           gmSelect.value = currentRunData.gm_id || "";
       }
 
-      // ★修正: 旧テキストではなくID配列を優先してセット
+      // 新形式のID配列を優先し、未移行データだけ旧文字列から初期値を復元する。
       tempPlayers = [...(currentRunData.player_ids || currentRunData.players || [])];
 
       try {
@@ -334,7 +331,7 @@ Utils.domReady(() => {
           tempCharacters = (currentRunData.characters || []).map(id => ({ id, name: id }));
       }
       
-      // ★修正: プレイヤー全件をプルダウンにセット（送信するvalueをIDに変更）
+      // 編集後も安定した関連を保存できるよう、参加者候補はIDをvalueにする。
       const pSelect = document.getElementById('add-player-select');
       if (pSelect) {
           pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
@@ -369,7 +366,7 @@ Utils.domReady(() => {
       const submitBtn = runForm.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true; // 連打防止
       
-      // ★修正: HTMLのname属性に依存せず、確実にIDから値を取得する
+      // モーダル構造の変更で別項目を拾わないよう、固有IDから値を取得する。
       const gmSelect = document.getElementById('edit-gm-select');
       
       const payload = {
@@ -400,7 +397,7 @@ Utils.domReady(() => {
         title: form.title.value,
         start: new Date(form.start.value).toISOString(),
         stream_url: form.stream_url.value,
-        status: form.status.value // 追加
+        status: form.status.value // 通過履歴同期の判定にも使うため、卓状態を更新対象に含める。
       };
 
       try {
@@ -578,7 +575,9 @@ Utils.domReady(() => {
       btn.disabled = false;
     }
   });
-});
+}
+
+Utils.domReady(registerSessionDetailEvents);
 
 // ==========================================
 // --- HTML生成コンポーネント ---
@@ -653,3 +652,4 @@ function buildSessionLogHtml(runSessions, currentUserDiscordId) {
     </section>
   `;
 }
+})();

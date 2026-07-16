@@ -8,17 +8,20 @@
   </head>
   <body>
     <div class="container">
+      <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
       <nav id="common-nav" class="top-nav"></nav>
       <hr />
+      <!-- 卓詳細本体：session_detail.js が卓情報・参加者・開催記録を描画 -->
       <section id="session-detail">
         <p>読み込み中…</p>
       </section>
 
+      <!-- 開催記録追加フォーム：session_detail.js が同一卓への開催回を登録 -->
       <section id="add-session-record" style="margin-top: 30px;">
         <h3>セッション記録を追加</h3>
         <form id="sub-session-form" class="profile-grid">
           <div class="form-group">
-            <label for="new-session-date">開催日時</label>
+            <label for="new-session-start">開催日時</label>
             <input type="datetime-local" id="new-session-start" name="start" class="form-control" required>
         </div>
           <div class="form-group">
@@ -37,6 +40,7 @@
         </form>
       </section>
 
+      <!-- 開催記録編集モーダル：選択した開催回の日時・状態等を更新 -->
       <dialog id="edit-session-modal" class="modal">
         <div class="modal-content">
           <h3>セッション情報の編集</h3>
@@ -70,6 +74,7 @@
         </div>
       </dialog>
 
+      <!-- 卓情報編集モーダル：GM・参加プレイヤー・参加キャラクターを更新 -->
       <dialog id="edit-run-modal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
           <h3>卓情報の編集</h3>
@@ -109,6 +114,7 @@
         </div>
       </dialog>
 
+      <!-- コメント欄：comments.js の描画先 -->
       <div id="comments-root"></div>
 
       <footer>

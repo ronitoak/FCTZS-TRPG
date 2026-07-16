@@ -1,6 +1,6 @@
-// init-supabase.js
+// 認証状態を各画面で共有できるよう、ブラウザ用Supabaseクライアントを一度だけ初期化して公開する。
 const SUPABASE_URL = "https://bcmxaqrjpelpfxafrtqu.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbXhhcXJqcGVscGZ4YWZydHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NDExNzgsImV4cCI6MjA4MzUxNzE3OH0.3CtMMsv2c7fbLgC8-wd17ppyfhK31WRnhBT2CIVGyYY";
 
-// グローバルに公開
+// utils.jsと画面スクリプトが同じセッションを参照できるようグローバルに公開する。
 window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

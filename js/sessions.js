@@ -1,5 +1,8 @@
 "use strict";
 
+// 卓と開催記録を結合し、次回予定・参加者・シナリオ画像を一覧カードへまとめる。
+(() => {
+
 async function main() {
   const now = new Date();
 
@@ -68,7 +71,7 @@ async function main() {
 
       const scenario = scenariosById.get(run.scenario_id);
 
-      // ★ ここで cover を決める（run から scenario_id を使う）
+      // 開催回には画像参照がないため、親卓のscenario_idからカード画像を解決する。
       // 卓自身の画像URL(R2)があればそれを使い、なければシナリオの画像URLを使う
       const coverPath = run.image_url 
         ? run.image_url 
@@ -170,3 +173,4 @@ async function main() {
 }
 
 document.addEventListener("DOMContentLoaded", main);
+})();

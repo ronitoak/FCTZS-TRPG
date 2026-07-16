@@ -1,41 +1,11 @@
 "use strict";
 
+// シナリオ一覧の複合検索と利用者傾向との相性計算を行い、発見しやすい順でカード表示する。
+(() => {
+
 let allScenarios = [];
 let runCountByScenarioId = new Map();
 let currentUserProfile = null;
-
-function getTrendTagsHtml(scenario) {
-  const tags = [];
-  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
-  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
-  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">RP・没入</span>');
-  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
-  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
-  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
-  
-  if (tags.length === 0) return '';
-  return `<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">${tags.join('')}</div>`;
-}
-
-// マッチ度（相性）スコアの計算 (0〜3)
-function calculateMatchScore(scenario, profile) {
-  if (!profile) return 0;
-  let score = 0;
-
-  // 物語(story) / 混沌(chaos)
-  if (scenario.trend_story_chaos === 'story' && (profile.desire_story === 4 || profile.desire_story === 5)) score++;
-  if (scenario.trend_story_chaos === 'chaos' && (profile.desire_chaos === 4 || profile.desire_chaos === 5)) score++;
-
-  // RP・没入(avatar) / 攻略(clear)
-  if (scenario.trend_avatar_clear === 'avatar' && (profile.desire_avatar === 4 || profile.desire_avatar === 5)) score++;
-  if (scenario.trend_avatar_clear === 'clear' && (profile.desire_clear === 4 || profile.desire_clear === 5)) score++;
-
-  // 協調(harmony) / 活躍(active)
-  if (scenario.trend_harmony_active === 'harmony' && (profile.desire_harmony === 4 || profile.desire_harmony === 5)) score++;
-  if (scenario.trend_harmony_active === 'active' && (profile.desire_active === 4 || profile.desire_active === 5)) score++;
-
-  return score;
-}
 
 function renderScenarios(scenarios) {
   const root = document.getElementById("scenarios-list");
@@ -56,8 +26,8 @@ function renderScenarios(scenarios) {
   const displayScenarios = [...scenarios];
   if (currentUserProfile) {
     displayScenarios.sort((a, b) => {
-      const scoreA = calculateMatchScore(a, currentUserProfile);
-      const scoreB = calculateMatchScore(b, currentUserProfile);
+      const scoreA = Utils.calculateMatchScore(a, currentUserProfile);
+      const scoreB = Utils.calculateMatchScore(b, currentUserProfile);
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
       }
@@ -84,23 +54,13 @@ function renderScenarios(scenarios) {
     card.className = "scenarios-card";
 
     // マッチ判定とクラス付与
-    let matchBadgeHtml = "";
-    if (currentUserProfile) {
-      const score = calculateMatchScore(s, currentUserProfile);
-      if (score === 3) {
-        card.classList.add("match-high");
-        matchBadgeHtml = `<div class="match-badge match-3">相性抜群！ ★★★</div>`;
-      } else if (score === 2) {
-        card.classList.add("match-medium");
-        matchBadgeHtml = `<div class="match-badge match-2">好相性！ ★★</div>`;
-      } else if (score === 1) {
-        card.classList.add("match-low");
-        matchBadgeHtml = `<div class="match-badge match-1">相性良！ ★</div>`;
-      }
-    }
+    const match = Utils.getMatchPresentation(
+      Utils.calculateMatchScore(s, currentUserProfile)
+    );
+    if (match.cardClass) card.classList.add(match.cardClass);
 
     card.innerHTML = `
-      ${matchBadgeHtml}
+      ${match.badgeHtml}
       <img class="scenarios-cover"
         src="${coverPath}"
         onerror="this.onerror=null; this.src='${fallback}';"
@@ -112,7 +72,7 @@ function renderScenarios(scenarios) {
           ${title}
         </a>
       </h2>
-      ${getTrendTagsHtml(s)}
+      ${Utils.getTrendTagsHtml(s)}
       <div class="scenarios-meta">
         ${system ? `<div>System: ${system}</div>` : ""}
         <div>Players: ${minPlayers}〜${maxPlayers}人</div>
@@ -216,24 +176,8 @@ async function main() {
     allScenarios = Array.isArray(scenarios) ? scenarios : [];
 
     // ログイン中のユーザー情報を取得し、対応するプレイヤープロフィールを取得
-    if (window.supabase) {
-      const { data: { session } } = await window.supabase.auth.getSession();
-      if (session) {
-        const uid = session.user.id;
-        const [players, profiles] = await Promise.all([
-          Utils.apiGet("players").catch(() => []),
-          Utils.apiGet("player_profiles").catch(() => [])
-        ]);
-
-        const myPlayer = players.find(p => p.user_id === uid);
-        if (myPlayer) {
-          const profile = profiles.find(p => p.player_id === myPlayer.player_id);
-          if (profile) {
-            currentUserProfile = profile;
-          }
-        }
-      }
-    }
+    const { profile } = await Utils.getCurrentUserPlayerContext().catch(() => ({ profile: null }));
+    currentUserProfile = profile;
 
     // scenario_id -> run数
     runCountByScenarioId.clear();
@@ -286,3 +230,4 @@ async function main() {
 }
 
 document.addEventListener("DOMContentLoaded", main);
+})();

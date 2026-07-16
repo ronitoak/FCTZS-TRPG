@@ -1,5 +1,8 @@
 "use strict";
 
+// システム別の入力欄と外部キャラクターデータを正規化し、関連能力値・技能と一緒に登録する。
+(() => {
+
 Utils.domReady(async () => {
     const form = document.getElementById("character-form");
     const systemSelect = document.getElementById("system-select");
@@ -85,7 +88,7 @@ Utils.domReady(async () => {
                 const json = JSON.parse(trimmedText);
                 const data = json.data || {};
 
-                // ★ ガイアケアTRPGの判定ロジック
+                // ガイアケアは一般的な能力値キーを持たないため、固有フィールドの存在で判定する。
                 let isGaia = false;
                 // params内に「真価」があるかチェック
                 if (Array.isArray(data.params) && data.params.some(p => p.label === "真価")) {
@@ -119,7 +122,7 @@ Utils.domReady(async () => {
                 // B. 能力値 (params配列から抽出)
                 const emoAttrMap = {
                     "精神":"power","五感":"senses","身体":"strength","社会":"social",
-                    "運勢":"luck", "真価":"luck", // ★「真価」は既存テーブル互換のため「運勢(luck)」としてマッピング
+                    "運勢":"luck", "真価":"luck", // 旧データの「真価」も同じ列へ保存し、既存テーブルとの互換性を保つ。
                     "知力":"intellect","器用":"dexterity","魅力":"appearance",
                     "共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
                 };
@@ -139,7 +142,7 @@ Utils.domReady(async () => {
                         const diceNum = match[1]; 
                         const rawSkillName = match[2];
                         
-                        // ★追加: 「＊」から始まるベース技能は取り込みをスキップする
+                        // 「＊」始まりは技能値ではなく分類見出しのため、技能レコードとして取り込まない。
                         if (rawSkillName.startsWith('＊')) {
                             continue;
                         }
@@ -181,7 +184,7 @@ Utils.domReady(async () => {
                 }
             }
 
-            // B. システム判定 (★テキスト形式の場合も判定を強化)
+            // JSONとテキストの双方で同じ入力欄を生成できるよう、内容からシステムを推定する。
             if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
             else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
             else if (text.includes("ガイアケアTRPG") || text.includes("真価") || text.includes("〈オリジン〉")) result.profile.system = "ガイアケアTRPG";
@@ -489,3 +492,4 @@ Utils.domReady(async () => {
 
 
 });
+})();

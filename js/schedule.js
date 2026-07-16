@@ -1,19 +1,22 @@
 "use strict";
 
-let currentDate = new Date(); // 現在表示している月を保持する変数
-let allSessions = [];         // 取得した全セッションデータを保持
+// 月間予定の閲覧・一括入力・複数人比較・CSV取込・開催登録を同じカレンダー状態で調整する。
+(() => {
+
+let currentDate = new Date(); // 再描画や前後月移動でも表示月を共有する。
+let allSessions = [];         // フィルタ変更ごとの再取得を避けるため、取得結果を保持する。
 let compareMode = false;
 let comparisonData = {};
 
 let globalPlayers = [];
 let parsedCsvData = null;
-// 卓データを保持する変数
+// セッションのrun_idを利用者向け卓名へ解決するため、卓データを共有する。
 let globalRuns = [];
 
 // 時間帯表示用の辞書
 const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
 
-// APIからセッション一覧を取得する
+// 取得完了後だけ描画し、通信中の古い状態をカレンダーへ混在させない。
 async function fetchScheduleData() {
   try {
     const data = await Utils.apiGet("session_list");
@@ -24,7 +27,7 @@ async function fetchScheduleData() {
   }
 }
 
-// カレンダーを描画する関数
+// 通常表示と比較表示が同じ月境界・曜日配置を使うよう、描画を一か所に集約する。
 function renderCalendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -75,18 +78,13 @@ async function renderBulkInputGrid() {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const lastDay = new Date(year, month + 1, 0).getDate();
 
   const monthLabel = document.getElementById("bulk-month-label");
   if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
 
-  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
-
   let existingData = [];
   try {
-    const res = await Utils.apiGet(`player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}&target_date=gte.${startDate}&target_date=lte.${endDate}`);
-    if (Array.isArray(res)) existingData = res;
+    existingData = await Utils.fetchPlayerAvailabilities(playerId, year, month);
   } catch (e) {
     console.error("既存予定の取得に失敗:", e);
   }
@@ -226,6 +224,8 @@ function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal && typeof modal.close === "function") modal.close();
 }
+// HTML のインライン onclick から呼ばれる公開契約のため、明示的に window へ残す。
+window.closeModal = closeModal;
 
 async function initCompareModalData() {
   try {
@@ -303,6 +303,7 @@ function handleRunSelection(e) {
   if (selectedRun.gm_id) targetIds.push(selectedRun.gm_id);
   if (Array.isArray(selectedRun.player_ids)) targetIds.push(...selectedRun.player_ids);
 
+  // ID移行前の卓データは名前の文字列・配列で保持されているため、比較用に併用する。
   const targetNames = [];
   if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
   else if (selectedRun.gm) targetNames.push(selectedRun.gm);
@@ -317,6 +318,39 @@ function handleRunSelection(e) {
       cb.checked = true;
     }
   });
+}
+
+async function handleAddSessionSubmit(e) {
+  e.preventDefault();
+
+  const runId = document.getElementById("add-session-run-id").value;
+  const title = document.getElementById("add-session-title").value;
+  const startStr = document.getElementById("add-session-start").value;
+  const streamUrl = document.getElementById("add-session-stream")?.value || null;
+
+  if (!runId || !startStr) return alert("必須項目が入力されていません。");
+
+  const isoStart = new Date(startStr).toISOString();
+
+  try {
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const payload = {
+      run_id: runId,
+      title: title || null,
+      start: isoStart,
+      stream_url: streamUrl,
+      status: "scheduled"
+    };
+
+    await Utils.apiPost("sessions", payload);
+    alert("セッション予定を追加しました！");
+    window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
+  } catch (err) {
+    console.error("セッション追加エラー:", err);
+    alert("セッションの追加に失敗しました。コンソールを確認してください。");
+    e.target.querySelector('button[type="submit"]').disabled = false;
+  }
 }
 
 // 起動時の処理とイベントリスナー
@@ -370,42 +404,7 @@ async function main() {
       closeModal("add-session-modal");
   });
 
-  document.getElementById("add-session-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      
-      const runId = document.getElementById("add-session-run-id").value;
-      const title = document.getElementById("add-session-title").value;
-      const startStr = document.getElementById("add-session-start").value;
-      
-      const streamUrl = document.getElementById("add-session-stream")?.value || null;
-      const notes = document.getElementById("add-session-notes")?.value || null;
-
-      if (!runId || !startStr) return alert("必須項目が入力されていません。");
-
-      const isoStart = new Date(startStr).toISOString();
-
-      try {
-          const btn = e.target.querySelector('button[type="submit"]');
-          btn.disabled = true;
-
-          const payload = {
-              run_id: runId,
-              title: title || null,
-              start: isoStart,
-              stream_url: streamUrl,
-              status: "scheduled"
-          };
-
-          await Utils.apiPost("sessions", payload);
-          alert("セッション予定を追加しました！");
-          window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
-
-      } catch (err) {
-          console.error("セッション追加エラー:", err);
-          alert("セッションの追加に失敗しました。コンソールを確認してください。");
-          e.target.querySelector('button[type="submit"]').disabled = false;
-      }
-  });
+  document.getElementById("add-session-form")?.addEventListener("submit", handleAddSessionSubmit);
 
 
   // ==========================================
@@ -574,3 +573,4 @@ function showMappingModal() {
 
     document.getElementById("csv-mapping-modal")?.showModal();
 }
+})();

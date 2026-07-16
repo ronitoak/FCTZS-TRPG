@@ -1,13 +1,5 @@
+// トップ画面向けに種類の異なる最新コメントを名称マスタと結合し、正しい詳細画面への導線を作る。
 (function () {
-
-  function esc(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
 
   function labelFor(type) {
     if (type === "character") return "キャラクター";
@@ -18,7 +10,7 @@
     return "";
   }
 
-  // ★ session は run_id を持つ前提なので、リンクも run 詳細（= 今の sessions/detail）へ
+  // sessionコメントのtarget_idはrun_id契約なので、開催回ではなく卓詳細へリンクする。
   function linkFor(c) {
     switch (c.target_type) {
       case "character":
@@ -40,7 +32,7 @@
     return Utils.apiGet("comments/recent", `limit=${encodeURIComponent(limit)}`);
   }
 
-  // ★ 追加：id→名前辞書を作る
+  // コメントごとの追加通信を避けるため、対象名を一括解決する辞書を先に作る。
 async function fetchNameMaps() {
   const [characters, scenarios, runs, recruitments, players] = await Promise.all([
     Utils.apiGet("characters"),
@@ -89,7 +81,7 @@ async function fetchNameMaps() {
     if (c.target_type === "character") return maps.charMap.get(id) || id;
     if (c.target_type === "scenario") return maps.scenarioMap.get(id) || id;
 
-    // ★ session の target_id は run_id
+    // sessionのtarget_idはrun_idなので、卓タイトルの辞書で解決する。
     if (c.target_type === "session") return maps.runMap.get(id) || id;
 
     if (c.target_type === "recruitment") return maps.recruitmentMap.get(id) || id;
@@ -105,7 +97,7 @@ async function fetchNameMaps() {
     root.innerHTML = `<p>読み込み中…</p>`;
 
     try {
-      // ★ コメントと辞書を並列取得
+      // 相互依存しない取得を並列化し、トップ画面の初期表示を待たせない。
       const [items, maps] = await Promise.all([
         fetchRecent(10),
         fetchNameMaps(),
@@ -127,13 +119,13 @@ async function fetchNameMaps() {
                 <li class="top-comments-item">
                   <div class="top-comments-meta">
                     <a href="${linkFor(c)}" class="top-comments-target">
-                      ${esc(targetName)}
+                      ${Utils.escapeHtml(String(targetName))}
                     </a>
-                    <a href="${linkFor(c)}"  class="top-comments-author">${esc(c.author)}</a>
-                    <time>${esc(when)}</time>
+                    <a href="${linkFor(c)}"  class="top-comments-author">${Utils.escapeHtml(String(c.author))}</a>
+                    <time>${Utils.escapeHtml(String(when))}</time>
                   </div>
                   <div class="top-comments-body">
-                    ${esc(c.body).replaceAll("\n", "<br>")}
+                    ${Utils.escapeHtml(String(c.body)).replaceAll("\n", "<br>")}
                   </div>
                 </li>
               `;

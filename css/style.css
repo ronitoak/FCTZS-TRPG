@@ -1,5 +1,6 @@
 /* ==========================================
    1. Base & Variables (共通設定・変数)
+   サイト全体の配色・余白・本文レイアウトの基準
    ========================================== */
 :root {
     --bg-color: #f2f2f2;
@@ -65,6 +66,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ==========================================
    2. Common Components (共通部品)
+   画面をまたいで使用するボタンと状態表示
    ========================================== */
 
 /* Buttons */
@@ -128,7 +130,7 @@ a { color: inherit; text-decoration: none; }
     color: #fff;
     background: var(--cancel-color);
 }
-.badge.active, .status-badge.active, .sessions-badge.active, .session-detail-badge.active, .character-detail-badge.survived, .session-detail-badge.active { background: var(--color-alive-accent); }
+.badge.active, .status-badge.active, .sessions-badge.active, .session-detail-badge.active, .character-detail-badge.survived { background: var(--color-alive-accent); }
 .badge.planning, .status-badge.planning, .sessions-badge.planning { background: var(--color-planning); }
 .badge.done, .status-badge.done, .sessions-badge.done, .session-detail-badge.done { background: #777; }
 .badge.cancelled, .status-badge.cancelled { background: var(--danger-color); }
@@ -137,6 +139,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ==========================================
    3. Grid & Cards
+   一覧画面のカード配置とキャラクター状態別の表現
    ========================================== */
 .card-grid, .character-grid, .scenarios-grid, .sessions-grid {
     display: grid;
@@ -201,6 +204,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ==========================================
    4. Detail Page Layouts
+   キャラクター・卓・シナリオ詳細の共通骨格
    ========================================== */
 .character-detail-top, .session-detail-top, .scenario-detail-top {
     display: grid;
@@ -340,6 +344,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ==========================================
    5. Lists & Tables
+   詳細情報を読みやすく並べる一覧・表・履歴カード
    ========================================== */
 .session-detail-list, .character-detail-scenario-list, .schedule-list { list-style: none; padding-left: 1.2rem; }
 .session-detail-item { border-bottom: 1px solid var(--border-color); padding: 12px 0; list-style: none; }
@@ -506,6 +511,7 @@ a { color: inherit; text-decoration: none; }
 
 /* ==========================================
    6. Forms & Interactive
+   登録・編集フォームとモーダル操作の共通外観
    ========================================== */
 .character-controls { margin: 10px 0 16px; }
 .character-controls input[type="search"] { width: min(420px, 100%); padding: 6px 10px; }
@@ -610,7 +616,7 @@ dialog.modal::backdrop {
     max-width: 500px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     
-    /* ★修正：全体の高さが100%を超えないよう、最大高さを85vhに調整 */
+    /* 小さい画面でも閉じる操作へ到達できるよう、モーダル内部だけをスクロールさせる。 */
     max-height: 85vh; 
     overflow-y: auto; 
 }
@@ -637,7 +643,7 @@ dialog.modal::backdrop {
     transform: scale(1);
 }
 
-/* ★追加：スクロールバーを細くてモダンなデザインにする（お好みで） */
+/* モーダル内容を圧迫しないよう、内部スクロールバーを控えめな幅に揃える。 */
 .modal-content::-webkit-scrollbar {
     width: 8px;
 }
@@ -659,7 +665,7 @@ dialog.modal::backdrop {
     gap: 12px;
 }
 
-/* ---- 今回追加するフォーム要素（追記部分） ---- */
+/* モーダルを含む共通フォーム要素 */
 .form-group {
     margin-bottom: 16px;
 }
@@ -684,6 +690,7 @@ dialog.modal::backdrop {
 
 /* ==========================================
    7. Schedule & Sessions Section
+   予定一覧・検索条件・月間カレンダーと一括入力
    ========================================== */
 .schedule-wrap {
     background: var(--container-bg);
@@ -698,7 +705,7 @@ dialog.modal::backdrop {
 .sessions-section { margin: 16px 0 24px; }
 .sessions-section-title { margin: 0 0 12px; }
 
-/* Utilities */
+/* 単一目的の微調整用ユーティリティ */
 .u-mt-20 { margin-top: 20px; }
 .u-mb-20 { margin-bottom: 20px; }
 .u-text-center { text-align: center; }
@@ -708,11 +715,11 @@ dialog.modal::backdrop {
 /* ---- 検索・絞り込みコントロールのレイアウト（1行強制・横スクロール対応） ---- */
 .filter-controls {
   display: flex;
-  flex-wrap: nowrap;   /* ★要素を絶対に折り返さず、1行に強制します */
+  flex-wrap: nowrap;   /* 条件同士の並び順を保つため、複数行へ折り返さない。 */
   gap: 10px;           /* 要素間の隙間を少しだけ詰めます */
   margin-bottom: 32px;
   align-items: center;
-  overflow-x: auto;    /* ★画面幅が足りない場合は、このエリア内だけで横スクロールさせます */
+  overflow-x: auto;    /* 狭い画面ではページ全体でなく検索領域だけを横スクロールさせる。 */
   padding-bottom: 8px; /* スクロールバーが表示された際の余白 */
   
   /* スクロールバーを少しスマートに見せるためのWebkit拡張（お好みで） */
@@ -723,7 +730,7 @@ dialog.modal::backdrop {
 .filter-controls select,
 .filter-controls input[type="text"] {
   flex: 1 1 auto;      /* 親の幅に合わせて柔軟に伸縮させます */
-  min-width: 140px;    /* ★ただし、これ以上は縮ませない（文字潰れ防止） */
+  min-width: 140px;    /* 入力内容を判読できる最低幅を確保する。 */
   padding: 8px 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -739,7 +746,7 @@ dialog.modal::backdrop {
 
 /* 検索ボタンのスタイル */
 .filter-controls button {
-  flex: 0 0 auto;      /* ★ボタンだけは絶対に縮ませない */
+  flex: 0 0 auto;      /* 主要操作が押せない幅まで縮むことを防ぐ。 */
   padding: 8px 24px;
   background-color: #2c3e50;
   color: #ffffff;
@@ -748,7 +755,7 @@ dialog.modal::backdrop {
   cursor: pointer;
   font-size: 1rem;
   font-weight: bold;
-  white-space: nowrap; /* ★ボタン内の「検索」という文字が縦に改行されるのを防ぐ */
+  white-space: nowrap; /* 短い操作ラベルが縦書き状になることを防ぐ。 */
   transition: background-color 0.2s ease;
 }
 
@@ -781,7 +788,7 @@ dialog.modal::backdrop {
 /* カレンダーのグリッド（7等分を強制する） */
 .calendar-grid {
   display: grid;
-  /* ★ minmax(0, 1fr) にすることで、中身が長くても絶対に7等分の枠を維持します */
+  /* 長い予定名があっても曜日ごとの7等分を崩さない。 */
   grid-template-columns: repeat(7, minmax(0, 1fr)); 
   gap: 1px;
   background-color: #ddd;
@@ -808,7 +815,7 @@ dialog.modal::backdrop {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0; /* ★ 必須：テキストの長さに引っ張られてマスが広がるのを防ぐ */
+  min-width: 0; /* 内容の長さで日付マスが列幅を押し広げないようにする。 */
 }
 
 /* 今日の日付や前月マスなどはそのまま維持 */
@@ -1063,6 +1070,7 @@ dialog.modal::backdrop {
 
 /* ==========================================
    8. Toast Notification (トースト通知)
+   処理結果を画面右下へ一時表示する通知
    ========================================== */
 .toast-container {
     position: fixed;
@@ -1101,6 +1109,7 @@ dialog.modal::backdrop {
 
 /* ==========================================
    9. BBS (なりチャ)
+   投稿フォーム・タイムライン・各詳細画面のコメント欄
    ========================================== */
 .bbs-form {
     background: #f8fafc;
@@ -1333,6 +1342,7 @@ dialog.modal::backdrop {
 
 /* ==========================================
    Scenario Match & Details Search Styles
+   シナリオ検索結果と募集カードの相性表示
    ========================================== */
 .search-details[open] summary {
     margin-bottom: 15px;
@@ -1402,6 +1412,7 @@ dialog.modal::backdrop {
 
 /* ==========================================
    Patch Notes
+   トップの更新要約と全履歴タイムライン
    ========================================== */
 .patch-notes-page-header {
     margin-bottom: 32px;
@@ -1596,6 +1607,7 @@ dialog.modal::backdrop {
 
 /* ==========================================
    Player Schedule & Home Dashboard
+   プレイヤー予定表とトップの個人ダッシュボード
    ========================================== */
 .player-schedule {
   min-height: 550px;

@@ -9,6 +9,7 @@
 </head>
 <body>
   <div class="container">
+    <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
     <h1 style="display: flex; justify-content: space-between; align-items: center;">
@@ -17,7 +18,7 @@
     </h1>
     <p>この部活動で遊んだシナリオたち</p>
 
-    <!-- 検索・フィルタUI -->
+    <!-- 検索・フィルタUI：scenarios.js が条件を読み取りカード一覧を絞り込み -->
     <div class="search-filter-panel" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: var(--card-bg, #fcfcfc);">
         <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">検索・絞り込み</h3>
         
@@ -103,6 +104,7 @@
         </details>
     </div>
 
+    <!-- シナリオカード一覧：scenarios.js の主要な描画先 -->
     <section id="scenarios-list">
       <p>読み込み中…</p>
     </section>

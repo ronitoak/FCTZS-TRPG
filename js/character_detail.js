@@ -1,5 +1,8 @@
 "use strict";
 
+// キャラクターの関連データを詳細表示へ統合し、編集とココフォリア向け書き出しを一貫して扱う。
+(() => {
+
 let currentCharData = null;
 let currentSkillRows = null;
 let currentSystemAttrs = []; 
@@ -7,23 +10,13 @@ let currentCharAttrsMap = new Map();
 let allScenarios = []; 
 let currentCharacterScenarios = []; 
 
-function renderLink(url, label) {
-  const u = String(url ?? "").trim();
-  if (!u) return "";
-  const safe = Utils.escapeHtml(u);
-  const text = Utils.escapeHtml(label ?? u);
-  return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-}
-
 function toIntOrNull(v) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-// ==========================================
-// ★完成版：ココフォリア用データ生成ロジック（仕様書完全準拠）
-// ==========================================
+// ココフォリアの取込契約を壊さないよう、画面表示用データから専用形式を明示的に組み立てる。
 function generateCcfoliaData() {
   const c = currentCharData;
   if (!c) return null;
@@ -270,6 +263,17 @@ function generateCcfoliaData() {
 // ==========================================
 // --- メイン描画・データ展開ロジック ---
 // ==========================================
+async function fetchCharacterDetailData(id) {
+  const [characters, scenarios, runs, scenarioIds, skillRows] = await Promise.all([
+    Utils.apiGet("characters"),
+    Utils.apiGet("scenarios"),
+    Utils.apiGet("runs"),
+    Utils.apiGet(`character_scenarios?character_id=${encodeURIComponent(id)}`).catch(() => []),
+    Utils.apiGet(`character_skill_list?character_id=${encodeURIComponent(id)}`).catch(() => []),
+  ]);
+  return { characters, scenarios, runs, scenarioIds, skillRows };
+}
+
 async function main() {
   const root = document.getElementById("character-detail");
   if (!root) return;
@@ -283,13 +287,7 @@ async function main() {
   }
 
   try {
-    const [characters, scenarios, runs, scenarioIds, skillRows] = await Promise.all([
-      Utils.apiGet("characters"),
-      Utils.apiGet("scenarios"),
-      Utils.apiGet("runs"),
-      Utils.apiGet(`character_scenarios?character_id=${encodeURIComponent(id)}`).catch(() => []),
-      Utils.apiGet(`character_skill_list?character_id=${encodeURIComponent(id)}`).catch(() => []),
-    ]);
+    const { characters, scenarios, runs, scenarioIds, skillRows } = await fetchCharacterDetailData(id);
 
     const editBtn = `<button id="btn-open-char-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const skillsEditBtn = `<button id="btn-open-skills-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
@@ -385,11 +383,12 @@ async function main() {
     currentCharacterScenarios = passedScenarioIds; 
 
     const iacharaLinkHtml = c.iachara_url
-      ? `<section class="character-detail-url"><h2 class="character-detail-h2">キャラシート</h2><ul><li>${renderLink(c.iachara_url, "開く")}</li></ul></section>`
+      ? `<section class="character-detail-url"><h2 class="character-detail-h2">キャラシート</h2><ul><li>${Utils.renderLink(c.iachara_url, "開く")}</li></ul></section>`
       : "";
 
     const passedHtml = passedScenarioIds.length
     ? `<ul class="character-detail-scenario-list">${passedScenarioIds.map(row => {
+          // 旧APIのID配列と、移行後のオブジェクト配列をどちらも表示できるようにする。
           const sid = (typeof row === 'object' && row !== null) ? row.scenario_id : row;
           if (!sid) return ""; 
           const s = scenariosById.get(sid);
@@ -526,6 +525,7 @@ function renderGenericAttributes(system, defs, attrMap, targetKind) {
 // ==========================================
 // --- グローバル イベントリスナー群の完全復元・統治 ---
 // ==========================================
+function registerCharacterEventHandlers() {
 document.addEventListener('click', async (e) => {
     // 1. ココフォリアコピーボタン処理（トースト表示フィードバック含む）
     const copyBtn = e.target.closest('#btn-copy-ccfolia');
@@ -754,6 +754,7 @@ document.getElementById('edit-emotions-form')?.addEventListener('submit', async 
     }));
     await saveAttributes(payload);
 });
+}
 
 // ==========================================
 // --- HTML生成系コンポーネントの完全同期 ---
@@ -833,4 +834,6 @@ function buildCharacterBottomHtml(c, hasGeneric, sysDefsSafe, attrMap, abilities
   `;
 }
 
+registerCharacterEventHandlers();
 Utils.domReady(main);
+})();

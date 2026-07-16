@@ -56,6 +56,7 @@
 </head>
 <body>
   <div class="container">
+    <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
     <header class="page-header">
@@ -65,10 +66,12 @@
 
     <button id="btn-open-recruit-modal" class="btn-primary">＋ 新しく募集を立てる</button>
 
+    <!-- 募集カード一覧：recruit.js が応募状況を含むカードを描画 -->
     <div id="recruit-list-container" class="card-grid" style="margin-top: 24px;">
         <p>読み込み中...</p>
         </div>
 
+    <!-- 新規募集モーダル：recruit.js が募集主・シナリオ候補を補完して登録 -->
     <dialog id="recruit-modal" class="modal">
         <div class="modal-content">
             <h2 style="margin-bottom: 16px;">新規募集の作成</h2>

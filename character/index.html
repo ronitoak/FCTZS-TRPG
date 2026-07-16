@@ -9,6 +9,7 @@
 </head>
 <body>
   <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
         <h1 style="display: flex; justify-content: space-between; align-items: center;">
@@ -16,6 +17,7 @@
             <a href="./create.html" class="btn-primary" style="font-size: 14px; font-weight: bold;">新規追加</a>
         </h1>
 
+        <!-- 一覧の検索条件：character.js が選択肢を補完し、条件に応じて再描画 -->
         <div class="filter-controls">
             <select id="filter-system">
                 <option value="">システム</option>
@@ -40,6 +42,7 @@
             <button id="search-button">検索</button>
         </div>
 
+        <!-- キャラクターカード一覧：character.js の主要な描画先 -->
         <section id="character-list">
             <p>読み込み中…</p>
         </section>

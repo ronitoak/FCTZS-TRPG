@@ -1,6 +1,9 @@
 "use strict";
 
-// プルダウンの選択肢をデータベースのデータから自動生成する関数
+// プレイヤーとプロフィールを結合し、傾向が設定済みの利用者だけを選択・閲覧できる一覧導線を作る。
+(() => {
+
+// プレイヤー本体と任意プロフィールを分離保存しているため、表示前にIDで結合する。
 async function initPlayerOptions() {
   try {
    // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
@@ -49,7 +52,7 @@ function renderPlayers(players) {
 
   const list = Array.isArray(players) ? players : [];
 
-  // ★追加：レーダーチャートがすべて初期値（3）または未設定のプレイヤーを除外する
+  // 初期値だけのプロフィールは比較情報として意味を持たないため、公開一覧から除外する。
   const filteredList = list.filter(p => {
     // それぞれのパラメーターが 3 (または undefined/null) であるかを判定
     const isAllDefault = 
@@ -64,7 +67,7 @@ function renderPlayers(players) {
     return !isAllDefault;
   });
 
-  // ★修正：描画対象を list から filteredList に変更
+  // 絞り込み後の利用者だけを描画し、未設定プロフィールを誤って公開しない。
   if (filteredList.length === 0) {
     root.innerHTML = "<p>何かに失敗しました</p>";
     return;
@@ -133,7 +136,7 @@ async function main() {
 
   await Utils.initAuthAndHeader('common-nav', '../');
   
-  // ★ まず最初に、プルダウンの選択肢を構築する
+  // 選択イベントが空の候補を参照しないよう、先にプルダウンを構築する。
   await initPlayerOptions();
 
   // イベントリスナーの登録
@@ -144,3 +147,4 @@ async function main() {
 }
 
 main();
+})();

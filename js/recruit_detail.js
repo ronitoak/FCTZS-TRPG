@@ -1,22 +1,12 @@
 "use strict";
 
+// 募集本体と応募者を詳細表示へ統合し、参加・取消・募集削除の整合性を保つ。
+(() => {
+
 let currentRecruit = null;
 let allPlayers = [];
 let allScenarios = [];
 let currentApplicants = [];
-
-function getTrendTagsHtml(scenario) {
-  const tags = [];
-  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
-  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
-  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">RP・没入</span>');
-  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
-  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
-  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
-  
-  if (tags.length === 0) return '';
-  return `<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;">${tags.join('')}</div>`;
-}
 
 async function main() {
     await Utils.initAuthAndHeader('common-nav', '../');
@@ -85,7 +75,7 @@ function renderDetail() {
     if (currentRecruit.status === "fulfilled") statusText = "満員";
     if (currentRecruit.status === "closed") statusText = "終了";
 
-    const trendTagsHtml = scenarioObj ? getTrendTagsHtml(scenarioObj) : "";
+    const trendTagsHtml = scenarioObj ? Utils.getTrendTagsHtml(scenarioObj) : "";
 
     // シナリオ詳細に完全に準拠したHTML構造
     root.innerHTML = `
@@ -178,7 +168,7 @@ function setupActionForms() {
 
         try {
             await Utils.apiPost("recruitment_applicants", [{
-                recruitment_id: currentRecruit.id, // ★修正: recruitment_id
+                recruitment_id: currentRecruit.id, // DBの外部キー名へ揃え、募集との関連を確実に保存する。
                 player_id: playerId
             }]);
             alert("応募しました！");
@@ -201,7 +191,7 @@ function setupActionForms() {
         btn.disabled = true;
 
         try {
-            // ★修正: recruitment_id
+            // 一覧と同じ外部キー名で絞り込み、別募集の応募を削除しないようにする。
             await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}&player_id=eq.${playerId}`);
             alert("参加を取り消しました。");
             location.reload();
@@ -220,7 +210,7 @@ function setupActionForms() {
         btn.disabled = true;
 
         try {
-            // ★修正: 外部キー制約エラーを回避するため、先に応募者レコードを消去する
+            // 外部キー制約を守るため、親の募集より先に応募者レコードを削除する。
             if (currentApplicants.length > 0) {
                 await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}`);
             }
@@ -264,3 +254,4 @@ document.getElementById("btn-extend-recruit")?.addEventListener("click", async (
 }
 
 Utils.domReady(main);
+})();

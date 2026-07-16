@@ -1,5 +1,8 @@
 "use strict";
 
+// シナリオ登録フォームの画像確認と入力値整形を行い、一覧・詳細で扱える共通形式へ保存する。
+(() => {
+
 Utils.domReady(async () => {
     const form = document.getElementById("scenario-form");
     if (!form) return;
@@ -92,3 +95,4 @@ Utils.domReady(async () => {
         }
     });
 });
+})();

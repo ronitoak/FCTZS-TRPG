@@ -1,5 +1,8 @@
 "use strict";
 
+// 卓登録に必要なシナリオ・GM・参加者を関連付け、旧文字列表現も添えて互換形式で保存する。
+(() => {
+
 Utils.domReady(async () => {
     await Utils.initAuthAndHeader('common-nav', '../');
     
@@ -72,7 +75,7 @@ Utils.domReady(async () => {
             scenarios.map(s => `<option value="${s.id}">${Utils.escapeHtml(s.title)}</option>`).join('');
 
         // キャラクター選択（カード形式）
-        // ★修正: inputタグに data-player-id 属性を追加
+        // 表示名に依存せずプレイヤーを識別できるよう、候補DOMへ安定したIDを保持する。
         charGrid.innerHTML = characters.map(c => {
             // IDがあれば名前を辞書から取得し、無ければ過去の c.player(テキスト) を使い、どちらも無ければ '未設定'
             const playerName = (c.player_id && playersById.has(c.player_id)) 
@@ -107,7 +110,7 @@ Utils.domReady(async () => {
         const charIds = selectedChecks.map(el => el.value);
         const autoPlayerIds = selectedChecks.map(el => el.dataset.playerId).filter(id => id && id.trim() !== "");
 
-        // 2. ★修正: 手動入力(複数選択セレクトボックス)から PL ID を取得
+        // キャラクター未選択の参加者も保存できるよう、手動選択からPL IDを回収する。
         const extraPlayerSelect = document.getElementById("extra-player-select");
         let extraPlayerIds = [];
         if (extraPlayerSelect) {
@@ -159,9 +162,9 @@ Utils.domReady(async () => {
             // IDはDB側のトリガー r-XXX_Y で自動生成されるため不要
             title: form.title.value,
             scenario_id: form.scenario_id.value,
-            gm_id: form.gm_id ? form.gm_id.value : null, // ★修正: gm_idを取得
+            gm_id: form.gm_id ? form.gm_id.value : null, // 名前変更に影響されないGM識別子を保存する。
             characters: charIds, 
-            player_ids: allPlayerIds, // ★修正: players(text)から player_ids に変更
+            player_ids: allPlayerIds, // 旧players文字列と併存させ、ID参照へ段階移行する。
             status: 'planning',
             image_url: imageUrl
         };
@@ -177,3 +180,4 @@ Utils.domReady(async () => {
         }
     });
 });
+})();

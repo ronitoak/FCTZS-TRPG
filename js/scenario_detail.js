@@ -1,19 +1,9 @@
 "use strict";
 
-let currentScenarioId = null;
+// シナリオ本体に卓履歴・参加者・通過キャラクターを結合し、詳細表示と編集を担う。
+(() => {
 
-function getTrendTagsHtml(scenario) {
-  const tags = [];
-  if (scenario.trend_story_chaos === 'story') tags.push('<span class="trend-tag trend-story">物語重視</span>');
-  if (scenario.trend_story_chaos === 'chaos') tags.push('<span class="trend-tag trend-chaos">混沌歓迎</span>');
-  if (scenario.trend_avatar_clear === 'avatar') tags.push('<span class="trend-tag trend-avatar">RP・没入</span>');
-  if (scenario.trend_avatar_clear === 'clear') tags.push('<span class="trend-tag trend-clear">攻略重視</span>');
-  if (scenario.trend_harmony_active === 'harmony') tags.push('<span class="trend-tag trend-harmony">協調重視</span>');
-  if (scenario.trend_harmony_active === 'active') tags.push('<span class="trend-tag trend-active">活躍推奨</span>');
-  
-  if (tags.length === 0) return '';
-  return `<div class="trend-tags-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; margin-bottom: 10px;">${tags.join('')}</div>`;
-}
+let currentScenarioId = null;
 
 async function main() {
   const root = document.getElementById("scenario-detail");
@@ -28,7 +18,7 @@ async function main() {
   }
 
   try {
-    // ★修正: players（プレイヤーマスタ）も取得して名前解決に使う
+    // 卓にはプレイヤーIDだけが残るため、表示名へ解決するマスタも同時取得する。
     const [scenarios, runs, sessions, characters, characterIds, playersData] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
@@ -38,7 +28,7 @@ async function main() {
       Utils.apiGet("players").catch(() => []) 
     ]);
 
-    // ★修正: プレイヤー情報のID/名前解決用マップを作成
+    // 卓ごとの反復検索を避けつつ欠損IDも扱えるよう、名前解決用Mapを作る。
     const playerMapById = new Map();
     const playerMapByName = new Map();
     if (Array.isArray(playersData)) {
@@ -114,7 +104,7 @@ async function main() {
       .map(row => row?.character_id)
       .filter(Boolean);
     
-    // ★追加: もし未同期の古いデータがあれば、「終了済(done)」の卓情報から自動でかき集めるフォールバック処理
+    // 関連テーブルへ未同期の旧データも表示できるよう、終了済み卓から通過者を補完する。
     if (passedCharIds.length === 0) {
         const doneRunCharIds = doneRuns.flatMap(r => Array.isArray(r.characters) ? r.characters : []);
         passedCharIds = [...new Set(doneRunCharIds)];
@@ -150,7 +140,7 @@ async function main() {
       `
       : `<p class="scenario-detail-muted"><small>通過キャラクターはまだ登録されていません</small></p>`;
 
-    // ★修正: renderRunCardにプレイヤーマップを渡す
+    // カード内でIDを露出させないよう、共通の名前解決Mapを描画処理へ渡す。
     root.innerHTML = `
       <header class="scenario-detail-header">
         <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
@@ -175,7 +165,7 @@ async function main() {
             <div><strong>プレイ時間:</strong> ${scenario.play_time_minutes ?? 180}分 (約 ${Math.round((scenario.play_time_minutes ?? 180) / 60 * 10) / 10}時間)</div>
             <div><strong>ロスト率:</strong> ${scenario.lost_rate === 'high' ? '高' : (scenario.lost_rate === 'mid' ? '中' : '低')}</div>
           </div>
-          ${getTrendTagsHtml(scenario)}
+          ${Utils.getTrendTagsHtml(scenario, { detailed: true })}
           <div class="scenario-base-info">
             ${scenario.notes ? `<div><strong>基本情報:</strong><br>${Utils.renderMultilineText(scenario.notes)}</div>` : ""}
           </div>
@@ -334,16 +324,16 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     }
 });
 
-// ★修正: playerMapを引数で受け取り、名前解決を行う
+// 卓の保存値はIDのまま保ち、表示時だけMapで名前へ解決する。
 function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, playerMapByName) {
   const title = Utils.escapeHtml(r.title ?? r.id);
   
-  // ★GMの解決
+  // 新形式のgm_idを優先し、旧形式の文字列gmも表示互換として残す。
   const gmObj = playerMapById.get(r.gm_id) || playerMapByName.get(r.gm);
   const gmName = gmObj ? gmObj.player_name : (r.gm || '—');
   const gm = Utils.escapeHtml(gmName);
   
-  // ★PLの解決
+  // ID配列がない旧卓では、従来のplayers配列を表示用フォールバックに使う。
   const targetPlayers = (Array.isArray(r.player_ids) && r.player_ids.length > 0) ? r.player_ids : (Array.isArray(r.players) ? r.players : []);
   const resolvedPlayers = targetPlayers.map(identifier => {
       const pObj = playerMapById.get(identifier) || playerMapByName.get(identifier);
@@ -377,3 +367,4 @@ function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, 
 }
 
 Utils.domReady(main);
+})();

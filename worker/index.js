@@ -1,4 +1,83 @@
-import nacl from 'tweetnacl'; // これでライブラリを読み込みます
+// フロント向けAPI、Supabase中継、Discord連携、定期通知を担うWorkerの実エントリ。
+import nacl from 'tweetnacl'; // Discord Interactionを信頼する前にEd25519署名を検証する。
+
+// worker/worker.js は実エントリではなく、このファイルをデプロイ対象として扱う。
+// URLやテーブル名の散在は変更漏れを生むため、外部契約に関わる固定値をここへ集約する。
+const SITE_URL = "https://ronitoak.github.io/FCTZS-TRPG";
+const GITHUB_IMAGE_BASE_URL = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img";
+const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
+const DISCORD_DEFAULT_NAME = "右坂 弦介";
+const DISCORD_SESSION_DEFAULT_AVATAR_URL = `${GITHUB_IMAGE_BASE_URL}/scenario/c-001.png?raw=true`;
+const DISCORD_CHARACTER_DEFAULT_AVATAR_URL = `${GITHUB_IMAGE_BASE_URL}/character/c-001.png?raw=true`;
+const DISCORD_COLORS = Object.freeze({
+  sessionNotice: 15158332,
+  recruitment: 3447003,
+  recruitmentFulfilled: 3066993
+});
+
+const SUPABASE_TABLES = Object.freeze({
+  comments: "comments",
+  characters: "characters",
+  characterScenarios: "character_scenarios",
+  characterAttributes: "character_attributes",
+  characterSkills: "character_skills",
+  characterLastSession: "character_last_session",
+  characterDetailsView: "v_character_details",
+  characterSkillList: "character_skill_list",
+  players: "players",
+  playerProfiles: "player_profiles",
+  playerAvailability: "player_availability",
+  scenarios: "scenarios",
+  scenarioListView: "scenario_list",
+  runs: "runs",
+  sessions: "sessions",
+  sessionListView: "session_list",
+  recruitments: "recruitments",
+  recruitmentApplicants: "recruitment_applicants",
+  posts: "posts",
+  systemAttributes: "system_attributes",
+  systemSkillBases: "system_skill_bases",
+  nightreignCharacters: "nightreign_characters",
+  nightreignSlotPresets: "nightreign_slot_presets",
+  nightreignRelicEffects: "nightreign_relic_effects",
+  nightreignUserRelics: "nightreign_user_relics"
+});
+
+const PATCH_ALLOWED_RESOURCES = Object.freeze([
+  SUPABASE_TABLES.sessions,
+  SUPABASE_TABLES.characters,
+  SUPABASE_TABLES.scenarios,
+  SUPABASE_TABLES.characterAttributes,
+  SUPABASE_TABLES.characterSkills,
+  SUPABASE_TABLES.recruitments,
+  SUPABASE_TABLES.recruitmentApplicants,
+  SUPABASE_TABLES.playerProfiles
+]);
+
+const DELETE_ALLOWED_RESOURCES = Object.freeze([
+  SUPABASE_TABLES.runs,
+  SUPABASE_TABLES.sessions,
+  SUPABASE_TABLES.characters,
+  SUPABASE_TABLES.scenarios,
+  SUPABASE_TABLES.characterAttributes,
+  SUPABASE_TABLES.characterSkills,
+  SUPABASE_TABLES.recruitments,
+  SUPABASE_TABLES.recruitmentApplicants
+]);
+
+const UPSERT_ENDPOINTS = Object.freeze({
+  "/api/character_skills": `/rest/v1/${SUPABASE_TABLES.characterSkills}`,
+  "/api/character_scenarios": `/rest/v1/${SUPABASE_TABLES.characterScenarios}`,
+  "/api/character_attributes": `/rest/v1/${SUPABASE_TABLES.characterAttributes}`,
+  "/api/player_availability": `/rest/v1/${SUPABASE_TABLES.playerAvailability}`
+});
+
+const SIMPLE_INSERT_ENDPOINTS = Object.freeze({
+  "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}`,
+  "/api/player_profiles": `/rest/v1/${SUPABASE_TABLES.playerProfiles}`,
+  "/api/posts": `/rest/v1/${SUPABASE_TABLES.posts}`,
+  "/api/nightreign/user_relics": `/rest/v1/${SUPABASE_TABLES.nightreignUserRelics}`
+});
 
 // 署名検証用の補助関数
 function hexToUint8Array(hex) {
@@ -15,10 +94,10 @@ function hexToUint8Array(hex) {
 * @param {string} customAvatarUrl - カスタムアバターURL
 */
 async function sendDiscordNotification(content, embed, env, webhookUrl, customUsername = null, customAvatarUrl = null) {
-  console.log("Discord通知を開始します..."); // これを追加
+  console.log("Discord通知を開始します..."); // 外部通知の開始点をWorkerログで追跡できるようにする。
   const url = webhookUrl || env.DISCORD_WEBHOOK_URL;
   if (!url) {
-    console.log("URLが見つかりません"); // これを追加
+    console.log("URLが見つかりません"); // 通知先未設定は定期処理全体を失敗させず、通知だけを省略する。
     return;
   }; // URLが設定されていなければ何もしない
 
@@ -37,10 +116,10 @@ async function sendDiscordNotification(content, embed, env, webhookUrl, customUs
   });
 }
 
-// charactersテーブルからリストを取得する関数に変更
+// Discord通知の表示名候補だけに用途を絞り、キャラクターのIDと名前を軽量取得する。
 async function getCharacterList(env) {
   try {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/characters?select=id,name`, {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characters}?select=id,name`, {
       headers: {
         apikey: env.SUPABASE_ANON_KEY,
         Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -56,103 +135,53 @@ async function getCharacterList(env) {
   return [];
 }
 
-// charactersテーブルからランダムに1件取得する関数
-async function getRandomCharacter(env) {
-  try {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/characters?select=id,name`, {
-      headers: {
-        apikey: env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-      }
-    });
-    
-    if (res.ok) {
-      const characters = await res.json();
-      if (characters && characters.length > 0) {
-        // 取得したリストからランダムに1つ選択
-        const randomIndex = Math.floor(Math.random() * characters.length);
-        return characters[randomIndex];
-      }
-    }
-  } catch (err) {
-    console.error("キャラクター取得エラー:", err);
+/**
+ * 通知ごとに一度だけランダム選択し、画像が存在する場合だけキャラ名・画像へ差し替える。
+ * フォールバック画像は通知種別で異なるため引数で受け、従来payloadを維持する。
+ */
+async function resolveDiscordCharacterIdentity(characters, defaultAvatarUrl) {
+  let customName = DISCORD_DEFAULT_NAME;
+  let customAvatar = defaultAvatarUrl;
+  let randomChar = null;
+
+  if (characters.length > 0) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    randomChar = characters[randomIndex];
   }
-  return null;
+
+  if (randomChar) {
+    const targetUrl = `${GITHUB_IMAGE_BASE_URL}/character/${randomChar.id}.png?raw=true`;
+    try {
+      const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
+      if (imgCheck.ok) {
+        customName = randomChar.name;
+        customAvatar = targetUrl;
+      }
+    } catch (err) {
+      console.error("画像チェックエラー:", err);
+    }
+  }
+
+  return { customName, customAvatar };
 }
 
 export default {
   async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    // 1. CORS Preflight リクエスト (OPTIONS)
-    if (request.method === "OPTIONS") {
-      return handleOptions();
-    }
-
-    // DiscordからのInteraction(ボタン押下など)専用エンドポイント
-    if (request.method === "POST" && url.pathname === "/api/interactions") {
-      const signature = request.headers.get('X-Signature-Ed25519');
-      const timestamp = request.headers.get('X-Signature-Timestamp');
-      const body = await request.text();
-
-      // 【重要】署名検証
-      // これがないとDiscord Developer PortalでURLを保存できません
-      const isVerified = nacl.sign.detached.verify(
-        new TextEncoder().encode(timestamp + body),
-        hexToUint8Array(signature),
-        hexToUint8Array(env.DISCORD_PUBLIC_KEY)
-      );
-
-      if (!isVerified) {
-        return new Response('Invalid request signature', { status: 401 });
-      }
-
-      const interaction = JSON.parse(body);
-
-      // PING (接続確認) への応答
-      if (interaction.type === 1) {
-        return new Response(JSON.stringify({ type: 1 }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // ボタン押下 (MESSAGE_COMPONENT) への応答
-      if (interaction.type === 3) {
-        const customId = interaction.data.custom_id;
-        if (customId.startsWith("join_")) {
-          const recruitmentId = customId.replace("join_", "");
-          
-          // 前に作ったSupabase更新関数を呼び出す
-          ctx.waitUntil(registerParticipant(recruitmentId, interaction.member.user, env));
-
-          return new Response(JSON.stringify({
-            type: 4,
-            data: { content: "参加希望を受け付けました！", flags: 64 }
-          }), { headers: { 'Content-Type': 'application/json' } });
-        }
-      }
-    }
-
-    // ==========================================
-    // 各メソッドへの振り分け（ルーティング）
-    // ==========================================
-    try {
-      if (request.method === "GET")    return await handleGet(request, env, url);
-      if (request.method === "POST")   return await handlePost(request, env, ctx, url);
-      if (request.method === "PATCH")  return await handlePatch(request, env, ctx, url); 
-      if (request.method === "DELETE") return await handleDelete(request, env, url);
-
-      return new Response("Method not allowed", { status: 405 });
-    } catch (e) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
-    }
-
+    return handleFetch(request, env, ctx);
   },
 
-  // セッション通知処理
-  // セッション通知処理
   async scheduled(event, env, ctx) {
-    ctx.waitUntil((async () => {
+    // Cronの完了をCloudflareへ伝えるため、従来どおりwaitUntilへ単一Promiseを渡す。
+    ctx.waitUntil(runScheduledTasks(env));
+  }
+};
+
+async function runScheduledTasks(env) {
+  await notifyScheduledSessions(env);
+  await deleteExpiredRecruitments(env);
+}
+
+async function notifyScheduledSessions(env) {
       // ==========================================
       // ---- 1. 本日のセッション通知処理 ----
       // ==========================================
@@ -163,7 +192,7 @@ export default {
         const startDate = encodeURIComponent(now.toISOString());
         const endDate = encodeURIComponent(tomorrow.toISOString());
 
-        const { res: sessionRes, text: sessionText } = await sbFetch(env, null, `/rest/v1/sessions?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`);
+        const { res: sessionRes, text: sessionText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.sessions}?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`);
         
         if (!sessionRes.ok) {
           console.error("Supabase APIエラー(Sessions):", sessionText);
@@ -172,7 +201,7 @@ export default {
 
           if (!Array.isArray(upcomingSessions) || upcomingSessions.length === 0) {
             console.log("本日の予定セッションはありません。");
-            // ★ `return;` を削除し、後続の処理（自動削除）が必ず走るようにしました
+            // 通知対象がなくても、別責務である期限切れ募集の削除は継続させる。
           } else {
             // --- セッション情報から卓情報を取得 ---
             const runIds = [...new Set(upcomingSessions.map(s => s.run_id).filter(Boolean))];
@@ -180,7 +209,7 @@ export default {
             
             if (runIds.length > 0) {
               const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/runs?select=*&id=in.${runIdsParam}`);
+              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=*&id=in.${runIdsParam}`);
               
               if (runsRes.ok) {
                 const runsData = JSON.parse(runsText);
@@ -191,7 +220,7 @@ export default {
             }
 
             // --- プレイヤー情報を一括取得 ---
-            const { res: mapRes, text: mapText } = await sbFetch(env, null, `/rest/v1/players?select=player_id,player_name,discord_id`);
+            const { res: mapRes, text: mapText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,discord_id`);
             const allPlayers = mapRes.ok ? JSON.parse(mapText) : [];
             
             const playerMapById = new Map(allPlayers.map(p => [String(p.player_id), p]));
@@ -236,27 +265,10 @@ export default {
 
               const notificationLine = mentions.length > 0 ? [...new Set(mentions)].join(" ") : "";
 
-              let randomChar = null;
-              if (availableCharacters.length > 0) {
-                const randomIndex = Math.floor(Math.random() * availableCharacters.length);
-                randomChar = availableCharacters[randomIndex];
-              }
-
-              let customName = "右坂 弦介"; 
-              let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/c-001.png?raw=true";
-
-              if (randomChar) {
-                const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
-                try {
-                  const imgCheck = await fetch(targetUrl, { method: 'HEAD' }); 
-                  if (imgCheck.ok) {
-                    customName = randomChar.name;
-                    customAvatar = targetUrl;
-                  }
-                } catch (err) {
-                  console.error("画像チェックエラー:", err);
-                }
-              }
+              const { customName, customAvatar } = await resolveDiscordCharacterIdentity(
+                availableCharacters,
+                DISCORD_SESSION_DEFAULT_AVATAR_URL
+              );
 
               // --- Discordへ送信 ---
               await sendDiscordNotification(
@@ -264,8 +276,8 @@ export default {
                 {
                   title: `卓名：${runTitle} （${sessionTitle}）`,
                   description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${gmName}\n\n**【PL】**\n${displayPlayerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
-                  color: 15158332,
-                  url: `https://ronitoak.github.io/FCTZS-TRPG/sessions/detail.html?id=${session.run_id}`
+                  color: DISCORD_COLORS.sessionNotice,
+                  url: `${SITE_URL}/sessions/detail.html?id=${session.run_id}`
                 },
                 env,
                 env.DISCORD_WEBHOOK_URL, 
@@ -278,7 +290,9 @@ export default {
       } catch (err) {
         console.error("定期実行エラー(Session):", err);
       }
+}
 
+async function deleteExpiredRecruitments(env) {
       // ==========================================
       // ---- 2. 1ヶ月経過した募集の自動削除 ----
       // ==========================================
@@ -286,10 +300,10 @@ export default {
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
         
-        // ★念のためURLエンコードを適用し、通信エラーを防ぎます
+        // ISO日時の記号がPostgREST条件として誤解釈されないよう、クエリ値をエンコードする。
         const thresholdISO = encodeURIComponent(oneMonthAgo.toISOString());
 
-        const { res: fetchOldRes, text: fetchOldText } = await sbFetch(env, null, `/rest/v1/recruitments?created_at=lt.${thresholdISO}&select=id`);
+        const { res: fetchOldRes, text: fetchOldText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitments}?created_at=lt.${thresholdISO}&select=id`);
         
         if (fetchOldRes.ok) {
           const oldRecruits = JSON.parse(fetchOldText);
@@ -298,8 +312,8 @@ export default {
             const oldIds = oldRecruits.map(r => r.id);
             const deleteIdsQuery = `(${oldIds.map(id => encodeURIComponent(id)).join(',')})`;
 
-            await sbFetch(env, null, `/rest/v1/recruitment_applicants?recruitment_id=in.${deleteIdsQuery}`, { method: 'DELETE' });
-            await sbFetch(env, null, `/rest/v1/recruitments?id=in.${deleteIdsQuery}`, { method: 'DELETE' });
+            await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=in.${deleteIdsQuery}`, { method: 'DELETE' });
+            await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitments}?id=in.${deleteIdsQuery}`, { method: 'DELETE' });
 
             console.log(`${oldRecruits.length}件の募集を自動削除しました。`);
           }
@@ -307,15 +321,101 @@ export default {
       } catch (err) {
         console.error("募集の自動削除エラー:", err);
       }
-    })());
-  }
-};
+}
 
 // 共通のヘッダー設定
 const jsonHeaders = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*"
 };
+
+// path・query・返却形式が完全に同じGETだけを宣言表へ寄せる。
+const FIXED_GET_PROXY_ROUTES = Object.freeze({
+  "/api/character_last_session": `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=*`,
+  "/api/scenario_list": `/rest/v1/${SUPABASE_TABLES.scenarioListView}?select=id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate`,
+  "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=*`,
+  "/api/session_list": `/rest/v1/${SUPABASE_TABLES.sessionListView}?select=*`,
+  "/api/nightreign/characters": `/rest/v1/${SUPABASE_TABLES.nightreignCharacters}?select=*&order=id.asc`,
+  "/api/nightreign/relic_effects": `/rest/v1/${SUPABASE_TABLES.nightreignRelicEffects}?select=*&order=category.asc,effect_name.asc`,
+  "/api/nightreign/user_relics": `/rest/v1/${SUPABASE_TABLES.nightreignUserRelics}?select=*&order=created_at.desc`
+});
+
+/**
+ * HTTP入口の優先順位を固定する。
+ * Interactionは通常POSTと本文の読み方が異なるため、汎用ルーターより先に分離する。
+ */
+async function handleFetch(request, env, ctx) {
+  const url = new URL(request.url);
+
+  if (request.method === "OPTIONS") {
+    return handleOptions();
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/interactions") {
+    const interactionResponse = await handleInteraction(request, env, ctx);
+    if (interactionResponse !== undefined) {
+      return interactionResponse;
+    }
+    // 未対応Interactionは従来どおり通常POSTへ流し、本文再読込時の既存エラー挙動を保つ。
+  }
+
+  try {
+    return await routeApiRequest(request, env, ctx, url);
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+  }
+}
+
+/**
+ * method判定を一か所に保ち、各ハンドラーには従来と同じ引数を渡す。
+ * 未知GET等は既存ハンドラーのundefinedをそのまま返し、404へ補正しない。
+ */
+async function routeApiRequest(request, env, ctx, url) {
+  if (request.method === "GET")    return await handleGet(request, env, url);
+  if (request.method === "POST")   return await handlePost(request, env, ctx, url);
+  if (request.method === "PATCH")  return await handlePatch(request, env, ctx, url);
+  if (request.method === "DELETE") return await handleDelete(request, env, url);
+
+  return new Response("Method not allowed", { status: 405 });
+}
+
+async function handleInteraction(request, env, ctx) {
+  const signature = request.headers.get('X-Signature-Ed25519');
+  const timestamp = request.headers.get('X-Signature-Timestamp');
+  const body = await request.text();
+
+  // Discord Developer Portalの登録要件なので、本文解釈より先に署名を検証する。
+  const isVerified = nacl.sign.detached.verify(
+    new TextEncoder().encode(timestamp + body),
+    hexToUint8Array(signature),
+    hexToUint8Array(env.DISCORD_PUBLIC_KEY)
+  );
+
+  if (!isVerified) {
+    return new Response('Invalid request signature', { status: 401 });
+  }
+
+  const interaction = JSON.parse(body);
+
+  if (interaction.type === 1) {
+    return new Response(JSON.stringify({ type: 1 }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (interaction.type === 3) {
+    const customId = interaction.data.custom_id;
+    if (customId.startsWith("join_")) {
+      const recruitmentId = customId.replace("join_", "");
+      ctx.waitUntil(registerParticipant(recruitmentId, interaction.member.user, env));
+
+      return new Response(JSON.stringify({
+        type: 4,
+        data: { content: "参加希望を受け付けました！", flags: 64 }
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+}
 
 function handleOptions() {
   return new Response(null, {
@@ -334,7 +434,7 @@ function handleOptions() {
 async function sbFetch(env, request, pathAndQuery, options = {}) {
   const url = `${env.SUPABASE_URL}${pathAndQuery}`;
   
-  // ★修正：request に「?」をつけて、nullの時はそのままnullにする（安全確認）
+  // 利用者認証を引き継ぐ経路だけBearerを採用し、内部処理は匿名キーへ明示的にフォールバックする。
   const authHeader = request?.headers?.get("Authorization");
 
   const headers = {
@@ -359,19 +459,24 @@ async function sbFetch(env, request, pathAndQuery, options = {}) {
 }
 
 async function handleGet(request, env, url) {
+    const fixedProxyPath = FIXED_GET_PROXY_ROUTES[url.pathname];
+    if (fixedProxyPath) {
+      const { res, text } = await sbFetch(env, request, fixedProxyPath);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
 
     // ---- Comments (既存保持) ----
     if (request.method === "GET" && url.pathname === "/api/comments") {
       const target_type = url.searchParams.get("target_type");
       const target_id = url.searchParams.get("target_id");
-      const apiUrl = `/rest/v1/comments?select=*&target_type=eq.${target_type}&target_id=eq.${target_id}&order=created_at.asc`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.comments}?select=*&target_type=eq.${target_type}&target_id=eq.${target_id}&order=created_at.asc`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/comments/recent") {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
-      const apiUrl = `/rest/v1/comments?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.comments}?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -388,7 +493,7 @@ async function handleGet(request, env, url) {
       const scenarioId = url.searchParams.get("scenario_id");
 
       if (scenarioId) {
-        const csRes = await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`, {
+        const csRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characterScenarios}?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`, {
           headers: {
             apikey: env.SUPABASE_ANON_KEY,
             Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
@@ -420,33 +525,28 @@ async function handleGet(request, env, url) {
       queryParams.push("select=*,players(player_name)");
       queryParams.push("order=id.desc");
 
-      const apiUrl = `/rest/v1/characters?${queryParams.join("&")}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.characters}?${queryParams.join("&")}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/character_last_session") {
-      const { res, text } = await sbFetch(env, request,"/rest/v1/character_last_session?select=*");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_details") {
       const id = url.searchParams.get("id");
-      const { res, text } = await sbFetch(env, request, `/rest/v1/v_character_details?id=eq.${encodeURIComponent(id)}`);
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characterDetailsView}?id=eq.${encodeURIComponent(id)}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- Schedule & Players ----
-    // ★追加：プレイヤープロフィールの取得を開通
+    // プロフィールはプレイヤー本体と別管理のため、画面側が結合できる取得経路を公開する。
     if (request.method === "GET" && url.pathname === "/api/player_profiles") {
-      const apiUrl = `/rest/v1/player_profiles${url.search || "?select=*"}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.playerProfiles}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // プレイヤー一覧の取得
     if (request.method === "GET" && url.pathname === "/api/players") {
-      const apiUrl = `/rest/v1/players${url.search || "?select=*"}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.players}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -454,7 +554,7 @@ async function handleGet(request, env, url) {
     // プレイヤーの予定を取得
     if (request.method === "GET" && url.pathname === "/api/player_availability") {
       // フロントから送られたクエリパラメータ（?select=...&player_id=...）をそのままSupabaseに渡す
-      const apiUrl = `/rest/v1/player_availability${url.search}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.playerAvailability}${url.search}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -470,7 +570,7 @@ async function handleGet(request, env, url) {
       const playerIds = playerIdsStr.split(",");
       const encodedIds = playerIds.map(id => encodeURIComponent(id)).join(",");
       
-      const { res, text } = await sbFetch(env, request,`/rest/v1/player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.playerAvailability}?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`);
       
       if (!res.ok) return new Response(text, { status: res.status, headers: jsonHeaders });
 
@@ -524,7 +624,7 @@ async function handleGet(request, env, url) {
       queryParams.push("select=id,title,system,author,description,notes,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate");
       queryParams.push("order=updated_at.desc");
 
-      const apiUrl = `/rest/v1/scenarios?${queryParams.join("&")}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.scenarios}?${queryParams.join("&")}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -534,7 +634,7 @@ async function handleGet(request, env, url) {
       const charId = url.searchParams.get("character_id");
       
       // キャラクター詳細でもシナリオ詳細でも使えるように select=* にする
-      let apiUrl = `/rest/v1/character_scenarios?select=*`;
+      let apiUrl = `/rest/v1/${SUPABASE_TABLES.characterScenarios}?select=*`;
       
       if (scenarioId) {
         apiUrl += `&scenario_id=eq.${encodeURIComponent(scenarioId)}`;
@@ -550,18 +650,11 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
-    // scenario_list ビュー（もしDB側でビューを使っている場合）の取得
-    if (request.method === "GET" && url.pathname === "/api/scenario_list") {
-      // ビューの定義もDB側で更新が必要ですが、Worker側でも安全にカラムを指定します
-      const { res, text } = await sbFetch(env, request,"/rest/v1/scenario_list?select=id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate");
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
     // ---- Runs & Sessions (既存保持) ----
     if (request.method === "GET" && url.pathname === "/api/runs") {
       let queryParams = [];
 
-      // ★修正: gm -> gm_id に変更
+      // 表示名の変更に左右されない新形式gm_idで検索し、保存契約と揃える。
       const gmId = url.searchParams.get("gm_id"); 
       const status = url.searchParams.get("status");
       const keyword = url.searchParams.get("keyword");
@@ -577,7 +670,7 @@ async function handleGet(request, env, url) {
       queryParams.push("select=*");
       queryParams.push("order=updated_at.desc");
 
-      const apiUrl = `/rest/v1/runs?${queryParams.join("&")}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.runs}?${queryParams.join("&")}`;
       
       // 1. 従来通りruns（セッションデータ）をSupabaseから取得
       const { res, text } = await sbFetch(env, request,apiUrl);
@@ -593,7 +686,7 @@ async function handleGet(request, env, url) {
       if (Array.isArray(runs) && runs.length > 0) {
         try {
           // 2. プレイヤーの名前マスタ（IDと名前のセット）を紐づけ用に一括取得
-          const { text: playersText } = await sbFetch(env, request,"/rest/v1/players?select=player_id,player_name");
+          const { text: playersText } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name`);
           const players = JSON.parse(playersText);
           
           if (Array.isArray(players)) {
@@ -605,7 +698,7 @@ async function handleGet(request, env, url) {
               // gm_id から GMの名前を取得して gm_name カラムを作る。なければ従来のgm値をフォールバック
               run.gm_name = playerMap.get(run.gm_id) || run.gm || "未設定";
 
-              // player_ids（ID配列）から、プレイヤーの名前配列（player_names）を作成して追加
+              // 通知先ではIDを判読できないため、player_idsを表示名配列へ解決する。
               if (Array.isArray(run.player_ids)) {
                 run.player_names = run.player_ids.map(id => playerMap.get(id) || id);
               } else {
@@ -627,32 +720,21 @@ async function handleGet(request, env, url) {
     // ---- Recruit ----   
     // 募集一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitments") {
-      const apiUrl = `/rest/v1/recruitments${url.search || "?select=*"}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.recruitments}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
         // 応募者一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitment_applicants") {
-      const apiUrl = `/rest/v1/recruitment_applicants${url.search || "?select=*"}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
-    // ---- sessions ---- 
-        if (request.method === "GET" && url.pathname === "/api/sessions") {
-      const { res, text } = await sbFetch(env, request,"/rest/v1/sessions?select=*");
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/session_list") {
-      const { res, text } = await sbFetch(env, request,"/rest/v1/session_list?select=*");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/sessions/detail") {
       const id = url.searchParams.get("id");
-      const { res, text } = await sbFetch(env, request,`/rest/v1/sessions?select=*&id=eq.${id}`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.sessions}?select=*&id=eq.${id}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -660,26 +742,26 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/system_attributes") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
-      const { res, text } = await sbFetch(env, request,`/rest/v1/system_attributes${query}`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.systemAttributes}${query}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/system_skill_bases") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
-      const { res, text } = await sbFetch(env, request,`/rest/v1/system_skill_bases${query}`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.systemSkillBases}${query}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_skill_list") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbFetch(env, request,`/rest/v1/character_skill_list?character_id=eq.${charId}`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.characterSkillList}?character_id=eq.${charId}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_attributes") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbFetch(env, request,`/rest/v1/character_attributes?character_id=eq.${charId}`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.characterAttributes}?character_id=eq.${charId}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -687,15 +769,8 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/posts") {
       // 最新の50件を取得
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 100);
-      const apiUrl = `/rest/v1/posts?select=*&order=created_at.desc&limit=${limit}`;
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.posts}?select=*&order=created_at.desc&limit=${limit}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
-    // ---- ここからナイトレインツール ----
-    // キャラクターマスタ取得
-    if (request.method === "GET" && url.pathname === "/api/nightreign/characters") {
-      const { res, text } = await sbFetch(env, request,"/rest/v1/nightreign_characters?select=*&order=id.asc");
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -704,21 +779,10 @@ async function handleGet(request, env, url) {
       const charId = url.searchParams.get("character_id");
       if (!charId) return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
       
-      const { res, text } = await sbFetch(env, request,`/rest/v1/nightreign_slot_presets?select=*&character_id=eq.${charId}&order=created_at.asc`);
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.nightreignSlotPresets}?select=*&character_id=eq.${charId}&order=created_at.asc`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
-    // 遺物効果マスタ取得
-    if (request.method === "GET" && url.pathname === "/api/nightreign/relic_effects") {
-      const { res, text } = await sbFetch(env, request,"/rest/v1/nightreign_relic_effects?select=*&order=category.asc,effect_name.asc");
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
-    // ユーザー所持遺物の取得
-    if (request.method === "GET" && url.pathname === "/api/nightreign/user_relics") {
-      const { res, text } = await sbFetch(env, request,"/rest/v1/nightreign_user_relics?select=*&order=created_at.desc");
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
 }
 
 async function handlePost(request, env, ctx, url) {
@@ -763,37 +827,30 @@ async function handlePost(request, env, ctx, url) {
 
     // ---- Comments ----
     if (url.pathname === "/api/comments") {
-      const { res, text } = await sbFetch(env, null, "/rest/v1/comments", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- Characters (一括作成) ----
     if (url.pathname === "/api/character_full") {
       const { character, attributes, skills } = body;
-      const { res: charRes, text: charText } = await sbFetch(env, null, "/rest/v1/characters", { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
+      const { res: charRes, text: charText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.characters}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
       if (!charRes.ok) return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
       
       const newCharId = JSON.parse(charText)[0].id;
 
       if (attributes?.length > 0) {
-        await sbFetch(env, null, "/rest/v1/character_attributes", { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
+        await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.characterAttributes}`, { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
       }
       if (skills?.length > 0) {
-        await sbFetch(env, null, "/rest/v1/character_skills", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
+        await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.characterSkills}`, { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
       }
       return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
     }
 
-    // ---- 各種 Upsert (更新付き追加) 系 ----
-    const upsertEndpoints = {
-      "/api/character_skills": "/rest/v1/character_skills",
-      "/api/character_scenarios": "/rest/v1/character_scenarios",
-      "/api/character_attributes": "/rest/v1/character_attributes",
-      "/api/player_availability": "/rest/v1/player_availability"
-    };
-
-    if (upsertEndpoints[url.pathname]) {
-      const { res, text } = await sbFetch(env, null, upsertEndpoints[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
+    // 複合キーの重複を通常更新として扱う資源だけ、宣言済み経路でUpsertする。
+    if (UPSERT_ENDPOINTS[url.pathname]) {
+      const { res, text } = await sbFetch(env, null, UPSERT_ENDPOINTS[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
       if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -815,22 +872,22 @@ async function handlePost(request, env, ctx, url) {
         play_time_minutes: body.play_time_minutes !== undefined ? parseInt(body.play_time_minutes, 10) : 180,
         lost_rate: body.lost_rate || 'low'
       };
-      const { res, text } = await sbFetch(env, null, "/rest/v1/scenarios", { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
+      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.scenarios}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
     if (url.pathname === "/api/runs") {
-      const { res, text } = await sbFetch(env, null, "/rest/v1/runs", { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
       const insertedData = JSON.parse(text);
       if (insertedData && insertedData[0]) ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
-    // ★ 募集関係の処理の呼び出し
+    // 募集保存の応答を先に確定し、Discord通知はwaitUntilで非同期に継続する。
     if (url.pathname === "/api/recruitments") {
-      const { res, text } = await sbFetch(env, null, "/rest/v1/recruitments", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
       if (res.ok) {
         const insertedData = JSON.parse(text);
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
@@ -840,7 +897,7 @@ async function handlePost(request, env, ctx, url) {
     }
 
     if (url.pathname === "/api/recruitment_applicants") {
-      const { res, text } = await sbFetch(env, null, "/rest/v1/recruitment_applicants", { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
       if (res.ok) {
         const payload = Array.isArray(body) ? body[0] : body;
         if (payload.recruitment_id || payload.recruit_id) {
@@ -851,18 +908,11 @@ async function handlePost(request, env, ctx, url) {
     }
 
     // ---- シンプルなInsert系 ----
-    const simpleInsertEndpoints = {
-      "/api/sessions": "/rest/v1/sessions",
-      "/api/player_profiles": "/rest/v1/player_profiles",
-      "/api/posts": "/rest/v1/posts",
-      "/api/nightreign/user_relics": "/rest/v1/nightreign_user_relics"
-    };
-
-    if (simpleInsertEndpoints[url.pathname]) {
-      const targetUrl = simpleInsertEndpoints[url.pathname];
+    if (SIMPLE_INSERT_ENDPOINTS[url.pathname]) {
+      const targetUrl = SIMPLE_INSERT_ENDPOINTS[url.pathname];
       const requestBody = url.pathname === "/api/player_profiles" ? body : [body];
       
-      // ★なりきりチャット（/api/posts）の時だけはユーザー証明書を渡す
+      // 投稿者単位のRLSを適用する必要があるチャットだけ、利用者の認証情報を引き継ぐ。
       const reqOrNull = url.pathname === "/api/posts" ? request : null;
       
       const { res, text } = await sbFetch(env, reqOrNull, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
@@ -881,10 +931,8 @@ async function handlePost(request, env, ctx, url) {
 async function handlePatch(request, env, ctx, url) {
   if (request.method === "PATCH") {
     const resource = url.pathname.replace("/api/", ""); 
-    const allowedResources = ["sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants", "player_profiles"];
-    
     // ① ホワイトリストに合致する汎用PATCH処理（強制ANON_KEY化するため request ではなく null を渡す）
-    if (allowedResources.includes(resource)) {
+    if (PATCH_ALLOWED_RESOURCES.includes(resource)) {
       try {
         const body = await request.json();
         const { res, text } = await sbFetch(env, null, `/rest/v1/${resource}${url.search}`, {
@@ -903,7 +951,7 @@ async function handlePatch(request, env, ctx, url) {
     if (url.pathname === "/api/runs") {
       try {
         const body = await request.json();
-        const { res, text } = await sbFetch(env, request, `/rest/v1/runs${url.search}`, {
+        const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`, {
           method: "PATCH",
           headers: { "Prefer": "return=representation" },
           body: body
@@ -924,9 +972,7 @@ async function handlePatch(request, env, ctx, url) {
 async function handleDelete(request, env, url) {
   if (request.method === "DELETE") {
     const resource = url.pathname.replace("/api/", ""); 
-    const allowedResources = ["runs", "sessions", "characters", "scenarios", "character_attributes", "character_skills", "recruitments", "recruitment_applicants"];
-    
-    if (allowedResources.includes(resource)) {
+    if (DELETE_ALLOWED_RESOURCES.includes(resource)) {
       try {
         // 強制ANON_KEY化するため null を渡す
         const { res, text } = await sbFetch(env, null, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
@@ -940,10 +986,10 @@ async function handleDelete(request, env, url) {
 }
 // character_scenarios を同期する共通関数
 async function syncCharacterScenarios(runData, env) {
-  // ★ステータス（status）も受け取るように追加
+  // 通過履歴は完了卓だけから作るため、同期判定に卓状態も含める。
   const { scenario_id, characters, user_id, status } = runData;
   
-  // ★追加: 卓が「完了(done)」になった時のみ通過履歴として一括登録する（自動化）
+  // 予定・進行中の参加者を通過済みにしないよう、完了時だけ関連を同期する。
   if (status !== 'done') {
     return;
   }
@@ -964,7 +1010,7 @@ async function syncCharacterScenarios(runData, env) {
   if (records.length === 0) return;
 
   // SupabaseへUpsertを実行
-  await fetch(`${env.SUPABASE_URL}/rest/v1/character_scenarios`, {
+  await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characterScenarios}`, {
     method: "POST",
     headers: {
       apikey: env.SUPABASE_ANON_KEY,
@@ -976,14 +1022,12 @@ async function syncCharacterScenarios(runData, env) {
   });
 }
 
-// ==========================================
-// 参加登録の共通関数（★ここにお引っ越し！）
-// ==========================================
+// Discordボタン経由の参加を同じ検証・重複制御・満員判定へ集約する。
 async function registerParticipant(recruitmentId, discordUser, env) {
   try {
     // 1. Discord ID を使って players テーブルから player_id を検索
     // ※ players テーブルに discord_id カラムがあることを前提としています
-    const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?discord_id=eq.${discordUser.id}&select=player_id,player_name`, {
+    const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.players}?discord_id=eq.${discordUser.id}&select=player_id,player_name`, {
       headers: {
         apikey: env.SUPABASE_ANON_KEY,
         Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -1003,7 +1047,7 @@ async function registerParticipant(recruitmentId, discordUser, env) {
     }
 
     // 2. recruitment_applicants テーブルへ登録（インサート）
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants`, {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, {
       method: "POST",
       headers: {
         apikey: env.SUPABASE_ANON_KEY,
@@ -1024,8 +1068,7 @@ async function registerParticipant(recruitmentId, discordUser, env) {
       throw new Error(`Insert failed: ${errorText}`);
     }
 
-    // ★ 追加: 登録成功時に満員チェックを走らせる
-    // （この関数自体がすでにctx.waitUntilの中で呼ばれているので、awaitでそのまま実行してOKです）
+    // 参加登録と満員通知の順序を保証するため、同じバックグラウンド処理内で完了を待つ。
     await checkAndNotifyIfFulfilled(recruitmentId, env);
 
     return { success: true, playerName: player.player_name };
@@ -1035,22 +1078,20 @@ async function registerParticipant(recruitmentId, discordUser, env) {
   }
 }
 
-// ==========================================
-// 募集時のDiscord通知処理（復活＆スリム化）
-// ==========================================
+// 募集登録後に、募集主とシナリオを解決してDiscordへ操作可能な通知を送る。
 async function recruited(data, env) {
   try {
     // 1. 募集者名とシナリオ名をIDから取得する (sbFetchを使用)
     const [playerRes, scenarioRes] = await Promise.all([
-      sbFetch(env, null, `/rest/v1/players?player_id=eq.${data.owner_player_id}&select=player_name`),
-      data.scenario_id ? sbFetch(env, null, `/rest/v1/scenarios?id=eq.${data.scenario_id}&select=id,title`) : Promise.resolve(null)
+      sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${data.owner_player_id}&select=player_name`),
+      data.scenario_id ? sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.scenarios}?id=eq.${data.scenario_id}&select=id,title`) : Promise.resolve(null)
     ]);
 
     const playerData = playerRes.res.ok ? JSON.parse(playerRes.text) : [];
     const scenarioData = (scenarioRes && scenarioRes.res.ok) ? JSON.parse(scenarioRes.text) : [];
     
     const scenarioId = data.scenario_id || "default";
-    const scenarioImageUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/scenario/${scenarioId}.png?raw=true`;
+    const scenarioImageUrl = `${GITHUB_IMAGE_BASE_URL}/scenario/${scenarioId}.png?raw=true`;
 
     const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
     const scenarioTitle = scenarioData[0]?.title || data.scenario_id || "シナリオ未設定";
@@ -1058,10 +1099,10 @@ async function recruited(data, env) {
     const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
     const count = data.target_count;
     const memo = data.memo || "詳細情報なし";
-    const detailUrl = `https://ronitoak.github.io/FCTZS-TRPG/recruit/index.html`;
+    const detailUrl = `${SITE_URL}/recruit/index.html`;
 
     // 2. Discordへ通知 (Bot Tokenを使用するためここは直接fetch)
-    await fetch(`https://discord.com/api/v10/channels/${env.RECRUIT_CHANNEL_ID}/messages`, {
+    await fetch(`${DISCORD_API_BASE_URL}/channels/${env.RECRUIT_CHANNEL_ID}/messages`, {
       method: "POST",
       headers: {
         "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
@@ -1073,7 +1114,7 @@ async function recruited(data, env) {
             image: { url: scenarioImageUrl },
             title: `【${role}募集】${scenarioTitle}`,
             description: `**【募集主】\n- ${recruiterName}**\n**【募集人数】**\n- ${count}人\n**【メモ】**\n${memo}`,
-            color: 3447003,
+            color: DISCORD_COLORS.recruitment,
             url: detailUrl,
         }],
         components: [
@@ -1104,12 +1145,12 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
 
   try {
     // 1. 募集の「目標人数」「ステータス」「募集主」「シナリオ」を取得
-    const recruitRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=eq.${recruitmentId}&select=target_count,owner_player_id,scenario_id,status`, {
+    const recruitRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${recruitmentId}&select=target_count,owner_player_id,scenario_id,status`, {
       headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
     });
     
     // 2. 現在の応募者リストを取得
-    const applicantsRes = await fetch(`${env.SUPABASE_URL}/rest/v1/recruitment_applicants?recruitment_id=eq.${recruitmentId}&select=player_id`, {
+    const applicantsRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${recruitmentId}&select=player_id`, {
       headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
     });
 
@@ -1120,11 +1161,11 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
       if (recruits.length > 0) {
         const recruit = recruits[0];
         
-        // ★ まだ「募集中 (open)」であり、かつ目標人数に達した場合のみ処理を実行
+        // 再通知を防ぐため、募集中から初めて定員へ到達した場合だけ状態更新と通知を行う。
         if (recruit.status === "open" && applicants.length >= recruit.target_count) {
           
           // ① ステータスを「満員 (fulfilled)」に自動更新 (PATCH)
-          await fetch(`${env.SUPABASE_URL}/rest/v1/recruitments?id=eq.${recruitmentId}`, {
+          await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${recruitmentId}`, {
             method: 'PATCH',
             headers: { 
               apikey: env.SUPABASE_ANON_KEY, 
@@ -1136,7 +1177,7 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
 
           // ② 募集主のDiscord IDを取得
           let ownerDiscordId = null;
-          const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/players?player_id=eq.${recruit.owner_player_id}&select=discord_id`, {
+          const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${recruit.owner_player_id}&select=discord_id`, {
             headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
           });
           if (playerRes.ok) {
@@ -1147,7 +1188,7 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
           // ③ シナリオ名を取得
           let scenarioTitle = "未定・オリジナル";
           if (recruit.scenario_id) {
-            const scRes = await fetch(`${env.SUPABASE_URL}/rest/v1/scenarios?id=eq.${recruit.scenario_id}&select=title`, {
+            const scRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.scenarios}?id=eq.${recruit.scenario_id}&select=title`, {
               headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
             });
             if (scRes.ok) {
@@ -1158,27 +1199,10 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
 
           // ④ ランダムキャラの取得とアイコン判定
           const availableCharacters = await getCharacterList(env);
-          let randomChar = null;
-          if (availableCharacters.length > 0) {
-            const randomIndex = Math.floor(Math.random() * availableCharacters.length);
-            randomChar = availableCharacters[randomIndex];
-          }
-
-          let customName = "右坂 弦介"; // フォールバック固定値
-          let customAvatar = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/c-001.png?raw=true";
-          
-          if (randomChar) {
-            const targetUrl = `https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/character/${randomChar.id}.png?raw=true`;
-            try {
-              const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
-              if (imgCheck.ok) {
-                customName = randomChar.name;
-                customAvatar = targetUrl;
-              }
-            } catch (e) {
-              console.error("画像チェックエラー:", e);
-            }
-          }
+          const { customName, customAvatar } = await resolveDiscordCharacterIdentity(
+            availableCharacters,
+            DISCORD_CHARACTER_DEFAULT_AVATAR_URL
+          );
 
           // ⑤ Discordへ通知
           const mention = ownerDiscordId ? `<@${ownerDiscordId}>` : `(募集主様)`;
@@ -1187,7 +1211,7 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
             {
               title: `✅ 募集満員：${scenarioTitle}`,
               description: `目標人数（${recruit.target_count}人）に達したため、募集ステータスを「満員」に自動更新しました！\n詳細画面のコメント欄などで、メンバーと日程の調整を進めてください。`,
-              color: 3066993 // 緑色
+              color: DISCORD_COLORS.recruitmentFulfilled // 緑色
             },
             env,
             env.DISCORD_WEBHOOK_URL,

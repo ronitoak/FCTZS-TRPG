@@ -9,10 +9,12 @@
 </head>
 <body>
    <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
         <h1>キャラクター新規作成</h1>
 
+        <!-- キャラクター登録フォーム：character_create.js がインポート・動的項目・登録を制御 -->
         <form id="character-form">
         <fieldset class="form-section">
             <legend>外部データインポート（いあきゃらの場合はテキスト出力の内容、エモクロアの場合はCCFOLIA形式でコピーした内容）</legend>
@@ -75,6 +77,7 @@
             </div>
         </fieldset>
 
+        <!-- システム別能力値・技能欄：character_create.js が選択システムに応じて生成 -->
         <div id="dynamic-fields-container"></div>
 
         <div id="custom-skill-actions" class="form-actions" style="margin-top: 20px; display: none;">

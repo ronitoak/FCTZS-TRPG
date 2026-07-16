@@ -1,5 +1,6 @@
 "use strict";
 
+// 共有の変更履歴データを、トップの最新件数表示と専用ページの全履歴表示へ描き分ける。
 (() => {
   const TYPE_META = {
     release: { label: "リリース", className: "release" },

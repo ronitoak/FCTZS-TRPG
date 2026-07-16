@@ -1,9 +1,12 @@
 "use strict";
 
+// 掲示板の投稿主体をログイン情報とキャラクター所有関係から確定し、安全な表示と投稿を一画面で担う。
+(() => {
+
 let characterList = [];
 let playerList = [];
 
-// 1. プレイヤーとキャラクターの両方を一度に取得する
+// 投稿者の選択肢を矛盾なく連動させるため、プレイヤーとキャラクターを同じ時点で取得する。
 async function loadMasterData() {
   try {
     // APIから並行してデータを取得
@@ -93,7 +96,7 @@ async function main() {
   await loadMasterData();
   await loadPosts();
 
-  // ★追加：ログイン状態をチェック
+  // なりすまし投稿を避けるため、フォームを操作可能にする前にログイン状態を確定する。
   const { data: { session } } = await window.supabase.auth.getSession();
   const form = Utils.$("bbs-form");
   
@@ -112,7 +115,7 @@ async function main() {
 
   // === 以下はログイン済みの時だけ実行される ===
 
-  // ★追加：プレイヤーを選択した瞬間にキャラクターを絞り込むイベント
+  // 所有者と異なるキャラクターを誤選択しないよう、プレイヤー変更時に候補を絞り込む。
   const playerSelect = Utils.$("bbs-player");
   if (playerSelect) {
     playerSelect.addEventListener("change", (e) => {
@@ -165,3 +168,4 @@ async function main() {
 }
 
 Utils.domReady(main);
+})();

@@ -1636,9 +1636,12 @@ ORDER BY created_at DESC;
 - anon: 全対象のSELECT成功、全INSERT/PATCH/DELETE失敗。
 - ログイン本人: 自分のデータのINSERT/PATCH/DELETE成功。
 - 別ログインユーザー: 他人のデータのPATCH/DELETE失敗。
+- 関連所有権: 他人のplayer予定・応募、他人のcharacter属性/技能/履歴、他人のrun sessionをINSERT/PATCH/DELETEできない。
+- 応募本人は自分の応募だけ取消可能。募集主は応募行を直接削除せず、募集削除のFK CASCADEで全応募も削除される。
 - comments: ログイン時だけ投稿成功し、`user_id=auth.uid()` になる。
 - runs更新時のSECURITY INVOKER triggerが、親run所有者としてjunctionを同期できる。
-- Discord応募、満員更新、Cron通知、期限切れ募集削除がService Role経路で成功する。
+- 履歴同期はGM/参加者所有characterだけ追加し、許可外・不明characterを除外する。
+- Discord応募、満員更新、Cron通知、期限切れ募集削除、検証済み履歴同期がService Role経路で成功する。
 - Service Role: 必要な内部処理だけ成功し、ブラウザNetworkにService Role Secretが出ない。
 
 ## 9. rollback
@@ -1799,13 +1802,13 @@ WHERE character_id = 'c-103'
 2. A-0 preflight。
 3. A-1 junction作成 → 検証。
 4. A-2 backfill・不足補完 → 配列一致検証。
-5. A-3互換trigger → UIスモーク。
-6. A-4 FK `NOT VALID`追加・`VALIDATE` → constraint確認。
-7. Phase Bビュー作成 → 旧APIと新APIの比較。
-8. Worker/APIを小さい単位で新ビュー・junction読取りへ切替 → API再計測。
-9. 既存index定義を確認後、重複しない限定indexだけ追加 → EXPLAIN比較。
-10. WorkerのBearer引継ぎ・Service Role内部処理を修正・確認。
-11. Phase C C-1 canonical policy → 4経路スモーク。
+5. 実装済みの認証版Worker/フロントをデプロイし、通常Bearer、R2 JWT検証、Service Role限定経路をステージング確認。
+6. A-3互換trigger → 認証済みrun INSERT/PATCHとjunction同期をUIスモーク。
+7. A-4 FK `NOT VALID`追加・`VALIDATE` → constraint確認。作成/skipを適用記録へ保存。
+8. Phase Bビュー作成 → 旧APIと新APIの比較。
+9. Worker/APIを小さい単位で新ビュー・junction読取りへ切替 → API再計測。
+10. 既存index定義を確認後、重複しない限定indexだけ追加 → EXPLAIN比較。作成/skipを適用記録へ保存。
+11. RLS状態・旧policy・rollback DDLを保存後、Phase C C-1 canonical policy → 関連所有権を含む4経路スモーク。
 12. 問題がないことを確認後、C-2で `dev_anon_access` と旧重複policyを削除。
 
 配列からjunctionへの同期は一方向である。移行期間中にjunctionを直接更新しても配列へは戻らないため、正の切替が完了するまでは通常APIからjunctionへ直接書き込まない。

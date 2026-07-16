@@ -87,6 +87,9 @@ test("Worker一覧APIは列限定selectを使う", () => {
     assert.ok(workerSource.includes(token), `列限定定数がありません: ${token}`);
   });
   assert.doesNotMatch(workerSource, /CHARACTER_LIST_SELECT = "[^"]*\bplayer,/);
+  // runs テーブルに存在しないレガシー列を select に載せない。
+  assert.doesNotMatch(workerSource, /RUN_LIST_SELECT = "[^"]*\bgm,/);
+  assert.doesNotMatch(workerSource, /RUN_LIST_SELECT = "[^"]*\bplayers,/);
 });
 
 test("Workerは通常書込みのBearer境界とService Role内部経路を分離する", () => {

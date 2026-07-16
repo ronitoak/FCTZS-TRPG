@@ -326,8 +326,8 @@ function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, 
   const title = Utils.escapeHtml(r.title ?? r.id);
 
   // 新形式のgm_idを優先し、旧形式の文字列gmも表示互換として残す。
-  const gmObj = playerMapById.get(r.gm_id) || playerMapByName.get(r.gm);
-  const gmName = gmObj ? gmObj.player_name : (r.gm || '—');
+  const gmObj = r.gm_id ? playerMapById.get(r.gm_id) : null;
+  const gmName = r.gm_name || (gmObj ? gmObj.player_name : '—');
   const gm = Utils.escapeHtml(gmName);
 
   // ID配列がない旧卓では、従来のplayers配列を表示用フォールバックに使う。

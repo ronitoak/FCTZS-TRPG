@@ -85,7 +85,8 @@ const SIMPLE_INSERT_ENDPOINTS = Object.freeze({
 
 // 一覧APIは現行画面で参照する互換列だけに絞り、ID指定の詳細APIは既存の全列契約を維持する。
 const CHARACTER_LIST_SELECT = "id,name,job,player_id,system,state,image_url,players(player_name)";
-const RUN_LIST_SELECT = "id,title,scenario_id,gm,gm_id,players,player_ids,characters,status,image_url,updated_at";
+// runs に gm/players 列は存在しない。名称は gm_id / player_ids から Worker 側で解決する。
+const RUN_LIST_SELECT = "id,title,scenario_id,gm_id,player_ids,characters,status,image_url,updated_at";
 const SESSION_LIST_SELECT = "id,run_id,start,status,title";
 const SESSION_VIEW_LIST_SELECT = "id,run_id,start,status,title";
 const PLAYER_LIST_SELECT = "player_id,player_name,user_id,discord_id";
@@ -224,7 +225,7 @@ async function notifyScheduledSessions(env) {
 
             if (runIds.length > 0) {
               const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,gm,player_ids,players&id=in.${runIdsParam}`);
+              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,player_ids,characters&id=in.${runIdsParam}`);
 
               if (runsRes.ok) {
                 const runsData = JSON.parse(runsText);
@@ -249,7 +250,6 @@ async function notifyScheduledSessions(env) {
             }
 
             const playerMapById = new Map(allPlayers.map(p => [String(p.player_id), p]));
-            const playerMapByName = new Map(allPlayers.map(p => [p.player_name, p]));
 
             // キャラクター一覧を取得
             const availableCharacters = await getCharacterList(env);
@@ -264,16 +264,16 @@ async function notifyScheduledSessions(env) {
               const sessionStart = new Date(session.start);
               const timeString = sessionStart.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
 
-              const gmObj = (run.gm_id ? playerMapById.get(String(run.gm_id)) : null) || (run.gm ? playerMapByName.get(run.gm) : null);
-              const gmName = gmObj ? gmObj.player_name : (run.gm || 'GM未定');
+              const gmObj = run.gm_id ? playerMapById.get(String(run.gm_id)) : null;
+              const gmName = gmObj ? gmObj.player_name : 'GM未定';
               const gmDiscordId = gmObj ? gmObj.discord_id : null;
 
               const displayPlayers = [];
               const playerDiscordIds = [];
-              const targetPlayers = (Array.isArray(run.player_ids) && run.player_ids.length > 0) ? run.player_ids : (Array.isArray(run.players) ? run.players : []);
+              const targetPlayers = Array.isArray(run.player_ids) ? run.player_ids : [];
 
               targetPlayers.forEach(identifier => {
-                const pObj = playerMapById.get(String(identifier)) || playerMapByName.get(identifier);
+                const pObj = playerMapById.get(String(identifier));
                 if (pObj) {
                   displayPlayers.push(`- ${pObj.player_name}`);
                   if (pObj.discord_id) playerDiscordIds.push(pObj.discord_id);
@@ -913,16 +913,13 @@ async function handleGet(request, env, url) {
 
             // 3. 取得したセッションデータ1件ずつに、名前を合体させていく
             runs.forEach(run => {
-              // gm_id から GMの名前を取得して gm_name カラムを作る。なければ従来のgm値をフォールバック
-              run.gm_name = playerMap.get(run.gm_id) || run.gm || "未設定";
+              // gm_id から GM名を解決する（DBに gm 列はない）。
+              run.gm_name = playerMap.get(run.gm_id) || "未設定";
 
-              // 通知先ではIDを判読できないため、player_idsを表示名配列へ解決する。
-              if (Array.isArray(run.player_ids)) {
-                run.player_names = run.player_ids.map(id => playerMap.get(id) || id);
-              } else {
-                // まだID化されていない古いデータがあった場合の保険（以前の名前配列をそのまま使う）
-                run.player_names = Array.isArray(run.players) ? run.players : [];
-              }
+              // 通知・画面表示向けに player_ids を表示名配列へ解決する。
+              run.player_names = Array.isArray(run.player_ids)
+                ? run.player_ids.map(id => playerMap.get(id) || id)
+                : [];
             });
           }
         } catch (err) {

@@ -5,6 +5,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
     type: "fix",
+    title: "卓一覧APIの列参照とキャラ並び順を修正",
+    detail: "存在しない runs.gm / players 列の参照をやめ、gm_id から名称解決するようにしました。キャラクター一覧は直近セッション優先ソートを維持し、ビューが空のときも卓データから復元します。"
+  },
+  {
+    date: "2026-07-17",
+    type: "fix",
     title: "認証・データ所有権の境界を強化",
     detail: "画像アップロードのJWT検証、卓参加者だけの通過履歴同期、関連データの所有者RLS、予定比較の通信競合、募集削除時の応募CASCADEを修正しました。"
   },
@@ -115,11 +121,5 @@ window.PATCH_NOTES = Object.freeze([
     type: "feature",
     title: "Cloudflare R2画像アップロードに対応",
     detail: "キャラクター、シナリオ、卓のカバー画像をWeb画面から直接アップロードし、各詳細画面へ反映できるようにしました。"
-  },
-  {
-    date: "2026-07-11",
-    type: "feature",
-    title: "プレイヤー詳細画面を追加",
-    detail: "プレイヤー情報と関連データを個別に確認できる詳細ページを実装しました。"
   }
 ]);

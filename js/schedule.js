@@ -274,7 +274,7 @@ function handleRunSelection(e) {
   // ID移行前の卓データは名前の文字列・配列で保持されているため、比較用に併用する。
   const targetNames = [];
   if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
-  else if (selectedRun.gm) targetNames.push(selectedRun.gm);
+  else if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
 
   if (Array.isArray(selectedRun.player_names)) targetNames.push(...selectedRun.player_names);
   else if (Array.isArray(selectedRun.players)) targetNames.push(...selectedRun.players);

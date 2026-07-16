@@ -10,6 +10,54 @@ const SYSTEM_DISPLAY_NAMES = {
   "ガイアケアTRPG": "ガイアケアTRPG"
 };
 
+/** 最終セッション日時マップをビューと卓配列の両方から作り、より新しい方を採用する。 */
+async function buildLastSessionMap() {
+  const map = new Map();
+
+  const merge = (cid, t) => {
+    const key = String(cid ?? "").trim();
+    if (!key || !Number.isFinite(t)) return;
+    const prev = map.get(key);
+    if (prev == null || t > prev) map.set(key, t);
+  };
+
+  try {
+    const lastRows = await Utils.apiGet("character_last_session");
+    for (const r of Array.isArray(lastRows) ? lastRows : []) {
+      merge(r?.character_id, Date.parse(r.last_session_start ?? ""));
+    }
+  } catch (err) {
+    console.warn("character_last_session の取得に失敗したため配列ベースへフォールバックします", err);
+  }
+
+  // junction未同期でビューが欠ける場合に備え、runs.characters からも最終日を補完する。
+  try {
+    const [runs, sessions] = await Promise.all([
+      Utils.apiGet("runs"),
+      Utils.apiGet("sessions")
+    ]);
+    const latestByRunId = new Map();
+    for (const s of Array.isArray(sessions) ? sessions : []) {
+      if (!s?.run_id) continue;
+      const t = Date.parse(s.start ?? "");
+      if (!Number.isFinite(t)) continue;
+      const key = String(s.run_id);
+      const prev = latestByRunId.get(key);
+      if (prev == null || t > prev) latestByRunId.set(key, t);
+    }
+    for (const run of Array.isArray(runs) ? runs : []) {
+      const runLatest = latestByRunId.get(String(run.id));
+      if (runLatest == null) continue;
+      const chars = Array.isArray(run.characters) ? run.characters : [];
+      for (const raw of chars) merge(raw, runLatest);
+    }
+  } catch (err) {
+    console.warn("最終セッションの配列ベース補完に失敗しました", err);
+  }
+
+  return map;
+}
+
 // 取得条件と描画を分離し、再検索時にも同じ表示規則を再利用できるようにする。
 function renderCharacters(root, characters, lastByCharId) {
   root.innerHTML = "";
@@ -18,8 +66,8 @@ function renderCharacters(root, characters, lastByCharId) {
 
   // ソート（最終セッションが新しい順 → 同順なら名前）のみフロントで維持します
   list.sort((a, b) => {
-    const at = lastByCharId?.get(a.id) ?? -Infinity;
-    const bt = lastByCharId?.get(b.id) ?? -Infinity;
+    const at = lastByCharId?.get(String(a.id)) ?? Number.NEGATIVE_INFINITY;
+    const bt = lastByCharId?.get(String(b.id)) ?? Number.NEGATIVE_INFINITY;
     if (at !== bt) return bt - at;
     return String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja");
   });
@@ -153,19 +201,10 @@ async function main() {
 
       const queryStr = params.toString() ? `?${params.toString()}` : "";
 
-      const [characters, lastRows] = await Promise.all([
+      const [characters, lastByCharId] = await Promise.all([
         Utils.apiGet(`characters${queryStr}`),
-        Utils.apiGet("character_last_session"),
+        buildLastSessionMap(),
       ]);
-
-      const lastByCharId = new Map();
-      for (const r of Array.isArray(lastRows) ? lastRows : []) {
-        const cid = r?.character_id;
-        if (!cid) continue;
-        const t = Date.parse(r.last_session_start ?? "");
-        if (!Number.isFinite(t)) continue;
-        lastByCharId.set(cid, t);
-      }
 
       renderCharacters(root, characters, lastByCharId);
     } catch (err) {

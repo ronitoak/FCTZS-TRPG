@@ -178,11 +178,9 @@
 | runs                     | characters             | 13        | ARRAY                    | YES         | table | text[] 互換期間中の正 |
 | runs                     | status                 | 14        | USER-DEFINED             | NO          | table | run status enum |
 | runs                     | user_id                | 15        | uuid                     | YES         | table | |
-| runs                     | gm_id                  | 16        | text                     | YES         | table | →players.player_id |
+| runs                     | gm_id                  | 16        | text                     | YES         | table | →players.player_id。名称はAPI側で解決 |
 | runs                     | player_ids             | 17        | ARRAY                    | YES         | table | text[] 互換期間中の正 |
-| runs                     | gm                     | —         | text                     | YES         | table | レガシー表示名。アプリ参照 |
-| runs                     | players                | —         | ARRAY                    | YES         | table | レガシー名配列。アプリ参照 |
-| runs                     | image_url              | —         | text                     | YES         | table | アプリ参照 |
+| runs                     | image_url              | —         | text                     | YES         | table | アプリ参照（存在しない環境ではselectから除外） |
 | scenario_list            | id                     | 1         | text                     | YES         | view  | レガシー一覧 |
 | scenario_list            | title                  | 2         | text                     | YES         | view  | |
 | scenario_list            | system                 | 3         | text                     | YES         | view  | |

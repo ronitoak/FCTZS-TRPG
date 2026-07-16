@@ -93,13 +93,13 @@ async function main() {
       const card = document.createElement("article");
       card.className = "sessions-card";
 
-      let gmName = run.gm ?? "";
-      if (run.gm_id && playersById.has(run.gm_id)) {
+      let gmName = run.gm_name ?? "";
+      if (!gmName && run.gm_id && playersById.has(run.gm_id)) {
           gmName = playersById.get(run.gm_id).player_name;
       }
 
-      let plNames = run.players ?? [];
-      if (run.player_ids && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
+      let plNames = Array.isArray(run.player_names) ? run.player_names : [];
+      if (plNames.length === 0 && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
           plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
       }
 

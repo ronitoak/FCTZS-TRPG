@@ -83,8 +83,8 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-11",
     type: "release",
-    title: "FCTZS TRPG部 特設サイトを初回公開",
-    detail: "キャラクター、シナリオ、セッション、募集、予定比較、プレイヤー、なりきりチャットを一元管理するサイト基盤を公開しました。"
+    title: "FCTZS TRPG部 特設サイト開発チームにエージェントAIが参加",
+    detail: "AIが開発チームに参加し、面倒なものも簡単に作れるようになりました。"
   },
   {
     date: "2026-07-11",

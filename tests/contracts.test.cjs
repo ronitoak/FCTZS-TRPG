@@ -67,11 +67,26 @@ test("Workerは詳細画面向けのID scope queryを維持する", () => {
   [
     'url.searchParams.get("ids")',
     'url.searchParams.get("participant_id")',
+    'url.searchParams.get("character_id")',
     'url.searchParams.get("run_id")',
     'url.searchParams.get("run_ids")'
   ].forEach(contract => {
     assert.ok(workerSource.includes(contract), `scope queryがありません: ${contract}`);
   });
+});
+
+test("Worker一覧APIは列限定selectを使う", () => {
+  [
+    "CHARACTER_LIST_SELECT",
+    "RUN_LIST_SELECT",
+    "SESSION_LIST_SELECT",
+    "PLAYER_LIST_SELECT",
+    "RECRUITMENT_LIST_SELECT",
+    "SCENARIO_SUMMARY_SELECT"
+  ].forEach(token => {
+    assert.ok(workerSource.includes(token), `列限定定数がありません: ${token}`);
+  });
+  assert.doesNotMatch(workerSource, /CHARACTER_LIST_SELECT = "[^"]*\bplayer,/);
 });
 
 test("Workerは通常書込みのBearer境界とService Role内部経路を分離する", () => {

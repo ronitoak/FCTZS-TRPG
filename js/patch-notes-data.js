@@ -12,7 +12,7 @@ window.PATCH_NOTES = Object.freeze([
     date: "2026-07-17",
     type: "improvement",
     title: "DB/API軽量化へ段階移行",
-    detail: "一覧・詳細・予定比較を必要範囲だけ取得する新APIへ切り替え、DBビュー未適用時の旧APIフォールバックと書込み時のDiscordログイン確認を追加しました。"
+    detail: "一覧・詳細・予定比較を必要範囲だけ取得する新APIへ切り替え、junction/ビュー/RLSの手動適用手順と、ビュー未適用時の旧APIフォールバックを整備しました。"
   },
   {
     date: "2026-07-17",

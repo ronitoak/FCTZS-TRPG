@@ -273,7 +273,8 @@ async function fetchCharacterDetailData(id) {
   let runs = [];
   let scenarioIds = Array.isArray(characterScenarioRows) ? characterScenarioRows : [];
   if (scenarioIds.length === 0) {
-    runs = await Utils.apiGet("runs").catch(() => []);
+    // character_scenarios未同期時だけ、当該キャラクターを含む卓に絞って補完する。
+    runs = await Utils.apiGet(`runs?character_id=${encodeURIComponent(id)}`).catch(() => []);
     const legacyIds = [...new Set((Array.isArray(runs) ? runs : [])
       .filter(run => run.status === "done" && Array.isArray(run.characters) && run.characters.includes(id))
       .map(run => run.scenario_id)

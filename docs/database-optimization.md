@@ -128,6 +128,17 @@ curl -sS -o before.json -w "status=%{http_code} bytes=%{size_download} ttfb=%{ti
 
 目標値は、対象画面の初期API本数と転送量を減らし、p50 TTFBを悪化させず、5xxを増やさないこと。小規模DBのため、実行時間だけでなく「不要な全件レスポンス削減」を主指標にする。
 
+### 1.4 ホーム画面のデータ取得方針
+
+ホームは単一の巨大JSON集約ビューを作らず、列限定済みの既存一覧APIを並列取得して組み立てる。
+
+- `scenarios` / `runs` / `sessions`: Workerの一覧用select（title・status・日付など表示列のみ）
+- `players`: `player_id,player_name,user_id` のみ
+- メンバーの募集: `recruitment_list?owner_player_id=...`
+- 予定: `player_availability` を表示月の範囲だけで取得
+
+次回予定・進行中卓は日付条件が画面側ロジックに依存するため、現規模（runs数十・sessions百前後）では専用ビューよりこの方式を優先する。将来行数が増えた場合は `home_guest_summary` / `home_member_dashboard` RPCを別フェーズで追加する。
+
 ## 2. Phase A: junction作成・backfill・互換同期・FK
 
 ### A-0. preflight（読取りのみ）
@@ -194,7 +205,7 @@ CREATE TABLE IF NOT EXISTS public.run_players (
   run_id text NOT NULL,
   player_id text NOT NULL,
   sort_order integer NOT NULL,
-  user_id uuid NULL,
+  user_id uuid NULL DEFAULT auth.uid(),
   CONSTRAINT run_players_pkey PRIMARY KEY (run_id, player_id),
   CONSTRAINT run_players_run_sort_key UNIQUE (run_id, sort_order),
   CONSTRAINT run_players_sort_order_check CHECK (sort_order > 0),
@@ -210,7 +221,7 @@ CREATE TABLE IF NOT EXISTS public.run_characters (
   run_id text NOT NULL,
   character_id text NOT NULL,
   sort_order integer NOT NULL,
-  user_id uuid NULL,
+  user_id uuid NULL DEFAULT auth.uid(),
   CONSTRAINT run_characters_pkey PRIMARY KEY (run_id, character_id),
   CONSTRAINT run_characters_run_sort_key UNIQUE (run_id, sort_order),
   CONSTRAINT run_characters_sort_order_check CHECK (sort_order > 0),
@@ -735,6 +746,8 @@ WHERE table_schema = 'public'
     'character_scenarios',
     'scenarios',
     'runs',
+    'run_players',
+    'run_characters',
     'sessions',
     'recruitments',
     'recruitment_applicants',
@@ -751,7 +764,8 @@ WHERE table_schema = 'public'
   AND table_name IN (
     'players', 'player_availability', 'characters', 'character_attributes',
     'character_skills', 'character_scenarios', 'scenarios', 'runs',
-    'sessions', 'recruitments', 'recruitment_applicants', 'comments', 'posts'
+    'run_players', 'run_characters', 'sessions', 'recruitments',
+    'recruitment_applicants', 'comments', 'posts'
   )
   AND coalesce(column_default, '') NOT IN ('auth.uid()', '(auth.uid())');
 
@@ -764,6 +778,8 @@ UNION ALL SELECT 'character_skills', count(*) FROM public.character_skills WHERE
 UNION ALL SELECT 'character_scenarios', count(*) FROM public.character_scenarios WHERE user_id IS NULL
 UNION ALL SELECT 'scenarios', count(*) FROM public.scenarios WHERE user_id IS NULL
 UNION ALL SELECT 'runs', count(*) FROM public.runs WHERE user_id IS NULL
+UNION ALL SELECT 'run_players', count(*) FROM public.run_players WHERE user_id IS NULL
+UNION ALL SELECT 'run_characters', count(*) FROM public.run_characters WHERE user_id IS NULL
 UNION ALL SELECT 'sessions', count(*) FROM public.sessions WHERE user_id IS NULL
 UNION ALL SELECT 'recruitments', count(*) FROM public.recruitments WHERE user_id IS NULL
 UNION ALL SELECT 'recruitment_applicants', count(*) FROM public.recruitment_applicants WHERE user_id IS NULL
@@ -928,8 +944,7 @@ CREATE POLICY fctzs_players_owner_delete ON public.players
 CREATE POLICY fctzs_availability_owner_insert ON public.player_availability
   FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = player_availability.player_id
         AND p.user_id = auth.uid()
@@ -938,16 +953,14 @@ CREATE POLICY fctzs_availability_owner_insert ON public.player_availability
 CREATE POLICY fctzs_availability_owner_update ON public.player_availability
   FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = player_availability.player_id
         AND p.user_id = auth.uid()
     )
   )
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = player_availability.player_id
         AND p.user_id = auth.uid()
@@ -956,8 +969,7 @@ CREATE POLICY fctzs_availability_owner_update ON public.player_availability
 CREATE POLICY fctzs_availability_owner_delete ON public.player_availability
   FOR DELETE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = player_availability.player_id
         AND p.user_id = auth.uid()
@@ -975,8 +987,7 @@ CREATE POLICY fctzs_characters_owner_delete ON public.characters
 CREATE POLICY fctzs_character_attributes_owner_insert ON public.character_attributes
   FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_attributes.character_id
         AND c.user_id = auth.uid()
@@ -985,16 +996,14 @@ CREATE POLICY fctzs_character_attributes_owner_insert ON public.character_attrib
 CREATE POLICY fctzs_character_attributes_owner_update ON public.character_attributes
   FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_attributes.character_id
         AND c.user_id = auth.uid()
     )
   )
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_attributes.character_id
         AND c.user_id = auth.uid()
@@ -1003,8 +1012,7 @@ CREATE POLICY fctzs_character_attributes_owner_update ON public.character_attrib
 CREATE POLICY fctzs_character_attributes_owner_delete ON public.character_attributes
   FOR DELETE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_attributes.character_id
         AND c.user_id = auth.uid()
@@ -1014,8 +1022,7 @@ CREATE POLICY fctzs_character_attributes_owner_delete ON public.character_attrib
 CREATE POLICY fctzs_character_skills_owner_insert ON public.character_skills
   FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_skills.character_id
         AND c.user_id = auth.uid()
@@ -1024,16 +1031,14 @@ CREATE POLICY fctzs_character_skills_owner_insert ON public.character_skills
 CREATE POLICY fctzs_character_skills_owner_update ON public.character_skills
   FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_skills.character_id
         AND c.user_id = auth.uid()
     )
   )
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_skills.character_id
         AND c.user_id = auth.uid()
@@ -1042,8 +1047,7 @@ CREATE POLICY fctzs_character_skills_owner_update ON public.character_skills
 CREATE POLICY fctzs_character_skills_owner_delete ON public.character_skills
   FOR DELETE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_skills.character_id
         AND c.user_id = auth.uid()
@@ -1054,8 +1058,7 @@ CREATE POLICY fctzs_character_skills_owner_delete ON public.character_skills
 CREATE POLICY fctzs_character_scenarios_owner_insert ON public.character_scenarios
   FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_scenarios.character_id
         AND c.user_id = auth.uid()
@@ -1064,16 +1067,14 @@ CREATE POLICY fctzs_character_scenarios_owner_insert ON public.character_scenari
 CREATE POLICY fctzs_character_scenarios_owner_update ON public.character_scenarios
   FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_scenarios.character_id
         AND c.user_id = auth.uid()
     )
   )
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_scenarios.character_id
         AND c.user_id = auth.uid()
@@ -1082,8 +1083,7 @@ CREATE POLICY fctzs_character_scenarios_owner_update ON public.character_scenari
 CREATE POLICY fctzs_character_scenarios_owner_delete ON public.character_scenarios
   FOR DELETE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.characters AS c
       WHERE c.id = character_scenarios.character_id
         AND c.user_id = auth.uid()
@@ -1109,8 +1109,7 @@ CREATE POLICY fctzs_runs_owner_delete ON public.runs
 CREATE POLICY fctzs_sessions_owner_insert ON public.sessions
   FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.runs AS r
       WHERE r.id = sessions.run_id
         AND r.user_id = auth.uid()
@@ -1119,16 +1118,14 @@ CREATE POLICY fctzs_sessions_owner_insert ON public.sessions
 CREATE POLICY fctzs_sessions_owner_update ON public.sessions
   FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.runs AS r
       WHERE r.id = sessions.run_id
         AND r.user_id = auth.uid()
     )
   )
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.runs AS r
       WHERE r.id = sessions.run_id
         AND r.user_id = auth.uid()
@@ -1137,8 +1134,7 @@ CREATE POLICY fctzs_sessions_owner_update ON public.sessions
 CREATE POLICY fctzs_sessions_owner_delete ON public.sessions
   FOR DELETE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.runs AS r
       WHERE r.id = sessions.run_id
         AND r.user_id = auth.uid()
@@ -1156,8 +1152,7 @@ CREATE POLICY fctzs_recruitments_owner_delete ON public.recruitments
 CREATE POLICY fctzs_applicants_owner_insert ON public.recruitment_applicants
   FOR INSERT TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = recruitment_applicants.player_id
         AND p.user_id = auth.uid()
@@ -1166,16 +1161,14 @@ CREATE POLICY fctzs_applicants_owner_insert ON public.recruitment_applicants
 CREATE POLICY fctzs_applicants_owner_update ON public.recruitment_applicants
   FOR UPDATE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = recruitment_applicants.player_id
         AND p.user_id = auth.uid()
     )
   )
   WITH CHECK (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = recruitment_applicants.player_id
         AND p.user_id = auth.uid()
@@ -1184,8 +1177,7 @@ CREATE POLICY fctzs_applicants_owner_update ON public.recruitment_applicants
 CREATE POLICY fctzs_applicants_owner_delete ON public.recruitment_applicants
   FOR DELETE TO authenticated
   USING (
-    user_id = auth.uid()
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.players AS p
       WHERE p.player_id = recruitment_applicants.player_id
         AND p.user_id = auth.uid()

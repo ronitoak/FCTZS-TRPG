@@ -139,6 +139,13 @@ test("月間取得範囲はうるう年と月末を正しく扱う", () => {
   });
 });
 
+test("予定取得は表示月の指定がないと拒否する", async () => {
+  await assert.rejects(
+    Utils.fetchPlayerAvailabilities("p1"),
+    /yearとmonthが必要/
+  );
+});
+
 test("renderCalendarは曜日を含む月間グリッドを生成する", () => {
   const calendar = new FakeElement("div");
   Utils.renderCalendar(calendar, 2026, 6, {

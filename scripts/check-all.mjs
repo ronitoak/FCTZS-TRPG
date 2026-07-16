@@ -79,15 +79,31 @@ function checkWorkerRoutes() {
     "/api/characters",
     "/api/players",
     "/api/player_availability",
+    "/api/schedule_match",
     "/api/scenarios",
     "/api/runs",
     "/api/sessions",
     "/api/recruitments",
+    "/api/recruitment_list",
+    "/api/scenario_summary",
+    "/api/player_detail_summary",
     "/api/comments",
+    "/api/comments/recent",
     "/api/upload"
   ];
   requiredRoutes.forEach(route => {
     if (!source.includes(route)) failures.push(`Worker必須ルートがありません: ${route}`);
+  });
+
+  [
+    "CHARACTER_LIST_SELECT",
+    "RUN_LIST_SELECT",
+    "SESSION_LIST_SELECT",
+    "PLAYER_LIST_SELECT",
+    "sbServiceFetch",
+    "validateUserBearer"
+  ].forEach(token => {
+    if (!source.includes(token)) failures.push(`Worker必須定義がありません: ${token}`);
   });
 }
 

@@ -309,11 +309,12 @@ async function main() {
   ongoingEl.textContent = "";
 
   try {
+    // ホームは専用巨大JSONではなく、一覧用の列限定APIを並列取得して画面側で組み立てる。
     const [scenarios, runs, sessions, players] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
-      Utils.apiGet("players").catch(() => []), // エラー時は空配列として続行
+      Utils.apiGet("players?select=player_id,player_name,user_id").catch(() => []),
     ]);
 
     const playersById = new Map(

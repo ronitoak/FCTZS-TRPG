@@ -84,8 +84,11 @@ const SIMPLE_INSERT_ENDPOINTS = Object.freeze({
 });
 
 // 一覧APIは現行画面で参照する互換列だけに絞り、ID指定の詳細APIは既存の全列契約を維持する。
-const CHARACTER_LIST_SELECT = "id,name,job,player_id,player,system,state,image_url,players(player_name)";
+const CHARACTER_LIST_SELECT = "id,name,job,player_id,system,state,image_url,players(player_name)";
 const RUN_LIST_SELECT = "id,title,scenario_id,gm,gm_id,players,player_ids,characters,status,image_url,updated_at";
+const SESSION_LIST_SELECT = "id,run_id,start,status,title";
+const SESSION_VIEW_LIST_SELECT = "id,run_id,start,status,title";
+const PLAYER_LIST_SELECT = "player_id,player_name,user_id,discord_id";
 const SCENARIO_LIST_SELECT = "id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate";
 const RECRUITMENT_LIST_SELECT = "id,owner_player_id,owner_player_name,scenario_id,scenario_title,scenario_image_url,recruit_role,target_count,memo,status,created_at,applicant_count";
 const SCENARIO_SUMMARY_SELECT = `${SCENARIO_LIST_SELECT},run_count`;
@@ -353,10 +356,10 @@ const jsonHeaders = {
 
 // path・query・返却形式が完全に同じGETだけを宣言表へ寄せる。
 const FIXED_GET_PROXY_ROUTES = Object.freeze({
-  "/api/character_last_session": `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=*`,
-  "/api/scenario_list": `/rest/v1/${SUPABASE_TABLES.scenarioListView}?select=id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate`,
-  "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=*`,
-  "/api/session_list": `/rest/v1/${SUPABASE_TABLES.sessionListView}?select=*`,
+  "/api/character_last_session": `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`,
+  "/api/scenario_list": `/rest/v1/${SUPABASE_TABLES.scenarioListView}?select=${SCENARIO_LIST_SELECT}`,
+  "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`,
+  "/api/session_list": `/rest/v1/${SUPABASE_TABLES.sessionListView}?select=${SESSION_VIEW_LIST_SELECT}`,
   "/api/nightreign/characters": `/rest/v1/${SUPABASE_TABLES.nightreignCharacters}?select=*&order=id.asc`,
   "/api/nightreign/relic_effects": `/rest/v1/${SUPABASE_TABLES.nightreignRelicEffects}?select=*&order=category.asc,effect_name.asc`,
   "/api/nightreign/user_relics": `/rest/v1/${SUPABASE_TABLES.nightreignUserRelics}?select=*&order=created_at.desc`
@@ -683,7 +686,8 @@ async function handleGet(request, env, url) {
 
     // プレイヤー一覧の取得
     if (request.method === "GET" && url.pathname === "/api/players") {
-      const apiUrl = `/rest/v1/${SUPABASE_TABLES.players}${url.search || "?select=*"}`;
+      // 明示selectがない一覧呼び出しは名簿表示に必要な列だけ返す。
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.players}${url.search || `?select=${PLAYER_LIST_SELECT}`}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -847,6 +851,7 @@ async function handleGet(request, env, url) {
       const status = url.searchParams.get("status");
       const keyword = url.searchParams.get("keyword");
       const participantId = url.searchParams.get("participant_id");
+      const characterId = url.searchParams.get("character_id");
 
       if (id) queryParams.push(`id=eq.${encodeURIComponent(id)}`);
       if (gmId) queryParams.push(`gm_id=eq.${encodeURIComponent(gmId)}`);
@@ -855,6 +860,10 @@ async function handleGet(request, env, url) {
       if (participantId) {
         const value = encodeURIComponent(participantId);
         queryParams.push(`or=(gm_id.eq.${value},player_ids.cs.%7B${value}%7D)`);
+      }
+      // 通過履歴が未同期でも、配列に残る参加キャラクターから卓を復元できるようにする。
+      if (characterId) {
+        queryParams.push(`characters=cs.%7B${encodeURIComponent(characterId)}%7D`);
       }
 
       if (keyword) {

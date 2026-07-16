@@ -19,14 +19,19 @@ async function main() {
 
   try {
     // 卓にはプレイヤーIDだけが残るため、表示名へ解決するマスタも同時取得する。
-    const [scenarios, runs, sessions, characters, characterIds, playersData] = await Promise.all([
+    const [scenarios, runs, characters, characterIds, playersData] = await Promise.all([
       Utils.apiGet(`scenarios?id=${encodeURIComponent(id)}`),
       Utils.apiGet(`runs?scenario_id=${encodeURIComponent(id)}`),
-      Utils.apiGet("session_list"),
       Utils.apiGet(`characters?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
       Utils.apiGet(`character_scenarios?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
       Utils.apiGet("players?select=player_id,player_name").catch(() => [])
     ]);
+
+    // 開催記録は当該シナリオの卓IDだけに絞り、全session_listを載せずに次回予定を計算する。
+    const relatedRunIds = (Array.isArray(runs) ? runs : []).map(run => run.id).filter(Boolean);
+    const sessions = relatedRunIds.length > 0
+      ? await Utils.apiGet(`sessions/detail?run_ids=${encodeURIComponent(relatedRunIds.join(","))}`).catch(() => [])
+      : [];
 
     // 卓ごとの反復検索を避けつつ欠損IDも扱えるよう、名前解決用Mapを作る。
     const playerMapById = new Map();

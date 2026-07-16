@@ -1266,3 +1266,62 @@ dialog.modal::backdrop {
     line-height: 1.6;
     word-break: break-word;
 }
+
+/* ==========================================
+   Scenario Match & Details Search Styles
+   ========================================== */
+.search-details[open] summary {
+    margin-bottom: 15px;
+}
+.search-details summary::-webkit-details-marker {
+    color: var(--primary-color);
+}
+
+/* マッチ度バッジとハイライト */
+.match-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: linear-gradient(135deg, #ffd700, #ffa500);
+    color: #111;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.match-badge.match-3 {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #000;
+}
+
+.match-badge.match-2 {
+    background: linear-gradient(135deg, #c0c0c0, #708090);
+    color: #fff;
+}
+
+.match-badge.match-1 {
+    background: linear-gradient(135deg, #cd7f32, #8b4513);
+    color: #fff;
+}
+
+/* カードの相性ハイライト */
+.scenarios-card.match-high {
+    border: 2px solid #ffd700 !important;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.25) !important;
+}
+
+.scenarios-card.match-medium {
+    border: 2px solid #c0c0c0 !important;
+    box-shadow: 0 4px 12px rgba(192, 192, 192, 0.2) !important;
+}
+
+.scenarios-card.match-low {
+    border: 2px solid #cd7f32 !important;
+    box-shadow: 0 4px 8px rgba(205, 127, 50, 0.15) !important;
+}

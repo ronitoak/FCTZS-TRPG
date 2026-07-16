@@ -20,38 +20,87 @@
     <!-- 検索・フィルタUI -->
     <div class="search-filter-panel" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: var(--card-bg, #fcfcfc);">
         <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">検索・絞り込み</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+        
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
             <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイ人数</label>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <input type="number" id="filter-min-players" min="1" placeholder="最小" class="form-control" style="width: 80px;">
-                    <span>〜</span>
-                    <input type="number" id="filter-max-players" min="1" placeholder="最大" class="form-control" style="width: 80px;">
-                    <span>人</span>
-                </div>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">キーワード (タイトル・作者名)</label>
+                <input type="text" id="filter-keyword" placeholder="キーワードを入力" class="form-control" style="width: 100%;">
             </div>
             <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイ時間</label>
-                <select id="filter-play-time" class="form-control">
-                    <option value="">指定なし</option>
-                    <option value="60">1時間以内</option>
-                    <option value="120">2時間以内</option>
-                    <option value="180">3時間以内</option>
-                    <option value="240">4時間以内</option>
-                    <option value="360">6時間以内</option>
-                    <option value="480">8時間以内</option>
-                </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-                <label style="display: block; font-weight: bold; margin-bottom: 5px;">ロスト率</label>
-                <select id="filter-lost-rate" class="form-control">
-                    <option value="">指定なし</option>
-                    <option value="low">低 (low)</option>
-                    <option value="mid">中 (mid)</option>
-                    <option value="high">高 (high)</option>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">システム</label>
+                <select id="filter-system" class="form-control" style="width: 100%;">
+                    <option value="">すべて</option>
                 </select>
             </div>
         </div>
+
+        <details class="search-details" style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 10px;">
+            <summary style="cursor: pointer; font-weight: bold; color: var(--primary-color); outline: none; margin-bottom: 10px; user-select: none;">
+                詳細検索を開く
+            </summary>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイ人数</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="number" id="filter-target-players" min="1" placeholder="例: 3" class="form-control" style="width: 100px;">
+                        <span>人がプレイ可能</span>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイ時間</label>
+                    <select id="filter-play-time" class="form-control">
+                        <option value="">制限なし</option>
+                        <option value="120">2時間以内</option>
+                        <option value="240">4時間以内</option>
+                        <option value="360">6時間以内</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">ロスト率</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-lost-rate" value="low"> 低 (low)
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-lost-rate" value="mid"> 中 (mid)
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-lost-rate" value="high"> 高 (high)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">プレイスタイル傾向 (いずれかを含むOR検索)</label>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-trend" value="story"> 物語重視
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-trend" value="chaos"> 混沌歓迎
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-trend" value="avatar"> RP・没入
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-trend" value="clear"> 攻略重視
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-trend" value="harmony"> 協調重視
+                        </label>
+                        <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="filter-trend" value="active"> 活躍推奨
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </details>
     </div>
 
     <section id="scenarios-list">

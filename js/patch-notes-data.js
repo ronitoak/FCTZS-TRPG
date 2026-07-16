@@ -5,6 +5,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
     type: "improvement",
+    title: "DB/API軽量化へ段階移行",
+    detail: "一覧・詳細・予定比較を必要範囲だけ取得する新APIへ切り替え、DBビュー未適用時の旧APIフォールバックと書込み時のDiscordログイン確認を追加しました。"
+  },
+  {
+    date: "2026-07-17",
+    type: "improvement",
     title: "プロジェクト内部を保守しやすく整理",
     detail: "画面間の共通処理を集約し、各画面とAPIの処理を責務ごとに整理しました。表示・操作・API仕様は維持したまま、回帰チェックと意図コメントも整備しています。"
   },
@@ -115,11 +121,5 @@ window.PATCH_NOTES = Object.freeze([
     type: "fix",
     title: "Discordの募集参加ボタンを修正",
     detail: "Discordから募集へ参加する操作が正常に完了するよう連携処理を修正しました。"
-  },
-  {
-    date: "2026-07-11",
-    type: "improvement",
-    title: "共通ナビゲーションと画面操作を改善",
-    detail: "ナビゲーションを押しやすい表示へ変更し、現在画面の強調、ボタンやHTML構造の不整合を修正しました。"
   }
 ]);

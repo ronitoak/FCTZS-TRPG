@@ -27,13 +27,17 @@ const SUPABASE_TABLES = Object.freeze({
   players: "players",
   playerProfiles: "player_profiles",
   playerAvailability: "player_availability",
+  playerDetailSummary: "player_detail_summary",
   scenarios: "scenarios",
   scenarioListView: "scenario_list",
+  scenarioSummary: "scenario_summary",
   runs: "runs",
   sessions: "sessions",
   sessionListView: "session_list",
   recruitments: "recruitments",
+  recruitmentList: "recruitment_list",
   recruitmentApplicants: "recruitment_applicants",
+  recentCommentsWithNames: "recent_comments_with_names",
   posts: "posts",
   systemAttributes: "system_attributes",
   systemSkillBases: "system_skill_bases",
@@ -78,6 +82,14 @@ const SIMPLE_INSERT_ENDPOINTS = Object.freeze({
   "/api/posts": `/rest/v1/${SUPABASE_TABLES.posts}`,
   "/api/nightreign/user_relics": `/rest/v1/${SUPABASE_TABLES.nightreignUserRelics}`
 });
+
+// 一覧APIは現行画面で参照する互換列だけに絞り、ID指定の詳細APIは既存の全列契約を維持する。
+const CHARACTER_LIST_SELECT = "id,name,job,player_id,player,system,state,image_url,players(player_name)";
+const RUN_LIST_SELECT = "id,title,scenario_id,gm,gm_id,players,player_ids,characters,status,image_url,updated_at";
+const SCENARIO_LIST_SELECT = "id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate";
+const RECRUITMENT_LIST_SELECT = "id,owner_player_id,owner_player_name,scenario_id,scenario_title,scenario_image_url,recruit_role,target_count,memo,status,created_at,applicant_count";
+const SCENARIO_SUMMARY_SELECT = `${SCENARIO_LIST_SELECT},run_count`;
+const PLAYER_DETAIL_SUMMARY_SELECT = "player_id,player_name,memo,icon_url,profile_text,tier_list_first,tier_list_second,tier_list_third,desire_avatar,desire_story,desire_clear,desire_chaos,desire_active,desire_harmony,character_count";
 
 // 署名検証用の補助関数
 function hexToUint8Array(hex) {
@@ -193,7 +205,7 @@ async function notifyScheduledSessions(env) {
         const endDate = encodeURIComponent(tomorrow.toISOString());
 
         const { res: sessionRes, text: sessionText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.sessions}?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`);
-        
+
         if (!sessionRes.ok) {
           console.error("Supabase APIエラー(Sessions):", sessionText);
         } else {
@@ -206,11 +218,11 @@ async function notifyScheduledSessions(env) {
             // --- セッション情報から卓情報を取得 ---
             const runIds = [...new Set(upcomingSessions.map(s => s.run_id).filter(Boolean))];
             let runsMap = new Map();
-            
+
             if (runIds.length > 0) {
               const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=*&id=in.${runIdsParam}`);
-              
+              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,gm,player_ids,players&id=in.${runIdsParam}`);
+
               if (runsRes.ok) {
                 const runsData = JSON.parse(runsText);
                 runsMap = new Map(runsData.map(r => [String(r.id), r]));
@@ -219,10 +231,20 @@ async function notifyScheduledSessions(env) {
               }
             }
 
-            // --- プレイヤー情報を一括取得 ---
-            const { res: mapRes, text: mapText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,discord_id`);
-            const allPlayers = mapRes.ok ? JSON.parse(mapText) : [];
-            
+            // --- 卓内で参照されるプレイヤーだけを一括取得 ---
+            const requiredPlayerIds = [...new Set(
+              [...runsMap.values()].flatMap(run => [
+                run.gm_id,
+                ...(Array.isArray(run.player_ids) ? run.player_ids : [])
+              ]).filter(Boolean).map(String)
+            )];
+            let allPlayers = [];
+            if (requiredPlayerIds.length > 0) {
+              const playerIdsParam = encodeURIComponent(`(${requiredPlayerIds.join(',')})`);
+              const { res: mapRes, text: mapText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,discord_id&player_id=in.${playerIdsParam}`);
+              allPlayers = mapRes.ok ? JSON.parse(mapText) : [];
+            }
+
             const playerMapById = new Map(allPlayers.map(p => [String(p.player_id), p]));
             const playerMapByName = new Map(allPlayers.map(p => [p.player_name, p]));
 
@@ -235,7 +257,7 @@ async function notifyScheduledSessions(env) {
               const runTitle = run.title || "名称未設定の卓";
               const sessionTitle = session.title || session.name || "名称未設定のセッション";
               const streamURL = session.stream_url || "";
-              
+
               const sessionStart = new Date(session.start);
               const timeString = sessionStart.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
 
@@ -253,7 +275,7 @@ async function notifyScheduledSessions(env) {
                   displayPlayers.push(`- ${pObj.player_name}`);
                   if (pObj.discord_id) playerDiscordIds.push(pObj.discord_id);
                 } else {
-                  displayPlayers.push(`- ${identifier}`); 
+                  displayPlayers.push(`- ${identifier}`);
                 }
               });
 
@@ -280,9 +302,9 @@ async function notifyScheduledSessions(env) {
                   url: `${SITE_URL}/sessions/detail.html?id=${session.run_id}`
                 },
                 env,
-                env.DISCORD_WEBHOOK_URL, 
-                customName,   
-                customAvatar  
+                env.DISCORD_WEBHOOK_URL,
+                customName,
+                customAvatar
               );
             }
           }
@@ -299,21 +321,21 @@ async function deleteExpiredRecruitments(env) {
       try {
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        
+
         // ISO日時の記号がPostgREST条件として誤解釈されないよう、クエリ値をエンコードする。
         const thresholdISO = encodeURIComponent(oneMonthAgo.toISOString());
 
-        const { res: fetchOldRes, text: fetchOldText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitments}?created_at=lt.${thresholdISO}&select=id`);
-        
+        const { res: fetchOldRes, text: fetchOldText } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitments}?created_at=lt.${thresholdISO}&select=id`);
+
         if (fetchOldRes.ok) {
           const oldRecruits = JSON.parse(fetchOldText);
-          
+
           if (oldRecruits && oldRecruits.length > 0) {
             const oldIds = oldRecruits.map(r => r.id);
             const deleteIdsQuery = `(${oldIds.map(id => encodeURIComponent(id)).join(',')})`;
 
-            await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=in.${deleteIdsQuery}`, { method: 'DELETE' });
-            await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitments}?id=in.${deleteIdsQuery}`, { method: 'DELETE' });
+            await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=in.${deleteIdsQuery}`, { method: 'DELETE' });
+            await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitments}?id=in.${deleteIdsQuery}`, { method: 'DELETE' });
 
             console.log(`${oldRecruits.length}件の募集を自動削除しました。`);
           }
@@ -372,6 +394,16 @@ async function handleFetch(request, env, ctx) {
  */
 async function routeApiRequest(request, env, ctx, url) {
   if (request.method === "GET")    return await handleGet(request, env, url);
+
+  // 通常書込みはRLSへ利用者JWTを渡す。Discord Interactionは署名検証済み経路で先に分離済み。
+  if (
+    ["POST", "PATCH", "DELETE"].includes(request.method)
+    && url.pathname !== "/api/interactions"
+    && !hasBearerAuthorization(request)
+  ) {
+    return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: jsonHeaders });
+  }
+
   if (request.method === "POST")   return await handlePost(request, env, ctx, url);
   if (request.method === "PATCH")  return await handlePatch(request, env, ctx, url);
   if (request.method === "DELETE") return await handleDelete(request, env, url);
@@ -433,7 +465,7 @@ function handleOptions() {
  */
 async function sbFetch(env, request, pathAndQuery, options = {}) {
   const url = `${env.SUPABASE_URL}${pathAndQuery}`;
-  
+
   // 利用者認証を引き継ぐ経路だけBearerを採用し、内部処理は匿名キーへ明示的にフォールバックする。
   const authHeader = request?.headers?.get("Authorization");
 
@@ -456,6 +488,93 @@ async function sbFetch(env, request, pathAndQuery, options = {}) {
   const res = await fetch(url, fetchOptions);
   const text = await res.text();
   return { res, text };
+}
+
+function hasBearerAuthorization(request) {
+  return /^Bearer\s+\S+$/i.test(request.headers.get("Authorization") || "");
+}
+
+/**
+ * R2はSupabase RLSの保護外なので、書式だけでなくAuth APIで利用者JWTを検証する。
+ * JWTやAuth APIの応答本文はログ・レスポンスへ含めない。
+ */
+async function validateUserBearer(request, env) {
+  const authorization = request.headers.get("Authorization") || "";
+  if (!/^Bearer\s+\S+$/i.test(authorization)) return false;
+
+  try {
+    const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+      method: "GET",
+      headers: {
+        apikey: env.SUPABASE_ANON_KEY,
+        Authorization: authorization
+      }
+    });
+    return response.ok;
+  } catch {
+    console.warn("利用者認証APIへの接続に失敗しました");
+    return false;
+  }
+}
+
+/**
+ * Service Roleは署名検証済みInteraction・Cron・認証後の内部同期だけから呼ぶ。
+ * 通常HTTPルーターへrequestを受け取る形では公開せず、Secretをログやレスポンスへ含めない。
+ */
+async function sbServiceFetch(env, pathAndQuery, options = {}) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("内部処理エラー: SUPABASE_SERVICE_ROLE_KEY が設定されていません");
+    throw new Error("Service Role is not configured");
+  }
+
+  const headers = {
+    "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+    "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+  const fetchOptions = { method: options.method || "GET", headers };
+  if (options.body) {
+    fetchOptions.body = typeof options.body === "string" ? options.body : JSON.stringify(options.body);
+  }
+
+  const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, fetchOptions);
+  const text = await res.text();
+  return { res, text };
+}
+
+function appendSafeViewQuery(url, allowedFilters, allowedOrderColumns, defaultOrder, selectColumns) {
+  const params = new URLSearchParams({ select: selectColumns });
+
+  for (const filter of allowedFilters) {
+    const value = url.searchParams.get(filter);
+    if (value && /^(?:eq|neq|in)\.[A-Za-z0-9_.,()%-]+$/.test(value)) {
+      params.set(filter, value);
+    }
+  }
+
+  const order = url.searchParams.get("order");
+  if (order) {
+    const clauses = order.split(",");
+    const valid = clauses.every(clause => {
+      const [column, direction, nulls] = clause.split(".");
+      return allowedOrderColumns.includes(column)
+        && (!direction || direction === "asc" || direction === "desc")
+        && (!nulls || nulls === "nullsfirst" || nulls === "nullslast");
+    });
+    if (valid) params.set("order", order);
+  } else if (defaultOrder) {
+    params.set("order", defaultOrder);
+  }
+
+  for (const name of ["limit", "offset"]) {
+    const raw = url.searchParams.get(name);
+    if (raw && /^\d+$/.test(raw)) {
+      params.set(name, String(Math.min(Number(raw), name === "limit" ? 100 : 10000)));
+    }
+  }
+
+  return params.toString();
 }
 
 async function handleGet(request, env, url) {
@@ -481,16 +600,34 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    if (
+      request.method === "GET"
+      && ["/api/comments/recent/with_names", "/api/comments/recent_with_names"].includes(url.pathname)
+    ) {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.recentCommentsWithNames}?select=id,created_at,target_type,target_id,author,body,target_name&order=created_at.desc&limit=${limit}`;
+      const { res, text } = await sbFetch(env, request, apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
 
         // ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
       let queryParams = [];
-  
+
+      const id = url.searchParams.get("id");
+      const ids = url.searchParams.get("ids");
       const system = url.searchParams.get("system");
       const player = url.searchParams.get("player_id");
       const state = url.searchParams.get("state");
       const keyword = url.searchParams.get("keyword");
       const scenarioId = url.searchParams.get("scenario_id");
+
+      if (id) queryParams.push(`id=eq.${encodeURIComponent(id)}`);
+      if (!id && ids) {
+        const encodedIds = ids.split(",").map(value => value.trim()).filter(Boolean).map(encodeURIComponent);
+        if (encodedIds.length > 0) queryParams.push(`id=in.(${encodedIds.join(",")})`);
+      }
 
       if (scenarioId) {
         const csRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characterScenarios}?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`, {
@@ -499,11 +636,11 @@ async function handleGet(request, env, url) {
             Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
           }
         });
-        
+
         if (csRes.ok) {
           const csData = await csRes.json();
           const charIds = csData.map(d => d.character_id);
-          
+
           // 該当するキャラクターが一人もいない場合は、空っぽの配列を返して終了
           if (charIds.length === 0) {
              return new Response(JSON.stringify([]), { status: 200, headers: jsonHeaders });
@@ -522,7 +659,7 @@ async function handleGet(request, env, url) {
         queryParams.push(`or=(name.ilike.${kw},job.ilike.${kw})`); // キーワードからはplayerを外す(選択式になったため)
       }
 
-      queryParams.push("select=*,players(player_name)");
+      queryParams.push(id ? "select=*,players(player_name)" : `select=${CHARACTER_LIST_SELECT}`);
       queryParams.push("order=id.desc");
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.characters}?${queryParams.join("&")}`;
@@ -551,6 +688,16 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/player_detail_summary") {
+      const playerId = url.searchParams.get("player_id");
+      if (!playerId) {
+        return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+      }
+      const apiUrl = `/rest/v1/${SUPABASE_TABLES.playerDetailSummary}?select=${PLAYER_DETAIL_SUMMARY_SELECT}&player_id=eq.${encodeURIComponent(playerId)}`;
+      const { res, text } = await sbFetch(env, request, apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
     // プレイヤーの予定を取得
     if (request.method === "GET" && url.pathname === "/api/player_availability") {
       // フロントから送られたクエリパラメータ（?select=...&player_id=...）をそのままSupabaseに渡す
@@ -566,38 +713,58 @@ async function handleGet(request, env, url) {
       const endDate = url.searchParams.get("end_date");
 
       if (!playerIdsStr) return new Response(JSON.stringify({ error: "player_ids required" }), { status: 400, headers: jsonHeaders });
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(startDate || "")
+        || !/^\d{4}-\d{2}-\d{2}$/.test(endDate || "")
+      ) {
+        return new Response(JSON.stringify({ error: "valid start_date and end_date required" }), { status: 400, headers: jsonHeaders });
+      }
 
-      const playerIds = playerIdsStr.split(",");
+      const playerIds = playerIdsStr.split(",").map(value => value.trim()).filter(Boolean);
+      if (playerIds.length === 0 || playerIds.length > 100) {
+        return new Response(JSON.stringify({ error: "player_ids must contain 1 to 100 values" }), { status: 400, headers: jsonHeaders });
+      }
       const encodedIds = playerIds.map(id => encodeURIComponent(id)).join(",");
-      
+
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.playerAvailability}?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`);
-      
+
       if (!res.ok) return new Response(text, { status: res.status, headers: jsonHeaders });
 
       const raw = JSON.parse(text);
       const grouped = {};
-      
+
       raw.forEach(r => {
         const key = `${r.target_date}_${r.time_slot}`;
         if (!grouped[key]) grouped[key] = {};
-        grouped[key][r.player_id] = { 
-          status: r.status, 
-          name: r.players?.player_name || r.player_id 
+        grouped[key][r.player_id] = {
+          status: r.status,
+          name: r.players?.player_name || r.player_id
         };
       });
 
       const results = {};
-      for (const [key, playerMap] of Object.entries(grouped)) {
-        const pList = Object.values(playerMap);
-        const statuses = pList.map(p => p.status);
-        
-        if (statuses.includes("ng")) {
-          results[key] = { color: "red", symbol: "×", label: "不可" };
-        } else if (statuses.includes("maybe")) {
-          const maybeNames = pList.filter(p => p.status === "maybe").map(p => p.name);
-          results[key] = { color: "yellow", symbol: "△", maybe_players: maybeNames };
-        } else if (statuses.length === playerIds.length && statuses.every(s => s === "ok")) {
-          results[key] = { color: "green", symbol: "○", label: "全員空き" };
+      const start = new Date(`${startDate}T00:00:00Z`);
+      const end = new Date(`${endDate}T00:00:00Z`);
+      for (let date = start; date <= end; date = new Date(date.getTime() + 86400000)) {
+        const dateString = date.toISOString().slice(0, 10);
+        for (const slot of ["afternoon", "night"]) {
+          const key = `${dateString}_${slot}`;
+          const pList = Object.values(grouped[key] || {});
+          const statuses = pList.map(p => p.status);
+          const missingCount = playerIds.length - pList.length;
+
+          if (statuses.includes("ng") || statuses.includes("none")) {
+            results[key] = { color: "red", symbol: "×", label: "不可あり" };
+          } else if (missingCount > 0) {
+            results[key] = { color: "yellow", symbol: "△", label: `未入力: ${missingCount}人` };
+          } else if (statuses.includes("maybe")) {
+            const maybeNames = pList.filter(p => p.status === "maybe").map(p => p.name);
+            results[key] = { color: "yellow", symbol: "△", label: `△: ${maybeNames.join(", ")}`, maybe_players: maybeNames };
+          } else if (statuses.length === playerIds.length && statuses.every(status => status === "ok")) {
+            results[key] = { color: "green", symbol: "○", label: "全員空き" };
+          } else {
+            results[key] = { color: "red", symbol: "×", label: "不可" };
+          }
         }
       }
 
@@ -609,19 +776,26 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/scenarios") {
       let queryParams = [];
 
+      const id = url.searchParams.get("id");
+      const ids = url.searchParams.get("ids");
       const system = url.searchParams.get("system");
       const author = url.searchParams.get("author");
       const keyword = url.searchParams.get("keyword");
 
+      if (id) queryParams.push(`id=eq.${encodeURIComponent(id)}`);
+      if (!id && ids) {
+        const encodedIds = ids.split(",").map(value => value.trim()).filter(Boolean).map(encodeURIComponent);
+        if (encodedIds.length > 0) queryParams.push(`id=in.(${encodedIds.join(",")})`);
+      }
       if (system) queryParams.push(`system=eq.${encodeURIComponent(system)}`);
       if (author) queryParams.push(`author=eq.${encodeURIComponent(author)}`);
-      
+
       if (keyword) {
         const kw = encodeURIComponent(`*${keyword}*`);
         queryParams.push(`or=(title.ilike.${kw},author.ilike.${kw})`);
       }
 
-      queryParams.push("select=id,title,system,author,description,notes,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate");
+      queryParams.push(id ? "select=*" : `select=${SCENARIO_LIST_SELECT}`);
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.scenarios}?${queryParams.join("&")}`;
@@ -629,17 +803,29 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/scenario_summary") {
+      const query = appendSafeViewQuery(
+        url,
+        ["id", "system", "author"],
+        ["updated_at", "title", "run_count"],
+        "updated_at.desc",
+        SCENARIO_SUMMARY_SELECT
+      );
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.scenarioSummary}?${query}`);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/character_scenarios") {
       const scenarioId = url.searchParams.get("scenario_id");
       const charId = url.searchParams.get("character_id");
-      
+
       // キャラクター詳細でもシナリオ詳細でも使えるように select=* にする
       let apiUrl = `/rest/v1/${SUPABASE_TABLES.characterScenarios}?select=*`;
-      
+
       if (scenarioId) {
         apiUrl += `&scenario_id=eq.${encodeURIComponent(scenarioId)}`;
       }
-      
+
       if (charId) {
         // character_id=eq.xxx の形式に対応
         const cleanCharId = charId.replace("eq.", "");
@@ -654,27 +840,36 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/runs") {
       let queryParams = [];
 
+      const id = url.searchParams.get("id");
       // 表示名の変更に左右されない新形式gm_idで検索し、保存契約と揃える。
-      const gmId = url.searchParams.get("gm_id"); 
+      const gmId = url.searchParams.get("gm_id");
+      const scenarioId = url.searchParams.get("scenario_id");
       const status = url.searchParams.get("status");
       const keyword = url.searchParams.get("keyword");
+      const participantId = url.searchParams.get("participant_id");
 
+      if (id) queryParams.push(`id=eq.${encodeURIComponent(id)}`);
       if (gmId) queryParams.push(`gm_id=eq.${encodeURIComponent(gmId)}`);
+      if (scenarioId) queryParams.push(`scenario_id=eq.${encodeURIComponent(scenarioId)}`);
       if (status) queryParams.push(`status=eq.${encodeURIComponent(status)}`);
-      
+      if (participantId) {
+        const value = encodeURIComponent(participantId);
+        queryParams.push(`or=(gm_id.eq.${value},player_ids.cs.%7B${value}%7D)`);
+      }
+
       if (keyword) {
         const kw = encodeURIComponent(`*${keyword}*`);
         queryParams.push(`title.ilike.${kw}`);
       }
 
-      queryParams.push("select=*");
+      queryParams.push(id ? "select=*" : `select=${RUN_LIST_SELECT}`);
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.runs}?${queryParams.join("&")}`;
-      
+
       // 1. 従来通りruns（セッションデータ）をSupabaseから取得
       const { res, text } = await sbFetch(env, request,apiUrl);
-      
+
       // もし通信エラーなどの場合はそのまま返す
       if (!res.ok) {
         return new Response(text, { status: res.status, headers: jsonHeaders });
@@ -686,9 +881,23 @@ async function handleGet(request, env, url) {
       if (Array.isArray(runs) && runs.length > 0) {
         try {
           // 2. プレイヤーの名前マスタ（IDと名前のセット）を紐づけ用に一括取得
-          const { text: playersText } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name`);
-          const players = JSON.parse(playersText);
-          
+          const requiredPlayerIds = [...new Set(runs.flatMap(run => [
+            run.gm_id,
+            ...(Array.isArray(run.player_ids) ? run.player_ids : [])
+          ]).filter(Boolean).map(String))];
+          let players = [];
+          if (requiredPlayerIds.length > 0) {
+            const ids = encodeURIComponent(`(${requiredPlayerIds.join(",")})`);
+            const { res: playersRes, text: playersText } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name&player_id=in.${ids}`);
+            if (playersRes.ok) {
+              players = JSON.parse(playersText);
+            } else {
+              // 移行中の型差などでIN句が使えない場合だけ、従来の全件取得へ戻す。
+              const fallback = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name`);
+              players = fallback.res.ok ? JSON.parse(fallback.text) : [];
+            }
+          }
+
           if (Array.isArray(players)) {
             // IDから名前をすぐに引ける「辞書（Map）」を作る
             const playerMap = new Map(players.map(p => [p.player_id, p.player_name]));
@@ -716,12 +925,24 @@ async function handleGet(request, env, url) {
       // 4. 名前情報が合体した新しいデータを文字列に戻してフロントエンドへ返却
       return new Response(JSON.stringify(runs), { status: 200, headers: jsonHeaders });
     }
-    
-    // ---- Recruit ----   
+
+    // ---- Recruit ----
     // 募集一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitments") {
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.recruitments}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/recruitment_list") {
+      const query = appendSafeViewQuery(
+        url,
+        ["id", "status", "owner_player_id", "scenario_id", "recruit_role"],
+        ["created_at", "status", "applicant_count"],
+        "created_at.desc",
+        RECRUITMENT_LIST_SELECT
+      );
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitmentList}?${query}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -734,7 +955,20 @@ async function handleGet(request, env, url) {
 
     if (request.method === "GET" && url.pathname === "/api/sessions/detail") {
       const id = url.searchParams.get("id");
-      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.sessions}?select=*&id=eq.${id}`);
+      const runId = url.searchParams.get("run_id");
+      const runIds = url.searchParams.get("run_ids");
+      // 詳細画面はnotes・配信URL等を含む既存の全列契約を維持する。
+      const filters = ["select=*"];
+      if (id) filters.push(`id=eq.${encodeURIComponent(id)}`);
+      if (runId) filters.push(`run_id=eq.${encodeURIComponent(runId)}`);
+      if (!runId && runIds) {
+        const encodedIds = runIds.split(",").map(value => value.trim()).filter(Boolean).map(encodeURIComponent);
+        if (encodedIds.length > 0) filters.push(`run_id=in.(${encodedIds.join(",")})`);
+      }
+      if (!id && !runId && !runIds) {
+        return new Response(JSON.stringify({ error: "id, run_id or run_ids required" }), { status: 400, headers: jsonHeaders });
+      }
+      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.sessions}?${filters.join("&")}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -778,7 +1012,7 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/nightreign/slot_presets") {
       const charId = url.searchParams.get("character_id");
       if (!charId) return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
-      
+
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.nightreignSlotPresets}?select=*&character_id=eq.${charId}&order=created_at.asc`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
@@ -789,14 +1023,18 @@ async function handlePost(request, env, ctx, url) {
   try {
     // Cloudflare R2 画像アップロード
     if (url.pathname === "/api/upload") {
+      if (!await validateUserBearer(request, env)) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      }
+
       if (!env.R2_BUCKET) {
         return new Response(JSON.stringify({ error: "R2_BUCKET is not bound" }), { status: 500, headers: jsonHeaders });
       }
-      
+
       const formData = await request.formData();
       const file = formData.get("file");
       const type = formData.get("type") || "general"; // character, scenario, run, general
-      
+
       if (!file) {
         return new Response(JSON.stringify({ error: "No file uploaded" }), { status: 400, headers: jsonHeaders });
       }
@@ -805,21 +1043,21 @@ async function handlePost(request, env, ctx, url) {
       const originalName = file.name || "image.png";
       const extMatch = originalName.match(/\.[^.]+$/);
       const ext = extMatch ? extMatch[0].toLowerCase() : ".png";
-      
+
       // 一意なファイル名を生成
       const key = `${type}/${crypto.randomUUID()}${ext}`;
-      
+
       // R2へアップロード
       await env.R2_BUCKET.put(key, file.stream(), {
         httpMetadata: {
           contentType: file.type || "image/png"
         }
       });
-      
+
       // 公開URLの組み立て
       const baseUrl = env.R2_PUBLIC_URL || "";
       const imageUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}${key}`;
-      
+
       return new Response(JSON.stringify({ url: imageUrl }), { status: 201, headers: jsonHeaders });
     }
 
@@ -827,30 +1065,30 @@ async function handlePost(request, env, ctx, url) {
 
     // ---- Comments ----
     if (url.pathname === "/api/comments") {
-      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- Characters (一括作成) ----
     if (url.pathname === "/api/character_full") {
       const { character, attributes, skills } = body;
-      const { res: charRes, text: charText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.characters}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
+      const { res: charRes, text: charText } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characters}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
       if (!charRes.ok) return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
-      
+
       const newCharId = JSON.parse(charText)[0].id;
 
       if (attributes?.length > 0) {
-        await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.characterAttributes}`, { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
+        await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characterAttributes}`, { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
       }
       if (skills?.length > 0) {
-        await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.characterSkills}`, { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
+        await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characterSkills}`, { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
       }
       return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
     }
 
     // 複合キーの重複を通常更新として扱う資源だけ、宣言済み経路でUpsertする。
     if (UPSERT_ENDPOINTS[url.pathname]) {
-      const { res, text } = await sbFetch(env, null, UPSERT_ENDPOINTS[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
+      const { res, text } = await sbFetch(env, request, UPSERT_ENDPOINTS[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
       if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -872,13 +1110,13 @@ async function handlePost(request, env, ctx, url) {
         play_time_minutes: body.play_time_minutes !== undefined ? parseInt(body.play_time_minutes, 10) : 180,
         lost_rate: body.lost_rate || 'low'
       };
-      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.scenarios}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.scenarios}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
     if (url.pathname === "/api/runs") {
-      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.runs}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
       if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
       const insertedData = JSON.parse(text);
       if (insertedData && insertedData[0]) ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
@@ -887,7 +1125,7 @@ async function handlePost(request, env, ctx, url) {
 
     // 募集保存の応答を先に確定し、Discord通知はwaitUntilで非同期に継続する。
     if (url.pathname === "/api/recruitments") {
-      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
       if (res.ok) {
         const insertedData = JSON.parse(text);
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
@@ -897,7 +1135,7 @@ async function handlePost(request, env, ctx, url) {
     }
 
     if (url.pathname === "/api/recruitment_applicants") {
-      const { res, text } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
       if (res.ok) {
         const payload = Array.isArray(body) ? body[0] : body;
         if (payload.recruitment_id || payload.recruit_id) {
@@ -911,11 +1149,8 @@ async function handlePost(request, env, ctx, url) {
     if (SIMPLE_INSERT_ENDPOINTS[url.pathname]) {
       const targetUrl = SIMPLE_INSERT_ENDPOINTS[url.pathname];
       const requestBody = url.pathname === "/api/player_profiles" ? body : [body];
-      
-      // 投稿者単位のRLSを適用する必要があるチャットだけ、利用者の認証情報を引き継ぐ。
-      const reqOrNull = url.pathname === "/api/posts" ? request : null;
-      
-      const { res, text } = await sbFetch(env, reqOrNull, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
+
+      const { res, text } = await sbFetch(env, request, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
       if (!res.ok) return new Response(JSON.stringify({ error: "Insert failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -930,12 +1165,12 @@ async function handlePost(request, env, ctx, url) {
 
 async function handlePatch(request, env, ctx, url) {
   if (request.method === "PATCH") {
-    const resource = url.pathname.replace("/api/", ""); 
-    // ① ホワイトリストに合致する汎用PATCH処理（強制ANON_KEY化するため request ではなく null を渡す）
+    const resource = url.pathname.replace("/api/", "");
+    // ① ホワイトリストに合致する汎用PATCH処理
     if (PATCH_ALLOWED_RESOURCES.includes(resource)) {
       try {
         const body = await request.json();
-        const { res, text } = await sbFetch(env, null, `/rest/v1/${resource}${url.search}`, {
+        const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, {
           method: "PATCH",
           headers: { "Prefer": "return=representation" },
           body: body
@@ -971,11 +1206,10 @@ async function handlePatch(request, env, ctx, url) {
 
 async function handleDelete(request, env, url) {
   if (request.method === "DELETE") {
-    const resource = url.pathname.replace("/api/", ""); 
+    const resource = url.pathname.replace("/api/", "");
     if (DELETE_ALLOWED_RESOURCES.includes(resource)) {
       try {
-        // 強制ANON_KEY化するため null を渡す
-        const { res, text } = await sbFetch(env, null, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
+        const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
         if (!res.ok) return new Response(JSON.stringify({ error: `${resource} delete failed`, detail: text }), { status: res.status, headers: jsonHeaders });
         return new Response(text, { status: 200, headers: jsonHeaders });
       } catch (e) {
@@ -987,8 +1221,8 @@ async function handleDelete(request, env, url) {
 // character_scenarios を同期する共通関数
 async function syncCharacterScenarios(runData, env) {
   // 通過履歴は完了卓だけから作るため、同期判定に卓状態も含める。
-  const { scenario_id, characters, user_id, status } = runData;
-  
+  const { scenario_id, characters, user_id, status, gm_id, player_ids } = runData;
+
   // 予定・進行中の参加者を通過済みにしないよう、完了時だけ関連を同期する。
   if (status !== 'done') {
     return;
@@ -998,27 +1232,55 @@ async function syncCharacterScenarios(runData, env) {
     return;
   }
 
-  // 有効なキャラクターIDのみ抽出
-  const records = characters
-    .filter(cId => cId && cId.trim() !== '')
-    .map(cId => ({
-      character_id: cId,
+  // 空IDと重複を除去し、卓のGM・参加者だけをキャラクター所有者として許可する。
+  const characterIds = [...new Set(
+    characters
+      .filter(cId => typeof cId === "string" && cId.trim() !== "")
+      .map(cId => cId.trim())
+  )];
+  if (characterIds.length === 0) return;
+
+  const allowedPlayerIds = new Set(
+    [gm_id, ...(Array.isArray(player_ids) ? player_ids : [])]
+      .filter(playerId => playerId !== null && playerId !== undefined && String(playerId).trim() !== "")
+      .map(String)
+  );
+
+  const encodedCharacterIds = characterIds.map(encodeURIComponent).join(",");
+  const { res: characterRes, text: characterText } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.characters}?select=id,player_id&id=in.(${encodedCharacterIds})`
+  );
+  if (!characterRes.ok) {
+    throw new Error("Character history validation failed");
+  }
+
+  const characterRows = JSON.parse(characterText);
+  const validCharacterIds = new Set(
+    (Array.isArray(characterRows) ? characterRows : [])
+      .filter(character => allowedPlayerIds.has(String(character.player_id)))
+      .map(character => String(character.id))
+  );
+  const rejectedCount = characterIds.length - validCharacterIds.size;
+  if (rejectedCount > 0) {
+    console.warn(`キャラクター履歴同期で許可外または不明なIDを${rejectedCount}件除外しました`);
+  }
+
+  const records = characterIds
+    .filter(characterId => validCharacterIds.has(characterId))
+    .map(characterId => ({
+      character_id: characterId,
       scenario_id: scenario_id,
       user_id: user_id
     }));
 
   if (records.length === 0) return;
 
-  // SupabaseへUpsertを実行
-  await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characterScenarios}`, {
+  // 認証済みrun保存の後続処理だけは、所有者の複数行同期を内部権限で完遂する。
+  await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.characterScenarios}`, {
     method: "POST",
-    headers: {
-      apikey: env.SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates" // 重複は上書き（実質スキップ）
-    },
-    body: JSON.stringify(records),
+    headers: { "Prefer": "resolution=merge-duplicates" },
+    body: records
   });
 }
 
@@ -1027,18 +1289,16 @@ async function registerParticipant(recruitmentId, discordUser, env) {
   try {
     // 1. Discord ID を使って players テーブルから player_id を検索
     // ※ players テーブルに discord_id カラムがあることを前提としています
-    const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.players}?discord_id=eq.${discordUser.id}&select=player_id,player_name`, {
-      headers: {
-        apikey: env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
-      }
-    });
+    const { res: playerRes, text: playerText } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.players}?discord_id=eq.${encodeURIComponent(discordUser.id)}&select=player_id,player_name`
+    );
 
     if (!playerRes.ok) {
-      throw new Error(`Player lookup failed: ${await playerRes.text()}`);
+      throw new Error(`Player lookup failed: ${playerText}`);
     }
 
-    const playerData = await playerRes.json();
+    const playerData = JSON.parse(playerText);
     const player = playerData[0];
 
     // システム（playersテーブル）に登録がないユーザーがボタンを押した場合
@@ -1047,25 +1307,21 @@ async function registerParticipant(recruitmentId, discordUser, env) {
     }
 
     // 2. recruitment_applicants テーブルへ登録（インサート）
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, {
+    const { res, text: insertText } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, {
       method: "POST",
       headers: {
-        apikey: env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-        "Content-Type": "application/json",
         // 複合主キーによる重複（二重登録）があった場合はエラーにせず無視する設定
         "Prefer": "return=representation,resolution=ignore-duplicates"
       },
-      body: JSON.stringify({
+      body: {
         recruitment_id: recruitmentId,
         player_id: player.player_id
-      })
+      }
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
       // 重複エラー以外のエラーが発生した場合は例外を投げる
-      throw new Error(`Insert failed: ${errorText}`);
+      throw new Error(`Insert failed: ${insertText}`);
     }
 
     // 参加登録と満員通知の順序を保証するため、同じバックグラウンド処理内で完了を待つ。
@@ -1089,13 +1345,13 @@ async function recruited(data, env) {
 
     const playerData = playerRes.res.ok ? JSON.parse(playerRes.text) : [];
     const scenarioData = (scenarioRes && scenarioRes.res.ok) ? JSON.parse(scenarioRes.text) : [];
-    
+
     const scenarioId = data.scenario_id || "default";
     const scenarioImageUrl = `${GITHUB_IMAGE_BASE_URL}/scenario/${scenarioId}.png?raw=true`;
 
     const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
     const scenarioTitle = scenarioData[0]?.title || data.scenario_id || "シナリオ未設定";
-    
+
     const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
     const count = data.target_count;
     const memo = data.memo || "詳細情報なし";
@@ -1145,54 +1401,53 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
 
   try {
     // 1. 募集の「目標人数」「ステータス」「募集主」「シナリオ」を取得
-    const recruitRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${recruitmentId}&select=target_count,owner_player_id,scenario_id,status`, {
-      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
-    });
-    
+    const { res: recruitRes, text: recruitText } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}&select=target_count,owner_player_id,scenario_id,status`
+    );
+
     // 2. 現在の応募者リストを取得
-    const applicantsRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${recruitmentId}&select=player_id`, {
-      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
-    });
+    const { res: applicantsRes, text: applicantsText } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&select=player_id`
+    );
 
     if (recruitRes.ok && applicantsRes.ok) {
-      const recruits = await recruitRes.json();
-      const applicants = await applicantsRes.json();
+      const recruits = JSON.parse(recruitText);
+      const applicants = JSON.parse(applicantsText);
 
       if (recruits.length > 0) {
         const recruit = recruits[0];
-        
+
         // 再通知を防ぐため、募集中から初めて定員へ到達した場合だけ状態更新と通知を行う。
         if (recruit.status === "open" && applicants.length >= recruit.target_count) {
-          
+
           // ① ステータスを「満員 (fulfilled)」に自動更新 (PATCH)
-          await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${recruitmentId}`, {
+          await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}`, {
             method: 'PATCH',
-            headers: { 
-              apikey: env.SUPABASE_ANON_KEY, 
-              Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status: "fulfilled" })
+            body: { status: "fulfilled" }
           });
 
           // ② 募集主のDiscord IDを取得
           let ownerDiscordId = null;
-          const playerRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${recruit.owner_player_id}&select=discord_id`, {
-            headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
-          });
+          const { res: playerRes, text: playerText } = await sbServiceFetch(
+            env,
+            `/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${encodeURIComponent(recruit.owner_player_id)}&select=discord_id`
+          );
           if (playerRes.ok) {
-            const players = await playerRes.json();
+            const players = JSON.parse(playerText);
             if (players.length > 0) ownerDiscordId = players[0].discord_id;
           }
 
           // ③ シナリオ名を取得
           let scenarioTitle = "未定・オリジナル";
           if (recruit.scenario_id) {
-            const scRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.scenarios}?id=eq.${recruit.scenario_id}&select=title`, {
-              headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}` }
-            });
+            const { res: scRes, text: scenarioText } = await sbServiceFetch(
+              env,
+              `/rest/v1/${SUPABASE_TABLES.scenarios}?id=eq.${encodeURIComponent(recruit.scenario_id)}&select=title`
+            );
             if (scRes.ok) {
-              const scData = await scRes.json();
+              const scData = JSON.parse(scenarioText);
               if (scData.length > 0) scenarioTitle = scData[0].title;
             }
           }

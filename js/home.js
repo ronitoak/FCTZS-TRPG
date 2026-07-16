@@ -10,6 +10,7 @@ const homeDashboardState = {
   runs: [],
   availabilities: []
 };
+const availabilityRequestToken = Utils.createLatestRequestToken();
 
 function toValidDate(iso) {
   const d = new Date(iso);
@@ -60,7 +61,7 @@ function renderNextSession(container, sessions, runsById, scenariosById) {
 
   // 詳細連携はしない方針なので、リンクは貼らず表示だけ
   container.innerHTML = `
-    
+
     <p><strong>${dateStr} ${timeStr}</strong> ${duration ? `(${duration})` : ""}</p>
     <ul><li><p>${runTitle} ${sessionTitle}</p>
       <small>シナリオ: ${scenarioTitle}</small>
@@ -90,7 +91,7 @@ function renderOngoing(container, runs, scenariosById, sessionsByRunId, playersB
 
     const scenarioTitle = Utils.escapeHtml(scenario?.title || r.scenario_id || "（不明）");
     const runTitle = Utils.escapeHtml(r.title || r.id || "（卓）");
-    
+
     let playersText = "";
     if (r.player_ids && Array.isArray(r.player_ids) && r.player_ids.length > 0) {
         playersText = r.player_ids.map(id => {
@@ -173,10 +174,13 @@ function renderMyRecruitments(container, recruitments, applicants, scenariosById
 
   container.innerHTML = `<ul class="dashboard-recruitment-list">${myRecruitments.map(recruitment => {
     const scenario = scenariosById.get(String(recruitment.scenario_id));
-    const currentCount = (Array.isArray(applicants) ? applicants : [])
+    const legacyCount = (Array.isArray(applicants) ? applicants : [])
       .filter(item => String(item.recruitment_id) === String(recruitment.id)).length;
+    const currentCount = Number.isFinite(Number(recruitment.applicant_count))
+      ? Number(recruitment.applicant_count)
+      : legacyCount;
     const status = statusLabels[recruitment.status] || recruitment.status || "不明";
-    const title = Utils.escapeHtml(scenario?.title || "シナリオ未定");
+    const title = Utils.escapeHtml(recruitment.scenario_title || scenario?.title || "シナリオ未定");
     return `
       <li>
         <a href="./recruit/detail.html?id=${encodeURIComponent(recruitment.id)}">${title}</a>
@@ -185,6 +189,18 @@ function renderMyRecruitments(container, recruitments, applicants, scenariosById
       </li>
     `;
   }).join("")}</ul>`;
+}
+
+async function refreshHomeAvailability() {
+  if (!homeDashboardState.playerId) return false;
+  const year = homeDashboardState.currentDate.getFullYear();
+  const month = homeDashboardState.currentDate.getMonth();
+  const token = availabilityRequestToken.issue();
+  const rows = await Utils.fetchPlayerAvailabilities(homeDashboardState.playerId, year, month);
+  if (!availabilityRequestToken.isLatest(token)) return false;
+  homeDashboardState.availabilities = rows;
+  renderHomeCalendar();
+  return true;
 }
 
 function renderHomeCalendar() {
@@ -250,13 +266,12 @@ async function saveHomeAvailability() {
   try {
     if (saveButton) saveButton.disabled = true;
     await Utils.apiPost("player_availability", payload);
-    homeDashboardState.availabilities = await Utils.fetchPlayerAvailabilities(homeDashboardState.playerId);
+    await refreshHomeAvailability();
     modal?.close();
-    renderHomeCalendar();
     alert("予定を保存しました。");
   } catch (err) {
     console.error("予定の保存に失敗しました:", err);
-    alert("予定の保存に失敗しました。");
+    alert("予定の保存に失敗しました: " + err.message);
   } finally {
     if (saveButton) saveButton.disabled = false;
   }
@@ -264,15 +279,15 @@ async function saveHomeAvailability() {
 
 function setupDashboardEvents() {
   document.getElementById("home-login-btn")?.addEventListener("click", Utils.loginWithDiscord);
-  document.getElementById("home-prev-month-btn")?.addEventListener("click", () => {
+  document.getElementById("home-prev-month-btn")?.addEventListener("click", async () => {
     homeDashboardState.currentDate.setDate(1);
     homeDashboardState.currentDate.setMonth(homeDashboardState.currentDate.getMonth() - 1);
-    renderHomeCalendar();
+    await refreshHomeAvailability().catch(err => console.error("予定の取得に失敗しました:", err));
   });
-  document.getElementById("home-next-month-btn")?.addEventListener("click", () => {
+  document.getElementById("home-next-month-btn")?.addEventListener("click", async () => {
     homeDashboardState.currentDate.setDate(1);
     homeDashboardState.currentDate.setMonth(homeDashboardState.currentDate.getMonth() + 1);
-    renderHomeCalendar();
+    await refreshHomeAvailability().catch(err => console.error("予定の取得に失敗しました:", err));
   });
   document.getElementById("home-save-availability-btn")?.addEventListener("click", saveHomeAvailability);
   document.getElementById("home-close-availability-btn")?.addEventListener("click", () => {
@@ -352,25 +367,34 @@ async function main() {
     const mySessions = (Array.isArray(sessions) ? sessions : [])
       .filter(item => myRunIds.has(String(item.run_id)));
 
-    const [recruitments, applicants, availabilities] = await Promise.all([
-      Utils.apiGet("recruitments?order=created_at.desc").catch(() => []),
-      Utils.apiGet("recruitment_applicants").catch(() => []),
-      Utils.fetchPlayerAvailabilities(myPlayer.player_id).catch(() => [])
-    ]);
+    const recruitments = await Utils.apiGetWithFallback(
+      `recruitment_list?owner_player_id=eq.${encodeURIComponent(myPlayer.player_id)}&order=created_at.desc`,
+      async () => {
+        const [legacyRecruitments, applicants] = await Promise.all([
+          Utils.apiGet(`recruitments?owner_player_id=eq.${encodeURIComponent(myPlayer.player_id)}&order=created_at.desc`),
+          Utils.apiGet("recruitment_applicants?select=recruitment_id,player_id")
+        ]);
+        return (Array.isArray(legacyRecruitments) ? legacyRecruitments : []).map(recruitment => ({
+          ...recruitment,
+          applicant_count: (Array.isArray(applicants) ? applicants : [])
+            .filter(item => String(item.recruitment_id) === String(recruitment.id)).length,
+          scenario_title: scenariosById.get(String(recruitment.scenario_id))?.title
+        }));
+      }
+    );
 
     homeDashboardState.runs = myRuns;
     homeDashboardState.sessions = mySessions;
-    homeDashboardState.availabilities = availabilities;
 
     document.getElementById("dashboard-player-name").textContent = `${myPlayer.player_name} のダッシュボード`;
     renderNextSession(document.getElementById("my-next-session"), mySessions, runsById, scenariosById);
     renderMyRecruitments(
       document.getElementById("my-recruitments"),
       recruitments,
-      applicants,
+      [],
       scenariosById
     );
-    renderHomeCalendar();
+    await refreshHomeAvailability();
 
   } catch (err) {
     const msg = Utils.escapeHtml(err?.message || "読み込みエラー");

@@ -5,10 +5,10 @@
 
 let currentCharData = null;
 let currentSkillRows = null;
-let currentSystemAttrs = []; 
+let currentSystemAttrs = [];
 let currentCharAttrsMap = new Map();
-let allScenarios = []; 
-let currentCharacterScenarios = []; 
+let allScenarios = [];
+let currentCharacterScenarios = [];
 
 function toIntOrNull(v) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
@@ -264,13 +264,29 @@ function generateCcfoliaData() {
 // --- メイン描画・データ展開ロジック ---
 // ==========================================
 async function fetchCharacterDetailData(id) {
-  const [characters, scenarios, runs, scenarioIds, skillRows] = await Promise.all([
-    Utils.apiGet("characters"),
-    Utils.apiGet("scenarios"),
-    Utils.apiGet("runs"),
-    Utils.apiGet(`character_scenarios?character_id=${encodeURIComponent(id)}`).catch(() => []),
-    Utils.apiGet(`character_skill_list?character_id=${encodeURIComponent(id)}`).catch(() => []),
+  const [characters, characterScenarioRows, skillRows] = await Promise.all([
+    Utils.apiGet(`characters?id=${encodeURIComponent(id)}`),
+    Utils.apiGet(`character_scenarios?character_id=${encodeURIComponent(id)}`).catch(() => null),
+    Utils.apiGet(`character_skill_list?character_id=${encodeURIComponent(id)}`).catch(() => [])
   ]);
+
+  let runs = [];
+  let scenarioIds = Array.isArray(characterScenarioRows) ? characterScenarioRows : [];
+  if (scenarioIds.length === 0) {
+    runs = await Utils.apiGet("runs").catch(() => []);
+    const legacyIds = [...new Set((Array.isArray(runs) ? runs : [])
+      .filter(run => run.status === "done" && Array.isArray(run.characters) && run.characters.includes(id))
+      .map(run => run.scenario_id)
+      .filter(Boolean))];
+    scenarioIds = legacyIds;
+  }
+
+  const ids = scenarioIds
+    .map(row => (typeof row === "object" && row !== null) ? row.scenario_id : row)
+    .filter(Boolean);
+  const scenarios = ids.length > 0
+    ? await Utils.apiGet(`scenarios?ids=${encodeURIComponent([...new Set(ids)].join(","))}`).catch(() => [])
+    : [];
   return { characters, scenarios, runs, scenarioIds, skillRows };
 }
 
@@ -293,7 +309,7 @@ async function main() {
     const skillsEditBtn = `<button id="btn-open-skills-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const paramsEditBtn = `<button id="btn-open-params-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
     const emotionsEditBtn = `<button id="btn-open-emotions-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; margin-left: 10px;">📝</button>`;
-    
+
     const charactersSafe = Array.isArray(characters) ? characters : [];
     const scenariosSafe = Array.isArray(scenarios) ? scenarios : [];
     const runsSafe = Array.isArray(runs) ? runs : [];
@@ -306,10 +322,10 @@ async function main() {
       return;
     }
 
-    const players = await Utils.apiGet("players");
+    const players = await Utils.apiGet("players?select=player_id,player_name");
     const playerSelect = document.getElementById("player-select");
     if (playerSelect) {
-        playerSelect.innerHTML = '<option value="">選択してください</option>'; 
+        playerSelect.innerHTML = '<option value="">選択してください</option>';
         players.forEach(p => {
             const opt = document.createElement("option");
             opt.value = p.player_id;
@@ -318,8 +334,8 @@ async function main() {
         });
     }
 
-    currentCharData = c; 
-    currentSkillRows = Array.isArray(skillRows) ? skillRows : []; 
+    currentCharData = c;
+    currentSkillRows = Array.isArray(skillRows) ? skillRows : [];
 
     const [systemAttrDefs, characterAttrRows] = await Promise.all([
       Utils.apiGet(`system_attributes?system=${encodeURIComponent(c.system ?? "")}`).catch(() => []),
@@ -379,8 +395,8 @@ async function main() {
       passedScenarioIds = [...new Set(relatedRuns.map(r => r?.scenario_id).filter(Boolean))];
     }
 
-    allScenarios = scenariosSafe; 
-    currentCharacterScenarios = passedScenarioIds; 
+    allScenarios = scenariosSafe;
+    currentCharacterScenarios = passedScenarioIds;
 
     const iacharaLinkHtml = c.iachara_url
       ? `<section class="character-detail-url"><h2 class="character-detail-h2">キャラシート</h2><ul><li>${Utils.renderLink(c.iachara_url, "開く")}</li></ul></section>`
@@ -390,7 +406,7 @@ async function main() {
     ? `<ul class="character-detail-scenario-list">${passedScenarioIds.map(row => {
           // 旧APIのID配列と、移行後のオブジェクト配列をどちらも表示できるようにする。
           const sid = (typeof row === 'object' && row !== null) ? row.scenario_id : row;
-          if (!sid) return ""; 
+          if (!sid) return "";
           const s = scenariosById.get(sid);
           return `<li><a class="character-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(sid)}">${Utils.escapeHtml(s?.title ?? sid)}</a></li>`;
         }).join("")}</ul>`
@@ -447,7 +463,7 @@ function appendAttrInput(container, def, value, inputType, inputName) {
             const selected = (emo === value) ? 'selected' : '';
             return `<option value="${Utils.escapeHtml(emo)}" ${selected}>${Utils.escapeHtml(emo)}</option>`;
         }).join("");
-        
+
         inputHtml = `
             <select name="${inputName}" class="form-control">
                 <option value="">-- 選択してください --</option>
@@ -472,7 +488,7 @@ async function saveAttributes(payload) {
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("更新に失敗しました");
+        alert("更新に失敗しました: " + err.message);
     }
 }
 
@@ -507,7 +523,7 @@ function renderGenericAttributes(system, defs, attrMap, targetKind) {
     const label = d.label ?? key;
     const v = attrMap.get(key);
     let display = "—";
-    
+
     if (targetKind === "int") {
         const n = Number(v?.value_int);
         if (Number.isFinite(n)) display = String(n);
@@ -572,7 +588,7 @@ document.addEventListener('click', async (e) => {
         form.memo.value = currentCharData.memo || "";
         modal?.showModal();
     }
-    
+
     if (e.target.id === 'btn-close-char-edit') {
         document.getElementById('edit-character-modal')?.close();
     }
@@ -646,34 +662,26 @@ document.getElementById('btn-add-skill-row')?.addEventListener('click', () => {
 document.getElementById('edit-character-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    
+
     const fileInput = e.target.querySelector('input[name="image_file"]');
     let imageUrl = currentCharData.image_url || null;
-    
+
     if (fileInput && fileInput.files[0]) {
         try {
             const originalFile = fileInput.files[0];
             const compressedBlob = await Utils.compressAndResizeImage(originalFile);
 
             const formData = new FormData();
-            const fileBaseName = originalFile.name.includes('.') 
-                ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) 
+            const fileBaseName = originalFile.name.includes('.')
+                ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.'))
                 : originalFile.name;
             const fileName = `${fileBaseName}.webp`;
 
             formData.append("file", compressedBlob, fileName);
             formData.append("type", "character");
-            
-            const uploadRes = await fetch(`${API_BASE}/api/upload`, {
-                method: "POST",
-                body: formData
-            });
-            if (uploadRes.ok) {
-                const uploadResult = await uploadRes.json();
-                imageUrl = uploadResult.url;
-            } else {
-                console.error("画像アップロード失敗:", await uploadRes.text());
-            }
+
+            const uploadResult = await Utils.apiUpload(formData);
+            imageUrl = uploadResult.url;
         } catch (err) {
             console.error("画像アップロードエラー:", err);
         }
@@ -725,7 +733,7 @@ document.getElementById('edit-skills-form')?.addEventListener('submit', async (e
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("更新に失敗しました");
+        alert("更新に失敗しました: " + err.message);
     }
 });
 
@@ -766,7 +774,7 @@ function buildCharacterHeaderHtml(c) {
         ${Utils.escapeHtml(c.name)} <span class="character-detail-reading">(${Utils.escapeHtml(c.reading || "")})</span>
       </h1>
       ${c.state ? `<span class="character-detail-badge ${Utils.escapeHtml(c.state)}" style="margin-left: 10px;">${Utils.escapeHtml(String(c.state).toUpperCase())}</span>` : ""}
-      
+
       <button id="btn-copy-ccfolia" class="btn-primary" title="ココフォリア出力形式でクリップボードにコピー" style="margin-left: auto; font-size: 0.9rem; padding: 6px 12px; display: flex; align-items: center; gap: 5px; cursor: pointer;">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
         ココフォリア出力
@@ -792,7 +800,7 @@ function buildCharacterTopHtml(c, src, fallback, profileRowsHtml, editBtn) {
 }
 
 function buildCharacterBottomHtml(c, hasGeneric, sysDefsSafe, attrMap, abilities, skillEntries, memo, paramsEditBtn, emotionsEditBtn, skillsEditBtn) {
-  const paramsHtml = hasGeneric 
+  const paramsHtml = hasGeneric
     ? renderGenericAttributes(c.system, sysDefsSafe, attrMap, "int")
     : (Object.keys(abilities).length ? `<div class="character-detail-chips">${Object.entries(abilities).map(([k, v]) => `<span class="character-detail-chip"><span class="character-detail-chip-key">${Utils.escapeHtml(k)}</span><span class="character-detail-chip-val">${Utils.escapeHtml(String(v))}</span></span>`).join("")}</div>` : `<p class="character-detail-muted">未登録</p>`);
 
@@ -803,12 +811,12 @@ function buildCharacterBottomHtml(c, hasGeneric, sysDefsSafe, attrMap, abilities
        </article>`
     : ``;
 
-  const skillsHtml = skillEntries.length 
+  const skillsHtml = skillEntries.length
     ? `<div class="character-detail-chips">${skillEntries.map(s => `<span class="character-detail-chip character-detail-chip--skill"><span class="character-detail-chip-key">${Utils.escapeHtml(s.name)}</span><span class="character-detail-chip-val">${Utils.escapeHtml(String(s.display_value))}</span></span>`).join("")}</div>`
     : `<p class="character-detail-muted">（初期値以上の技能なし）</p>`;
 
-  const memoHtml = memo && String(memo).trim() !== "" 
-    ? `<p class="character-detail-memo">${Utils.renderMultilineText(memo)}</p>` 
+  const memoHtml = memo && String(memo).trim() !== ""
+    ? `<p class="character-detail-memo">${Utils.renderMultilineText(memo)}</p>`
     : `<p class="character-detail-muted">未登録</p>`;
 
   return `

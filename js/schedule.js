@@ -7,6 +7,7 @@ let currentDate = new Date(); // 再描画や前後月移動でも表示月を�
 let allSessions = [];         // フィルタ変更ごとの再取得を避けるため、取得結果を保持する。
 let compareMode = false;
 let comparisonData = {};
+const comparisonRequestToken = Utils.createLatestRequestToken();
 
 let globalPlayers = [];
 let parsedCsvData = null;
@@ -110,18 +111,18 @@ async function saveBulkAvailability() {
     const res = await Utils.apiPost("player_availability", payload);
     if (res) {
       closeModal('availability-modal');
-      
+
       if (compareMode) {
         await runComparison();
       } else {
         await fetchScheduleData();
       }
-      
+
       alert("予定を保存しました");
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
-    alert("保存に失敗しました");
+    alert("保存に失敗しました: " + err.message);
   }
 }
 
@@ -129,12 +130,12 @@ async function initPlayerList() {
   try {
     const data = await Utils.getPlayers();
     globalPlayers = Array.isArray(data) ? data : [];
-    
+
     const listEl = document.getElementById("player-checkbox-list");
     const inputPlayerSelect = document.getElementById("modal-player-id");
-    
+
     if (listEl) listEl.innerHTML = "";
-    
+
     globalPlayers.forEach(p => {
       if (listEl) {
         const label = document.createElement("label");
@@ -162,61 +163,28 @@ async function runComparison() {
 
   const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const requestToken = comparisonRequestToken.issue();
 
   try {
-    // APIを直接叩き、全員分の1ヶ月のデータを取得する
     const encodedIds = selectedIds.map(id => encodeURIComponent(id)).join(",");
-    const raw = await Utils.apiGet(`player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${start}&target_date=lte.${end}`);
-    
-    if (Array.isArray(raw)) {
-      const grouped = {};
-      raw.forEach(r => {
-        const key = `${r.target_date}_${r.time_slot}`;
-        if (!grouped[key]) grouped[key] = {};
-        grouped[key][r.player_id] = { 
-          status: r.status, 
-          name: r.players?.player_name || r.player_id 
-        };
-      });
-
-      const results = {};
-      for (let d = 1; d <= lastDay; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        ["afternoon", "night"].forEach(slot => {
-            const key = `${dateStr}_${slot}`;
-            const playerMap = grouped[key] || {};
-            const pList = Object.values(playerMap);
-            const statuses = pList.map(p => p.status);
-            
-            // 選択された人数のうち、予定を入力していない人の数
-            const missingCount = selectedIds.length - pList.length;
-            // "none" は空白扱い（未入力・NGと同義）
-            const hasNg = statuses.includes("ng") || statuses.includes("none");
-            const hasMaybe = statuses.includes("maybe");
-            
-            if (hasNg) {
-              results[key] = { color: "red", symbol: "×", label: "不可あり" };
-            } else if (missingCount > 0) {
-              results[key] = { color: "yellow", symbol: "△", label: `未入力: ${missingCount}人` };
-            } else if (hasMaybe) {
-              const maybeNames = pList.filter(p => p.status === "maybe").map(p => p.name);
-              results[key] = { color: "yellow", symbol: "△", label: `△: ${maybeNames.join(", ")}` };
-            } else if (statuses.length === selectedIds.length && statuses.every(s => s === "ok")) {
-              results[key] = { color: "green", symbol: "○", label: "全員空き" };
-            } else {
-              results[key] = { color: "red", symbol: "×", label: "不可" }; // フォールバック
-            }
-        });
+    const nextComparisonData = await Utils.apiGetWithFallback(
+      `schedule_match?player_ids=${encodedIds}&start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
+      async () => {
+        const raw = await Utils.apiGet(`player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${start}&target_date=lte.${end}`);
+        return Utils.aggregateScheduleMatches(raw, selectedIds, year, month);
       }
-
-      comparisonData = results;
-      compareMode = true;
-      closeModal('compare-modal');
-      renderCalendar(); 
-    }
+    );
+    if (!comparisonRequestToken.isLatest(requestToken)) return false;
+    comparisonData = nextComparisonData;
+    compareMode = true;
+    closeModal('compare-modal');
+    renderCalendar();
+    return true;
   } catch (err) {
+    if (!comparisonRequestToken.isLatest(requestToken)) return false;
     console.error("比較エラー:", err);
     alert("比較データの取得に失敗しました");
+    return false;
   }
 }
 
@@ -237,7 +205,7 @@ async function initCompareModalData() {
     globalRuns = Array.isArray(runs) ? runs.filter(r => r.status === 'active' || r.status === 'planning') : [];
 
     const runSelect = document.getElementById("compare-run-select");
-    const addSessionRunSelect = document.getElementById("add-session-run-id"); 
+    const addSessionRunSelect = document.getElementById("add-session-run-id");
 
     if (runSelect) {
       runSelect.innerHTML = '<option value="">-- 卓を選択 --</option>';
@@ -348,7 +316,7 @@ async function handleAddSessionSubmit(e) {
     window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
   } catch (err) {
     console.error("セッション追加エラー:", err);
-    alert("セッションの追加に失敗しました。コンソールを確認してください。");
+    alert("セッションの追加に失敗しました: " + err.message);
     e.target.querySelector('button[type="submit"]').disabled = false;
   }
 }
@@ -356,14 +324,14 @@ async function handleAddSessionSubmit(e) {
 // 起動時の処理とイベントリスナー
 async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
-  
+
   const prevBtn = document.getElementById("prev-month-btn");
   const nextBtn = document.getElementById("next-month-btn");
 
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
       currentDate.setMonth(currentDate.getMonth() - 1);
-      if (compareMode) runComparison(); 
+      if (compareMode) runComparison();
       else renderCalendar();
     });
   }
@@ -396,7 +364,7 @@ async function main() {
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       document.getElementById("add-session-start").value = now.toISOString().slice(0, 16);
-      
+
       document.getElementById("add-session-modal")?.showModal();
   });
 
@@ -412,7 +380,7 @@ async function main() {
   // ==========================================
 
   document.getElementById("btn-import-csv")?.addEventListener("click", () => {
-      document.getElementById("csv-upload").value = ""; 
+      document.getElementById("csv-upload").value = "";
       document.getElementById("csv-upload").click();
   });
 
@@ -421,14 +389,14 @@ async function main() {
       if (!file) return;
 
       const reader = new FileReader();
-      reader.readAsText(file, 'Shift_JIS'); 
-      
+      reader.readAsText(file, 'Shift_JIS');
+
       reader.onload = (event) => {
           const text = event.target.result;
           const lines = text.split('\n').filter(l => l.trim() !== '');
-          
+
           const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
-          
+
           if (headerIndex === -1) {
               return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
           }
@@ -456,7 +424,7 @@ async function main() {
       const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" };
 
       parsedCsvData.dataRows.forEach(row => {
-          const rawDateStr = row[0]; 
+          const rawDateStr = row[0];
           if (!rawDateStr) return;
 
           let targetDate = null;
@@ -467,7 +435,7 @@ async function main() {
           if (dateMatch) {
               targetDate = `${currentYear}-${String(dateMatch[1]).padStart(2, "0")}-${String(dateMatch[2]).padStart(2, "0")}`;
           }
-          if (!targetDate) return; 
+          if (!targetDate) return;
 
           const timeMatch = rawDateStr.match(/(\d{1,2}):(\d{2})/);
           if (timeMatch) {
@@ -481,8 +449,8 @@ async function main() {
 
           Object.entries(columnMap).forEach(([colIndex, playerId]) => {
               const rawStatus = row[colIndex];
-              const status = statusMap[rawStatus]; 
-              
+              const status = statusMap[rawStatus];
+
               if (status) {
                   payload.push({
                       player_id: playerId,
@@ -514,7 +482,7 @@ async function main() {
           }
       } catch (err) {
           console.error("CSVインポートエラー:", err);
-          alert("インポートに失敗しました");
+          alert("インポートに失敗しました: " + err.message);
       } finally {
           const btn = document.getElementById("btn-execute-import");
           btn.disabled = false;
@@ -523,8 +491,8 @@ async function main() {
   });
 
   // 初回読み込み
-  await initCompareModalData();    
-  await fetchScheduleData(); 
+  await initCompareModalData();
+  await fetchScheduleData();
 }
 
 // モーダルの背景（外側）をクリックした時に閉じる処理
@@ -548,7 +516,7 @@ function showMappingModal() {
 
     csvNames.forEach((csvName, index) => {
         if (!csvName) return;
-        
+
         const matchedPlayer = globalPlayers.find(p => p.player_name === csvName);
         const selectedId = matchedPlayer ? matchedPlayer.player_id : "";
 
@@ -566,7 +534,7 @@ function showMappingModal() {
                 </select>
             </div>
         `;
-        
+
         container.appendChild(rowDiv);
         if (selectedId) rowDiv.querySelector("select").value = selectedId;
     });

@@ -89,7 +89,7 @@ function renderScenarios(scenarios) {
 function applyFilters() {
   const keyword = document.getElementById("filter-keyword").value.trim().toLowerCase();
   const systemVal = document.getElementById("filter-system").value;
-  
+
   const targetPlayersVal = document.getElementById("filter-target-players").value;
   const playTimeVal = document.getElementById("filter-play-time").value;
 
@@ -168,25 +168,35 @@ async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
 
   try {
-    const [scenarios, runs] = await Promise.all([
-      Utils.apiGet("scenario_list"),
-      Utils.apiGet("runs"),
-    ]);
+    const result = await Utils.apiGetWithFallback(
+      "scenario_summary",
+      async () => {
+        const [scenarios, runs] = await Promise.all([
+          Utils.apiGet("scenario_list"),
+          Utils.apiGet("runs")
+        ]);
+        const counts = new Map();
+        for (const run of (Array.isArray(runs) ? runs : [])) {
+          if (!run?.scenario_id) continue;
+          counts.set(run.scenario_id, (counts.get(run.scenario_id) || 0) + 1);
+        }
+        return (Array.isArray(scenarios) ? scenarios : []).map(scenario => ({
+          ...scenario,
+          run_count: counts.get(scenario.id) || 0
+        }));
+      }
+    );
 
-    allScenarios = Array.isArray(scenarios) ? scenarios : [];
+    allScenarios = Array.isArray(result) ? result : [];
 
     // ログイン中のユーザー情報を取得し、対応するプレイヤープロフィールを取得
     const { profile } = await Utils.getCurrentUserPlayerContext().catch(() => ({ profile: null }));
     currentUserProfile = profile;
 
-    // scenario_id -> run数
+    // 新ビューの集計値を表示用Mapへ移し、旧API fallback時も同じ描画契約に揃える。
     runCountByScenarioId.clear();
-    for (const r of (Array.isArray(runs) ? runs : [])) {
-      if (!r?.scenario_id) continue;
-      runCountByScenarioId.set(
-        r.scenario_id,
-        (runCountByScenarioId.get(r.scenario_id) ?? 0) + 1
-      );
+    for (const scenario of allScenarios) {
+      runCountByScenarioId.set(scenario.id, Number(scenario.run_count) || 0);
     }
 
     // システム絞り込み用セレクトボックスの選択肢を動的に生成
@@ -206,7 +216,7 @@ async function main() {
     const filterSystem = document.getElementById("filter-system");
     const filterTargetPlayers = document.getElementById("filter-target-players");
     const filterPlayTime = document.getElementById("filter-play-time");
-    
+
     if (filterKeyword) filterKeyword.addEventListener("input", applyFilters);
     if (filterSystem) filterSystem.addEventListener("change", applyFilters);
     if (filterTargetPlayers) filterTargetPlayers.addEventListener("input", applyFilters);

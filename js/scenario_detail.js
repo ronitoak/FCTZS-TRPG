@@ -20,12 +20,12 @@ async function main() {
   try {
     // 卓にはプレイヤーIDだけが残るため、表示名へ解決するマスタも同時取得する。
     const [scenarios, runs, sessions, characters, characterIds, playersData] = await Promise.all([
-      Utils.apiGet("scenarios"),
-      Utils.apiGet("runs"),
-      Utils.apiGet("sessions"),
-      Utils.apiGet("characters").catch(() => []),
+      Utils.apiGet(`scenarios?id=${encodeURIComponent(id)}`),
+      Utils.apiGet(`runs?scenario_id=${encodeURIComponent(id)}`),
+      Utils.apiGet("session_list"),
+      Utils.apiGet(`characters?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
       Utils.apiGet(`character_scenarios?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
-      Utils.apiGet("players").catch(() => []) 
+      Utils.apiGet("players?select=player_id,player_name").catch(() => [])
     ]);
 
     // 卓ごとの反復検索を避けつつ欠損IDも扱えるよう、名前解決用Mapを作る。
@@ -46,7 +46,7 @@ async function main() {
       return;
     }
 
-    currentScenarioId = scenario.id; 
+    currentScenarioId = scenario.id;
 
     const coverPath = Utils.getScenarioCoverPath(scenario.id, scenario.image_url);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
@@ -103,7 +103,7 @@ async function main() {
     let passedCharIds = (Array.isArray(characterIds) ? characterIds : [])
       .map(row => row?.character_id)
       .filter(Boolean);
-    
+
     // 関連テーブルへ未同期の旧データも表示できるよう、終了済み卓から通過者を補完する。
     if (passedCharIds.length === 0) {
         const doneRunCharIds = doneRuns.flatMap(r => Array.isArray(r.characters) ? r.characters : []);
@@ -126,7 +126,7 @@ async function main() {
               return `
                 <a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}">
                   <img
-                    class="character-chip-icon" 
+                    class="character-chip-icon"
                     src="${img}"
                     onerror="this.onerror=null;this.src='${fallbackImg}';"
                     alt="${name}"
@@ -190,28 +190,28 @@ async function main() {
         <div class="scenario-detail-runs-split">
           <section class="scenario-detail-runs-block">
             <h3 class="scenario-detail-h3">進行中セッション</h3>
-            ${activeRuns.length 
+            ${activeRuns.length
               ? `<div class="scenario-detail-runs-grid">
                   ${activeRuns.map(r => renderRunCard(r, "進行中", "active", nextByRunId, playerMapById, playerMapByName)).join("")}
-                </div>` 
+                </div>`
               : `<p class="scenario-detail-muted"><small>進行中の卓はありません</small></p>`}
           </section>
 
           <section class="scenario-detail-runs-block">
             <h3 class="scenario-detail-h3">計画中セッション</h3>
-            ${planningRuns.length 
+            ${planningRuns.length
               ? `<div class="scenario-detail-runs-grid">
                   ${planningRuns.map(r => renderRunCard(r, "計画中", "planning", nextByRunId, playerMapById, playerMapByName)).join("")}
-                </div>` 
+                </div>`
               : `<p class="scenario-detail-muted"><small>計画中の卓はありません</small></p>`}
           </section>
 
           <section class="scenario-detail-runs-block">
             <h3 class="scenario-detail-h3">終了済セッション</h3>
-            ${doneRuns.length 
+            ${doneRuns.length
               ? `<div class="scenario-detail-runs-grid">
                   ${doneRuns.map(r => renderRunCard(r, "終了済", "done", nextByRunId, playerMapById, playerMapByName)).join("")}
-                </div>` 
+                </div>`
               : `<p class="scenario-detail-muted"><small>終了済の卓はありません</small></p>`}
           </section>
         </div>
@@ -222,7 +222,7 @@ async function main() {
       if (e.target && e.target.id === 'btn-open-scenario-edit') {
         const modal = document.getElementById('edit-scenario-modal');
         const form = document.getElementById('edit-scenario-form');
-        
+
         if (!modal || !form) return;
 
         form.title.value = scenario.title || "";
@@ -266,7 +266,7 @@ async function main() {
 document.getElementById('edit-scenario-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    
+
     const payload = {
         title: fd.get("title"),
         system: fd.get("system"),
@@ -289,24 +289,16 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
             const compressedBlob = await Utils.compressAndResizeImage(originalFile);
 
             const formData = new FormData();
-            const fileBaseName = originalFile.name.includes('.') 
-                ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) 
+            const fileBaseName = originalFile.name.includes('.')
+                ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.'))
                 : originalFile.name;
             const fileName = `${fileBaseName}.webp`;
 
             formData.append("file", compressedBlob, fileName);
             formData.append("type", "scenario");
-            
-            const uploadRes = await fetch(`${API_BASE}/api/upload`, {
-                method: "POST",
-                body: formData
-            });
-            if (uploadRes.ok) {
-                const uploadResult = await uploadRes.json();
-                payload.image_url = uploadResult.url;
-            } else {
-                console.error("画像アップロード失敗:", await uploadRes.text());
-            }
+
+            const uploadResult = await Utils.apiUpload(formData);
+            payload.image_url = uploadResult.url;
         } catch (err) {
             console.error("画像アップロードエラー:", err);
         }
@@ -327,12 +319,12 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
 // 卓の保存値はIDのまま保ち、表示時だけMapで名前へ解決する。
 function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, playerMapByName) {
   const title = Utils.escapeHtml(r.title ?? r.id);
-  
+
   // 新形式のgm_idを優先し、旧形式の文字列gmも表示互換として残す。
   const gmObj = playerMapById.get(r.gm_id) || playerMapByName.get(r.gm);
   const gmName = gmObj ? gmObj.player_name : (r.gm || '—');
   const gm = Utils.escapeHtml(gmName);
-  
+
   // ID配列がない旧卓では、従来のplayers配列を表示用フォールバックに使う。
   const targetPlayers = (Array.isArray(r.player_ids) && r.player_ids.length > 0) ? r.player_ids : (Array.isArray(r.players) ? r.players : []);
   const resolvedPlayers = targetPlayers.map(identifier => {
@@ -340,7 +332,7 @@ function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, 
       return pObj ? pObj.player_name : identifier;
   });
   const players = Utils.escapeHtml(resolvedPlayers.length > 0 ? resolvedPlayers.join(" / ") : "—");
-  
+
   const next = nextByRunId.get(r.id);
   const nextText = next?._start
     ? `${next._start.toLocaleDateString("ja-JP")} ${next._start.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`

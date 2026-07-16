@@ -9,13 +9,17 @@ let tempPlayers = [];
 let tempCharacters = [];
 let allPlayers = [];
 
-async function fetchSessionDetailData() {
-  const [runs, scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
-    Utils.apiGet("runs"),
-    Utils.apiGet("scenarios"),
-    Utils.apiGet("sessions"),
-    Utils.apiGet("characters").catch(() => []),
-    Utils.apiGet("players").catch(() => [])
+async function fetchSessionDetailData(runId) {
+  const runs = await Utils.apiGet(`runs?id=${encodeURIComponent(runId)}`);
+  const run = Array.isArray(runs) ? runs[0] : null;
+  const characterIds = Array.isArray(run?.characters) ? run.characters.filter(Boolean) : [];
+  const [scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
+    run?.scenario_id ? Utils.apiGet(`scenarios?id=${encodeURIComponent(run.scenario_id)}`) : [],
+    Utils.apiGet(`sessions/detail?run_id=${encodeURIComponent(runId)}`),
+    characterIds.length > 0
+      ? Utils.apiGet(`characters?ids=${encodeURIComponent(characterIds.join(","))}`).catch(() => [])
+      : [],
+    Utils.apiGet("players?select=player_id,player_name").catch(() => [])
   ]);
   return { runs, scenarios, sessions, characters, fetchedPlayers };
 }
@@ -25,7 +29,7 @@ async function main() {
   if (!root) return;
 
   await Utils.initAuthAndHeader('common-nav', '../');
-  
+
   const run_id = Utils.getQueryParam("id");
   if (!run_id) {
     root.innerHTML = "<p>run ID が指定されていません</p>";
@@ -33,7 +37,7 @@ async function main() {
   }
 
   try {
-    const { runs, scenarios, sessions, characters, fetchedPlayers } = await fetchSessionDetailData();
+    const { runs, scenarios, sessions, characters, fetchedPlayers } = await fetchSessionDetailData(run_id);
 
     // 取得したプレイヤーデータをグローバル変数に代入
     allPlayers = fetchedPlayers;
@@ -149,7 +153,7 @@ function renderCompletionGuide(allSessions, run) {
                 location.reload();
             } catch (e) {
                 console.error(e);
-                alert("更新に失敗しました。");
+                alert("更新に失敗しました: " + e.message);
             }
         });
     }
@@ -190,21 +194,27 @@ async function updateCharacterSelectOptions() {
     if (!charSelect) return;
 
     try {
-      const allCharacters = await Utils.apiGet("characters");
-      
+      const currentIds = (currentRunData?.characters || []).filter(Boolean);
+      const queries = tempPlayers.length > 0
+        ? tempPlayers.map(playerId => Utils.apiGet(`characters?player_id=${encodeURIComponent(playerId)}`))
+        : currentIds.length > 0
+          ? [Utils.apiGet(`characters?ids=${encodeURIComponent(currentIds.join(","))}`)]
+          : [];
+      const allCharacters = (await Promise.all(queries)).flat();
+
       // 選択されたプレイヤーのキャラクターのみに絞り込む処理
       // tempPlayers（プレイヤーIDの配列）と、キャラクターが持つ player_id を比較します
       // （旧データのために c.player でのテキスト比較も安全策として残しています）
-      const filtered = tempPlayers.length > 0 
+      const filtered = tempPlayers.length > 0
         ? allCharacters.filter(c => tempPlayers.includes(c.player_id) || tempPlayers.includes(c.player))
         : allCharacters;
 
-      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' +
         filtered.map(c => {
           // グローバル変数の allPlayers を使ってIDから正しいプレイヤー名を逆引き
           const playerObj = allPlayers.find(p => p.player_id === c.player_id);
           const playerName = playerObj ? playerObj.player_name : (c.player || '未設定');
-          
+
           return `
           <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
               ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(playerName)})
@@ -220,17 +230,17 @@ function setFormInitialValues() {
     const params = new URLSearchParams(location.search);
     const date = params.get("date"); // YYYY-MM-DD
     const slot = params.get("slot"); // afternoon or night
-    
+
     const startInput = document.getElementById("new-session-start");
     if (!startInput || !date) return;
 
     // 時間帯に応じたデフォルト時刻を結合
     // 昼: 13:00 / 夜: 19:00[cite: 5]
     const time = (slot === "afternoon") ? "13:00" : "19:00";
-    
+
     // datetime-local 形式 (YYYY-MM-DDThh:mm) に整形
     startInput.value = `${date}T${time}`;
-    
+
     // ユーザーに分かりやすくするため、フォームへスクロールさせるなどの配慮も有効
     document.getElementById("add-session-record").scrollIntoView({ behavior: 'smooth' });
 }
@@ -303,7 +313,7 @@ function registerSessionDetailEvents() {
 
       // 現在の値をセット
       form.title.value = currentRunData.title || "";
-      
+
       // 表示名の変更に影響されないよう、GM候補のvalueにはプレイヤーIDを使う。
       const gmSelect = document.getElementById('edit-gm-select');
       if (gmSelect) {
@@ -321,7 +331,10 @@ function registerSessionDetailEvents() {
       tempPlayers = [...(currentRunData.player_ids || currentRunData.players || [])];
 
       try {
-          const allChars = await Utils.apiGet("characters"); 
+          const ids = (currentRunData.characters || []).filter(Boolean);
+          const allChars = ids.length > 0
+            ? await Utils.apiGet(`characters?ids=${encodeURIComponent(ids.join(","))}`)
+            : [];
           tempCharacters = (currentRunData.characters || []).map(id => {
               const match = allChars.find(c => c.id === id);
               return { id: id, name: match ? match.name : id };
@@ -330,11 +343,11 @@ function registerSessionDetailEvents() {
           console.error("キャラクターマスタの取得失敗", err);
           tempCharacters = (currentRunData.characters || []).map(id => ({ id, name: id }));
       }
-      
+
       // 編集後も安定した関連を保存できるよう、参加者候補はIDをvalueにする。
       const pSelect = document.getElementById('add-player-select');
       if (pSelect) {
-          pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
+          pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' +
             allPlayers.map(p => `<option value="${p.player_id}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
       }
 
@@ -362,16 +375,16 @@ function registerSessionDetailEvents() {
   runForm?.addEventListener('submit', async (e) => {
 
       e.preventDefault();
-      
+
       const submitBtn = runForm.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true; // 連打防止
-      
+
       // モーダル構造の変更で別項目を拾わないよう、固有IDから値を取得する。
       const gmSelect = document.getElementById('edit-gm-select');
-      
+
       const payload = {
           title: runForm.title ? runForm.title.value : document.getElementById('edit-run-title')?.value || "",
-          gm_id: (gmSelect && gmSelect.value) ? gmSelect.value : null, 
+          gm_id: (gmSelect && gmSelect.value) ? gmSelect.value : null,
           player_ids: tempPlayers,
           characters: tempCharacters.map(c => c.id)
       };
@@ -386,13 +399,13 @@ function registerSessionDetailEvents() {
           if (submitBtn) submitBtn.disabled = false;
       }
   });
-  
+
   // 編集フォームの送信
   document.getElementById('edit-session-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
       const sessionId = form.session_id.value;
-      
+
       const payload = {
         title: form.title.value,
         start: new Date(form.start.value).toISOString(),
@@ -412,7 +425,7 @@ function registerSessionDetailEvents() {
 
   subForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      
+
       // currentRunData がセットされるまで待つためのチェック
       if (!currentRunData) {
           alert("データの読み込みが完了していません。");
@@ -420,7 +433,7 @@ function registerSessionDetailEvents() {
       }
 
       // datetime-local から値を取得 (例: "2026-03-23T20:00")
-      const startVal = subForm.start.value; 
+      const startVal = subForm.start.value;
       const titleVal = subForm.title.value;
 
 
@@ -464,7 +477,7 @@ function registerSessionDetailEvents() {
               await Utils.syncSchedulesForFullDay(startTimestamp, syncPlayerIds);
           }
 
-          location.reload(); 
+          location.reload();
       } catch (err) {
           console.error(err);
           alert("保存失敗: " + err.message);
@@ -520,7 +533,7 @@ function registerSessionDetailEvents() {
       }
 
       // セッション情報を再取得して最新のnotesをベースにする
-      const sessions = await Utils.apiGet("sessions");
+      const sessions = await Utils.apiGet(`sessions/detail?id=${encodeURIComponent(sessionId)}`);
       const sessionData = (Array.isArray(sessions) ? sessions : []).find(s => s.id === sessionId);
       if (!sessionData) {
         alert("セッションが見つかりません。");
@@ -561,13 +574,13 @@ function registerSessionDetailEvents() {
 
       // 空文字の場合はnullとして保存
       await Utils.apiPatch("sessions", { notes: notes || null }, `id=eq.${sessionId}`);
-      
+
       if (isJoined) {
         Utils.showToast("観戦希望を取り消しました");
       } else {
         Utils.showToast("観戦希望を登録しました！");
       }
-      
+
       location.reload();
     } catch (err) {
       console.error(err);
@@ -599,7 +612,7 @@ function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames
         <img class="session-detail-cover" src="${coverPath}" onerror="this.onerror=null; this.src='${fallback}';" alt="${Utils.escapeHtml(scenario?.title ?? run.title ?? run.id)}" loading="lazy">
       </div>
       <div class="session-detail-profile">
-        <h2 class="session-detail-h2">卓情報${editRunBtn}</h2> 
+        <h2 class="session-detail-h2">卓情報${editRunBtn}</h2>
         <table class="session-detail-table">
           <tbody>
             <tr><th>シナリオ</th><td>${scenario ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(scenario.id)}">${Utils.escapeHtml(scenario.title ?? scenario.id)}</a>` : "（不明）"}</td></tr>
@@ -624,7 +637,7 @@ function buildSessionLogHtml(runSessions, currentUserDiscordId) {
         const stateJa = stateLabels[s.status] || "不明";
         const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
         const linksHtml = (s.replay_url || s.stream_url) ? `<div class="session-links">${s.stream_url ? `${Utils.renderLink(s.stream_url, "配信or動画")}` : ""}</div>` : "";
-        
+
         let viewerBtnHtml = "";
         if (s.status === "scheduled") {
           if (currentUserDiscordId) {

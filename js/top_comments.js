@@ -97,11 +97,19 @@ async function fetchNameMaps() {
     root.innerHTML = `<p>読み込み中…</p>`;
 
     try {
-      // 相互依存しない取得を並列化し、トップ画面の初期表示を待たせない。
-      const [items, maps] = await Promise.all([
-        fetchRecent(10),
-        fetchNameMaps(),
-      ]);
+      const items = await Utils.apiGetWithFallback(
+        "comments/recent_with_names?limit=10",
+        async () => {
+          const [legacyItems, maps] = await Promise.all([
+            fetchRecent(10),
+            fetchNameMaps()
+          ]);
+          return (Array.isArray(legacyItems) ? legacyItems : []).map(comment => ({
+            ...comment,
+            target_name: resolveTargetName(comment, maps)
+          }));
+        }
+      );
 
       if (!items?.length) {
         root.innerHTML = `<p class="muted">まだコメントはありません</p>`;
@@ -112,7 +120,7 @@ async function fetchNameMaps() {
         <ul class="top-comments">
           ${items
             .map((c) => {
-              const targetName = resolveTargetName(c, maps) || labelFor(c.target_type);
+              const targetName = c.target_name || labelFor(c.target_type);
               const when = c.created_at ? new Date(c.created_at).toLocaleString() : "";
 
               return `

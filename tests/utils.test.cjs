@@ -188,3 +188,66 @@ test("buildNextAndLastByRunIdは未来の最短と過去の最新を選ぶ", () 
   assert.equal(result.nextByRunId.get("r1").start, "2026-07-18T10:00:00Z");
   assert.equal(result.lastByRunId.get("r1").start, "2026-07-16T10:00:00Z");
 });
+
+test("apiGetWithFallbackは新APIの非2xx時だけ旧APIへ切り替える", async () => {
+  window.supabase = {
+    auth: {
+      async getSession() {
+        return { data: { session: null } };
+      }
+    }
+  };
+  const requested = [];
+  global.fetch = async url => {
+    requested.push(String(url));
+    if (String(url).includes("/api/new_view")) {
+      return { ok: false, status: 404, text: async () => "not found" };
+    }
+    return { ok: true, status: 200, text: async () => '[{"id":"legacy"}]' };
+  };
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const rows = await Utils.apiGetWithFallback("new_view", "legacy_table");
+    assert.deepEqual(rows, [{ id: "legacy" }]);
+    assert.equal(requested.length, 2);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test("未ログインの書込みは通信前に明確なエラーになる", async () => {
+  let fetchCalled = false;
+  global.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("呼ばれない");
+  };
+  await assert.rejects(
+    Utils.apiPost("comments", { body: "test" }),
+    /この操作にはDiscordログインが必要です。/
+  );
+  assert.equal(fetchCalled, false);
+});
+
+test("最新リクエストtokenだけが有効になる", () => {
+  const guard = Utils.createLatestRequestToken();
+  const first = guard.issue();
+  const second = guard.issue();
+  assert.equal(guard.isLatest(first), false);
+  assert.equal(guard.isLatest(second), true);
+});
+
+test("予定比較adapterは未入力と全員空きを旧表示形式へ変換する", () => {
+  const results = Utils.aggregateScheduleMatches([
+    { player_id: "p1", target_date: "2026-07-01", time_slot: "night", status: "ok", players: { player_name: "一郎" } },
+    { player_id: "p2", target_date: "2026-07-01", time_slot: "night", status: "ok", players: { player_name: "二郎" } }
+  ], ["p1", "p2"], 2026, 6);
+
+  assert.deepEqual(results["2026-07-01_night"], {
+    color: "green",
+    symbol: "○",
+    label: "全員空き"
+  });
+  assert.equal(results["2026-07-02_night"].label, "未入力: 2人");
+});

@@ -210,12 +210,7 @@ function setupActionForms() {
         btn.disabled = true;
 
         try {
-            // 外部キー制約を守るため、親の募集より先に応募者レコードを削除する。
-            if (currentApplicants.length > 0) {
-                await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}`);
-            }
-            
-            // その後、募集本体を消去する
+            // 応募者は各本人所有のため直接削除せず、募集削除時のFK CASCADEへ任せる。
             await Utils.apiDelete("recruitments", `id=eq.${currentRecruit.id}`);
             alert("募集を削除しました。");
             location.href = "./index.html"; 

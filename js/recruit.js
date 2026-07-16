@@ -18,14 +18,17 @@ async function initData() {
     await Utils.initAuthAndHeader('common-nav', '../');
     try {
         [allPlayers, allScenarios] = await Promise.all([
-            Utils.getPlayers(),
-            Utils.apiGet("scenarios")
+            Utils.apiGet("players?select=player_id,player_name,user_id"),
+            Utils.apiGet("scenarios?select=id,title,image_url,trend_story_chaos,trend_avatar_clear,trend_harmony_active")
         ]);
 
         // ログイン中ユーザーに対応するプレイヤープロフィールを取得
-        const { profile } = await Utils.getCurrentUserPlayerContext({ players: allPlayers })
-            .catch(() => ({ profile: null }));
-        currentUserProfile = profile;
+        const { player } = await Utils.getCurrentUserPlayerContext({ players: allPlayers, loadProfile: false })
+            .catch(() => ({ player: null }));
+        const profiles = player
+            ? await Utils.apiGet(`player_profiles?select=player_id,desire_avatar,desire_story,desire_clear,desire_chaos,desire_active,desire_harmony&player_id=eq.${encodeURIComponent(player.player_id)}`).catch(() => [])
+            : [];
+        currentUserProfile = Array.isArray(profiles) ? profiles[0] || null : null;
 
         // モーダル内のプルダウン（募集主）を生成
         const ownerSelect = document.getElementById("modal-owner-id");
@@ -59,8 +62,11 @@ async function loadRecruitments() {
     try {
         // 募集本体と応募者を同時に取得
         [allRecruitments, allApplicants] = await Promise.all([
-            Utils.apiGet("recruitments?order=created_at.desc"),
-            Utils.apiGet("recruitment_applicants")
+            Utils.apiGetWithFallback(
+                "recruitment_list?order=created_at.desc",
+                "recruitments?select=id,owner_player_id,scenario_id,recruit_role,target_count,memo,status,created_at&order=created_at.desc"
+            ),
+            Utils.apiGet("recruitment_applicants?select=recruitment_id,player_id")
         ]);
 
         renderRecruitments();
@@ -106,7 +112,7 @@ function renderRecruitments() {
             Utils.calculateMatchScore(scenario, currentUserProfile)
         );
         if (match.cardClass) card.classList.add(match.cardClass);
-        
+
         // 参加者のチップ（名前タグ）を生成
         let applicantsHtml = applicantsForThis.map(a => {
             const p = allPlayers.find(pl => pl.player_id === a.player_id);
@@ -141,7 +147,7 @@ function renderRecruitments() {
                 募集主: <strong>${Utils.escapeHtml(ownerName)}</strong>
             </div>
             ${recruit.memo ? `<div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid var(--border-color); margin-top: 8px;">${Utils.escapeHtml(recruit.memo)}</div>` : ''}
-            
+
             <div style="margin-top: 8px;">
                 <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">現在の参加者:</div>
                 <div class="applicant-list">${applicantsHtml}</div>
@@ -163,7 +169,7 @@ function renderRecruitments() {
             try {
                 e.target.disabled = true;
                 e.target.textContent = "処理中...";
-                
+
                 // 応募テーブルに登録
                 await Utils.apiPost("recruitment_applicants", [{
                     recruitment_id: recruitId,
@@ -173,7 +179,7 @@ function renderRecruitments() {
                 // 満員になったかのチェック
                 const recruit = allRecruitments.find(r => r.id === recruitId);
                 const newCount = allApplicants.filter(a => a.recruitment_id === recruitId).length + 1;
-                
+
                 if (newCount >= recruit.target_count) {
                     // 満員になったらステータスを更新
                     await Utils.apiPatch("recruitments", { status: "fulfilled" }, `id=eq.${recruitId}`);
@@ -185,7 +191,7 @@ function renderRecruitments() {
                 await loadRecruitments(); // 画面を再描画
             } catch (err) {
                 console.error(err);
-                alert("参加処理に失敗しました。すでに参加している可能性があります。");
+                alert("参加処理に失敗しました。すでに参加している可能性があります: " + err.message);
                 e.target.disabled = false;
                 e.target.textContent = "参加する";
             }
@@ -196,7 +202,7 @@ function renderRecruitments() {
     document.querySelectorAll(".btn-close-recruit").forEach(btn => {
         btn.addEventListener("click", async (e) => {
             if (!confirm("この募集を終了し、一覧から非表示にしますか？")) return;
-            
+
             const recruitId = e.target.dataset.id;
             try {
                 // ステータスを 'closed' に更新（これにより filter から外れる）
@@ -205,7 +211,7 @@ function renderRecruitments() {
                 await loadRecruitments();
             } catch (err) {
                 console.error(err);
-                alert("処理に失敗しました。");
+                alert("処理に失敗しました: " + err.message);
             }
         });
     });
@@ -229,7 +235,7 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
     e.preventDefault();
     const fd = new FormData(e.target);
     const btn = e.target.querySelector("button[type='submit']");
-    
+
     const payload = {
         owner_player_id: fd.get("owner_player_id"),
         recruit_role: fd.get("recruit_role"),
@@ -248,7 +254,7 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
         await loadRecruitments();
     } catch (err) {
         console.error(err);
-        alert("募集の作成に失敗しました");
+        alert("募集の作成に失敗しました: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "募集を開始する";

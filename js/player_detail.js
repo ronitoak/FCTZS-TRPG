@@ -3,6 +3,8 @@
 // プレイヤーのプロフィール・参加履歴・所持キャラクター・予定を集約し、閲覧と本人編集を担う。
 (() => {
 
+const availabilityRequestToken = Utils.createLatestRequestToken();
+
 async function main() {
   const root = document.getElementById("player-detail-root");
   if (!root) return;
@@ -16,32 +18,81 @@ async function main() {
   }
 
   try {
-    const [players, profiles, characters, runs, sessions, availabilities, scenarios] = await Promise.all([
-      Utils.apiGet("players"),
-      Utils.apiGet("player_profiles").catch(() => []),
-      Utils.apiGet("characters").catch(() => []),
-      Utils.apiGet("runs").catch(() => []),
-      Utils.apiGet("sessions").catch(() => []),
-      Utils.apiGet(`player_availability?player_id=eq.${playerId}`).catch(() => []),
-      Utils.apiGet("scenarios").catch(() => []) 
-    ]);
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
 
-    const basePlayer = players.find(p => p.player_id === playerId);
+    const bundle = await Utils.apiGetWithFallback(
+      async () => {
+        const [summaries, profiles, characters, runs] = await Promise.all([
+          Utils.apiGet(`player_detail_summary?player_id=${encodeURIComponent(playerId)}`),
+          Utils.apiGet(`player_profiles?player_id=eq.${encodeURIComponent(playerId)}`),
+          Utils.apiGet(`characters?player_id=${encodeURIComponent(playerId)}`),
+          Utils.apiGet(`runs?participant_id=${encodeURIComponent(playerId)}`)
+        ]);
+        const basePlayer = Array.isArray(summaries) ? summaries[0] : null;
+        const profileData = Array.isArray(profiles) ? profiles[0] : null;
+        const runRows = Array.isArray(runs) ? runs : [];
+        const runIds = [...new Set(runRows.map(run => run.id).filter(Boolean))];
+        const scenarioIds = [...new Set([
+          ...runRows.map(run => run.scenario_id),
+          ...((profileData?.favorite_scenario_ids) || [])
+        ].filter(Boolean))];
+        const [sessions, scenarios, availabilities] = await Promise.all([
+          runIds.length > 0
+            ? Utils.apiGet(`sessions/detail?run_ids=${encodeURIComponent(runIds.join(","))}`)
+            : [],
+          scenarioIds.length > 0
+            ? Utils.apiGet(`scenarios?ids=${encodeURIComponent(scenarioIds.join(","))}`)
+            : [],
+          Utils.fetchPlayerAvailabilities(playerId, currentYear, currentMonth)
+        ]);
+        return {
+          basePlayer,
+          profileData,
+          characters: Array.isArray(characters) ? characters : [],
+          runs: runRows,
+          sessions: Array.isArray(sessions) ? sessions : [],
+          availabilities,
+          scenarios: Array.isArray(scenarios) ? scenarios : []
+        };
+      },
+      async () => {
+        const [players, profiles, characters, runs, sessions, availabilities, scenarios] = await Promise.all([
+          Utils.apiGet("players"),
+          Utils.apiGet("player_profiles"),
+          Utils.apiGet("characters"),
+          Utils.apiGet("runs"),
+          Utils.apiGet("sessions"),
+          Utils.apiGet("player_availability"),
+          Utils.apiGet("scenarios")
+        ]);
+        return {
+          basePlayer: (players || []).find(player => player.player_id === playerId),
+          profileData: (profiles || []).find(profile => profile.player_id === playerId),
+          characters: Array.isArray(characters) ? characters : [],
+          runs: Array.isArray(runs) ? runs : [],
+          sessions: Array.isArray(sessions) ? sessions : [],
+          availabilities: (availabilities || []).filter(row => row.player_id === playerId),
+          scenarios: Array.isArray(scenarios) ? scenarios : []
+        };
+      }
+    );
+
+    const { basePlayer, profileData, characters, runs, sessions, availabilities, scenarios } = bundle;
     if (!basePlayer) {
       root.innerHTML = "<p>プレイヤーが見つかりません</p>";
       return;
     }
-    
-    const profileData = profiles.find(p => p.player_id === playerId);
+
     // お気に入り操作後の再描画で最新プロフィールへ差し替えるため、参照を更新可能に保つ。
-    let hasProfileRecord = profileData !== undefined; 
+    let hasProfileRecord = profileData != null;
 
     // 厳密な型比較(Map)による不一致を防ぐため、キーをStringに統一
     const charactersMap = new Map(characters.map(c => [String(c.id), c]));
     const iconCharObj = (profileData && profileData.icon_url) ? charactersMap.get(String(profileData.icon_url)) : null;
 
-    const player = { 
-      ...basePlayer, 
+    const player = {
+      ...basePlayer,
       ...(profileData || {}),
       icon_image_url: iconCharObj ? iconCharObj.image_url : null
     };
@@ -61,21 +112,18 @@ async function main() {
       }
       return isPL;
     });
-    
+
     const myRunsAll = [...myRunsGM, ...myRunsPL];
     const myRunIds = myRunsAll.map(r => String(r.id));
     const mySessions = sessions.filter(s => s.start && myRunIds.includes(String(s.run_id)));
 
     const passedRuns = myRunsPL.filter(r => r.status === "done" && r.scenario_id);
-    const passedScenarioIds = [...new Set(passedRuns.map(r => r.scenario_id))]; 
+    const passedScenarioIds = [...new Set(passedRuns.map(r => r.scenario_id))];
     const passedScenarios = (scenarios || []).filter(s => passedScenarioIds.includes(s.id));
 
     const gmRuns = myRunsGM.filter(r => r.scenario_id);
-    const gmScenarioIds = [...new Set(gmRuns.map(r => r.scenario_id))]; 
+    const gmScenarioIds = [...new Set(gmRuns.map(r => r.scenario_id))];
     const gmScenarios = (scenarios || []).filter(s => gmScenarioIds.includes(s.id));
-
-    let currentYear = new Date().getFullYear();
-    let currentMonth = new Date().getMonth();
 
     function renderSchedule() {
       const wrapper = document.getElementById("schedule-wrapper");
@@ -94,6 +142,14 @@ async function main() {
       });
     }
 
+    async function refreshMonthlyAvailability() {
+      const token = availabilityRequestToken.issue();
+      const rows = await Utils.fetchPlayerAvailabilities(playerId, currentYear, currentMonth);
+      if (!availabilityRequestToken.isLatest(token)) return;
+      myAvailabilities.splice(0, myAvailabilities.length, ...rows);
+      renderSchedule();
+    }
+
     let favChars = player.favorite_character_ids || [];
     let favScenarios = player.favorite_scenario_ids || [];
 
@@ -107,7 +163,7 @@ async function main() {
       </div>
 
       ${buildCustomAreaHtml(player, characters, scenarios)}
-      
+
       <div style="margin-top: 20px;">
         ${buildMyCharactersHtml(myCharacters, favChars)}
       </div>
@@ -126,14 +182,14 @@ async function main() {
         if (!hasProfileRecord) {
           payload.player_id = playerId;
           await Utils.apiPost("player_profiles", payload);
-          hasProfileRecord = true; 
+          hasProfileRecord = true;
         } else {
           await Utils.apiPatch("player_profiles", payload, `player_id=eq.${playerId}`);
         }
         Utils.showToast("お気に入りを更新しました！");
       } catch(err) {
         console.error("お気に入り保存エラー", err);
-        Utils.showToast("保存に失敗しました", "error");
+        Utils.showToast("保存に失敗しました: " + err.message, "error");
       }
     }
 
@@ -141,11 +197,11 @@ async function main() {
       if (e.target.closest("#btn-prev-month")) {
         currentMonth--;
         if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-        renderSchedule();
+        await refreshMonthlyAvailability();
       } else if (e.target.closest("#btn-next-month")) {
         currentMonth++;
         if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-        renderSchedule();
+        await refreshMonthlyAvailability();
       }
 
       if (e.target.closest("#bulk-input-btn")) {
@@ -163,10 +219,10 @@ async function main() {
         const id = favCharBtn.getAttribute("data-id");
         if (favChars.includes(id)) {
           favChars = favChars.filter(x => x !== id);
-          favCharBtn.style.color = "#e2e8f0";        
+          favCharBtn.style.color = "#e2e8f0";
         } else {
-          favChars.push(id);                         
-          favCharBtn.style.color = "#ecc94b";        
+          favChars.push(id);
+          favCharBtn.style.color = "#ecc94b";
         }
         updateFavoritesSilent("favorite_character_ids", favChars);
       }
@@ -185,7 +241,7 @@ async function main() {
         updateFavoritesSilent("favorite_scenario_ids", favScenarios);
       }
     });
-    
+
     Utils.renderRadarChart(player, "desire-radar-chart");
 
     const charSelect = document.getElementById('icon-character-select');
@@ -195,8 +251,8 @@ async function main() {
     const form = document.getElementById("edit-profile-form");
 
     if (charSelect) {
-      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
-      myCharacters.map(c => 
+      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' +
+      myCharacters.map(c =>
         `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
             ${Utils.escapeHtml(c.name)}
         </option>`
@@ -264,7 +320,7 @@ async function main() {
     if (window.Comments && typeof window.Comments.mount === "function") {
       window.Comments.mount("comments-root", "player", playerId);
     }
-    
+
   } catch (err) {
     console.error(err);
     root.innerHTML = "<p>データの読み込みに失敗しました。</p>";
@@ -283,7 +339,7 @@ function buildPlayerProfileHtml(player) {
           <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>
         </div>
       </div>
-      
+
       <div style="margin-top: 20px; width: 100%; max-width: 320px; align-self: center;">
         <canvas id="desire-radar-chart"></canvas>
       </div>
@@ -348,10 +404,10 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
 }
 
 function buildMyCharactersHtml(characters, favoriteIds = []) {
-  const charsList = characters.length > 0 
+  const charsList = characters.length > 0
     ? characters.map(c => {
         const isFav = favoriteIds.includes(String(c.id));
-        const starColor = isFav ? "#ecc94b" : "#e2e8f0"; 
+        const starColor = isFav ? "#ecc94b" : "#e2e8f0";
         return `
         <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; transition: background 0.2s;">
           <button class="btn-fav-char" data-id="${c.id}" style="background: none; border: none; cursor: pointer; font-size: 1.5rem; color: ${starColor}; padding: 0; outline: none; transition: transform 0.1s;">★</button>
@@ -394,14 +450,14 @@ function buildScheduleShellHtml(year, month) {
 
 function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText = "通過履歴はまだありません。") {
   let contentHtml = "";
-  
+
   if (scenariosList && scenariosList.length > 0) {
     contentHtml = `<ul style="margin: 0; padding-left: 0; list-style-type: none; color: #4a5568; line-height: 1.8;">`;
     scenariosList.forEach(s => {
       const isFav = favoriteIds.includes(String(s.id));
       const starColor = isFav ? "#ecc94b" : "#e2e8f0";
       const systemTag = s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">${Utils.escapeHtml(s.system)}</span>` : "";
-      
+
       contentHtml += `
         <li style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
           <button class="btn-fav-scenario" data-id="${s.id}" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: ${starColor}; padding: 0; outline: none;">★</button>
@@ -443,11 +499,11 @@ async function saveBulkAvailability() {
     if (res) {
       if (modal) modal.close();
       alert("予定を保存しました！");
-      location.reload(); 
+      location.reload();
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
-    alert("保存に失敗しました");
+    alert("保存に失敗しました: " + err.message);
   }
 }
 

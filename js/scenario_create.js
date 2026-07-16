@@ -52,17 +52,8 @@ Utils.domReady(async () => {
                 formData.append("file", compressedBlob, fileName);
                 formData.append("type", "scenario");
 
-                const uploadRes = await fetch(`${API_BASE}/api/upload`, {
-                    method: "POST",
-                    body: formData
-                });
-                
-                if (uploadRes.ok) {
-                    const uploadResult = await uploadRes.json();
-                    imageUrl = uploadResult.url;
-                } else {
-                    console.error("画像アップロード失敗:", await uploadRes.text());
-                }
+                const uploadResult = await Utils.apiUpload(formData);
+                imageUrl = uploadResult?.url || null;
             } catch (err) {
                 console.error("画像アップロードエラー:", err);
             }

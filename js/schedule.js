@@ -28,140 +28,45 @@ async function fetchScheduleData() {
 function renderCalendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-
   const titleEl = document.getElementById("calendar-month-title");
   if (titleEl) titleEl.textContent = `${year}年 ${month + 1}月`;
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDayOfWeek = firstDay.getDay();
-  const totalDays = lastDay.getDate();
-
   const grid = document.getElementById("calendar-grid");
   if (!grid) return;
 
-  const headers = grid.querySelectorAll(".calendar-day-header");
-  grid.innerHTML = "";
-  headers.forEach(h => grid.appendChild(h));
+  Utils.renderCalendar(grid, year, month, {
+    events: allSessions,
+    getEventHref: session => `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`,
+    onCellRender: (cell, context) => {
+      if (!compareMode) return;
 
-  // 1. 前月の余白マス
-  for (let i = 0; i < startDayOfWeek; i++) {
-    const cell = createCalendarCell("", true);
-    grid.appendChild(cell);
-  }
-
-  // 2. 当月のマス
-  const today = new Date();
-  for (let day = 1; day <= totalDays; day++) {
-    const targetDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
-    
-    const cell = createCalendarCell(day, false, isToday);
-
-    const daySessions = allSessions.filter(s => {
-      if (!s.start) return false;
-      return s.start.startsWith(targetDateStr);
-    });
-
-    daySessions.sort((a, b) => new Date(a.start) - new Date(b.start));
-
-    daySessions.forEach(session => {
-      const timeStr = new Date(session.start).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' });
-      const titleStr = session.title || "名称未設定";
-      
-      const badge = document.createElement("a");
-      badge.className = "calendar-session-badge";
-      badge.href = `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
-      
-      const safeTitle = Utils.escapeHtml ? Utils.escapeHtml(titleStr) : titleStr.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      badge.innerHTML = `
-        <div class="badge-time">${timeStr}</div>
-        <div class="badge-title">${safeTitle}</div>
-      `;
-      
-      cell.appendChild(badge);
-    });
-
-    // 比較モードの描画（○以外もすべて表示する）
-    if (compareMode) {
-      const slots = ["afternoon", "night"];
-      slots.forEach(slot => {
-        const key = `${targetDateStr}_${slot}`;
+      ["afternoon", "night"].forEach(slot => {
+        const key = `${context.dateStr}_${slot}`;
         const match = comparisonData[key];
+        if (!match) return;
 
-        if (match) { 
-          const matchBadge = document.createElement("div");
-          matchBadge.className = `schedule-match-badge ${match.color}`;
-          matchBadge.style.cursor = "pointer"; 
-          
-          // CSSが未整備でも見やすいようにインラインで色を補強
-          const colorCodes = { "green": "#38a169", "yellow": "#d69e2e", "red": "#e53e3e" };
-          const bgCodes = { "green": "#f0fff4", "yellow": "#fffff0", "red": "#fff5f5" };
-          matchBadge.style.color = colorCodes[match.color] || "#333";
-          matchBadge.style.backgroundColor = bgCodes[match.color] || "#fff";
-          matchBadge.style.border = `1px solid ${colorCodes[match.color] || "#ccc"}`;
-          matchBadge.style.borderRadius = "4px";
-          matchBadge.style.padding = "2px";
-          matchBadge.style.marginTop = "2px";
-          matchBadge.style.fontSize = "0.75rem";
-          matchBadge.style.textAlign = "center";
-          matchBadge.style.fontWeight = "bold";
-          
-          let titleText = match.label || "";
-          matchBadge.innerHTML = `<span title="${titleText}">${TIME_SLOT_LABELS[slot]}:${match.symbol}</span>`;
+        const matchBadge = document.createElement("button");
+        matchBadge.type = "button";
+        matchBadge.className = `schedule-match-badge ${match.color}`;
+        matchBadge.title = match.label || "";
+        matchBadge.textContent = `${TIME_SLOT_LABELS[slot]}:${match.symbol}`;
+        matchBadge.addEventListener("click", () => {
+          const selectedRunId = document.getElementById("compare-run-select")?.value;
+          if (!selectedRunId) {
+            alert("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。");
+            return;
+          }
 
-          matchBadge.onclick = () => {
-            const runSelect = document.getElementById("compare-run-select");
-            const selectedRunId = runSelect ? runSelect.value : null;
-            
-            if (!selectedRunId) {
-              alert("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。");
-              return;
-            }
-
-            const params = new URLSearchParams({
-              id: selectedRunId,
-              date: targetDateStr,
-              slot: slot
-            });
-            window.location.href = `../sessions/detail.html?${params.toString()}`;
-          };
-          
-          cell.appendChild(matchBadge);
-        }
+          const params = new URLSearchParams({
+            id: selectedRunId,
+            date: context.dateStr,
+            slot
+          });
+          window.location.href = `../sessions/detail.html?${params.toString()}`;
+        });
+        cell.appendChild(matchBadge);
       });
     }
-
-    grid.appendChild(cell);
-  }
-
-  // 3. 翌月の余白マス
-  const totalCells = startDayOfWeek + totalDays;
-  const remainingCells = (7 - (totalCells % 7)) % 7;
-  for (let i = 0; i < remainingCells; i++) {
-    const cell = createCalendarCell("", true);
-    grid.appendChild(cell);
-  }
-}
-
-function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
-  const cell = document.createElement("div");
-  cell.className = "calendar-cell";
-  if (isOtherMonth) cell.classList.add("other-month");
-  if (isToday) cell.classList.add("today");
-
-  if (dayNumber) {
-    const numEl = document.createElement("div");
-    numEl.className = "calendar-date-number";
-    numEl.textContent = dayNumber;
-    cell.appendChild(numEl);
-  }
-  return cell;
-}
-
-function getStatusSymbol(status) {
-    const symbols = { "ok": "○", "maybe": "△", "ng": "×" };
-    return symbols[status] || "-";
+  });
 }
 
 async function renderBulkInputGrid() {
@@ -187,82 +92,15 @@ async function renderBulkInputGrid() {
   }
 
   const container = document.getElementById("bulk-input-container");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
-  const slots = ["afternoon", "night"];
-
-  for (let d = 1; d <= lastDay; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const dateObj = new Date(year, month, d);
-    const dowIndex = dateObj.getDay();
-
-    const row = document.createElement("div");
-    row.className = "bulk-row";
-
-    const dateLabel = document.createElement("div");
-    dateLabel.className = "bulk-date";
-    if (dowIndex === 0) dateLabel.style.color = "#c62828";
-    if (dowIndex === 6) dateLabel.style.color = "#1565c0";
-    dateLabel.textContent = `${d}日(${dayOfWeekStr[dowIndex]})`;
-    row.appendChild(dateLabel);
-
-    slots.forEach(slot => {
-      const slotDiv = document.createElement("div");
-      slotDiv.className = "bulk-slot-toggle";
-      slotDiv.dataset.date = dateStr;
-      slotDiv.dataset.slot = slot;
-
-      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-      const initialVal = (exist && exist.status !== "none") ? exist.status : "";
-      
-      slotDiv.dataset.status = initialVal;
-      slotDiv.dataset.initial = initialVal;
-      slotDiv.textContent = getStatusSymbol(initialVal);
-      if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
-
-      slotDiv.addEventListener("click", () => {
-          const statusOrder = ["", "ok", "maybe", "ng"];
-          let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
-          let nextIndex = (currentIndex + 1) % statusOrder.length;
-          
-          const nextStatus = statusOrder[nextIndex];
-          slotDiv.dataset.status = nextStatus;
-          slotDiv.textContent = getStatusSymbol(nextStatus);
-          
-          slotDiv.className = "bulk-slot-toggle"; 
-          if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
-      });
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "bulk-slot";
-      wrapper.appendChild(slotDiv);
-      row.appendChild(wrapper);
-    });
-
-    container.appendChild(row);
-  }
+  Utils.renderAvailabilityGrid(container, year, month, existingData);
 }
 
 async function saveBulkAvailability() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return alert("プレイヤーを選択してください");
 
-  const toggles = document.querySelectorAll(".bulk-slot-toggle");
-  const payload = [];
-
-  toggles.forEach(el => {
-    if (el.dataset.status !== el.dataset.initial) {
-      const finalStatus = el.dataset.status === "" ? "none" : el.dataset.status;
-      payload.push({
-        player_id: playerId,
-        target_date: el.dataset.date,
-        time_slot: el.dataset.slot,
-        status: finalStatus
-      });
-    }
-  });
+  const container = document.getElementById("bulk-input-container");
+  const payload = Utils.collectAvailabilityChanges(container, playerId);
 
   if (payload.length === 0) {
      alert("変更された予定データがありません。");
@@ -504,9 +342,9 @@ async function main() {
     });
   }
 
-  document.getElementById("bulk-input-btn")?.addEventListener("click", () => {
+  document.getElementById("bulk-input-btn")?.addEventListener("click", async () => {
+    await renderBulkInputGrid();
     document.getElementById("availability-modal")?.showModal();
-    renderBulkInputGrid();
   });
 
   document.getElementById("compare-btn")?.addEventListener("click", () => {

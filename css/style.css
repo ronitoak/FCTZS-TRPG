@@ -797,6 +797,9 @@ dialog.modal::backdrop {
   font-weight: bold;
 }
 
+.calendar-day-header.sunday { background-color: #fed7d7; color: #c53030; }
+.calendar-day-header.saturday { background-color: #bee3f8; color: #2b6cb0; }
+
 /* 日付マスの基本スタイル */
 .calendar-cell {
   background-color: #fff;
@@ -811,6 +814,17 @@ dialog.modal::backdrop {
 /* 今日の日付や前月マスなどはそのまま維持 */
 .calendar-cell.today { background-color: #fff8e1; }
 .calendar-cell.other-month { background-color: #fbfbfb; color: #aaa; }
+.calendar-cell--clickable { cursor: pointer; }
+.calendar-cell--clickable:hover { box-shadow: inset 0 0 0 2px var(--primary-color); }
+.calendar-cell--clickable:focus-visible {
+  outline: 3px solid rgba(49, 130, 206, 0.45);
+  outline-offset: -3px;
+}
+.calendar-cell.date-needs-input {
+  background-color: #fff5f5;
+  box-shadow: inset 0 0 0 1px #feb2b2;
+}
+.calendar-cell.date-needs-input .calendar-date-number { color: #c53030; }
 .calendar-date-number {
   text-align: right;
   font-size: 0.85rem;
@@ -857,7 +871,53 @@ dialog.modal::backdrop {
   overflow: hidden;
 }
 
+.calendar-availability-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.calendar-availability-badge {
+  padding: 1px 4px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.calendar-availability-badge.status-ok { background: #f0fff4; color: #2f855a; }
+.calendar-availability-badge.status-maybe { background: #fffff0; color: #b7791f; }
+.calendar-availability-badge.status-ng { background: #fff5f5; color: #c53030; }
+
+.calendar-grid--compact .calendar-day-header {
+  padding: 6px 0;
+  font-size: 0.75rem;
+}
+
+.calendar-grid--compact .calendar-cell {
+  min-height: 72px;
+  gap: 2px;
+  padding: 3px;
+}
+
+.calendar-grid--compact .calendar-session-badge {
+  padding: 2px 3px;
+}
+
+.calendar-grid--compact .calendar-session-badge .badge-title {
+  font-size: 0.65rem;
+  -webkit-line-clamp: 1;
+}
+
+.calendar-grid--compact .calendar-availability-badge {
+  padding: 1px 2px;
+  font-size: 0.6rem;
+}
+
 .schedule-match-badge {
+    width: 100%;
+    border: 1px solid transparent;
     font-size: 0.75rem;
     padding: 2px 6px;
     border-radius: 12px;
@@ -865,6 +925,7 @@ dialog.modal::backdrop {
     text-align: center;
     font-weight: bold;
     color: #fff;
+    cursor: pointer;
 }
 .schedule-match-badge.green { background-color: #2ecc71; } /* ○ */
 .schedule-match-badge.yellow { background-color: #f1c40f; color: #333; } /* △ */
@@ -917,6 +978,9 @@ dialog.modal::backdrop {
   text-align: center;
   flex-shrink: 0;
 }
+
+.bulk-date.sunday { color: #c62828; }
+.bulk-date.saturday { color: #1565c0; }
 
 .bulk-slot {
   flex: 1;
@@ -1528,4 +1592,185 @@ dialog.modal::backdrop {
         align-items: flex-start;
         flex-direction: column;
     }
+}
+
+/* ==========================================
+   Player Schedule & Home Dashboard
+   ========================================== */
+.player-schedule {
+  min-height: 550px;
+  padding: 20px;
+  border-radius: 8px;
+  background: var(--container-bg);
+  box-shadow: var(--shadow);
+}
+
+.player-schedule-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-color);
+  font-size: 1.2rem;
+}
+
+.player-schedule-header > span:first-child {
+  margin-right: auto;
+}
+
+.player-schedule-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.player-schedule-navigation span {
+  min-width: 92px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.player-schedule-navigation button {
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 4px;
+  background: #e2e8f0;
+  cursor: pointer;
+}
+
+.dashboard-login-card,
+.dashboard-card {
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--container-bg);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-login-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.dashboard-login-card h2,
+.dashboard-login-card p,
+.dashboard-card h3 {
+  margin-top: 0;
+}
+
+.dashboard-header {
+  margin-bottom: 20px;
+}
+
+.dashboard-eyebrow {
+  margin: 0 0 4px;
+  color: var(--primary-color);
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard-calendar-card {
+  margin-bottom: 24px;
+}
+
+.dashboard-calendar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.dashboard-calendar-navigation {
+  flex-shrink: 0;
+  gap: 12px;
+  margin: 0;
+}
+
+.dashboard-calendar-navigation strong {
+  min-width: 100px;
+  text-align: center;
+}
+
+.dashboard-recruitment-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-recruitment-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-recruitment-list small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+}
+
+.dashboard-status {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #4a5568;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.dashboard-status--open { background: #f0fff4; color: #2f855a; }
+.dashboard-status--fulfilled { background: #ebf8ff; color: #2b6cb0; }
+.dashboard-status--closed { background: #edf2f7; color: #718096; }
+
+@media (max-width: 760px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-login-card,
+  .dashboard-calendar-header,
+  .player-schedule-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .player-schedule-header > span:first-child {
+    margin-right: 0;
+  }
+
+  .player-schedule-navigation,
+  .dashboard-calendar-navigation {
+    justify-content: space-between;
+  }
+
+  .calendar-grid--compact .calendar-cell {
+    min-height: 62px;
+  }
+
+  .calendar-grid--compact .calendar-session-badge .badge-time,
+  .calendar-grid--compact .calendar-session-badge .badge-title {
+    display: none;
+  }
 }

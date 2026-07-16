@@ -20,23 +20,65 @@
         <span style="padding-right: 50px; font-size: 24px; font-weight: bold;">8月からURL変わるお～‼️年末までに仕組み考えたり実装頑張るから人気投票やるお～‼️8月からURL変わるお～‼️戦えるキャラシートがなければこの半年で作れ‼️‼️8月からURL変わるお～‼️</span>
       </div>
     </div>
-    <!-- 直近の予定 -->
-    <section aria-labelledby="next-session-title">
-      <h2 id="next-session-title">直近の予定</h2>
-      <div id="next-session">
-        <p>予定を読み込み中…</p>
-      </div>
-    </section>
+    <div id="guest-dashboard">
+      <section class="dashboard-login-card" aria-labelledby="guest-dashboard-title">
+        <div>
+          <h2 id="guest-dashboard-title">TRPG部の活動状況</h2>
+          <p>Discordでログインすると、自分の次回予定・募集状況・予定入力カレンダーを確認できます。</p>
+        </div>
+        <button id="home-login-btn" class="btn-primary" type="button">Discordでログイン</button>
+      </section>
 
-    <hr />
+      <section aria-labelledby="next-session-title">
+        <h2 id="next-session-title">直近の予定</h2>
+        <div id="next-session">
+          <p>予定を読み込み中…</p>
+        </div>
+      </section>
 
-    <!-- 進行中のシナリオ -->
-    <section aria-labelledby="ongoing-title">
-      <h2 id="ongoing-title">進行中のセッション</h2>
-      <div id="ongoing-scenarios">
-        <p>進行中セッションを読み込み中…</p>
+      <hr />
+
+      <section aria-labelledby="ongoing-title">
+        <h2 id="ongoing-title">進行中のセッション</h2>
+        <div id="ongoing-scenarios">
+          <p>進行中セッションを読み込み中…</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="member-dashboard" hidden>
+      <header class="dashboard-header">
+        <p class="dashboard-eyebrow">MY DASHBOARD</p>
+        <h2 id="dashboard-player-name">マイダッシュボード</h2>
+      </header>
+
+      <div class="dashboard-grid">
+        <section class="dashboard-card" aria-labelledby="my-next-session-title">
+          <h3 id="my-next-session-title">Next Session</h3>
+          <div id="my-next-session"><p>読み込み中…</p></div>
+        </section>
+
+        <section class="dashboard-card" aria-labelledby="my-recruitments-title">
+          <h3 id="my-recruitments-title">My Recruitments</h3>
+          <div id="my-recruitments"><p>読み込み中…</p></div>
+        </section>
       </div>
-    </section>
+
+      <section class="dashboard-card dashboard-calendar-card" aria-labelledby="schedule-alert-title">
+        <div class="dashboard-calendar-header">
+          <div>
+            <h3 id="schedule-alert-title">Schedule Alert</h3>
+            <p class="u-muted">赤く表示された日は予定が未入力です。日付を選択すると入力できます。</p>
+          </div>
+          <div class="calendar-header dashboard-calendar-navigation">
+            <button id="home-prev-month-btn" type="button" aria-label="前月">◀</button>
+            <strong id="home-calendar-month"></strong>
+            <button id="home-next-month-btn" type="button" aria-label="翌月">▶</button>
+          </div>
+        </div>
+        <div id="home-calendar-grid" class="calendar-grid calendar-grid--compact"></div>
+      </section>
+    </div>
 
     <hr />
 
@@ -55,11 +97,24 @@
     <div id="top-comments-root"></div>
     </section>
 
-    <div id="user-info" style="display: none;">
-      <img id="user-avatar" src="" width="50" style="border-radius: 50%;">
-      <span id="user-name"></span>
-      <button id="logout-btn">ログアウト</button>
-    </div>
+    <dialog id="home-availability-modal" class="modal">
+      <div class="modal-content bulk-input-content">
+        <h3>予定の一括入力</h3>
+        <div class="form-group">
+          <label>対象月: <span id="home-bulk-month-label"></span></label>
+        </div>
+        <div class="bulk-header-row">
+          <div class="bulk-date">日付</div>
+          <div class="bulk-slot">昼</div>
+          <div class="bulk-slot">夜</div>
+        </div>
+        <div id="home-bulk-input-container" class="bulk-input-container"></div>
+        <div class="modal-actions">
+          <button id="home-save-availability-btn" class="btn-primary" type="button">保存</button>
+          <button id="home-close-availability-btn" class="btn-secondary" type="button">キャンセル</button>
+        </div>
+      </div>
+    </dialog>
 
   <footer>
     <hr />

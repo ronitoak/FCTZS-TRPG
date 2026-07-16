@@ -76,9 +76,19 @@ async function main() {
 
     function renderSchedule() {
       const wrapper = document.getElementById("schedule-wrapper");
-      if (wrapper) {
-        wrapper.innerHTML = buildScheduleHtml(player, myAvailabilities, mySessions, myRunsAll, currentYear, currentMonth);
-      }
+      if (!wrapper) return;
+
+      wrapper.innerHTML = buildScheduleShellHtml(currentYear, currentMonth);
+      const calendarEl = document.getElementById("player-schedule-calendar");
+      Utils.renderCalendar(calendarEl, currentYear, currentMonth, {
+        events: mySessions,
+        availabilities: myAvailabilities,
+        getEventTitle: session => {
+          const run = myRunsAll.find(item => String(item.id) === String(session.run_id));
+          return run?.title || session.title || "不明な卓";
+        },
+        getEventHref: session => `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`
+      });
     }
 
     let favChars = player.favorite_character_ids || [];
@@ -90,7 +100,6 @@ async function main() {
           ${buildPlayerProfileHtml(player)}
         </div>
         <div id="schedule-wrapper" style="flex: 2 1 500px;">
-          ${buildScheduleHtml(player, myAvailabilities, mySessions, myRunsAll, currentYear, currentMonth)}
         </div>
       </div>
 
@@ -105,6 +114,8 @@ async function main() {
         ${buildScenariosHtml("GM経験済シナリオ", gmScenarios, favScenarios, "GM履歴はまだありません。")}
       </div>
     `;
+
+    renderSchedule();
 
     async function updateFavoritesSilent(column, arrayData) {
       const payload = { [column]: arrayData };
@@ -361,94 +372,19 @@ function buildMyCharactersHtml(characters, favoriteIds = []) {
   `;
 }
 
-function buildScheduleHtml(player, availabilities, mySessions, myRunsAll, year, month) {
-  const today = new Date();
-  const firstDay = new Date(year, month, 1).getDay();
-  const lastDate = new Date(year, month + 1, 0).getDate();
-
-  const slotLabels = {'afternoon': '昼', 'night': '夜'};
-  const slotOrder = ['afternoon', 'night'];
-  const statusMarks = { 
-    'ok': '<span style="color: #38b2ac; font-weight: bold;">〇</span>', 
-    'maybe': '<span style="color: #d69e2e; font-weight: bold;">△</span>', 
-    'ng': '<span style="color: #e53e3e; font-weight: bold;">×</span>' 
-  };
-
-  let calendarHtml = `
-    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden;">
-      ${["日", "月", "火", "水", "木", "金", "土"].map((d, i) => 
-        `<div style="background: ${i===0 ? '#fed7d7' : i===6 ? '#bee3f8' : '#f7fafc'}; text-align: center; font-weight: bold; padding: 5px; font-size: 0.8rem;">${d}</div>`
-      ).join("")}
-  `;
-
-  for (let i = 0; i < firstDay; i++) {
-    calendarHtml += `<div style="background: #fff; padding: 5px;"></div>`;
-  }
-
-  for (let d = 1; d <= lastDate; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    
-    // ★表示時に "none"（削除扱い）の予定は無視する
-    const todaysAvails = availabilities.filter(a => a.target_date === dateStr && a.status !== "none");
-    let availHtml = "";
-    if (todaysAvails.length > 0) {
-      availHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
-      slotOrder.forEach(slot => {
-        const a = todaysAvails.find(x => x.time_slot === slot);
-        if (a && statusMarks[a.status]) {
-          availHtml += `<span style="font-size: 0.65rem; background: #f7fafc; border: 1px solid #cbd5e0; border-radius: 2px; padding: 1px 2px; line-height: 1;">${slotLabels[slot]}${statusMarks[a.status]}</span>`;
-        }
-      });
-      availHtml += `</div>`;
-    }
-
-    const todaysSessions = mySessions.filter(s => {
-      if (!s.start) return false;
-      const sDate = new Date(s.start);
-      return !isNaN(sDate) && sDate.getFullYear() === year && sDate.getMonth() === month && sDate.getDate() === d;
-    });
-
-    let sessionHtml = "";
-    if (todaysSessions.length > 0) {
-      sessionHtml = `<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px;">`;
-      todaysSessions.forEach(s => {
-        const run = myRunsAll.find(r => r.id === s.run_id);
-        const title = run ? run.title : "不明な卓";
-        const sTime = new Date(s.start);
-        const timeStr = `${String(sTime.getHours()).padStart(2, '0')}:${String(sTime.getMinutes()).padStart(2, '0')}`;
-        const tooltipText = `[${timeStr}] ${title}`;
-        sessionHtml += `<span style="font-size: 0.65rem; background: #4299e1; color: white; border-radius: 2px; padding: 1px 3px; line-height: 1; cursor: help; display: inline-block;" title="${Utils.escapeHtml(tooltipText)}">卓</span>`;
-      });
-      sessionHtml += `</div>`;
-    }
-
-    const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? "background: #fffff0;" : "background: #fff;";
-
-    calendarHtml += `
-      <div style="${isToday} padding: 4px; height: 60px; display: flex; flex-direction: column; border-top: 1px solid #e2e8f0; min-width: 0; overflow: hidden;">
-        <div style="font-size: 0.8rem; font-weight: bold; text-align: left;">${d}</div>
-        ${availHtml}
-        <div style="flex-grow: 1;">${sessionHtml}</div>
-      </div>
-    `;
-  }
-
-  calendarHtml += `</div>`;
-
+function buildScheduleShellHtml(year, month) {
   return `
-    <section class="player-schedule" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+    <section class="player-schedule">
+      <h2 class="player-schedule-header">
         <span>スケジュール</span>
-        <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 1rem;">
-          <button id="btn-prev-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">◀</button>
-          <span style="font-weight: bold; width: 90px; text-align: center;">${year}年${month + 1}月</span>
-          <button id="btn-next-month" style="cursor: pointer; background: #e2e8f0; border: none; border-radius: 4px; padding: 4px 10px;">▶</button>
+        <button id="bulk-input-btn" class="btn-primary">予定を入力</button>
+        <div class="player-schedule-navigation">
+          <button id="btn-prev-month" type="button" aria-label="前月">◀</button>
+          <span>${year}年${month + 1}月</span>
+          <button id="btn-next-month" type="button" aria-label="翌月">▶</button>
         </div>
       </h2>
-      <div style="margin-top: 10px;">
-        ${calendarHtml}
-      </div>
+      <div id="player-schedule-calendar" class="calendar-grid"></div>
     </section>
   `;
 }
@@ -484,32 +420,12 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
   `;
 }
 
-function getStatusSymbol(status) {
-  if (status === "ok") return "〇";
-  if (status === "maybe") return "△";
-  if (status === "ng") return "×";
-  return "-";
-}
-
 async function saveBulkAvailability() {
   const playerId = Utils.getQueryParam("id");
   if (!playerId) return;
 
-  const toggles = document.querySelectorAll(".bulk-slot-toggle");
-  const payload = [];
-
-  toggles.forEach(el => {
-    if (el.dataset.status !== el.dataset.initial) {
-      // ★修正2：空白に戻した場合は "none" としてデータベースに上書き保存し、事実上予定を消す
-      const finalStatus = el.dataset.status === "" ? "none" : el.dataset.status;
-      payload.push({
-        player_id: playerId,
-        target_date: el.dataset.date,
-        time_slot: el.dataset.slot,
-        status: finalStatus
-      });
-    }
-  });
+  const container = document.getElementById("bulk-input-container");
+  const payload = Utils.collectAvailabilityChanges(container, playerId);
 
   const modal = document.getElementById("availability-modal");
 
@@ -550,63 +466,7 @@ async function renderBulkInputGrid(playerId, year, month) {
   }
 
   const container = document.getElementById("bulk-input-container");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
-  const slots = ["afternoon", "night"];
-
-  for (let d = 1; d <= lastDay; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const dateObj = new Date(year, month, d);
-    const dowIndex = dateObj.getDay();
-
-    const row = document.createElement("div");
-    row.className = "bulk-row";
-
-    const dateLabel = document.createElement("div");
-    dateLabel.className = "bulk-date";
-    if (dowIndex === 0) dateLabel.style.color = "#c62828";
-    if (dowIndex === 6) dateLabel.style.color = "#1565c0";
-    dateLabel.textContent = `${d}日(${dayOfWeekStr[dowIndex]})`;
-    row.appendChild(dateLabel);
-
-    slots.forEach(slot => {
-      const slotDiv = document.createElement("div");
-      slotDiv.className = "bulk-slot-toggle";
-      slotDiv.dataset.date = dateStr;
-      slotDiv.dataset.slot = slot;
-
-      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-      // ★修正3："none" で保存されているデータは空白（予定なし）として読み込む
-      const initialVal = (exist && exist.status !== "none") ? exist.status : "";
-      
-      slotDiv.dataset.status = initialVal;
-      slotDiv.dataset.initial = initialVal;
-      slotDiv.textContent = getStatusSymbol(initialVal);
-      if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
-
-      slotDiv.addEventListener("click", () => {
-          const statusOrder = ["", "ok", "maybe", "ng"];
-          let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
-          let nextIndex = (currentIndex + 1) % statusOrder.length;
-          
-          const nextStatus = statusOrder[nextIndex];
-          slotDiv.dataset.status = nextStatus;
-          slotDiv.textContent = getStatusSymbol(nextStatus);
-          
-          slotDiv.className = "bulk-slot-toggle"; 
-          if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
-      });
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "bulk-slot";
-      wrapper.appendChild(slotDiv);
-      row.appendChild(wrapper);
-    });
-
-    container.appendChild(row);
-  }
+  Utils.renderAvailabilityGrid(container, year, month, existingData);
 }
 
 Utils.domReady(main);

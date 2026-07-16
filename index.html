@@ -42,14 +42,13 @@
 
     <!-- こんなとこ見るな！ -->
     <section aria-labelledby="notes-title">
-      <h2 id="notes-title">開発パッチノート</h2>
-      <ul>
-        <li>募集カードに傾向マッチング機能を追加 <small>- 新着順を維持したまま、ログイン中プレイヤーの欲求と募集シナリオの傾向から相性を判定してマッチ度を表示</small></li>
-        <li>予定比較結果のカレンダー表示不具合を修正 <small>- シナリオ一覧と予定比較で重複していたバッジのスタイルを分離し、比較結果の○・△・×が各日付に表示されるように</small></li>
-        <li>シナリオ一覧の高度な検索・絞り込み機能とマッチ度表示の実装 <small>- プレイ人数、時間、ロスト率、プレイスタイル傾向の高度な検索に加え、自身の欲求パラメータとシナリオ傾向を比較した「自分との相性（マッチ度）」の表示に対応</small></li>
-        <li>シナリオ管理の構造化と検索・絞り込み機能の実装 <small>- プレイ人数、プレイ時間、ロスト率などのシナリオ構造化データを追加し、一覧画面で条件に合わせた絞り込み検索ができるように</small></li>
-        <li>シナリオの「プレイスタイル傾向」タグ付け機能の実装 <small>- シナリオごとに3軸のプレイスタイル傾向を登録し、一覧や募集にタグ表示できるように</small></li>
-      </ul>
+      <h2 id="notes-title" class="patch-notes-section-heading">
+        <span>開発パッチノート</span>
+        <a class="patch-notes-all-link" href="./patch-notes/index.html">全履歴を見る →</a>
+      </h2>
+      <div data-patch-notes-view="summary" data-limit="5">
+        <p class="u-muted">パッチノートを読み込み中…</p>
+      </div>
     </section>
     <section>
       <h2>新着コメント</h2>
@@ -76,6 +75,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/init-supabase.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/patch-notes-data.js"></script>
+  <script src="js/patch-notes.js"></script>
   <script type="module" src="./js/home.js"></script>
   <script src="./js/top_comments.js"></script>
   <script>

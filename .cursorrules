@@ -33,4 +33,7 @@
 - 返答やコード内のコメントはすべて日本語で行ってください。
 
 ## 9. 開発パッチノートの記載
-- 機能追加や、機能改修を行った際は、ルート直下の `index.html` の「開発パッチノート」section（`#notes-title` が定義されているセクション）にある `<ul>` タグ内の `<li>` 要素を一つ古いものから削除し、新しく開発した機能名と開発内容を記載した `<li>` 要素（必要に応じて `<small>` タグによるステータスや補足を含む）を追加してください。
+- 機能追加や機能改修、不具合修正を行った際は、`js/patch-notes-data.js` の `PATCH_NOTES` 配列の先頭に新しいエントリを追加してください。
+- エントリは `{ date: "YYYY-MM-DD", type: "種別", title: "機能名", detail: "変更内容" }` 形式とし、`date` には作業日、`type` には `release`・`feature`・`improvement`・`fix` のいずれかを指定してください。
+- 過去のエントリは削除しないでください。ルート直下の `index.html` には最新5件、`patch-notes/index.html` には全履歴が `js/patch-notes.js` によって自動表示されます。
+- `index.html` や `patch-notes/index.html` にパッチノート本文を直接記載せず、`js/patch-notes-data.js` を唯一のデータソースとして管理してください。

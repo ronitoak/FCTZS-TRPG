@@ -1335,3 +1335,197 @@ dialog.modal::backdrop {
 .recruit-card.match-low {
     padding-top: 42px;
 }
+
+/* ==========================================
+   Patch Notes
+   ========================================== */
+.patch-notes-page-header {
+    margin-bottom: 32px;
+}
+
+.patch-notes-eyebrow {
+    margin: 0 0 4px;
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 0.16em;
+}
+
+.patch-notes-section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.patch-notes-all-link {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    font-weight: normal;
+}
+
+.patch-notes-summary {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--border-color);
+}
+
+.patch-note-summary-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.patch-note-summary-meta,
+.patch-note-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.patch-note-date {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.patch-note-title {
+    color: var(--text-color, #2d3748);
+    line-height: 1.4;
+}
+
+.patch-note-detail {
+    display: block;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.patch-notes-history {
+    display: grid;
+    gap: 34px;
+}
+
+.patch-notes-day {
+    position: relative;
+    padding-left: 22px;
+    border-left: 2px solid var(--border-color);
+}
+
+.patch-notes-day::before {
+    position: absolute;
+    top: 7px;
+    left: -6px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    background: var(--container-bg);
+    content: "";
+}
+
+.patch-notes-day-title {
+    margin: 0 0 14px;
+    padding: 0;
+    border: 0;
+    font-size: 1.15rem;
+}
+
+.patch-notes-day-date {
+    color: var(--text-color, #2d3748);
+}
+
+.patch-notes-list {
+    display: grid;
+    gap: 12px;
+}
+
+.patch-note-card {
+    padding: 16px 18px;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius);
+    background: var(--container-bg);
+    box-shadow: var(--shadow);
+}
+
+.patch-note-card--release {
+    border-left-color: #805ad5;
+}
+
+.patch-note-card--feature {
+    border-left-color: #3182ce;
+}
+
+.patch-note-card--improvement {
+    border-left-color: #d69e2e;
+}
+
+.patch-note-card--fix {
+    border-left-color: #e53e3e;
+}
+
+.patch-note-card-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.patch-note-card-detail {
+    margin: 10px 0 0;
+    color: var(--text-muted);
+    line-height: 1.7;
+}
+
+.patch-note-type {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.patch-note-type--release {
+    background: #faf5ff;
+    color: #6b46c1;
+}
+
+.patch-note-type--feature {
+    background: #ebf8ff;
+    color: #2b6cb0;
+}
+
+.patch-note-type--improvement {
+    background: #fffff0;
+    color: #975a16;
+}
+
+.patch-note-type--fix {
+    background: #fff5f5;
+    color: #c53030;
+}
+
+@media (max-width: 600px) {
+    .patch-notes-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .patch-notes-day {
+        padding-left: 16px;
+    }
+
+    .patch-note-card {
+        padding: 14px;
+    }
+
+    .patch-note-card-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

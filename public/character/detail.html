@@ -9,19 +9,26 @@
 </head>
 <body>
   <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
+    <!-- キャラクター詳細本体：character_detail.js がプロフィール・能力値・技能等を描画 -->
     <section id="character-detail">
       <p>読み込み中…</p>
     </section>
 
-    <div id="edit-character-modal" class="modal" style="display:none;">
+    <!-- 基本情報編集モーダル：character_detail.js が既存値の反映と更新を制御 -->
+    <dialog id="edit-character-modal" class="modal">
       <div class="modal-content" style="max-width: 600px;"> <h3>キャラクター情報の編集</h3>
         <form id="edit-character-form">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-group">
               <label>名前</label>
               <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>読み仮名</label>
+              <input type="text" name="reading" class="form-control" required>
             </div>
             <div class="form-group">
               <label>プレイヤー</label>
@@ -65,6 +72,10 @@
               <label>いあきゃらURL</label>
               <input type="url" name="iachara_url" class="form-control">
             </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>キャラクター画像 (変更する場合のみ選択)</label>
+              <input type="file" name="image_file" accept="image/*" class="form-control">
+            </div>
           </div>
           
           <div class="form-group" style="margin-top: 10px;">
@@ -78,9 +89,10 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-skills-modal" class="modal" style="display:none;">
+    <!-- 技能編集モーダル：edit-skills-container に技能行を動的生成 -->
+    <dialog id="edit-skills-modal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <h3>技能値の編集</h3>
         <form id="edit-skills-form">
@@ -95,9 +107,10 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-params-modal" class="modal" style="display:none;">
+    <!-- 能力値編集モーダル：edit-params-container に能力値入力を動的生成 -->
+    <dialog id="edit-params-modal" class="modal">
       <div class="modal-content" style="max-width: 450px;">
         <h3>能力値の編集</h3>
         <form id="edit-params-form">
@@ -108,9 +121,10 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-emotions-modal" class="modal" style="display:none;">
+    <!-- 共鳴感情編集モーダル：edit-emotions-container に感情入力を動的生成 -->
+    <dialog id="edit-emotions-modal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <h3>共鳴感情の編集</h3>
         <form id="edit-emotions-form">
@@ -121,9 +135,10 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
-    <div id="edit-scenarios-modal" class="modal" style="display:none;">
+    <!-- 通過シナリオ編集モーダル：edit-scenarios-container にシナリオ行を動的生成 -->
+    <dialog id="edit-scenarios-modal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <h3>通過シナリオの編集</h3>
         <form id="edit-scenarios-form">
@@ -138,8 +153,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
 
+    <!-- コメント欄：comments.js の描画先 -->
     <div id="comments-root"></div>
       <footer>
         <hr />
@@ -149,13 +165,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/init-supabase.js"></script>
     <script src="../js/utils.js"></script>
-    <script src="../js/character_detail.js"></script>
     <script src="../js/comments.js"></script>
-    <script>
-      Comments.mount("comments-root", "character");
-    </script>
+    <script src="../js/character_detail.js"></script>
 </body>
 </html>
-
-
-

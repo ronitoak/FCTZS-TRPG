@@ -1,6 +1,8 @@
 "use strict";
 
-// システム名の辞書
+// キャラクター一覧の検索条件をAPIクエリへ変換し、最終参加履歴を加味したカード表示を担う。
+(() => {
+// 保存値を変えずに利用者向け表記だけを統一するためのシステム名辞書。
 const SYSTEM_DISPLAY_NAMES = {
   "CoC6": "クトゥルフ神話TRPG",
   "CoC7": "新クトゥルフ神話TRPG",
@@ -8,17 +10,55 @@ const SYSTEM_DISPLAY_NAMES = {
   "ガイアケアTRPG": "ガイアケアTRPG"
 };
 
-// 表示ラベルから、DB検索用の文字列（カンマ区切り）を生成する関数
-function getSystemQueryString(displayLabel) {
-  const values = Object.keys(SYSTEM_ALIASES).filter(k => SYSTEM_ALIASES[k] === displayLabel);
-  return values.length > 0 ? values.join(',') : displayLabel;
+/** 最終セッション日時マップをビューと卓配列の両方から作り、より新しい方を採用する。 */
+async function buildLastSessionMap() {
+  const map = new Map();
+
+  const merge = (cid, t) => {
+    const key = String(cid ?? "").trim();
+    if (!key || !Number.isFinite(t)) return;
+    const prev = map.get(key);
+    if (prev == null || t > prev) map.set(key, t);
+  };
+
+  try {
+    const lastRows = await Utils.apiGet("character_last_session");
+    for (const r of Array.isArray(lastRows) ? lastRows : []) {
+      merge(r?.character_id, Date.parse(r.last_session_start ?? ""));
+    }
+  } catch (err) {
+    console.warn("character_last_session の取得に失敗したため配列ベースへフォールバックします", err);
+  }
+
+  // junction未同期でビューが欠ける場合に備え、runs.characters からも最終日を補完する。
+  try {
+    const [runs, sessions] = await Promise.all([
+      Utils.apiGet("runs"),
+      Utils.apiGet("sessions")
+    ]);
+    const latestByRunId = new Map();
+    for (const s of Array.isArray(sessions) ? sessions : []) {
+      if (!s?.run_id) continue;
+      const t = Date.parse(s.start ?? "");
+      if (!Number.isFinite(t)) continue;
+      const key = String(s.run_id);
+      const prev = latestByRunId.get(key);
+      if (prev == null || t > prev) latestByRunId.set(key, t);
+    }
+    for (const run of Array.isArray(runs) ? runs : []) {
+      const runLatest = latestByRunId.get(String(run.id));
+      if (runLatest == null) continue;
+      const chars = Array.isArray(run.characters) ? run.characters : [];
+      for (const raw of chars) merge(raw, runLatest);
+    }
+  } catch (err) {
+    console.warn("最終セッションの配列ベース補完に失敗しました", err);
+  }
+
+  return map;
 }
 
-function normalize(s) {
-  return String(s ?? "").toLowerCase();
-}
-
-// クエリ引数(query)を削除し、純粋に「渡された配列を描画する」だけの関数にします
+// 取得条件と描画を分離し、再検索時にも同じ表示規則を再利用できるようにする。
 function renderCharacters(root, characters, lastByCharId) {
   root.innerHTML = "";
 
@@ -26,8 +66,8 @@ function renderCharacters(root, characters, lastByCharId) {
 
   // ソート（最終セッションが新しい順 → 同順なら名前）のみフロントで維持します
   list.sort((a, b) => {
-    const at = lastByCharId?.get(a.id) ?? -Infinity;
-    const bt = lastByCharId?.get(b.id) ?? -Infinity;
+    const at = lastByCharId?.get(String(a.id)) ?? Number.NEGATIVE_INFINITY;
+    const bt = lastByCharId?.get(String(b.id)) ?? Number.NEGATIVE_INFINITY;
     if (at !== bt) return bt - at;
     return String(a.name ?? a.id).localeCompare(String(b.name ?? b.id), "ja");
   });
@@ -47,7 +87,7 @@ function renderCharacters(root, characters, lastByCharId) {
     const player = Utils.escapeHtml(c.players?.player_name ?? "");
     const system = Utils.escapeHtml(c.system ?? "");
     const state = typeof c.state === "string" ? c.state : "";
-    const imagePath = Utils.getCharacterImagePath(c.id);
+    const imagePath = Utils.getCharacterImagePath(c.id, c.image_url);
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const cardLink = document.createElement("a");
@@ -110,7 +150,7 @@ async function initFilterOptions() {
     if (filterPlayer) {
         players.forEach(p => {
             const opt = document.createElement("option");
-            // ★修正箇所: value には ID を、表示テキストには名前を入れる
+            // APIへ安定した識別子を渡しつつ、利用者には判読可能な名前を表示する。
             opt.value = p.player_id; 
             opt.textContent = p.player_name;
             filterPlayer.appendChild(opt);
@@ -140,7 +180,7 @@ async function main() {
 
   await Utils.initAuthAndHeader('common-nav', '../');
   
-  // ★ まず最初に、プルダウンの選択肢を構築する
+  // 初回検索にも同じ選択値を使えるよう、検索イベント登録前に候補を構築する。
   await initFilterOptions();
 
   // 検索を実行する関数
@@ -148,32 +188,23 @@ async function main() {
     try {
       const systemVal = document.getElementById("filter-system")?.value || "";
       const playerVal = document.getElementById("filter-player")?.value || "";
-      const scenarioVal = document.getElementById("filter-scenario")?.value || ""; // ★追加
+      const scenarioVal = document.getElementById("filter-scenario")?.value || ""; // 通過シナリオでも絞り込めるよう任意値として扱う。
       const stateVal = document.getElementById("filter-state")?.value || "";
       const keywordVal = document.getElementById("filter-keyword")?.value || "";
 
       const params = new URLSearchParams();
       if (systemVal) params.append("system", systemVal); 
       if (playerVal) params.append("player_id", playerVal);
-      if (scenarioVal) params.append("scenario_id", scenarioVal); // ★追加
+      if (scenarioVal) params.append("scenario_id", scenarioVal); // 未選択時はAPIの全件条件を維持する。
       if (stateVal) params.append("state", stateVal);
       if (keywordVal) params.append("keyword", keywordVal);
 
       const queryStr = params.toString() ? `?${params.toString()}` : "";
 
-      const [characters, lastRows] = await Promise.all([
+      const [characters, lastByCharId] = await Promise.all([
         Utils.apiGet(`characters${queryStr}`),
-        Utils.apiGet("character_last_session"),
+        buildLastSessionMap(),
       ]);
-
-      const lastByCharId = new Map();
-      for (const r of Array.isArray(lastRows) ? lastRows : []) {
-        const cid = r?.character_id;
-        if (!cid) continue;
-        const t = Date.parse(r.last_session_start ?? "");
-        if (!Number.isFinite(t)) continue;
-        lastByCharId.set(cid, t);
-      }
 
       renderCharacters(root, characters, lastByCharId);
     } catch (err) {
@@ -200,3 +231,4 @@ async function main() {
 }
 
 main();
+})();

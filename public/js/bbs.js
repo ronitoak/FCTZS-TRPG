@@ -1,0 +1,171 @@
+"use strict";
+
+// 掲示板の投稿主体をログイン情報とキャラクター所有関係から確定し、安全な表示と投稿を一画面で担う。
+(() => {
+
+let characterList = [];
+let playerList = [];
+
+// 投稿者の選択肢を矛盾なく連動させるため、プレイヤーとキャラクターを同じ時点で取得する。
+async function loadMasterData() {
+  try {
+    // APIから並行してデータを取得
+    [playerList, characterList] = await Promise.all([
+      Utils.apiGet("players"),
+      Utils.apiGet("characters")
+    ]);
+
+    // プレイヤーのセレクトボックスを構築
+    const playerSelect = Utils.$("bbs-player");
+    if (playerSelect && Array.isArray(playerList)) {
+      playerSelect.innerHTML = '<option value="">-- すべてのプレイヤー --</option>' + 
+        playerList.map(p => 
+          `<option value="${p.player_id}">${Utils.escapeHtml(p.player_name)}</option>`
+        ).join('');
+    }
+
+    // 初回は絞り込みなしで全キャラクターを描画
+    renderCharacterSelect("");
+
+  } catch (e) {
+    console.error("マスタデータ取得エラー:", e);
+  }
+}
+
+// 2. 指定されたプレイヤーIDでキャラクターを絞り込んで描画する
+function renderCharacterSelect(playerIdFilter) {
+  const select = Utils.$("bbs-character");
+  if (!select || !Array.isArray(characterList)) return;
+
+  // プレイヤーIDが指定されていれば絞り込み、指定がなければ全員表示
+  const filteredChars = playerIdFilter 
+    ? characterList.filter(c => String(c.player_id) === String(playerIdFilter))
+    : characterList;
+
+  select.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+    filteredChars.map(c => 
+      `<option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">${Utils.escapeHtml(c.name)}</option>`
+    ).join('');
+}
+
+// 3. タイムライン（投稿一覧）を読み込んで描画する
+async function loadPosts() {
+  const list = Utils.$("bbs-list");
+  try {
+    const data = await Utils.apiGet("posts?limit=50");
+    
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = `<p style="color: #a0aec0; text-align: center; padding: 20px;">まだ投稿がありません。</p>`;
+      return;
+    }
+
+    list.innerHTML = `
+      <div class="bbs-post-list">
+        ${data.map(p => {
+          const dt = new Date(p.created_at);
+          const dtText = Number.isNaN(dt.getTime()) ? "" : dt.toLocaleString("ja-JP");
+          const matchedChar = p.character_id ? characterList.find(c => String(c.id) === String(p.character_id)) : null;
+          const avatarSrc = p.character_id ? Utils.getCharacterImagePath(p.character_id, matchedChar?.image_url) : Utils.DEFAULT_CHARACTER_IMAGE;
+          
+          return `
+            <div class="bbs-post-card">
+              <img src="${avatarSrc}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" class="bbs-post-avatar">
+              <div class="bbs-post-content">
+                <div class="bbs-post-header">
+                  <span class="bbs-post-author">${Utils.escapeHtml(p.author)}</span>
+                  <span class="bbs-post-time">${Utils.escapeHtml(dtText)}</span>
+                </div>
+                <div class="bbs-post-body">${Utils.escapeHtml(p.body)}</div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  } catch (e) {
+    console.error(e);
+    list.innerHTML = `<p>読み込みに失敗しました</p>`;
+  }
+}
+
+// 4. メイン処理と送信イベント
+async function main() {
+  await Utils.initAuthAndHeader('common-nav', '../');
+  
+  // 初期データの読み込み（ここで連携プルダウンのセットアップが完了します）
+  await loadMasterData();
+  await loadPosts();
+
+  // なりすまし投稿を避けるため、フォームを操作可能にする前にログイン状態を確定する。
+  const { data: { session } } = await window.supabase.auth.getSession();
+  const form = Utils.$("bbs-form");
+  
+  // ログインしていない場合は、フォームの中身を丸ごと「ログイン案内」に差し替える
+  if (!session) {
+    if (form) {
+      form.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: #e53e3e; font-weight: bold; margin-bottom: 10px;">⚠️ 投稿するにはログインが必要です</p>
+          <p style="font-size: 0.9rem; color: #4a5568;">右上のボタンから Discord Login を行ってください。</p>
+        </div>
+      `;
+    }
+    return; // ここで処理を止める（以下の送信イベント等は登録しない）
+  }
+
+  // === 以下はログイン済みの時だけ実行される ===
+
+  // 所有者と異なるキャラクターを誤選択しないよう、プレイヤー変更時に候補を絞り込む。
+  const playerSelect = Utils.$("bbs-player");
+  if (playerSelect) {
+    playerSelect.addEventListener("change", (e) => {
+      renderCharacterSelect(e.target.value);
+    });
+  }
+
+  const msg = Utils.$("bbs-msg");
+  const btn = Utils.$("bbs-submit");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const charSelect = Utils.$("bbs-character");
+    const body = Utils.$("bbs-body").value.trim();
+    const charId = charSelect.value;
+    
+    if (!charId || !body) return;
+
+    const selectedOption = charSelect.options[charSelect.selectedIndex];
+    const authorName = selectedOption.getAttribute("data-name");
+
+    btn.disabled = true;
+    msg.textContent = "送信中…";
+    msg.style.color = "#4a5568";
+
+    const payload = {
+      character_id: charId,
+      author: authorName,
+      body: body,
+    };
+
+    try {
+      await Utils.apiPost("posts", payload);
+
+      Utils.$("bbs-body").value = "";
+      msg.textContent = "投稿しました！";
+      msg.style.color = "#38a169";
+
+      await loadPosts(); 
+    } catch (err) {
+      console.error(err);
+      msg.textContent = "投稿に失敗しました";
+      msg.style.color = "#e53e3e";
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => { msg.textContent = ""; }, 3000); 
+    }
+  });
+}
+
+Utils.domReady(main);
+})();

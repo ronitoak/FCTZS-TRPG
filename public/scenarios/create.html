@@ -9,10 +9,12 @@
 </head>
 <body>
    <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
         <h1>シナリオ新規登録</h1>
 
+        <!-- シナリオ登録フォーム：scenario_create.js が画像プレビューと登録を制御 -->
         <form id="scenario-form">
             <fieldset class="form-section">
                 <legend>シナリオ基本情報</legend>
@@ -35,6 +37,33 @@
                         <label>作者</label>
                         <input type="text" name="author" class="form-control" placeholder="(任意)">
                     </div>
+                    <div class="form-group">
+                        <label>シナリオ画像</label>
+                        <input type="file" id="image-file" accept="image/*" class="form-control">
+                        <div id="image-preview-container" style="margin-top: 10px; display: none;">
+                            <img id="image-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>最小プレイ人数</label>
+                        <input type="number" name="min_players" min="1" value="1" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>最大プレイ人数</label>
+                        <input type="number" name="max_players" min="1" value="4" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>プレイ時間 (分)</label>
+                        <input type="number" name="play_time_minutes" min="1" value="180" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>ロスト率</label>
+                        <select name="lost_rate" required class="form-control">
+                            <option value="low" selected>低 (low)</option>
+                            <option value="mid">中 (mid)</option>
+                            <option value="high">高 (high)</option>
+                        </select>
+                    </div>
                 </div>
             </fieldset>
 
@@ -48,6 +77,34 @@
                 <div class="form-group">
                     <label>イントロダクション</label>
                     <textarea name="description" rows="8" class="form-control" placeholder="あらすじやハンドアウトを入力"></textarea>
+                </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+                <legend>プレイスタイル傾向（任意）</legend>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">展開軸</label>
+                    <div class="trend-options" style="display: flex; gap: 15px;">
+                        <label style="font-weight: normal;"><input type="radio" name="trend_story_chaos" value="story"> 物語重視</label>
+                        <label style="font-weight: normal;"><input type="radio" name="trend_story_chaos" value="" checked> 指定なし</label>
+                        <label style="font-weight: normal;"><input type="radio" name="trend_story_chaos" value="chaos"> 混沌歓迎</label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">選択軸</label>
+                    <div class="trend-options" style="display: flex; gap: 15px;">
+                        <label style="font-weight: normal;"><input type="radio" name="trend_avatar_clear" value="avatar"> RP・没入</label>
+                        <label style="font-weight: normal;"><input type="radio" name="trend_avatar_clear" value="" checked> 指定なし</label>
+                        <label style="font-weight: normal;"><input type="radio" name="trend_avatar_clear" value="clear"> 攻略重視</label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">立ち回り軸</label>
+                    <div class="trend-options" style="display: flex; gap: 15px;">
+                        <label style="font-weight: normal;"><input type="radio" name="trend_harmony_active" value="harmony"> 協調重視</label>
+                        <label style="font-weight: normal;"><input type="radio" name="trend_harmony_active" value="" checked> 指定なし</label>
+                        <label style="font-weight: normal;"><input type="radio" name="trend_harmony_active" value="active"> 活躍推奨</label>
+                    </div>
                 </div>
             </fieldset>
 

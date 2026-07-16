@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>なりチャ | FCTZS TRPG部</title>
+    <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+    <header class="page-header">
+      <h1>なりきりチャット</h1>
+      <p><small>俺が荒らしだと判断したら発言削除します。3回削除でアク禁　治安維持のためdiscordログイン必須です。</small></p>
+    </header>
+
+      <!-- 投稿フォーム：bbs.js がログイン確認・キャラクター候補・送信を制御 -->
+      <section class="bbs-postbox">
+        <form id="bbs-form" class="bbs-form">
+          
+          <div class="bbs-form-group">
+            <label for="bbs-player">プレイヤー（絞り込み用）</label>
+            <select id="bbs-player">
+              <option value="">-- すべてのプレイヤー --</option>
+            </select>
+          </div>
+          <div class="bbs-form-group">
+            <label for="bbs-character">キャラクター</label>
+            <select id="bbs-character" required>
+              <option value="">-- キャラクターを選択 --</option>
+            </select>
+          </div>
+
+          <div class="bbs-form-group">
+            <label for="bbs-body">メッセージ</label>
+            <textarea id="bbs-body" rows="4" maxlength="4000" required></textarea>
+          </div>
+
+          <div class="bbs-form-actions">
+            <button type="submit" id="bbs-submit" class="btn-primary">送信</button>
+            <span id="bbs-msg" style="font-weight: bold;"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- 投稿ログ：bbs.js が bbs-list に時系列の投稿を描画 -->
+      <section class="bbs-list">
+        <h2 style="font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">ログ</h2>
+        <div id="bbs-list">読み込み中…</div>
+      </section>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/init-supabase.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/bbs.js"></script> </body>
+</html>

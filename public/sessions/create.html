@@ -9,10 +9,12 @@
 </head>
 <body>
    <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
         <h1>卓の新規作成</h1>
 
+        <!-- 卓登録フォーム：session_create.js がシナリオ・GM・参加者候補を読み込み登録 -->
         <form id="session-form">
         <fieldset class="form-section">
             <legend>卓の基本情報</legend>
@@ -34,6 +36,13 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>卓のカバー画像 (任意)</label>
+                    <input type="file" id="image-file" accept="image/*" class="form-control">
+                    <div id="image-preview-container" style="margin-top: 10px; display: none;">
+                        <img id="image-preview" src="" style="max-width: 150px; max-height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>追加プレイヤー (キャラ未作成など)</label>
                     <select name="extra_player_ids" id="extra-player-select" multiple class="form-control">
                     </select>
@@ -46,6 +55,7 @@
 
         <fieldset class="form-section">
             <legend>参加キャラクター選択</legend>
+            <!-- 参加キャラクター候補：session_create.js がチェック項目を生成 -->
             <div id="character-selection-grid" class="skill-grid">
             <p>読み込み中...</p>
             </div>

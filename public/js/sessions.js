@@ -1,5 +1,8 @@
 "use strict";
 
+// 卓と開催記録を結合し、次回予定・参加者・シナリオ画像を一覧カードへまとめる。
+(() => {
+
 async function main() {
   const now = new Date();
 
@@ -68,8 +71,11 @@ async function main() {
 
       const scenario = scenariosById.get(run.scenario_id);
 
-      // ★ ここで cover を決める（run から scenario_id を使う）
-      const coverPath = Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown");
+      // 開催回には画像参照がないため、親卓のscenario_idからカード画像を解決する。
+      // 卓自身の画像URL(R2)があればそれを使い、なければシナリオの画像URLを使う
+      const coverPath = run.image_url 
+        ? run.image_url 
+        : Utils.getScenarioCoverPath(scenario?.id ?? run.scenario_id ?? "unknown", scenario?.image_url);
       const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
       const runSessionsRaw = sessionsByRunId.get(run.id) ?? [];
@@ -87,13 +93,13 @@ async function main() {
       const card = document.createElement("article");
       card.className = "sessions-card";
 
-      let gmName = run.gm ?? "";
-      if (run.gm_id && playersById.has(run.gm_id)) {
+      let gmName = run.gm_name ?? "";
+      if (!gmName && run.gm_id && playersById.has(run.gm_id)) {
           gmName = playersById.get(run.gm_id).player_name;
       }
 
-      let plNames = run.players ?? [];
-      if (run.player_ids && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
+      let plNames = Array.isArray(run.player_names) ? run.player_names : [];
+      if (plNames.length === 0 && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
           plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
       }
 
@@ -167,3 +173,4 @@ async function main() {
 }
 
 document.addEventListener("DOMContentLoaded", main);
+})();

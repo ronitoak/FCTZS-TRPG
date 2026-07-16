@@ -3,56 +3,147 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Page | FCTZS-TRPG</title>
+  <title>Player | FCTZS-TRPG</title>
   <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
   <div class="container">
+        <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
         <nav id="common-nav" class="top-nav"></nav>
         <hr />
+    <!-- プレイヤー詳細本体：player_detail.js がプロフィール・傾向・予定を描画 -->
     <section id="player-detail-root">
       <p>読み込み中…</p>
     </section>
 
+    <!-- プロフィール編集モーダル：アイコン・Tier・プレイスタイル傾向を更新 -->
     <dialog id="edit-profile-modal" style="width: 90%; max-width: 500px; padding: 20px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="margin: 0; font-size: 1.2rem;">プロフィール編集</h2>
+        <h2 style="margin: 0; font-size: 1.2rem;">プロフィール編集 <small>年末の投票で多分ここを使う</small></h2>
         <button id="close-profile-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
       
       <form id="edit-profile-form" style="display: flex; flex-direction: column; gap: 15px;">
         <div>
-          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">アイコン画像URL</label>
-          <input type="text" name="icon_url" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="https://...">
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">アイコン設定 </label>
+          <select id="icon-character-select" type="text" name="icon_url" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
         </div>
         <div>
-          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🎪 催事場（自己紹介・傾向）</label>
-          <textarea name="profile_text" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-        </div>
-        <div>
-          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">📚 GM可能（所有）シナリオ</label>
-          <textarea name="owned_scenarios" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-        </div>
-        <div>
-          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🏆 Tier 1 (一番の推し)</label>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">Tier 1 </label>
           <input type="text" name="tier_list_first" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
         <div>
-          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🥈 Tier 2</label>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">Tier 2</label>
           <input type="text" name="tier_list_second" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
         <div>
-          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">🥉 Tier 3</label>
+          <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">Tier 3</label>
           <input type="text" name="tier_list_third" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <hr style="margin: 10px 0; border: none; border-top: 1px dashed #ccc;">
+        
+        <h3 style="margin: 0 0 10px 0; font-size: 1rem; text-align: center;">プレイスタイル傾向</h3>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+          
+          <div style="background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; color: #2d3748;">📖 物語欲</label>
+            <p style="margin: 0 0 8px 0; font-size: 0.65rem; color: #718096; line-height: 1.3;">「物語として映える・印象的な場面を生む」</p>
+            <input type="range" name="desire_story" min="1" max="5" value="3" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #a0aec0; margin-top: 2px;">
+              <span>低</span><span>高</span>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; color: #2d3748;">🎭 化身欲</label>
+            <p style="margin: 0 0 8px 0; font-size: 0.65rem; color: #718096; line-height: 1.3;">「キャラの感情をRPで表現する」</p>
+            <input type="range" name="desire_avatar" min="1" max="5" value="3" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #a0aec0; margin-top: 2px;">
+              <span>低</span><span>高</span>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; color: #2d3748;">🤝 協調欲</label>
+            <p style="margin: 0 0 8px 0; font-size: 0.65rem; color: #718096; line-height: 1.3;">「他PCとの掛け合い・卓の空気を楽しむ」</p>
+            <input type="range" name="desire_harmony" min="1" max="5" value="3" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #a0aec0; margin-top: 2px;">
+              <span>低</span><span>高</span>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; color: #2d3748;">🌪 混沌欲</label>
+            <p style="margin: 0 0 8px 0; font-size: 0.65rem; color: #718096; line-height: 1.3;">「予定外の展開・事故や脱線を面白がる」</p>
+            <input type="range" name="desire_chaos" min="1" max="5" value="3" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #a0aec0; margin-top: 2px;">
+              <span>低</span><span>高</span>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; color: #2d3748;">🧩 攻略欲</label>
+            <p style="margin: 0 0 8px 0; font-size: 0.65rem; color: #718096; line-height: 1.3;">「難所を突破する・システム的有利を築く」</p>
+            <input type="range" name="desire_clear" min="1" max="5" value="3" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #a0aec0; margin-top: 2px;">
+              <span>低</span><span>高</span>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 2px; color: #2d3748;">✨ 活躍欲</label>
+            <p style="margin: 0 0 8px 0; font-size: 0.65rem; color: #718096; line-height: 1.3;">「主人公のように活躍・見せ場を作る」</p>
+            <input type="range" name="desire_active" min="1" max="5" value="3" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #a0aec0; margin-top: 2px;">
+              <span>低</span><span>高</span>
+            </div>
+          </div>
+
         </div>
         <button type="submit" style="padding: 10px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px;">保存する</button>
       </form>
     </dialog>
 
+    <!-- 予定一括入力モーダル：bulk-input-container に日別入力欄を動的生成 -->
+    <dialog id="availability-modal" class="modal">
+      <div class="modal-content bulk-input-content">
+        <h3>予定の一括入力</h3>
+
+        <div class="form-group">
+          <label>対象月: <span id="bulk-month-label"></span></label>
+        </div>
+
+        <div class="bulk-header-row">
+          <div class="bulk-date">日付</div>
+          <div class="bulk-slot">昼</div>
+          <div class="bulk-slot">夜</div>
+        </div>
+
+        <div id="bulk-input-container" class="bulk-input-container">
+        </div>
+
+        <div class="modal-actions">
+          <button id="save-availability-btn" class="primary-btn">保存</button>
+          <button id="close-modal-btn" class="secondary-btn">キャンセル</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- コメント欄：comments.js の描画先 -->
+    <div id="comments-root"></div>
+      <footer>
+        <hr />
+        <small><a href="../player/index.html">Back</a></small>
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/init-supabase.js"></script>
     <script src="../js/utils.js"></script>
+    <script src="../js/comments.js"></script>
     <script src="../js/player_detail.js"></script>
 </body>
 </html>

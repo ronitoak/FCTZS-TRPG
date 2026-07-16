@@ -1,5 +1,8 @@
 "use strict";
 
+// 募集本体と応募者を詳細表示へ統合し、参加・取消・募集削除の整合性を保つ。
+(() => {
+
 let currentRecruit = null;
 let allPlayers = [];
 let allScenarios = [];
@@ -35,9 +38,8 @@ async function main() {
         renderDetail();
         setupActionForms();
 
-        if (typeof initComments === "function") {
-
-            initComments("recruitments", recruitId, "comments-root", allPlayers);
+        if (window.Comments && typeof window.Comments.mount === "function") {
+            window.Comments.mount("comments-root", "recruitment", recruitId);
         }
 
     } catch (err) {
@@ -52,11 +54,14 @@ function renderDetail() {
     const ownerObj = allPlayers.find(p => p.player_id === currentRecruit.owner_player_id);
     const ownerName = ownerObj ? ownerObj.player_name : "不明なプレイヤー";
 
-    const scenarioObj = allScenarios.find(s => s.id === currentRecruit.scenario_id);
+    const scenarioObj = allScenarios.find(s => String(s.id) === String(currentRecruit.scenario_id));
     const scenarioName = scenarioObj ? scenarioObj.title : "未定・オリジナル";
     
     // 画像パスの生成（シナリオIDがあればその画像、なければデフォルト）
-    const scenarioImage = scenarioObj ? `../img/scenario/${scenarioObj.id}.png` : "../img/scenario/default.png";
+    const scenarioImage = scenarioObj 
+        ? Utils.getScenarioCoverPath(scenarioObj.id, scenarioObj.image_url) 
+        : Utils.DEFAULT_SCENARIO_COVER;
+    const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
     const applicantNames = currentApplicants.map(app => {
         const pObj = allPlayers.find(p => p.player_id === app.player_id);
@@ -70,6 +75,8 @@ function renderDetail() {
     if (currentRecruit.status === "fulfilled") statusText = "満員";
     if (currentRecruit.status === "closed") statusText = "終了";
 
+    const trendTagsHtml = scenarioObj ? Utils.getTrendTagsHtml(scenarioObj) : "";
+
     // シナリオ詳細に完全に準拠したHTML構造
     root.innerHTML = `
       <header class="scenario-detail-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -80,8 +87,8 @@ function renderDetail() {
       <section class="scenario-detail-top">
         <div class="scenario-detail-imagewrap">
           <img class="scenario-detail-cover"
-            src="${Utils.escapeHtml(scenarioImage)}"
-            onerror="this.onerror=null; this.src='../img/scenario/default.png';"
+            src="${scenarioImage}"
+            onerror="this.onerror=null; this.src='${fallback}';"
             alt="${Utils.escapeHtml(scenarioName)}"
             loading="lazy">
         </div>
@@ -89,11 +96,13 @@ function renderDetail() {
         <div class="scenario-detail-info">
             <h2 class="scenario-detail-h2">募集情報</h2>
             <div class="scenario-info-meta">
+                <div><strong>シナリオ</strong> ${scenarioObj ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(currentRecruit.scenario_id)}">${Utils.escapeHtml(scenarioName ?? currentRecruit.scenario_id)}</a>` : "（不明）"}</div>
                 <div><strong>募集主:</strong> ${Utils.escapeHtml(ownerName)}</div>
                 <div><strong>募集状態:</strong> ${Utils.escapeHtml(statusText)}</div>
                 <div><strong>募集人数:</strong> ${currentRecruit.target_count}人 （現在の応募: ${currentApplicants.length}人）</div>
             </div>
-                <div class="scenario-base-info">
+            ${trendTagsHtml}
+            <div class="scenario-base-info">
                 <div><strong>自由記入欄:</strong><br>${Utils.renderMultilineText(currentRecruit.memo)}</div>
             </div>
         </div>
@@ -159,7 +168,7 @@ function setupActionForms() {
 
         try {
             await Utils.apiPost("recruitment_applicants", [{
-                recruitment_id: currentRecruit.id, // ★修正: recruitment_id
+                recruitment_id: currentRecruit.id, // DBの外部キー名へ揃え、募集との関連を確実に保存する。
                 player_id: playerId
             }]);
             alert("応募しました！");
@@ -182,7 +191,7 @@ function setupActionForms() {
         btn.disabled = true;
 
         try {
-            // ★修正: recruitment_id
+            // 一覧と同じ外部キー名で絞り込み、別募集の応募を削除しないようにする。
             await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}&player_id=eq.${playerId}`);
             alert("参加を取り消しました。");
             location.reload();
@@ -201,12 +210,7 @@ function setupActionForms() {
         btn.disabled = true;
 
         try {
-            // ★修正: 外部キー制約エラーを回避するため、先に応募者レコードを消去する
-            if (currentApplicants.length > 0) {
-                await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}`);
-            }
-            
-            // その後、募集本体を消去する
+            // 応募者は各本人所有のため直接削除せず、募集削除時のFK CASCADEへ任せる。
             await Utils.apiDelete("recruitments", `id=eq.${currentRecruit.id}`);
             alert("募集を削除しました。");
             location.href = "./index.html"; 
@@ -216,7 +220,6 @@ function setupActionForms() {
             btn.disabled = false;
         }
     });
-}
 
 // ==========================================
 // 募集の延長ボタン
@@ -243,4 +246,7 @@ document.getElementById("btn-extend-recruit")?.addEventListener("click", async (
     }
 });
 
+}
+
 Utils.domReady(main);
+})();

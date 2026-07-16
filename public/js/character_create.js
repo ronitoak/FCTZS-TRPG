@@ -1,5 +1,8 @@
 "use strict";
 
+// システム別の入力欄と外部キャラクターデータを正規化し、関連能力値・技能と一緒に登録する。
+(() => {
+
 Utils.domReady(async () => {
     const form = document.getElementById("character-form");
     const systemSelect = document.getElementById("system-select");
@@ -10,6 +13,28 @@ Utils.domReady(async () => {
     if (!form || !systemSelect || !dynamicContainer) return;
 
     await Utils.initAuthAndHeader('common-nav', '../');
+
+    // 画像プレビュー表示
+    const imageFileInput = document.getElementById("image-file");
+    const imagePreviewContainer = document.getElementById("image-preview-container");
+    const imagePreview = document.getElementById("image-preview");
+
+    if (imageFileInput && imagePreviewContainer && imagePreview) {
+        imageFileInput.addEventListener("change", () => {
+            const file = imageFileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = "";
+                imagePreviewContainer.style.display = "none";
+            }
+        });
+    }
 
     // プレイヤー一覧を取得してセレクトボックスに詰める
     const players = await Utils.apiGet("players");
@@ -63,7 +88,7 @@ Utils.domReady(async () => {
                 const json = JSON.parse(trimmedText);
                 const data = json.data || {};
 
-                // ★ ガイアケアTRPGの判定ロジック
+                // ガイアケアは一般的な能力値キーを持たないため、固有フィールドの存在で判定する。
                 let isGaia = false;
                 // params内に「真価」があるかチェック
                 if (Array.isArray(data.params) && data.params.some(p => p.label === "真価")) {
@@ -97,7 +122,7 @@ Utils.domReady(async () => {
                 // B. 能力値 (params配列から抽出)
                 const emoAttrMap = {
                     "精神":"power","五感":"senses","身体":"strength","社会":"social",
-                    "運勢":"luck", "真価":"luck", // ★「真価」は既存テーブル互換のため「運勢(luck)」としてマッピング
+                    "運勢":"luck", "真価":"luck", // 旧データの「真価」も同じ列へ保存し、既存テーブルとの互換性を保つ。
                     "知力":"intellect","器用":"dexterity","魅力":"appearance",
                     "共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
                 };
@@ -117,7 +142,7 @@ Utils.domReady(async () => {
                         const diceNum = match[1]; 
                         const rawSkillName = match[2];
                         
-                        // ★追加: 「＊」から始まるベース技能は取り込みをスキップする
+                        // 「＊」始まりは技能値ではなく分類見出しのため、技能レコードとして取り込まない。
                         if (rawSkillName.startsWith('＊')) {
                             continue;
                         }
@@ -141,6 +166,7 @@ Utils.domReady(async () => {
             // A. プロフィール抽出
             const profileFields = {
                 name: /名前:\s*([^/(\n]+)/,
+                reading: /読み仮名:\s*([^/(\n]+)/,
                 job: /職業:\s*([^/(\n]+)/,
                 age: /年齢:\s*([^/\n]+)/,
                 gender: /性別:\s*([^/\n]+)/,
@@ -153,12 +179,12 @@ Utils.domReady(async () => {
                 const m = text.match(regex);
                 if (m) {
                     const val = m[1].trim();
-                    result.profile[key] = (['name', 'job', 'gender', 'origin'].includes(key)) 
+                    result.profile[key] = (['name', 'reading', 'job', 'gender', 'origin'].includes(key)) 
                         ? val : (parseInt(val) || null);
                 }
             }
 
-            // B. システム判定 (★テキスト形式の場合も判定を強化)
+            // JSONとテキストの双方で同じ入力欄を生成できるよう、内容からシステムを推定する。
             if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
             else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
             else if (text.includes("ガイアケアTRPG") || text.includes("真価") || text.includes("〈オリジン〉")) result.profile.system = "ガイアケアTRPG";
@@ -177,7 +203,7 @@ Utils.domReady(async () => {
             const excludeParams = [
                 "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", "IDE", 
                 "HP", "MP", "SAN", "現在SAN", "最大SAN", "アイデア", "幸運", "知識", 
-                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント"
+                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント" , "正気度"
             ];
 
             text.split('\n').forEach(line => {
@@ -209,6 +235,7 @@ Utils.domReady(async () => {
 
             // プロフィールとメモの反映
             if (data.profile.name) form.name.value = data.profile.name;
+            if (data.profile.reading) form.reading.value = data.profile.reading;
             if (data.profile.job) form.job.value = data.profile.job;
             if (data.profile.age) form.age.value = data.profile.age;
             if (data.profile.gender) form.gender.value = data.profile.gender;
@@ -357,9 +384,32 @@ Utils.domReady(async () => {
         const submitBtn = form.querySelector("button[type=submit]");
         submitBtn.disabled = true;
 
+        let imageUrl = null;
+        if (imageFileInput && imageFileInput.files[0]) {
+            try {
+                const originalFile = imageFileInput.files[0];
+                const compressedBlob = await Utils.compressAndResizeImage(originalFile);
+
+                const formData = new FormData();
+                const fileBaseName = originalFile.name.includes('.') 
+                    ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) 
+                    : originalFile.name;
+                const fileName = `${fileBaseName}.webp`;
+
+                formData.append("file", compressedBlob, fileName);
+                formData.append("type", "character");
+
+                const uploadResult = await Utils.apiUpload(formData);
+                imageUrl = uploadResult?.url || null;
+            } catch (err) {
+                console.error("画像アップロードエラー:", err);
+            }
+        }
+
         const payload = {
             character: {
                 name: form.name.value,
+                reading: form.reading.value,
                 player_id: form.player_id.value,
                 system: systemSelect.value,
                 job: form.job.value,
@@ -371,6 +421,7 @@ Utils.domReady(async () => {
                 memo: form.memo.value,
                 race: (systemSelect.value === "ガイアケアTRPG" && form.race.value) ? form.race.value : null,
                 original_species: (systemSelect.value === "ガイアケアTRPG" && form.original_species.value) ? form.original_species.value : null,
+                image_url: imageUrl,
             },
             attributes: [],
             skills: []
@@ -432,3 +483,4 @@ Utils.domReady(async () => {
 
 
 });
+})();

@@ -1,18 +1,34 @@
 "use strict";
 
+// 募集・応募者・シナリオを結合して募集状況を表示し、ログイン利用者との相性表示と新規登録を担う。
+(() => {
+
 let allPlayers = [];
 let allScenarios = [];
 let allRecruitments = [];
 let allApplicants = [];
+let currentUserProfile = null;
 
-// 1. 初期データの読み込み（プレイヤーとシナリオ）
+function findRecruitmentScenario(recruitment) {
+    return allScenarios.find(s => String(s.id) === String(recruitment.scenario_id));
+}
+
+// 募集カードと登録モーダルが同じ名称を使えるよう、プレイヤーとシナリオを先に共有状態へ読み込む。
 async function initData() {
     await Utils.initAuthAndHeader('common-nav', '../');
     try {
         [allPlayers, allScenarios] = await Promise.all([
-            Utils.getPlayers(),
-            Utils.apiGet("scenarios")
+            Utils.apiGet("players?select=player_id,player_name,user_id"),
+            Utils.apiGet("scenarios?select=id,title,image_url,trend_story_chaos,trend_avatar_clear,trend_harmony_active")
         ]);
+
+        // ログイン中ユーザーに対応するプレイヤープロフィールを取得
+        const { player } = await Utils.getCurrentUserPlayerContext({ players: allPlayers, loadProfile: false })
+            .catch(() => ({ player: null }));
+        const profiles = player
+            ? await Utils.apiGet(`player_profiles?select=player_id,desire_avatar,desire_story,desire_clear,desire_chaos,desire_active,desire_harmony&player_id=eq.${encodeURIComponent(player.player_id)}`).catch(() => [])
+            : [];
+        currentUserProfile = Array.isArray(profiles) ? profiles[0] || null : null;
 
         // モーダル内のプルダウン（募集主）を生成
         const ownerSelect = document.getElementById("modal-owner-id");
@@ -46,8 +62,11 @@ async function loadRecruitments() {
     try {
         // 募集本体と応募者を同時に取得
         [allRecruitments, allApplicants] = await Promise.all([
-            Utils.apiGet("recruitments?order=created_at.desc"),
-            Utils.apiGet("recruitment_applicants")
+            Utils.apiGetWithFallback(
+                "recruitment_list?order=created_at.desc",
+                "recruitments?select=id,owner_player_id,scenario_id,recruit_role,target_count,memo,status,created_at&order=created_at.desc"
+            ),
+            Utils.apiGet("recruitment_applicants?select=recruitment_id,player_id")
         ]);
 
         renderRecruitments();
@@ -75,9 +94,10 @@ function renderRecruitments() {
         const owner = allPlayers.find(p => p.player_id === recruit.owner_player_id);
         const ownerName = owner ? owner.player_name : "不明なプレイヤー";
 
-        const scenario = allScenarios.find(s => s.id === recruit.scenario_id);
+        // 厳密な型比較による不一致を防ぐためStringキャスト比較
+        const scenario = findRecruitmentScenario(recruit);
         const scenarioTitle = scenario ? scenario.title : "未定";
-        const coverPath = Utils.getScenarioCoverPath(scenario.id);
+        const coverPath = scenario ? Utils.getScenarioCoverPath(scenario.id, scenario.image_url) : Utils.DEFAULT_SCENARIO_COVER;
         const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
         const applicantsForThis = allApplicants.filter(a => a.recruitment_id === recruit.id);
@@ -87,7 +107,12 @@ function renderRecruitments() {
         // カードDOMの生成
         const card = document.createElement("div");
         card.className = `card recruit-card ${recruit.recruit_role === 'GM' ? 'gm-wanted' : ''}`;
-        
+
+        const match = Utils.getMatchPresentation(
+            Utils.calculateMatchScore(scenario, currentUserProfile)
+        );
+        if (match.cardClass) card.classList.add(match.cardClass);
+
         // 参加者のチップ（名前タグ）を生成
         let applicantsHtml = applicantsForThis.map(a => {
             const p = allPlayers.find(pl => pl.player_id === a.player_id);
@@ -101,15 +126,10 @@ function renderRecruitments() {
             location.href = `./detail.html?id=${recruit.id}`;
         };
 
-        // まだ参加していないプレイヤーの選択肢を作る
-        const unjoinedPlayers = allPlayers.filter(p => 
-            p.player_id !== recruit.owner_player_id && 
-            !applicantsForThis.some(a => a.player_id === p.player_id)
-        );
-
-        const isOwner = true; // 本来はログインユーザーIDと比較: recruit.owner_player_id === currentUserId;
+        const trendTagsHtml = scenario ? Utils.getTrendTagsHtml(scenario) : "";
 
         card.innerHTML = `
+            ${match.badgeHtml}
             <div class="recruit-header">
                 <span class="recruit-role-badge">${recruit.recruit_role === 'GM' ? 'GM募集' : 'PL募集'}</span>
                 <span class="recruit-progress" style="color: ${isFulfilled ? 'var(--success-color)' : 'inherit'}">
@@ -119,35 +139,19 @@ function renderRecruitments() {
             <img class="scenario-detail-cover"
             src="${coverPath}"
             onerror="this.onerror=null; this.src='${fallback}';"
-            alt="${Utils.escapeHtml(scenario.title ?? scenario.id)}"
+            alt="${Utils.escapeHtml(scenarioTitle)}"
             loading="lazy">
-            <a href="../scenarios/detail.html?id=${scenario?.id}" style="text-decoration: none; color: inherit;">
-                <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
-            </a>
-            <div style="font-size: 0.9rem; color: var(--text-muted);">
+            <h3 style="margin: 0; font-size: 1.1rem;">${Utils.escapeHtml(scenarioTitle)}</h3>
+            ${trendTagsHtml}
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
                 募集主: <strong>${Utils.escapeHtml(ownerName)}</strong>
             </div>
-            ${recruit.memo ? `<div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid var(--border-color);">${Utils.escapeHtml(recruit.memo)}</div>` : ''}
-            
+            ${recruit.memo ? `<div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid var(--border-color); margin-top: 8px;">${Utils.escapeHtml(recruit.memo)}</div>` : ''}
+
             <div style="margin-top: 8px;">
                 <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 4px;">現在の参加者:</div>
                 <div class="applicant-list">${applicantsHtml}</div>
             </div>
-            
-            ${!isFulfilled ? `
-                <div style="margin-top: 16px; display: flex; gap: 8px;">
-                    <select class="form-control join-player-select" style="flex: 1;">
-                        <option value="">-- 参加するプレイヤー --</option>
-                        ${unjoinedPlayers.map(p => `<option value="${Utils.escapeHtml(p.player_id)}">${Utils.escapeHtml(p.player_name)}</option>`).join("")}
-                    </select>
-                    <button class="btn-primary btn-join" data-id="${recruit.id}" style="white-space: nowrap;">参加する</button>
-                </div>
-            ` : `
-                <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <a href="../schedule/index.html" class="btn-secondary" style="font-size: 0.85rem;">日程調整へ進む ▶</a>
-                    <button class="btn-close-recruit" data-id="${recruit.id}" style="font-size: 0.8rem; background: none; border: 1px solid #ccc; cursor: pointer; padding: 4px 8px; border-radius: 4px;">募集を終了する</button>
-                </div>
-            `}
         `;
 
         container.appendChild(card);
@@ -165,7 +169,7 @@ function renderRecruitments() {
             try {
                 e.target.disabled = true;
                 e.target.textContent = "処理中...";
-                
+
                 // 応募テーブルに登録
                 await Utils.apiPost("recruitment_applicants", [{
                     recruitment_id: recruitId,
@@ -175,7 +179,7 @@ function renderRecruitments() {
                 // 満員になったかのチェック
                 const recruit = allRecruitments.find(r => r.id === recruitId);
                 const newCount = allApplicants.filter(a => a.recruitment_id === recruitId).length + 1;
-                
+
                 if (newCount >= recruit.target_count) {
                     // 満員になったらステータスを更新
                     await Utils.apiPatch("recruitments", { status: "fulfilled" }, `id=eq.${recruitId}`);
@@ -187,7 +191,7 @@ function renderRecruitments() {
                 await loadRecruitments(); // 画面を再描画
             } catch (err) {
                 console.error(err);
-                alert("参加処理に失敗しました。すでに参加している可能性があります。");
+                alert("参加処理に失敗しました。すでに参加している可能性があります: " + err.message);
                 e.target.disabled = false;
                 e.target.textContent = "参加する";
             }
@@ -198,7 +202,7 @@ function renderRecruitments() {
     document.querySelectorAll(".btn-close-recruit").forEach(btn => {
         btn.addEventListener("click", async (e) => {
             if (!confirm("この募集を終了し、一覧から非表示にしますか？")) return;
-            
+
             const recruitId = e.target.dataset.id;
             try {
                 // ステータスを 'closed' に更新（これにより filter から外れる）
@@ -207,7 +211,7 @@ function renderRecruitments() {
                 await loadRecruitments();
             } catch (err) {
                 console.error(err);
-                alert("処理に失敗しました。");
+                alert("処理に失敗しました: " + err.message);
             }
         });
     });
@@ -217,19 +221,21 @@ function renderRecruitments() {
 
 // 5. 募集作成モーダルの制御
 document.getElementById("btn-open-recruit-modal")?.addEventListener("click", () => {
-    document.getElementById("recruit-modal").style.display = "block";
+    document.getElementById("recruit-modal")?.showModal();
 });
 
 window.addEventListener("click", (e) => {
-    if (e.target.id === "recruit-modal") e.target.style.display = "none";
+    if (e.target.tagName === "DIALOG" && e.target.classList.contains("modal")) {
+        e.target.close();
+    }
 });
 
-// 6. 募集フォームの送信
+// 6. 募集フォーム of 送信
 document.getElementById("recruit-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const btn = e.target.querySelector("button[type='submit']");
-    
+
     const payload = {
         owner_player_id: fd.get("owner_player_id"),
         recruit_role: fd.get("recruit_role"),
@@ -243,12 +249,12 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
         btn.textContent = "送信中...";
         await Utils.apiPost("recruitments", [payload]);
         alert("募集を作成しました！");
-        document.getElementById("recruit-modal").style.display = "none";
+        document.getElementById("recruit-modal")?.close();
         e.target.reset(); // フォームの中身を空にする
         await loadRecruitments();
     } catch (err) {
         console.error(err);
-        alert("募集の作成に失敗しました");
+        alert("募集の作成に失敗しました: " + err.message);
     } finally {
         btn.disabled = false;
         btn.textContent = "募集を開始する";
@@ -257,3 +263,4 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
 
 // 起動！
 Utils.domReady(initData);
+})();

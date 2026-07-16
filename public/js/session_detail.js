@@ -1,17 +1,35 @@
 "use strict";
 
-// 1. グローバル変数として定義
+// 卓情報と複数の開催記録を統合表示し、参加者・開催回それぞれの追加・編集を整合させる。
+(() => {
+
+// モーダル間で同じ卓と一時参加者を参照するため、画面スコープで状態を共有する。
 let currentRunData = null;
 let tempPlayers = [];
 let tempCharacters = [];
 let allPlayers = [];
+
+async function fetchSessionDetailData(runId) {
+  const runs = await Utils.apiGet(`runs?id=${encodeURIComponent(runId)}`);
+  const run = Array.isArray(runs) ? runs[0] : null;
+  const characterIds = Array.isArray(run?.characters) ? run.characters.filter(Boolean) : [];
+  const [scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
+    run?.scenario_id ? Utils.apiGet(`scenarios?id=${encodeURIComponent(run.scenario_id)}`) : [],
+    Utils.apiGet(`sessions/detail?run_id=${encodeURIComponent(runId)}`),
+    characterIds.length > 0
+      ? Utils.apiGet(`characters?ids=${encodeURIComponent(characterIds.join(","))}`).catch(() => [])
+      : [],
+    Utils.apiGet("players?select=player_id,player_name").catch(() => [])
+  ]);
+  return { runs, scenarios, sessions, characters, fetchedPlayers };
+}
 
 async function main() {
   const root = document.getElementById("session-detail");
   if (!root) return;
 
   await Utils.initAuthAndHeader('common-nav', '../');
-  
+
   const run_id = Utils.getQueryParam("id");
   if (!run_id) {
     root.innerHTML = "<p>run ID が指定されていません</p>";
@@ -19,13 +37,7 @@ async function main() {
   }
 
   try {
-    const [runs, scenarios, sessions, characters, fetchedPlayers] = await Promise.all([
-      Utils.apiGet("runs"),
-      Utils.apiGet("scenarios"),
-      Utils.apiGet("sessions"),
-      Utils.apiGet("characters").catch(() => []),
-      Utils.apiGet("players").catch(() => []) // プレイヤーマスタも念のため取得しておく（失敗しても空配列で続行）
-    ]);
+    const { runs, scenarios, sessions, characters, fetchedPlayers } = await fetchSessionDetailData(run_id);
 
     // 取得したプレイヤーデータをグローバル変数に代入
     allPlayers = fetchedPlayers;
@@ -36,13 +48,14 @@ async function main() {
       return;
     }
 
-    // ★重要: ここで取得したデータを外の変数に代入する
+    // 後から開く編集モーダルも同じ取得結果を使えるよう、現在の卓を共有状態へ保持する。
     currentRunData = run;
     const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const scenarioId = run?.scenario_id;
-    const coverPath = Utils.getScenarioCoverPath(scenarioId ?? "unknown");
+    // 厳密な型比較(===)による不一致を防ぐため、文字列にキャストして比較
+    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => String(s.id) === String(run.scenario_id)) ?? null;
+    const coverPath = run.image_url ? run.image_url : Utils.getScenarioCoverPath(scenarioId ?? "unknown", scenario?.image_url);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
-    const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => s.id === run.scenario_id) ?? null;
 
     // このrunの全セッション（過去も未来も）
     const runSessions = (Array.isArray(sessions) ? sessions : [])
@@ -64,19 +77,30 @@ async function main() {
     const runChars = runCharIds.map(id => charsById.get(id)).filter(Boolean);
 
     const playersById = new Map(allPlayers.map(p => [p.player_id, p]));
-    let gmName = run.gm ?? "—";
-    if (run.gm_id && playersById.has(run.gm_id)) {
+    let gmName = run.gm_name ?? "—";
+    if ((!gmName || gmName === "—") && run.gm_id && playersById.has(run.gm_id)) {
         gmName = playersById.get(run.gm_id).player_name;
     }
-    let plNames = run.players ?? [];
-    if (run.player_ids && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
+    let plNames = Array.isArray(run.player_names) ? run.player_names : [];
+    if (plNames.length === 0 && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
         plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
+    }
+
+    // ログインユーザーのDiscord IDを取得
+    let currentUserDiscordId = null;
+    try {
+      const { data: { session: authSession } } = await window.supabase.auth.getSession();
+      if (authSession) {
+        currentUserDiscordId = authSession?.user?.user_metadata?.sub || authSession?.user?.user_metadata?.provider_id || (authSession?.user?.identities?.find(id => id.provider === 'discord')?.id);
+      }
+    } catch (e) {
+      console.error("ログイン情報の取得に失敗しました", e);
     }
 
     root.innerHTML = `
       ${buildSessionHeaderHtml(run, statusClass, statusJa)}
       ${buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars, editRunBtn)}
-      ${buildSessionLogHtml(runSessions)}
+      ${buildSessionLogHtml(runSessions, currentUserDiscordId)}
     `;
 
     renderCompletionGuide(runSessions, run);
@@ -88,17 +112,6 @@ async function main() {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
   }
-}
-
-async function loadDetail() {
-    const params = new URLSearchParams(location.search);
-    const runId = params.get("id");
-    
-    // APIからRunの詳細を取得
-    const run = await Utils.apiGet(`sessions?id=eq.${runId}`); // ※既存のAPIパスに合わせてください
-    currentRunData = Array.isArray(run) ? run[0] : run;
-    
-    // ... 既存のレンダリング処理 ...
 }
 
 /**
@@ -140,7 +153,7 @@ function renderCompletionGuide(allSessions, run) {
                 location.reload();
             } catch (e) {
                 console.error(e);
-                alert("更新に失敗しました。");
+                alert("更新に失敗しました: " + e.message);
             }
         });
     }
@@ -181,21 +194,27 @@ async function updateCharacterSelectOptions() {
     if (!charSelect) return;
 
     try {
-      const allCharacters = await Utils.apiGet("characters");
-      
+      const currentIds = (currentRunData?.characters || []).filter(Boolean);
+      const queries = tempPlayers.length > 0
+        ? tempPlayers.map(playerId => Utils.apiGet(`characters?player_id=${encodeURIComponent(playerId)}`))
+        : currentIds.length > 0
+          ? [Utils.apiGet(`characters?ids=${encodeURIComponent(currentIds.join(","))}`)]
+          : [];
+      const allCharacters = (await Promise.all(queries)).flat();
+
       // 選択されたプレイヤーのキャラクターのみに絞り込む処理
       // tempPlayers（プレイヤーIDの配列）と、キャラクターが持つ player_id を比較します
       // （旧データのために c.player でのテキスト比較も安全策として残しています）
-      const filtered = tempPlayers.length > 0 
+      const filtered = tempPlayers.length > 0
         ? allCharacters.filter(c => tempPlayers.includes(c.player_id) || tempPlayers.includes(c.player))
         : allCharacters;
 
-      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' + 
+      charSelect.innerHTML = '<option value="">-- キャラクターを選択 --</option>' +
         filtered.map(c => {
           // グローバル変数の allPlayers を使ってIDから正しいプレイヤー名を逆引き
           const playerObj = allPlayers.find(p => p.player_id === c.player_id);
           const playerName = playerObj ? playerObj.player_name : (c.player || '未設定');
-          
+
           return `
           <option value="${c.id}" data-name="${Utils.escapeHtml(c.name)}">
               ${Utils.escapeHtml(c.name)} (${Utils.escapeHtml(playerName)})
@@ -211,17 +230,17 @@ function setFormInitialValues() {
     const params = new URLSearchParams(location.search);
     const date = params.get("date"); // YYYY-MM-DD
     const slot = params.get("slot"); // afternoon or night
-    
+
     const startInput = document.getElementById("new-session-start");
     if (!startInput || !date) return;
 
     // 時間帯に応じたデフォルト時刻を結合
     // 昼: 13:00 / 夜: 19:00[cite: 5]
     const time = (slot === "afternoon") ? "13:00" : "19:00";
-    
+
     // datetime-local 形式 (YYYY-MM-DDThh:mm) に整形
     startInput.value = `${date}T${time}`;
-    
+
     // ユーザーに分かりやすくするため、フォームへスクロールさせるなどの配慮も有効
     document.getElementById("add-session-record").scrollIntoView({ behavior: 'smooth' });
 }
@@ -237,8 +256,8 @@ window.removeTempCharacter = (index) => {
 };
 
 
-// 送信処理の登録
-Utils.domReady(() => {
+// 送信処理と編集イベントの登録
+function registerSessionDetailEvents() {
 
   // まず main を実行
   main();
@@ -266,19 +285,19 @@ Utils.domReady(() => {
       }
 
       form.status.value = btn.dataset.status;
-      modal.style.display = 'block';
+      modal?.showModal();
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
     const modal = document.getElementById('edit-session-modal');
     if (e.target === modal) {
-      modal.style.display = 'none';
+      modal.close();
     }
   });
 
   // キャンセルボタンで閉じる
   document.getElementById('btn-close-edit')?.addEventListener('click', () => {
-    document.getElementById('edit-session-modal').style.display = 'none';
+    document.getElementById('edit-session-modal')?.close();
   });
 
   // 卓編集モーダルを開く
@@ -294,8 +313,8 @@ Utils.domReady(() => {
 
       // 現在の値をセット
       form.title.value = currentRunData.title || "";
-      
-      // ★修正: GM選択セレクトボックスの構築と初期値セット
+
+      // 表示名の変更に影響されないよう、GM候補のvalueにはプレイヤーIDを使う。
       const gmSelect = document.getElementById('edit-gm-select');
       if (gmSelect) {
           gmSelect.innerHTML = '<option value="">選択してください</option>';
@@ -308,11 +327,14 @@ Utils.domReady(() => {
           gmSelect.value = currentRunData.gm_id || "";
       }
 
-      // ★修正: 旧テキストではなくID配列を優先してセット
+      // 新形式のID配列を優先し、未移行データだけ旧文字列から初期値を復元する。
       tempPlayers = [...(currentRunData.player_ids || currentRunData.players || [])];
 
       try {
-          const allChars = await Utils.apiGet("characters"); 
+          const ids = (currentRunData.characters || []).filter(Boolean);
+          const allChars = ids.length > 0
+            ? await Utils.apiGet(`characters?ids=${encodeURIComponent(ids.join(","))}`)
+            : [];
           tempCharacters = (currentRunData.characters || []).map(id => {
               const match = allChars.find(c => c.id === id);
               return { id: id, name: match ? match.name : id };
@@ -321,30 +343,30 @@ Utils.domReady(() => {
           console.error("キャラクターマスタの取得失敗", err);
           tempCharacters = (currentRunData.characters || []).map(id => ({ id, name: id }));
       }
-      
-      // ★修正: プレイヤー全件をプルダウンにセット（送信するvalueをIDに変更）
+
+      // 編集後も安定した関連を保存できるよう、参加者候補はIDをvalueにする。
       const pSelect = document.getElementById('add-player-select');
       if (pSelect) {
-          pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' + 
+          pSelect.innerHTML = '<option value="">-- プレイヤーを選択 --</option>' +
             allPlayers.map(p => `<option value="${p.player_id}">${Utils.escapeHtml(p.player_name)}</option>`).join('');
       }
 
       renderEditLists();
 
-      modal.style.display = 'block';
+      modal?.showModal();
     }
 
     // モーダルの外側をクリックしたら閉じる（おまけの親切機能）
     const modal = document.getElementById('edit-run-modal');
     if (e.target === modal) {
-      modal.style.display = 'none';
+      modal.close();
     }
   });
 
   // キャンセルボタン
   document.addEventListener('click', (e) => {
     if (e.target.id === 'btn-close-run-edit') {
-        document.getElementById('edit-run-modal').style.display = 'none';
+        document.getElementById('edit-run-modal')?.close();
     }
   });
 
@@ -353,16 +375,16 @@ Utils.domReady(() => {
   runForm?.addEventListener('submit', async (e) => {
 
       e.preventDefault();
-      
+
       const submitBtn = runForm.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true; // 連打防止
-      
-      // ★修正: HTMLのname属性に依存せず、確実にIDから値を取得する
+
+      // モーダル構造の変更で別項目を拾わないよう、固有IDから値を取得する。
       const gmSelect = document.getElementById('edit-gm-select');
-      
+
       const payload = {
           title: runForm.title ? runForm.title.value : document.getElementById('edit-run-title')?.value || "",
-          gm_id: (gmSelect && gmSelect.value) ? gmSelect.value : null, 
+          gm_id: (gmSelect && gmSelect.value) ? gmSelect.value : null,
           player_ids: tempPlayers,
           characters: tempCharacters.map(c => c.id)
       };
@@ -377,18 +399,18 @@ Utils.domReady(() => {
           if (submitBtn) submitBtn.disabled = false;
       }
   });
-  
+
   // 編集フォームの送信
   document.getElementById('edit-session-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
       const sessionId = form.session_id.value;
-      
+
       const payload = {
         title: form.title.value,
         start: new Date(form.start.value).toISOString(),
         stream_url: form.stream_url.value,
-        status: form.status.value // 追加
+        status: form.status.value // 通過履歴同期の判定にも使うため、卓状態を更新対象に含める。
       };
 
       try {
@@ -403,7 +425,7 @@ Utils.domReady(() => {
 
   subForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      
+
       // currentRunData がセットされるまで待つためのチェック
       if (!currentRunData) {
           alert("データの読み込みが完了していません。");
@@ -411,9 +433,9 @@ Utils.domReady(() => {
       }
 
       // datetime-local から値を取得 (例: "2026-03-23T20:00")
-      const startVal = subForm.start.value; 
+      const startVal = subForm.start.value;
       const titleVal = subForm.title.value;
-      const notesVal = subForm.notes.value;
+
 
       if (!startVal) {
           alert("日時を選択してください。");
@@ -428,7 +450,6 @@ Utils.domReady(() => {
         start: startTimestamp,
         title: titleVal,
         stream_url: subForm.stream_url.value,
-        notes: notesVal,
         status: 'scheduled'
       };
 
@@ -456,7 +477,7 @@ Utils.domReady(() => {
               await Utils.syncSchedulesForFullDay(startTimestamp, syncPlayerIds);
           }
 
-          location.reload(); 
+          location.reload();
       } catch (err) {
           console.error(err);
           alert("保存失敗: " + err.message);
@@ -484,8 +505,92 @@ Utils.domReady(() => {
         tempCharacters.push({ id, name }); // IDと名前のセットで保持
         renderEditLists();
     }
-});
-});
+  });
+
+  // 4. 観戦希望ボタンのクリックイベント
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-viewer-toggle');
+    if (!btn) return;
+
+    const sessionId = btn.dataset.id;
+    if (!sessionId) return;
+
+    btn.disabled = true;
+
+    try {
+      const { data: { session } } = await window.supabase.auth.getSession();
+      if (!session) {
+        alert("観戦希望するにはDiscordログインが必要です。");
+        btn.disabled = false;
+        return;
+      }
+
+      const discordId = session?.user?.user_metadata?.sub || session?.user?.user_metadata?.provider_id || (session?.user?.identities?.find(id => id.provider === 'discord')?.id);
+      if (!discordId) {
+        alert("DiscordユーザーIDが取得できませんでした。");
+        btn.disabled = false;
+        return;
+      }
+
+      // セッション情報を再取得して最新のnotesをベースにする
+      const sessions = await Utils.apiGet(`sessions/detail?id=${encodeURIComponent(sessionId)}`);
+      const sessionData = (Array.isArray(sessions) ? sessions : []).find(s => s.id === sessionId);
+      if (!sessionData) {
+        alert("セッションが見つかりません。");
+        btn.disabled = false;
+        return;
+      }
+
+      let notes = sessionData.notes || "";
+      const mention = `<@${discordId}>`;
+      const isJoined = btn.dataset.hasJoined === "true";
+
+      if (isJoined) {
+        // 取り消し処理
+        notes = notes.replace(mention, "").trim();
+        // 観戦希望エリアのクリーンアップ
+        // [観戦希望] の後ろにメンションが残っていないか確認
+        const mentionRegex = /<@\d+>/g;
+        const hasOtherMentions = mentionRegex.test(notes);
+        if (!hasOtherMentions) {
+          notes = notes.replace("[観戦希望]", "").trim();
+        }
+        // 連続する空白・改行の整理
+        notes = notes.replace(/\n\s*\n/g, "\n").trim();
+      } else {
+        // 希望処理
+        if (notes.includes("[観戦希望]")) {
+          if (!notes.includes(mention)) {
+            notes = notes.replace("[観戦希望]", `[観戦希望] ${mention}`);
+          }
+        } else {
+          if (notes) {
+            notes += `\n[観戦希望] ${mention}`;
+          } else {
+            notes = `[観戦希望] ${mention}`;
+          }
+        }
+      }
+
+      // 空文字の場合はnullとして保存
+      await Utils.apiPatch("sessions", { notes: notes || null }, `id=eq.${sessionId}`);
+
+      if (isJoined) {
+        Utils.showToast("観戦希望を取り消しました");
+      } else {
+        Utils.showToast("観戦希望を登録しました！");
+      }
+
+      location.reload();
+    } catch (err) {
+      console.error(err);
+      alert("処理に失敗しました: " + err.message);
+      btn.disabled = false;
+    }
+  });
+}
+
+Utils.domReady(registerSessionDetailEvents);
 
 // ==========================================
 // --- HTML生成コンポーネント ---
@@ -507,7 +612,7 @@ function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames
         <img class="session-detail-cover" src="${coverPath}" onerror="this.onerror=null; this.src='${fallback}';" alt="${Utils.escapeHtml(scenario?.title ?? run.title ?? run.id)}" loading="lazy">
       </div>
       <div class="session-detail-profile">
-        <h2 class="session-detail-h2">卓情報${editRunBtn}</h2> 
+        <h2 class="session-detail-h2">卓情報${editRunBtn}</h2>
         <table class="session-detail-table">
           <tbody>
             <tr><th>シナリオ</th><td>${scenario ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(scenario.id)}">${Utils.escapeHtml(scenario.title ?? scenario.id)}</a>` : "（不明）"}</td></tr>
@@ -517,13 +622,13 @@ function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames
             <tr><th>最終</th><td>${lastDone?._start ? Utils.escapeHtml(lastDone._start.toLocaleDateString("ja-JP")) : (run.status === "done" ? "未記録" : "—")}</td></tr>
           </tbody>
         </table>
-        ${runChars.length ? `<h3 class="session-detail-h3">参加キャラクター</h3><div class="session-detail-chips">${runChars.map(c => `<a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}"><img class="character-chip-icon" src="${Utils.getCharacterImagePath(c.id)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" alt="${Utils.escapeHtml(c.name ?? c.id)}" loading="lazy"><span class="character-chip-name">${Utils.escapeHtml(c.name ?? c.id)}</span></a>`).join("")}</div>` : ""}
+        ${runChars.length ? `<h3 class="session-detail-h3">参加キャラクター</h3><div class="session-detail-chips">${runChars.map(c => `<a class="character-chip" href="../character/detail.html?id=${encodeURIComponent(c.id)}"><img class="character-chip-icon" src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" alt="${Utils.escapeHtml(c.name ?? c.id)}" loading="lazy"><span class="character-chip-name">${Utils.escapeHtml(c.name ?? c.id)}</span></a>`).join("")}</div>` : ""}
       </div>
     </section>
   `;
 }
 
-function buildSessionLogHtml(runSessions) {
+function buildSessionLogHtml(runSessions, currentUserDiscordId) {
   return `
     <section class="session-detail-log">
       <h2 class="session-detail-h2">セッション履歴</h2>
@@ -532,6 +637,19 @@ function buildSessionLogHtml(runSessions) {
         const stateJa = stateLabels[s.status] || "不明";
         const dateText = s._start ? Utils.formatDateTime(s._start) : "日付不明";
         const linksHtml = (s.replay_url || s.stream_url) ? `<div class="session-links">${s.stream_url ? `${Utils.renderLink(s.stream_url, "配信or動画")}` : ""}</div>` : "";
+
+        let viewerBtnHtml = "";
+        if (s.status === "scheduled") {
+          if (currentUserDiscordId) {
+            const hasJoined = s.notes && s.notes.includes(`<@${currentUserDiscordId}>`);
+            const btnClass = hasJoined ? "btn-secondary" : "btn-primary";
+            const btnText = hasJoined ? "👀 観戦取消" : "👀 観戦希望";
+            viewerBtnHtml = `<button class="btn-viewer-toggle ${btnClass}" data-id="${s.id}" data-has-joined="${hasJoined}" style="padding: 2px 8px; font-size: 0.8rem; margin-right: 5px;">${btnText}</button>`;
+          } else {
+            viewerBtnHtml = `<button class="btn-viewer-toggle btn-secondary" disabled title="観戦希望にはDiscordログインが必要です" style="padding: 2px 8px; font-size: 0.8rem; margin-right: 5px; opacity: 0.6;">👀 観戦希望</button>`;
+          }
+        }
+
         return `
           <li class="session-detail-item ${s.status === 'cancelled' ? 'is-cancelled' : ''}">
             <div class="session-item-row">
@@ -539,6 +657,7 @@ function buildSessionLogHtml(runSessions) {
               <span class="session-item-date">${Utils.escapeHtml(dateText)}</span>
               <span class="session-item-title">${Utils.escapeHtml(s.title ?? "")}</span>
               <span class="session-item-links">${linksHtml}</span>
+              ${viewerBtnHtml}
               <button class="btn-edit-session" data-id="${s.id}" data-title="${Utils.escapeHtml(s.title ?? "")}" data-start="${s.start}" data-status="${s.status}">📝</button>
             </div>
           </li>`;
@@ -546,3 +665,4 @@ function buildSessionLogHtml(runSessions) {
     </section>
   `;
 }
+})();

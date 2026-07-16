@@ -1,19 +1,23 @@
 "use strict";
 
-let currentDate = new Date(); // 現在表示している月を保持する変数
-let allSessions = [];         // 取得した全セッションデータを保持
+// 月間予定の閲覧・一括入力・複数人比較・CSV取込・開催登録を同じカレンダー状態で調整する。
+(() => {
+
+let currentDate = new Date(); // 再描画や前後月移動でも表示月を共有する。
+let allSessions = [];         // フィルタ変更ごとの再取得を避けるため、取得結果を保持する。
 let compareMode = false;
 let comparisonData = {};
+const comparisonRequestToken = Utils.createLatestRequestToken();
 
 let globalPlayers = [];
 let parsedCsvData = null;
-// 卓データを保持する変数
+// セッションのrun_idを利用者向け卓名へ解決するため、卓データを共有する。
 let globalRuns = [];
 
 // 時間帯表示用の辞書
 const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
 
-// APIからセッション一覧を取得する
+// 取得完了後だけ描画し、通信中の古い状態をカレンダーへ混在させない。
 async function fetchScheduleData() {
   try {
     const data = await Utils.apiGet("session_list");
@@ -24,130 +28,49 @@ async function fetchScheduleData() {
   }
 }
 
-// カレンダーを描画する関数
+// 通常表示と比較表示が同じ月境界・曜日配置を使うよう、描画を一か所に集約する。
 function renderCalendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-
   const titleEl = document.getElementById("calendar-month-title");
   if (titleEl) titleEl.textContent = `${year}年 ${month + 1}月`;
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDayOfWeek = firstDay.getDay();
-  const totalDays = lastDay.getDate();
-
   const grid = document.getElementById("calendar-grid");
   if (!grid) return;
 
-  const headers = grid.querySelectorAll(".calendar-day-header");
-  grid.innerHTML = "";
-  headers.forEach(h => grid.appendChild(h));
+  Utils.renderCalendar(grid, year, month, {
+    events: allSessions,
+    getEventHref: session => `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`,
+    onCellRender: (cell, context) => {
+      if (!compareMode) return;
 
-  // 1. 前月の余白マス
-  for (let i = 0; i < startDayOfWeek; i++) {
-    const cell = createCalendarCell("", true);
-    grid.appendChild(cell);
-  }
-
-  // 2. 当月のマス
-  const today = new Date();
-  for (let day = 1; day <= totalDays; day++) {
-    const targetDateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
-    
-    const cell = createCalendarCell(day, false, isToday);
-
-    const daySessions = allSessions.filter(s => {
-      if (!s.start) return false;
-      return s.start.startsWith(targetDateStr);
-    });
-
-    daySessions.sort((a, b) => new Date(a.start) - new Date(b.start));
-
-    daySessions.forEach(session => {
-      const timeStr = new Date(session.start).toLocaleTimeString("ja-JP", { hour: '2-digit', minute: '2-digit' });
-      const titleStr = session.title || "名称未設定";
-      
-      const badge = document.createElement("a");
-      badge.className = "calendar-session-badge";
-      badge.href = `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`;
-      
-      const safeTitle = Utils.escapeHtml ? Utils.escapeHtml(titleStr) : titleStr.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      badge.innerHTML = `
-        <div class="badge-time">${timeStr}</div>
-        <div class="badge-title">${safeTitle}</div>
-      `;
-      
-      cell.appendChild(badge);
-    });
-
-    if (compareMode) {
-      const slots = ["afternoon", "night"];
-      slots.forEach(slot => {
-        const key = `${targetDateStr}_${slot}`;
+      ["afternoon", "night"].forEach(slot => {
+        const key = `${context.dateStr}_${slot}`;
         const match = comparisonData[key];
+        if (!match) return;
 
-        if (match && match.symbol === "○") { 
-          const matchBadge = document.createElement("div");
-          matchBadge.className = `match-badge ${match.color}`;
-          matchBadge.style.cursor = "pointer"; 
-          
-          let titleText = match.label || "";
-          matchBadge.innerHTML = `<span title="${titleText}">${TIME_SLOT_LABELS[slot]}:${match.symbol}</span>`;
+        const matchBadge = document.createElement("button");
+        matchBadge.type = "button";
+        matchBadge.className = `schedule-match-badge ${match.color}`;
+        matchBadge.title = match.label || "";
+        matchBadge.textContent = `${TIME_SLOT_LABELS[slot]}:${match.symbol}`;
+        matchBadge.addEventListener("click", () => {
+          const selectedRunId = document.getElementById("compare-run-select")?.value;
+          if (!selectedRunId) {
+            alert("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。");
+            return;
+          }
 
-          matchBadge.onclick = () => {
-            const runSelect = document.getElementById("compare-run-select");
-            const selectedRunId = runSelect ? runSelect.value : null;
-            
-            if (!selectedRunId) {
-              alert("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。");
-              return;
-            }
-
-            const params = new URLSearchParams({
-              id: selectedRunId,
-              date: targetDateStr,
-              slot: slot
-            });
-            window.location.href = `../sessions/detail.html?${params.toString()}`;
-          };
-          
-          cell.appendChild(matchBadge);
-        }
+          const params = new URLSearchParams({
+            id: selectedRunId,
+            date: context.dateStr,
+            slot
+          });
+          window.location.href = `../sessions/detail.html?${params.toString()}`;
+        });
+        cell.appendChild(matchBadge);
       });
     }
-
-    grid.appendChild(cell);
-  }
-
-  // 3. 翌月の余白マス
-  const totalCells = startDayOfWeek + totalDays;
-  const remainingCells = (7 - (totalCells % 7)) % 7;
-  for (let i = 0; i < remainingCells; i++) {
-    const cell = createCalendarCell("", true);
-    grid.appendChild(cell);
-  }
-}
-
-function createCalendarCell(dayNumber, isOtherMonth, isToday = false) {
-  const cell = document.createElement("div");
-  cell.className = "calendar-cell";
-  if (isOtherMonth) cell.classList.add("other-month");
-  if (isToday) cell.classList.add("today");
-
-  if (dayNumber) {
-    const numEl = document.createElement("div");
-    numEl.className = "calendar-date-number";
-    numEl.textContent = dayNumber;
-    cell.appendChild(numEl);
-  }
-  return cell;
-}
-
-function getStatusSymbol(status) {
-    const symbols = { "ok": "○", "maybe": "△", "ng": "×" };
-    return symbols[status] || "-";
+  });
 }
 
 async function renderBulkInputGrid() {
@@ -156,100 +79,27 @@ async function renderBulkInputGrid() {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const lastDay = new Date(year, month + 1, 0).getDate();
 
   const monthLabel = document.getElementById("bulk-month-label");
   if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
 
-  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${lastDay}`;
-
   let existingData = [];
   try {
-    const res = await Utils.apiGet(`player_availability?select=*&player_id=eq.${encodeURIComponent(playerId)}&target_date=gte.${startDate}&target_date=lte.${endDate}`);
-    if (Array.isArray(res)) existingData = res;
+    existingData = await Utils.fetchPlayerAvailabilities(playerId, year, month);
   } catch (e) {
     console.error("既存予定の取得に失敗:", e);
   }
 
   const container = document.getElementById("bulk-input-container");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const dayOfWeekStr = ["日", "月", "火", "水", "木", "金", "土"];
-  const slots = ["afternoon", "night"];
-
-  for (let d = 1; d <= lastDay; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const dateObj = new Date(year, month, d);
-    const dowIndex = dateObj.getDay();
-
-    const row = document.createElement("div");
-    row.className = "bulk-row";
-
-    const dateLabel = document.createElement("div");
-    dateLabel.className = "bulk-date";
-    if (dowIndex === 0) dateLabel.style.color = "#c62828";
-    if (dowIndex === 6) dateLabel.style.color = "#1565c0";
-    dateLabel.textContent = `${d}日(${dayOfWeekStr[dowIndex]})`;
-    row.appendChild(dateLabel);
-
-    slots.forEach(slot => {
-      const slotDiv = document.createElement("div");
-      slotDiv.className = "bulk-slot-toggle";
-      slotDiv.dataset.date = dateStr;
-      slotDiv.dataset.slot = slot;
-
-      const exist = existingData.find(ex => ex.target_date === dateStr && ex.time_slot === slot);
-      const initialVal = exist ? exist.status : "";
-      
-      slotDiv.dataset.status = initialVal;
-      slotDiv.dataset.initial = initialVal;
-      slotDiv.textContent = getStatusSymbol(initialVal);
-      if (initialVal) slotDiv.classList.add(`select-${initialVal}`);
-
-      slotDiv.addEventListener("click", () => {
-          const statusOrder = ["", "ok", "maybe", "ng"];
-          let currentIndex = statusOrder.indexOf(slotDiv.dataset.status);
-          let nextIndex = (currentIndex + 1) % statusOrder.length;
-          
-          const nextStatus = statusOrder[nextIndex];
-          slotDiv.dataset.status = nextStatus;
-          slotDiv.textContent = getStatusSymbol(nextStatus);
-          
-          slotDiv.className = "bulk-slot-toggle"; 
-          if (nextStatus) slotDiv.classList.add(`select-${nextStatus}`);
-      });
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "bulk-slot";
-      wrapper.appendChild(slotDiv);
-      row.appendChild(wrapper);
-    });
-
-    container.appendChild(row);
-  }
+  Utils.renderAvailabilityGrid(container, year, month, existingData);
 }
 
 async function saveBulkAvailability() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return alert("プレイヤーを選択してください");
 
-  const toggles = document.querySelectorAll(".bulk-slot-toggle");
-  const payload = [];
-
-  toggles.forEach(el => {
-    if (el.dataset.status !== el.dataset.initial) {
-      if (el.dataset.status !== "") {
-        payload.push({
-          player_id: playerId,
-          target_date: el.dataset.date,
-          time_slot: el.dataset.slot,
-          status: el.dataset.status
-        });
-      }
-    }
-  });
+  const container = document.getElementById("bulk-input-container");
+  const payload = Utils.collectAvailabilityChanges(container, playerId);
 
   if (payload.length === 0) {
      alert("変更された予定データがありません。");
@@ -261,18 +111,18 @@ async function saveBulkAvailability() {
     const res = await Utils.apiPost("player_availability", payload);
     if (res) {
       closeModal('availability-modal');
-      
+
       if (compareMode) {
         await runComparison();
       } else {
         await fetchScheduleData();
       }
-      
+
       alert("予定を保存しました");
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
-    alert("保存に失敗しました");
+    alert("保存に失敗しました: " + err.message);
   }
 }
 
@@ -280,12 +130,12 @@ async function initPlayerList() {
   try {
     const data = await Utils.getPlayers();
     globalPlayers = Array.isArray(data) ? data : [];
-    
+
     const listEl = document.getElementById("player-checkbox-list");
     const inputPlayerSelect = document.getElementById("modal-player-id");
-    
+
     if (listEl) listEl.innerHTML = "";
-    
+
     globalPlayers.forEach(p => {
       if (listEl) {
         const label = document.createElement("label");
@@ -302,6 +152,7 @@ async function initPlayerList() {
   }
 }
 
+// 照合処理をフロントエンド側で完全に処理するように改修
 async function runComparison() {
   const selectedIds = Array.from(document.querySelectorAll('input[name="compare-player"]:checked')).map(cb => cb.value);
   if (selectedIds.length === 0) return alert("プレイヤーを選択してください");
@@ -312,25 +163,37 @@ async function runComparison() {
 
   const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const requestToken = comparisonRequestToken.issue();
 
   try {
-    const res = await Utils.apiGet(`schedule_match?player_ids=${selectedIds.join(",")}&start_date=${start}&end_date=${end}`);
-    if (res) {
-      comparisonData = res;
-      compareMode = true;
-      closeModal('compare-modal');
-      renderCalendar(); 
-    }
+    const encodedIds = selectedIds.map(id => encodeURIComponent(id)).join(",");
+    const nextComparisonData = await Utils.apiGetWithFallback(
+      `schedule_match?player_ids=${encodedIds}&start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`,
+      async () => {
+        const raw = await Utils.apiGet(`player_availability?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${start}&target_date=lte.${end}`);
+        return Utils.aggregateScheduleMatches(raw, selectedIds, year, month);
+      }
+    );
+    if (!comparisonRequestToken.isLatest(requestToken)) return false;
+    comparisonData = nextComparisonData;
+    compareMode = true;
+    closeModal('compare-modal');
+    renderCalendar();
+    return true;
   } catch (err) {
+    if (!comparisonRequestToken.isLatest(requestToken)) return false;
     console.error("比較エラー:", err);
     alert("比較データの取得に失敗しました");
+    return false;
   }
 }
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) modal.style.display = "none";
+  if (modal && typeof modal.close === "function") modal.close();
 }
+// HTML のインライン onclick から呼ばれる公開契約のため、明示的に window へ残す。
+window.closeModal = closeModal;
 
 async function initCompareModalData() {
   try {
@@ -342,7 +205,7 @@ async function initCompareModalData() {
     globalRuns = Array.isArray(runs) ? runs.filter(r => r.status === 'active' || r.status === 'planning') : [];
 
     const runSelect = document.getElementById("compare-run-select");
-    const addSessionRunSelect = document.getElementById("add-session-run-id"); // ★追加: セッション追加用セレクトボックス
+    const addSessionRunSelect = document.getElementById("add-session-run-id");
 
     if (runSelect) {
       runSelect.innerHTML = '<option value="">-- 卓を選択 --</option>';
@@ -355,7 +218,6 @@ async function initCompareModalData() {
       runSelect.addEventListener("change", handleRunSelection);
     }
 
-    // ★追加: セッション追加用モーダルにも取得した卓をセットする
     if (addSessionRunSelect) {
       addSessionRunSelect.innerHTML = '<option value="">-- 卓を選択 --</option>';
       globalRuns.forEach(run => {
@@ -409,9 +271,10 @@ function handleRunSelection(e) {
   if (selectedRun.gm_id) targetIds.push(selectedRun.gm_id);
   if (Array.isArray(selectedRun.player_ids)) targetIds.push(...selectedRun.player_ids);
 
+  // ID移行前の卓データは名前の文字列・配列で保持されているため、比較用に併用する。
   const targetNames = [];
   if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
-  else if (selectedRun.gm) targetNames.push(selectedRun.gm);
+  else if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
 
   if (Array.isArray(selectedRun.player_names)) targetNames.push(...selectedRun.player_names);
   else if (Array.isArray(selectedRun.players)) targetNames.push(...selectedRun.players);
@@ -425,17 +288,50 @@ function handleRunSelection(e) {
   });
 }
 
+async function handleAddSessionSubmit(e) {
+  e.preventDefault();
+
+  const runId = document.getElementById("add-session-run-id").value;
+  const title = document.getElementById("add-session-title").value;
+  const startStr = document.getElementById("add-session-start").value;
+  const streamUrl = document.getElementById("add-session-stream")?.value || null;
+
+  if (!runId || !startStr) return alert("必須項目が入力されていません。");
+
+  const isoStart = new Date(startStr).toISOString();
+
+  try {
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const payload = {
+      run_id: runId,
+      title: title || null,
+      start: isoStart,
+      stream_url: streamUrl,
+      status: "scheduled"
+    };
+
+    await Utils.apiPost("sessions", payload);
+    alert("セッション予定を追加しました！");
+    window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
+  } catch (err) {
+    console.error("セッション追加エラー:", err);
+    alert("セッションの追加に失敗しました: " + err.message);
+    e.target.querySelector('button[type="submit"]').disabled = false;
+  }
+}
+
 // 起動時の処理とイベントリスナー
 async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
-  
+
   const prevBtn = document.getElementById("prev-month-btn");
   const nextBtn = document.getElementById("next-month-btn");
 
   if (prevBtn) {
     prevBtn.addEventListener("click", () => {
       currentDate.setMonth(currentDate.getMonth() - 1);
-      if (compareMode) runComparison(); 
+      if (compareMode) runComparison();
       else renderCalendar();
     });
   }
@@ -448,13 +344,13 @@ async function main() {
     });
   }
 
-  document.getElementById("bulk-input-btn")?.addEventListener("click", () => {
-    document.getElementById("availability-modal").style.display = "flex";
-    renderBulkInputGrid();
+  document.getElementById("bulk-input-btn")?.addEventListener("click", async () => {
+    await renderBulkInputGrid();
+    document.getElementById("availability-modal")?.showModal();
   });
 
   document.getElementById("compare-btn")?.addEventListener("click", () => {
-    document.getElementById("compare-modal").style.display = "flex";
+    document.getElementById("compare-modal")?.showModal();
   });
 
   document.getElementById("close-modal-btn")?.addEventListener("click", () => closeModal("availability-modal"));
@@ -464,62 +360,19 @@ async function main() {
     renderBulkInputGrid();
   });
 
-  // ★追加: セッション追加ボタンの制御
   document.getElementById("btn-add-session")?.addEventListener("click", () => {
-      // 開いた時に、タイムゾーンを考慮して現在時刻を初期セットする
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       document.getElementById("add-session-start").value = now.toISOString().slice(0, 16);
-      
-      document.getElementById("add-session-modal").style.display = "flex";
+
+      document.getElementById("add-session-modal")?.showModal();
   });
 
   document.getElementById("close-add-session-btn")?.addEventListener("click", () => {
       closeModal("add-session-modal");
   });
 
-  document.getElementById("add-session-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      
-      const runId = document.getElementById("add-session-run-id").value;
-      const title = document.getElementById("add-session-title").value;
-      const startStr = document.getElementById("add-session-start").value;
-      
-      const streamUrl = document.getElementById("add-session-stream")?.value || null;
-      const notes = document.getElementById("add-session-notes")?.value || null;
-
-      if (!runId || !startStr) return alert("必須項目が入力されていません。");
-
-      // datetime-localの文字列をタイムゾーン付きのISO形式に変換
-      const isoStart = new Date(startStr).toISOString();
-
-      try {
-          const btn = e.target.querySelector('button[type="submit"]');
-          btn.disabled = true;
-
-          // ★修正: 配列 [...] ではなく、単一のオブジェクト {...} に変更
-          const payload = {
-              run_id: runId,
-              title: title || null,
-              start: isoStart,
-              stream_url: streamUrl,
-              status: "scheduled"
-          };
-
-          // 単一オブジェクトとしてPOST送信
-          await Utils.apiPost("sessions", payload);
-
-          alert("セッション予定を追加しました！");
-          
-          // 追加した卓（Run）の詳細画面へ即座にジャンプする
-          window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
-
-      } catch (err) {
-          console.error("セッション追加エラー:", err);
-          alert("セッションの追加に失敗しました。コンソールを確認してください。");
-          e.target.querySelector('button[type="submit"]').disabled = false;
-      }
-  });
+  document.getElementById("add-session-form")?.addEventListener("submit", handleAddSessionSubmit);
 
 
   // ==========================================
@@ -527,7 +380,7 @@ async function main() {
   // ==========================================
 
   document.getElementById("btn-import-csv")?.addEventListener("click", () => {
-      document.getElementById("csv-upload").value = ""; 
+      document.getElementById("csv-upload").value = "";
       document.getElementById("csv-upload").click();
   });
 
@@ -536,14 +389,14 @@ async function main() {
       if (!file) return;
 
       const reader = new FileReader();
-      reader.readAsText(file, 'Shift_JIS'); 
-      
+      reader.readAsText(file, 'Shift_JIS');
+
       reader.onload = (event) => {
           const text = event.target.result;
           const lines = text.split('\n').filter(l => l.trim() !== '');
-          
+
           const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
-          
+
           if (headerIndex === -1) {
               return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
           }
@@ -571,7 +424,7 @@ async function main() {
       const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" };
 
       parsedCsvData.dataRows.forEach(row => {
-          const rawDateStr = row[0]; 
+          const rawDateStr = row[0];
           if (!rawDateStr) return;
 
           let targetDate = null;
@@ -582,7 +435,7 @@ async function main() {
           if (dateMatch) {
               targetDate = `${currentYear}-${String(dateMatch[1]).padStart(2, "0")}-${String(dateMatch[2]).padStart(2, "0")}`;
           }
-          if (!targetDate) return; 
+          if (!targetDate) return;
 
           const timeMatch = rawDateStr.match(/(\d{1,2}):(\d{2})/);
           if (timeMatch) {
@@ -596,8 +449,8 @@ async function main() {
 
           Object.entries(columnMap).forEach(([colIndex, playerId]) => {
               const rawStatus = row[colIndex];
-              const status = statusMap[rawStatus]; 
-              
+              const status = statusMap[rawStatus];
+
               if (status) {
                   payload.push({
                       player_id: playerId,
@@ -629,7 +482,7 @@ async function main() {
           }
       } catch (err) {
           console.error("CSVインポートエラー:", err);
-          alert("インポートに失敗しました");
+          alert("インポートに失敗しました: " + err.message);
       } finally {
           const btn = document.getElementById("btn-execute-import");
           btn.disabled = false;
@@ -638,14 +491,14 @@ async function main() {
   });
 
   // 初回読み込み
-  await initCompareModalData();    
-  await fetchScheduleData(); 
+  await initCompareModalData();
+  await fetchScheduleData();
 }
 
 // モーダルの背景（外側）をクリックした時に閉じる処理
 window.addEventListener("click", (e) => {
-  if (e.target.classList.contains("modal")) {
-    e.target.style.display = "none";
+  if (e.target.tagName === "DIALOG" && e.target.classList.contains("modal")) {
+    e.target.close();
   }
 });
 
@@ -663,7 +516,7 @@ function showMappingModal() {
 
     csvNames.forEach((csvName, index) => {
         if (!csvName) return;
-        
+
         const matchedPlayer = globalPlayers.find(p => p.player_name === csvName);
         const selectedId = matchedPlayer ? matchedPlayer.player_id : "";
 
@@ -681,10 +534,11 @@ function showMappingModal() {
                 </select>
             </div>
         `;
-        
+
         container.appendChild(rowDiv);
         if (selectedId) rowDiv.querySelector("select").value = selectedId;
     });
 
-    document.getElementById("csv-mapping-modal").style.display = "block";
+    document.getElementById("csv-mapping-modal")?.showModal();
 }
+})();

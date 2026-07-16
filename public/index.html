@@ -9,67 +9,124 @@
 </head>
 
 <body>
-  <div class="container">
+  <main class="container">
+    <!-- 共通ナビゲーション：utils.js がログイン状態を含む導線を描画 -->
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
     <h1>FCTZS TRPG部</h1>
     <!--<p>Webデザインとかの練習も込みで記録用ページを作成中<br>あんまり設計とか技術面気にして見ないでね</p> -->
-    <!--<p style="background: #e53e3e; color: white; border: none; font-size: 32px; text-align: center;">募集機能大幅改修完了‼️<br>募集開始から１か月経過で自動で消すから気を付けて‼️‼️</p> -->
-    <div style="overflow: hidden; width: 100%; white-space: nowrap;">
-      <div style="background: #e53e3e; color: white;  display: flex; width: max-content; animation: inline-loop-slide 15s linear infinite;">
-        <span style="padding-right: 50px; font-size: 32px;">年末までに仕組み考えたり実装頑張るから人気投票やるお～‼️戦えるキャラシートがなければこの半年で作れ‼️‼️</span>
+    <!-- 一時告知は更新後に古い情報が残りやすいため、恒常的な案内だけを本文へ配置する。 -->
+    <div style="overflow: hidden; width: 100%; white-space: nowrap; border-radius: 4px; margin-bottom: 20px;">
+      <div style="background: #e53e3e; color: white;  display: flex; width: max-content; animation: inline-loop-slide 25s linear infinite;">
+        <span style="padding-right: 50px; font-size: 24px; font-weight: bold;">8月からURL変わるお～‼️年末までに仕組み考えたり実装頑張るから人気投票やるお～‼️8月からURL変わるお～‼️戦えるキャラシートがなければこの半年で作れ‼️‼️8月からURL変わるお～‼️</span>
       </div>
     </div>
-  </main>
-    <!-- 直近の予定 -->
-    <section aria-labelledby="next-session-title">
-      <h2 id="next-session-title">直近の予定</h2>
-      <div id="next-session">
-        <p>予定を読み込み中…</p>
+    <!-- ゲスト向け活動概要：home.js が直近予定と進行中セッションを描画 -->
+    <div id="guest-dashboard">
+      <section class="dashboard-login-card" aria-labelledby="guest-dashboard-title">
+        <div>
+          <h2 id="guest-dashboard-title">TRPG部の活動状況</h2>
+          <p>Discordでログインすると、自分の次回予定・募集状況・予定入力カレンダーを確認できます。</p>
+        </div>
+        <button id="home-login-btn" class="btn-primary" type="button">Discordでログイン</button>
+      </section>
+
+      <section aria-labelledby="next-session-title">
+        <h2 id="next-session-title">直近の予定</h2>
+        <div id="next-session">
+          <p>予定を読み込み中…</p>
+        </div>
+      </section>
+
+      <hr />
+
+      <section aria-labelledby="ongoing-title">
+        <h2 id="ongoing-title">進行中のセッション</h2>
+        <div id="ongoing-scenarios">
+          <p>進行中セッションを読み込み中…</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ログイン済みメンバー向けダッシュボード：home.js が個人予定・募集・カレンダーを描画 -->
+    <div id="member-dashboard" hidden>
+      <header class="dashboard-header">
+        <p class="dashboard-eyebrow">MY DASHBOARD</p>
+        <h2 id="dashboard-player-name">マイダッシュボード</h2>
+      </header>
+
+      <div class="dashboard-grid">
+        <section class="dashboard-card" aria-labelledby="my-next-session-title">
+          <h3 id="my-next-session-title">Next Session</h3>
+          <div id="my-next-session"><p>読み込み中…</p></div>
+        </section>
+
+        <section class="dashboard-card" aria-labelledby="my-recruitments-title">
+          <h3 id="my-recruitments-title">My Recruitments</h3>
+          <div id="my-recruitments"><p>読み込み中…</p></div>
+        </section>
       </div>
-    </section>
+
+      <section class="dashboard-card dashboard-calendar-card" aria-labelledby="schedule-alert-title">
+        <div class="dashboard-calendar-header">
+          <div>
+            <h3 id="schedule-alert-title">Schedule Alert</h3>
+            <p class="u-muted">赤く表示された日は予定が未入力です。日付を選択すると入力できます。</p>
+          </div>
+          <div class="calendar-header dashboard-calendar-navigation">
+            <button id="home-prev-month-btn" type="button" aria-label="前月">◀</button>
+            <strong id="home-calendar-month"></strong>
+            <button id="home-next-month-btn" type="button" aria-label="翌月">▶</button>
+          </div>
+        </div>
+        <div id="home-calendar-grid" class="calendar-grid calendar-grid--compact"></div>
+      </section>
+    </div>
 
     <hr />
 
-    <!-- 進行中のシナリオ -->
-    <section aria-labelledby="ongoing-title">
-      <h2 id="ongoing-title">進行中のセッション</h2>
-      <div id="ongoing-scenarios">
-        <p>進行中セッションを読み込み中…</p>
-      </div>
-    </section>
-
-    <hr />
-
-    <!-- こんなとこ見るな！ -->
+    <!-- こんなとこ見るな！ -->    
+    <!-- 開発履歴と新着コメント：patch-notes.js / top_comments.js の描画先 -->
+    <!-- 最新5件だけをトップへ載せ、全履歴は専用ページへ誘導する。 -->
     <section aria-labelledby="notes-title">
-      <h2 id="notes-title">今後の開発予定</h2>
-      <ul>
-        <li>キャラ詳細ページにルビを追加 <small>- 未着手</small></li>
-        <li>キャラとセッションとかシナリオの紐づきまわり <small>- 俺の手に負えず仕様変更 手動編集不可にしました</small></li>
-        <li>スケジュール画面にセッション予定作成機能追加 <small>- 実装！</small></li>
-        <li>discordの募集参加ボタン <small>- 現在調査中 機能してないです</small></li>
-        <li>コメント機能 <small>- 現在調査中 各画面で入力したものは現在Home画面のみに表示されます</small></li>
-      </ul>
+      <h2 id="notes-title" class="patch-notes-section-heading">
+        <span>開発パッチノート</span>
+        <a class="patch-notes-all-link" href="./patch-notes/index.html">全履歴を見る →</a>
+      </h2>
+      <div data-patch-notes-view="summary" data-limit="5">
+        <p class="u-muted">パッチノートを読み込み中…</p>
+      </div>
     </section>
     <section>
       <h2>新着コメント</h2>
     <div id="top-comments-root"></div>
     </section>
 
-    <div id="user-info" style="display: none;">
-      <img id="user-avatar" src="" width="50" style="border-radius: 50%;">
-      <span id="user-name"></span>
-      <button id="logout-btn">ログアウト</button>
-    </div>
-
-  </main>
+    <!-- 予定一括入力モーダル：home.js が対象月の日別入力欄を生成・保存 -->
+    <dialog id="home-availability-modal" class="modal">
+      <div class="modal-content bulk-input-content">
+        <h3>予定の一括入力</h3>
+        <div class="form-group">
+          <label>対象月: <span id="home-bulk-month-label"></span></label>
+        </div>
+        <div class="bulk-header-row">
+          <div class="bulk-date">日付</div>
+          <div class="bulk-slot">昼</div>
+          <div class="bulk-slot">夜</div>
+        </div>
+        <div id="home-bulk-input-container" class="bulk-input-container"></div>
+        <div class="modal-actions">
+          <button id="home-save-availability-btn" class="btn-primary" type="button">保存</button>
+          <button id="home-close-availability-btn" class="btn-secondary" type="button">キャンセル</button>
+        </div>
+      </div>
+    </dialog>
 
   <footer>
     <hr />
-    <a href="./nightreign.html"><small>†最強†マルチゲーミングチーム </small></a><a href="./nightreign_sim.html"></small>FCTZS</small></a>
+    <a href="./nightreign.html"><small>†最強†マルチゲーミングチーム </small></a><a href="./docs.html"><small>FCTZS</small></a>
   </footer>
-  </div>
+  </main>
   <style>
   @keyframes inline-loop-slide {
     0% { transform: translateX(0); }
@@ -79,6 +136,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/init-supabase.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/patch-notes-data.js"></script>
+  <script src="js/patch-notes.js"></script>
   <script type="module" src="./js/home.js"></script>
   <script src="./js/top_comments.js"></script>
   <script>

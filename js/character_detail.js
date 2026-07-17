@@ -16,26 +16,245 @@ function toIntOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// 日本語ラベル／作成保存／インポートでキー表記が揺れるため、別名をまとめて解決する。
+const ATTR_KEY_ALIASES = Object.freeze({
+  身体: ["身体", "STRENGTH", "strength", "BODY", "body"],
+  精神: ["精神", "POWER", "power", "SPIRIT", "spirit"],
+  知力: ["知力", "INTELLECT", "intellect", "INTELLIGENCE", "intelligence"],
+  器用: ["器用", "DEXTERITY", "dexterity", "DEX", "dex"],
+  五感: ["五感", "SENSES", "senses", "SENSE", "sense"],
+  魅力: ["魅力", "APPEARANCE", "appearance", "APP", "app", "CHARISMA", "charisma"],
+  社会: ["社会", "SOCIAL", "social"],
+  運勢: ["運勢", "LUCK", "luck"],
+  真価: ["真価", "LUCK", "luck", "TRUE_VALUE", "true_value"],
+  STR: ["STR", "str"],
+  CON: ["CON", "con"],
+  POW: ["POW", "pow"],
+  DEX: ["DEX", "dex"],
+  APP: ["APP", "app"],
+  SIZ: ["SIZ", "siz"],
+  INT: ["INT", "int"],
+  EDU: ["EDU", "edu"],
+  LUCK: ["LUCK", "luck", "幸運"],
+  幸運: ["幸運", "LUCK", "luck"]
+});
+
+// 公式サイトの技能→能力対応。複数行は配列で保持し、出力時は判定値が最大のものを採用する。
+// 値の "知力/２" は能力値を半分（切り上げ）してから技能値を足す。
+const EMOKLORE_SKILL_ABILITY_OPTIONS = (() => {
+  const rows = [
+    ["調査", "器用"],
+    ["検索", "知力"],
+    ["洞察", "知力"],
+    ["マッピング", "器用"],
+    ["マッピング", "五感"],
+    ["直感", "精神"],
+    ["直感", "運勢"],
+    ["鑑定", "五感"],
+    ["鑑定", "知力"],
+    ["知覚", "五感"],
+    ["観察眼", "五感"],
+    ["聞き耳", "五感"],
+    ["毒見", "五感"],
+    ["危機察知", "五感"],
+    ["危機察知", "運勢"],
+    ["霊感", "精神"],
+    ["霊感", "運勢"],
+    ["交渉", "魅力"],
+    ["社交術", "社会"],
+    ["ディベート", "知力"],
+    ["魅了", "魅力"],
+    ["心理", "精神"],
+    ["心理", "知力"],
+    ["知識", "知力"],
+    ["専門知識", "知力"],
+    ["ニュース", "社会"],
+    ["事情通", "五感"],
+    ["事情通", "社会"],
+    ["業界", "社会"],
+    ["業界", "魅力"],
+    ["運動", "身体"],
+    ["スピード", "身体"],
+    ["ストレングス", "身体"],
+    ["アクロバット", "身体"],
+    ["アクロバット", "器用"],
+    ["ダイブ", "身体"],
+    ["格闘", "身体"],
+    ["武術", "身体"],
+    ["奥義", "身体"],
+    ["奥義", "精神"],
+    ["奥義", "器用"],
+    ["投擲", "器用"],
+    ["射撃", "器用"],
+    ["射撃", "五感"],
+    ["生存", "身体"],
+    ["耐久", "身体"],
+    ["自我", "精神"],
+    ["根性", "精神"],
+    ["手当て", "知力/２"],
+    ["医術", "器用"],
+    ["医術", "知力"],
+    ["蘇生", "知力/２"],
+    ["蘇生", "精神/２"],
+    ["細工", "器用"],
+    ["技巧", "器用"],
+    ["芸術", "器用"],
+    ["芸術", "精神"],
+    ["芸術", "五感"],
+    ["操縦", "器用"],
+    ["操縦", "五感"],
+    ["操縦", "知力"],
+    ["暗号", "知力"],
+    ["電脳", "知力"],
+    ["隠匿", "器用"],
+    ["隠匿", "社会"],
+    ["隠匿", "運勢"],
+    ["幸運", "運勢"],
+    ["強運", "運勢"]
+  ];
+
+  const map = {};
+  for (const [skill, spec] of rows) {
+    const key = normalizeEmokloreSkillKey(skill);
+    const parsed = parseEmokloreAbilitySpec(spec);
+    if (!map[key]) map[key] = [];
+    map[key].push(parsed);
+  }
+  return Object.freeze(map);
+})();
+
+function normalizeEmokloreSkillKey(skillName) {
+  return String(skillName || "")
+    .trim()
+    .replace(/^[＊★*]+/, "")
+    .replace(/[（(].*$/, "")
+    .trim();
+}
+
+function parseEmokloreAbilitySpec(spec) {
+  const raw = String(spec || "").trim();
+  const halved = raw.match(/^(.+?)\s*\/\s*[2２]$/);
+  if (halved) {
+    return { label: halved[1].trim(), divisor: 2 };
+  }
+  return { label: raw, divisor: 1 };
+}
+
+function resolveAttrEntry(key) {
+  const raw = String(key || "");
+  const candidates = ATTR_KEY_ALIASES[raw] || [raw, raw.toUpperCase(), raw.toLowerCase()];
+  for (const candidate of candidates) {
+    if (currentCharAttrsMap.has(candidate)) return currentCharAttrsMap.get(candidate);
+  }
+  return null;
+}
+
+function getAttrInt(key) {
+  const entry = resolveAttrEntry(key);
+  const n = toIntOrNull(entry?.value_int);
+  return n ?? 0;
+}
+
+function getAttrEmotion(key) {
+  const entry = resolveAttrEntry(key)
+    || currentCharAttrsMap.get(String(key).toLowerCase())
+    || currentCharAttrsMap.get(String(key));
+  return entry?.value_emotion || "なし";
+}
+
+function buildCcfoliaDisplayName(c) {
+  const name = String(c?.name || "").trim();
+  const reading = String(c?.reading || "").trim();
+  if (name && reading) return `${name} (${reading})`;
+  return name;
+}
+
+function buildCcfoliaExternalUrl(c) {
+  return c?.iachara_url || window.location.href;
+}
+
+function applyCcfoliaIconUrl(data, c) {
+  const icon = String(c?.image_url || "").trim();
+  if (icon) data.iconUrl = icon;
+}
+
+function clampEmokloreSkillLevel(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(3, Math.max(1, Math.trunc(n)));
+}
+
+function resolveEmokloreAbilityLabelForSystem(label, isGaia) {
+  // ガイアケアは運勢の代わりに真価を使う。
+  if (isGaia && label === "運勢") return "真価";
+  return label;
+}
+
+function getEmokloreAbilityContribution(label, divisor, isGaia) {
+  const resolved = resolveEmokloreAbilityLabelForSystem(label, isGaia);
+  const raw = getAttrInt(resolved);
+  return divisor === 2 ? Math.ceil(raw / 2) : raw;
+}
+
+/**
+ * 技能の判定目標値を返す。
+ * 複数対応能力がある場合は (能力寄与 + 技能値) が最大の組み合わせを採用。
+ * 未登録技能は知力へフォールバック。
+ */
+function calcBestEmokloreTarget(skillName, skillLevel, isGaia) {
+  const key = normalizeEmokloreSkillKey(skillName);
+  const options = EMOKLORE_SKILL_ABILITY_OPTIONS[key];
+  const level = Number(skillLevel) || 0;
+
+  if (!options || options.length === 0) {
+    return getAttrInt("知力") + level;
+  }
+
+  let best = -Infinity;
+  for (const opt of options) {
+    const target = getEmokloreAbilityContribution(opt.label, opt.divisor, isGaia) + level;
+    if (target > best) best = target;
+  }
+  return best;
+}
+
+function buildEmokloreResonanceMemo(c) {
+  const lines = [];
+  const reading = String(c?.reading || "").trim();
+  if (reading) lines.push(`ふりがな: ${reading}`);
+  lines.push(`共鳴感情・表: ${getAttrEmotion("emotion_front")}`);
+  lines.push(`共鳴感情・裏: ${getAttrEmotion("emotion_back")}`);
+  lines.push(`共鳴感情・ルーツ: ${getAttrEmotion("emotion_root")}`);
+  return `${lines.join("\n")}\n      `;
+}
+
+function calcCoc7Mov(str, dex, siz) {
+  if (str > siz && dex > siz) return 10;
+  if (str >= siz || dex >= siz) return 9;
+  return 8;
+}
+
+function formatBldParam(bld) {
+  if (bld > 0) return `+${bld}`;
+  return String(bld);
+}
+
 // ココフォリアの取込契約を壊さないよう、画面表示用データから専用形式を明示的に組み立てる。
 function generateCcfoliaData() {
   const c = currentCharData;
   if (!c) return null;
 
   const data = {
-    name: c.name,
+    name: buildCcfoliaDisplayName(c),
     memo: "",
     initiative: 0,
-    externalUrl: c.iachara_url || window.location.href,
+    externalUrl: buildCcfoliaExternalUrl(c),
     status: [],
     params: [],
     commands: ""
   };
+  applyCcfoliaIconUrl(data, c);
 
-  // 汎用能力値・感情をマップから安全に取得するヘルパー
-  const getAttrInt = (key) => currentCharAttrsMap.get(String(key).toUpperCase())?.value_int ?? 0;
-  const getAttrEmotion = (key) => currentCharAttrsMap.get(String(key).toLowerCase())?.value_emotion || "なし";
-
-  // 1. 基本能力値の定義
   const abilities = {
     STR: toIntOrNull(c.ability_str),
     CON: toIntOrNull(c.ability_con),
@@ -47,17 +266,18 @@ function generateCcfoliaData() {
     EDU: toIntOrNull(c.ability_edu),
   };
 
-  // システム別の詳細切り替えロジック
-  if (c.system === 'CoC6' || c.system === 'クトゥルフ神話TRPG(6版)') {
-    // ① 基本属性・ステータス
-    const dex = abilities.DEX ?? getAttrInt('DEX');
-    data.initiative = dex;
+  const cocStat = (key) => abilities[key] ?? getAttrInt(key);
 
-    const con = abilities.CON ?? getAttrInt('CON');
-    const siz = abilities.SIZ ?? getAttrInt('SIZ');
-    const pow = abilities.POW ?? getAttrInt('POW');
-    const int = abilities.INT ?? getAttrInt('INT');
-    const edu = abilities.EDU ?? getAttrInt('EDU');
+  if (c.system === "CoC6" || c.system === "クトゥルフ神話TRPG(6版)") {
+    const dex = cocStat("DEX");
+    const con = cocStat("CON");
+    const siz = cocStat("SIZ");
+    const pow = cocStat("POW");
+    const int = cocStat("INT");
+    const edu = cocStat("EDU");
+    const str = cocStat("STR");
+
+    data.initiative = dex;
 
     const hp = Math.ceil((con + siz) / 2);
     const mp = pow;
@@ -67,14 +287,11 @@ function generateCcfoliaData() {
     data.status.push({ label: "MP", value: mp, max: mp });
     data.status.push({ label: "SAN", value: san, max: san });
 
-    const keys = ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU'];
+    const keys = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
     keys.forEach(k => {
-      const val = abilities[k] ?? getAttrInt(k);
-      data.params.push({ label: k, value: String(val) });
+      data.params.push({ label: k, value: String(cocStat(k)) });
     });
 
-    // ② ダメージボーナス判定
-    const str = abilities.STR ?? getAttrInt('STR');
     const sum = str + siz;
     let db = "0";
     if (sum >= 2 && sum <= 12) db = "-1d6";
@@ -85,19 +302,16 @@ function generateCcfoliaData() {
     else if (sum >= 41 && sum <= 46) db = "+2d6";
     else if (sum >= 47 && sum <= 56) db = "+3d6";
 
-    // ③ チャットパレット組み立て
     const commands = [];
     commands.push(`1d100<={SAN} 【正気度ロール】`);
     commands.push(`CCB<=${int * 5} 【アイデア】`);
     commands.push(`CCB<=${pow * 5} 【幸運】`);
     commands.push(`CCB<=${edu * 5} 【知識】`);
 
-    if (currentSkillRows) {
-      currentSkillRows.forEach(s => {
-        const v = s.display_value ?? s.override_value ?? s.base_value;
-        if (v != null) commands.push(`CCB<=${v} 【${s.name}】`);
-      });
-    }
+    (currentSkillRows || []).forEach(s => {
+      const v = s.display_value ?? s.override_value ?? s.base_value;
+      if (v != null) commands.push(`CCB<=${v} 【${s.name}】`);
+    });
 
     const dbSuffix = db === "0" ? "" : db;
     commands.push(`1d3${dbSuffix} 【ダメージ判定】`);
@@ -105,22 +319,22 @@ function generateCcfoliaData() {
     commands.push(`1d6${dbSuffix} 【ダメージ判定】`);
 
     keys.forEach(k => {
-      const val = abilities[k] ?? getAttrInt(k);
-      commands.push(`CCB<={${k}}*5 【${k}】`);
+      commands.push(`CCB<={${k}}*5 【${k} × 5】`);
     });
     data.commands = commands.join("\n");
 
-  } else if (c.system === 'CoC7' || c.system === '新クトゥルフ神話TRPG(7版)') {
-    // ① 基本属性・ステータス
-    const dex = abilities.DEX ?? getAttrInt('DEX');
-    data.initiative = dex; // 仕様書: DEXの値
+  } else if (c.system === "CoC7" || c.system === "新クトゥルフ神話TRPG(7版)") {
+    const dex = cocStat("DEX");
+    const str = cocStat("STR");
+    const con = cocStat("CON");
+    const pow = cocStat("POW");
+    const siz = cocStat("SIZ");
+    const int = cocStat("INT");
+    const edu = cocStat("EDU");
+    const luck = toIntOrNull(resolveAttrEntry("LUCK")?.value_int)
+      ?? toIntOrNull(resolveAttrEntry("幸運")?.value_int);
 
-    const str = abilities.STR ?? getAttrInt('STR');
-    const con = abilities.CON ?? getAttrInt('CON');
-    const pow = abilities.POW ?? getAttrInt('POW');
-    const siz = abilities.SIZ ?? getAttrInt('SIZ');
-    const int = abilities.INT ?? getAttrInt('INT');
-    const edu = abilities.EDU ?? getAttrInt('EDU');
+    data.initiative = dex;
 
     const hp = Math.floor((con + siz) / 10);
     const mp = Math.floor(pow / 5);
@@ -129,8 +343,10 @@ function generateCcfoliaData() {
     data.status.push({ label: "HP", value: hp, max: hp });
     data.status.push({ label: "MP", value: mp, max: mp });
     data.status.push({ label: "SAN", value: san, max: san });
+    if (luck != null) {
+      data.status.push({ label: "幸運", value: luck, max: luck });
+    }
 
-    // ② ビルド(BLD) および ダメージボーナス判定
     const sum = str + siz;
     let bld = 0;
     let db = "0";
@@ -142,121 +358,91 @@ function generateCcfoliaData() {
     else if (sum >= 205 && sum <= 284) { bld = 3; db = "+2d6"; }
     else if (sum >= 285 && sum <= 364) { bld = 4; db = "+3d6"; }
 
-    const keys = ['STR', 'CON', 'POW', 'DEX', 'APP', 'SIZ', 'INT', 'EDU'];
+    const keys = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
     keys.forEach(k => {
-      const val = abilities[k] ?? getAttrInt(k);
-      data.params.push({ label: k, value: String(val) });
+      data.params.push({ label: k, value: String(cocStat(k)) });
     });
-    data.params.push({ label: "BLD", value: String(bld) });
+    data.params.push({ label: "BLD", value: formatBldParam(bld) });
+    data.params.push({ label: "MOV", value: String(calcCoc7Mov(str, dex, siz)) });
 
-    // ③ チャットパレット組み立て
     const commands = [];
-    commands.push(`1d100<={SAN} 【正気度ロール】`);
+    commands.push(`CC<={SAN} 【正気度ロール】`);
     commands.push(`CC<=${int} 【アイデア】`);
-    commands.push(`CC<=${pow} 【幸運】`);
+    if (luck != null) {
+      commands.push(`CC<={幸運} 【幸運】`);
+    } else {
+      commands.push(`CC<=${pow} 【幸運】`);
+    }
     commands.push(`CC<=${edu} 【知識】`);
 
-    if (currentSkillRows) {
-      currentSkillRows.forEach(s => {
-        const v = s.display_value ?? s.override_value ?? s.base_value;
-        if (v != null) commands.push(`CC<={${v}} 【${s.name}】`);
-      });
-    }
+    (currentSkillRows || []).forEach(s => {
+      const v = s.display_value ?? s.override_value ?? s.base_value;
+      if (v != null) commands.push(`CC<=${v} 【${s.name}】`);
+    });
 
     const dbSuffix = db === "0" ? "" : db;
     commands.push(`1d3${dbSuffix} 【ダメージ判定】`);
     commands.push(`1d4${dbSuffix} 【ダメージ判定】`);
     commands.push(`1d6${dbSuffix} 【ダメージ判定】`);
 
-    commands.push(`CC<={STR} 【STR】`);
-    commands.push(`CC<={CON} 【CON】`);
-    commands.push(`CC<={POW} 【POW】`);
-    commands.push(`CC<={DEX} 【DEX】`);
-    commands.push(`CC<={APP} 【APP】`);
-    commands.push(`CC<={SIZ} 【SIZ】`);
-    commands.push(`CC<={INT} 【INT】`);
-    commands.push(`CC<={EDU} 【EDU】`);
+    keys.forEach(k => {
+      commands.push(`CC<={${k}}　【${k}】`);
+    });
     data.commands = commands.join("\n");
 
-  } else if (c.system === 'エモクロアTRPG') {
-    // ① 基本属性・ステータス
-    data.initiative = getAttrInt('身体');
-    data.memo = `共鳴感情・表: ${getAttrEmotion('emotion_front')}\n共鳴感情・裏: ${getAttrEmotion('emotion_back')}\n共鳴感情・ルーツ: ${getAttrEmotion('emotion_root')}`;
+  } else if (c.system === "エモクロアTRPG" || c.system === "ガイアケアTRPG") {
+    const isGaia = c.system === "ガイアケアTRPG";
+    const body = getAttrInt("身体");
+    const spirit = getAttrInt("精神");
+    const intellect = getAttrInt("知力");
 
-    const hp = getAttrInt('身体') + 10;
-    const mp = getAttrInt('精神') + getAttrInt('知力');
+    data.initiative = body;
+    data.memo = buildEmokloreResonanceMemo(c);
 
+    const hp = body + 10;
+    const mp = spirit + intellect;
     data.status.push({ label: "HP", value: hp, max: hp });
     data.status.push({ label: "MP", value: mp, max: mp });
     data.status.push({ label: "共鳴", value: 1, max: 9 });
 
-    const keys = ['身体', '精神', '知力', '器用', '五感', '魅力', '社会', '運勢'];
-    keys.forEach(k => data.params.push({ label: k, value: String(getAttrInt(k)) }));
+    // 参照JSONに合わせた params 順（ガイアは運勢の代わりに真価）
+    const paramKeys = isGaia
+      ? ["身体", "器用", "精神", "五感", "知力", "魅力", "社会", "真価"]
+      : ["身体", "器用", "精神", "五感", "知力", "魅力", "社会", "運勢"];
+    paramKeys.forEach(k => data.params.push({ label: k, value: String(getAttrInt(k)) }));
 
-    // ② チャットパレット組み立て
     const commands = [];
     commands.push(`{共鳴}DM<={強度} 〈∞共鳴〉`);
     commands.push(`({共鳴}+1)DM<={強度} 〈∞共鳴〉ルーツ属性一致`);
     commands.push(`({共鳴}*2)DM<={強度} 〈∞共鳴〉完全一致`);
 
-    if (currentSkillRows) {
-      currentSkillRows.forEach(s => {
-        const v = s.display_value ?? s.override_value ?? s.base_value;
-        if (v != null) commands.push(`1DM<=${v} 【${s.name}】`);
-      });
+    (currentSkillRows || []).forEach(s => {
+      const n = clampEmokloreSkillLevel(s.display_value ?? s.override_value ?? s.base_value);
+      if (n == null) return;
+      // 公式マップの複数対応能力から、判定値（能力寄与+技能）が最大のものを採用する。
+      const target = calcBestEmokloreTarget(s.name, n, isGaia);
+      commands.push(`${n}DM<=${target} 〈${s.name}〉`);
+    });
+
+    if (isGaia) {
+      commands.push(`1DA{真価}+({共鳴}) 〈オリジン〉`);
     }
 
-    const baseChecks = [
-      { k: '器用', n: '調査' }, { k: '五感', n: '知覚' }, { k: '魅力', n: '交渉' }, { k: '知力', n: '知識' },
-      { k: '社会', n: 'ニュース' }, { k: '身体', n: '運動' }, { k: '身体', n: '格闘' }, { k: '器用', n: '投擲' },
-      { k: '身体', n: '生存' }, { k: '精神', n: '自我' }, { k: '知力', n: '手当て' }, { k: '器用', n: '細工' },
-      { k: '運勢', n: '幸運' }
+    // ＊基礎判定も公式マップに合わせる（手当ては知力/2 など）。技能加算なし。
+    const baseSkillNames = [
+      "調査", "知覚", "交渉", "知識", "ニュース", "運動", "格闘",
+      "投擲", "生存", "自我", "手当て", "細工", "幸運"
     ];
-    baseChecks.forEach(b => commands.push(`1DM<=${getAttrInt(b.k)} 〈＊${b.n}〉`));
-    data.commands = commands.join("\n");
-
-  } else if (c.system === 'ガイアケアTRPG') {
-    // ① 基本属性・ステータス
-    data.initiative = getAttrInt('身体');
-    data.memo = `共鳴感情・表: ${getAttrEmotion('emotion_front')}\n共鳴感情・裏: ${getAttrEmotion('emotion_back')}\n共鳴感情・ルーツ: ${getAttrEmotion('emotion_root')}`;
-
-    const hp = getAttrInt('身体') + 10;
-    const mp = getAttrInt('精神') + getAttrInt('知力');
-
-    data.status.push({ label: "HP", value: hp, max: hp });
-    data.status.push({ label: "MP", value: mp, max: mp });
-    data.status.push({ label: "共鳴", value: 1, max: 9 });
-
-    const keys = ['身体', '精神', '知力', '器用', '五感', '魅力', '社会', '真価'];
-    keys.forEach(k => data.params.push({ label: k, value: String(getAttrInt(k)) }));
-
-    // ② チャットパレット組み立て
-    const commands = [];
-    commands.push(`{共鳴}DM<={強度} 〈∞共鳴〉`);
-    commands.push(`({共鳴}+1)DM<={強度} 〈∞共鳴〉ルーツ属性一致`);
-    commands.push(`({共鳴}*2)DM<={強度} 〈∞共鳴〉完全一致`);
-
-    if (currentSkillRows) {
-      currentSkillRows.forEach(s => {
-        const v = s.display_value ?? s.override_value ?? s.base_value;
-        if (v != null) commands.push(`1DM<=${v} 【${s.name}】`);
-      });
-    }
-
-    commands.push(`1DA{真価}+({共鳴}) 〈オリジン〉`);
-    const baseChecks = [
-      { k: '器用', n: '調査' }, { k: '五感', n: '知覚' }, { k: '魅力', n: '交渉' }, { k: '知力', n: '知識' },
-      { k: '社会', n: 'ニュース' }, { k: '身体', n: '運動' }, { k: '身体', n: '格闘' }, { k: '器用', n: '投擲' },
-      { k: '身体', n: '生存' }, { k: '精神', n: '自我' }, { k: '知力', n: '手当て' }, { k: '器用', n: '細工' },
-      { k: '真価', n: '幸運' }
-    ];
-    baseChecks.forEach(b => commands.push(`1DM<=${getAttrInt(b.k)} 〈＊${b.n}〉`));
+    baseSkillNames.forEach(name => {
+      const target = calcBestEmokloreTarget(name, 0, isGaia);
+      commands.push(`1DM<=${target} 〈＊${name}〉`);
+    });
     data.commands = commands.join("\n");
   }
 
   return {
     kind: "character",
-    data: data
+    data
   };
 }
 
@@ -512,17 +698,17 @@ function renderGenericAttributes(system, defs, attrMap, targetKind) {
   const chips = [];
 
   if (targetKind === "int" && (system === "エモクロアTRPG" || system === "ガイアケアTRPG")) {
-    const body = Number(attrMap.get("body")?.value_int);
-    const spirit = Number(attrMap.get("spirit")?.value_int);
-    const intellect = Number(attrMap.get("intellect")?.value_int);
-    if (Number.isFinite(body)) chips.push(["HP", String(body + 10)]);
-    if (Number.isFinite(spirit) && Number.isFinite(intellect)) chips.push(["MP", String(spirit + intellect)]);
+    const hasBody = resolveAttrEntry("身体") != null;
+    const hasSpirit = resolveAttrEntry("精神") != null;
+    const hasIntellect = resolveAttrEntry("知力") != null;
+    if (hasBody) chips.push(["HP", String(getAttrInt("身体") + 10)]);
+    if (hasSpirit && hasIntellect) chips.push(["MP", String(getAttrInt("精神") + getAttrInt("知力"))]);
   }
 
   for (const d of targetDefs) {
     const key = String(d.key);
     const label = d.label ?? key;
-    const v = attrMap.get(key);
+    const v = attrMap.get(key) || resolveAttrEntry(key) || resolveAttrEntry(label);
     let display = "—";
 
     if (targetKind === "int") {

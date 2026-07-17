@@ -1551,22 +1551,22 @@ async function handlePatch(request, env, ctx, url) {
     }
 
     // ② runs: player_ids/characters 更新で junction トリガーが走るため Service Role を使う。
-    // 所有権は更新前に確認し、user_id の書き換えは拒否する。
+    // 編集可: Auth所有者 / GM / 参加PL。user_id 未設定の旧卓はメンバーが更新時に所有権を取得できる。
     if (url.pathname === "/api/runs") {
       try {
         const user = await getAuthenticatedUser(request, env);
         if (!user?.id) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
         }
+        const callerPlayerId = await resolveCallerPlayerId(request, env);
         const body = await request.json();
         const patchBody = { ...body };
         delete patchBody.user_id;
 
-        const { res: ownedRes, text: ownedText } = await sbServiceFetch(
-          env,
-          `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`,
-          { method: "GET" }
-        );
+        const lookupPath = url.search.includes("select=")
+          ? `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`
+          : `/rest/v1/${SUPABASE_TABLES.runs}${url.search}${url.search ? "&" : "?"}select=id,user_id,gm_id,player_ids`;
+        const { res: ownedRes, text: ownedText } = await sbServiceFetch(env, lookupPath, { method: "GET" });
         if (!ownedRes.ok) {
           return new Response(JSON.stringify({ error: "Run lookup failed", detail: ownedText }), { status: ownedRes.status, headers: jsonHeaders });
         }
@@ -1574,9 +1574,28 @@ async function handlePatch(request, env, ctx, url) {
         if (!Array.isArray(ownedRows) || ownedRows.length === 0) {
           return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
         }
-        const unauthorized = ownedRows.some(row => String(row.user_id || "") !== String(user.id));
-        if (unauthorized) {
-          return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
+
+        const canEditRun = (row) => {
+          if (row?.user_id && String(row.user_id) === String(user.id)) return true;
+          if (!callerPlayerId) return false;
+          if (row?.gm_id && String(row.gm_id) === callerPlayerId) return true;
+          const memberIds = Array.isArray(row?.player_ids) ? row.player_ids.map(String) : [];
+          if (memberIds.includes(callerPlayerId)) return true;
+          // 旧データで所有者未設定の卓は、ログイン済みメンバーなら更新を許可する。
+          if (!row?.user_id) return true;
+          return false;
+        };
+
+        if (ownedRows.some(row => !canEditRun(row))) {
+          return new Response(JSON.stringify({
+            error: "Forbidden",
+            detail: "卓の所有者・GM・参加プレイヤーのみ更新できます"
+          }), { status: 403, headers: jsonHeaders });
+        }
+
+        // 所有者が空の旧卓は、今回の更新者へ Auth UUID を紐付ける。
+        if (ownedRows.every(row => !row?.user_id)) {
+          patchBody.user_id = user.id;
         }
 
         const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`, {

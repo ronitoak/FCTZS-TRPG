@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-07-18",
+    type: "fix",
+    title: "卓情報更新の Forbidden を緩和",
+    detail: "Service Role 経由の卓更新で Auth所有者のみ許可していたため、GM・参加プレイヤーや user_id 未設定の旧卓が更新できませんでした。メンバー編集を許可し、未所有卓は更新時に所有者を紐付けます。"
+  },
+  {
     date: "2026-07-17",
     type: "fix",
     title: "調整さんCSVインポートの Upsert 重複エラーを修正",

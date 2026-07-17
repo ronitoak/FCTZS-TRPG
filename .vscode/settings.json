@@ -1,0 +1,5 @@
+{
+  "git.useEditorAsCommitInput": false,
+  "git.verboseCommit": false,
+  "git.confirmEmptyCommits": true
+}

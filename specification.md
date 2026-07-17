@@ -81,8 +81,6 @@
 FCTZS-TRPG/
 ├── index.html                  # ポータル（HOME）画面。直近の予定、進行中セッション、開発予定、コメント等を表示。
 ├── 404.html                    # 404 エラーページ。
-├── nightreign.html             # 特設おまけページ（†最強†マルチゲーミングチーム FCTZS）
-├── nightreign_sim.html         # FCTZSシミュレーター（おまけ）
 ├── readme.md                   # 開発者向けの基本仕様メモ。
 ├── bbs/                        # 掲示板（BBS）関連。
 │   └── index.html              # 掲示板画面。

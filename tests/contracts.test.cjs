@@ -37,12 +37,9 @@ test("Workerは既存APIルートを互換入口として維持する", () => {
     "/api/character_skill_list",
     "/api/character_attributes",
     "/api/posts",
-    "/api/nightreign/characters",
-    "/api/nightreign/slot_presets",
-    "/api/nightreign/relic_effects",
-    "/api/nightreign/user_relics",
     "/api/upload",
-    "/api/character_full"
+    "/api/character_full",
+    "/api/player_availability/session_block"
   ];
 
   legacyRoutes.forEach(route => {
@@ -93,15 +90,38 @@ test("Worker一覧APIは列限定selectを使う", () => {
 });
 
 test("Workerは通常書込みのBearer境界とService Role内部経路を分離する", () => {
-  // 通常POST/PATCH/DELETEは同じ入口で401にし、署名検証するInteractionだけを除外する。
+  // 通常POST/PATCH/DELETEはAuth APIでJWTを実検証し、署名検証するInteractionだけを除外する。
   assert.match(workerSource, /\["POST", "PATCH", "DELETE"\]\.includes\(request\.method\)/);
   assert.match(workerSource, /url\.pathname !== "\/api\/interactions"/);
-  assert.match(workerSource, /Authorization Bearer token required/);
+  assert.match(workerSource, /await validateUserBearer\(request, env\)/);
+  assert.match(workerSource, /async function getAuthenticatedUser\(/);
+  assert.match(workerSource, /async function resolveCallerPlayerId\(/);
 
   // Service Role Secretは専用関数内に限定し、通常のsbFetchは利用者Bearerを引き継ぐ。
   assert.match(workerSource, /async function sbServiceFetch\(/);
   assert.match(workerSource, /env\.SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(workerSource, /const authHeader = request\?\.headers\?\.get\("Authorization"\)/);
+});
+
+test("Workerはnightreign APIを公開しない", () => {
+  assert.doesNotMatch(workerSource, /nightreign/i);
+});
+
+test("Workerは所有者フィールドをサーバー側で解決する", () => {
+  assert.match(workerSource, /owner_player_id: callerPlayerId/);
+  assert.match(workerSource, /player_id: callerPlayerId/);
+  assert.match(workerSource, /\/api\/player_availability\/session_block/);
+  assert.match(workerSource, /R2_MAX_UPLOAD_BYTES/);
+  assert.match(workerSource, /resolveDiscordWebhookUrl/);
+});
+
+test("予定一日占有はSupabase直書きせずWorker経由である", () => {
+  const utilsSource = readFileSync(join(root, "js", "utils.js"), "utf8");
+  assert.match(utilsSource, /player_availability\/session_block/);
+  assert.doesNotMatch(
+    utilsSource,
+    /syncSchedulesForFullDay[\s\S]*?\.from\(\s*['"]player_availability['"]\s*\)/
+  );
 });
 
 test("R2 uploadはSupabase Auth検証後だけ書き込む", () => {

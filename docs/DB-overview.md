@@ -1,7 +1,7 @@
 # FCTZS-TRPG データベース概要
 
 最終更新: 2026-07-17  
-関連ファイル: [`DB_info.txt`](./DB_info.txt)（列の機械可読一覧）、[`database-optimization.md`](./database-optimization.md)（移行・検証SQL）  
+関連ファイル: [`DB_info.txt`](./DB_info.txt)（列の機械可読一覧）、[`database-optimization.md`](./database-optimization.md)（移行・検証SQL）、[`security-checklist.md`](./security-checklist.md)（RLS/GRANT監査）  
 ファイル名: `DB-overview.md`（GitHub Pages / ツール互換のため ASCII 名）
 
 この文書は、Supabase `public` スキーマの**全体像**を人間向けにまとめたものです。列の詳細は `DB_info.txt` を参照してください。
@@ -80,17 +80,6 @@ posts     … タイムライン投稿
 | **posts** | ホーム等の投稿 |
 | **system_attributes** | システム別属性マスタ |
 | **system_skill_bases** | システム別スキル基礎値マスタ |
-
-### おまけ（Nightreign）
-
-Worker の `/api/nightreign/*` が参照する別系統テーブルです。TRPG本体の正規化対象外。
-
-- `nightreign_characters`
-- `nightreign_slot_presets`
-- `nightreign_relic_effects`
-- `nightreign_user_relics`
-
-列の正本は `DB_info.txt` 先頭の再取得SQLで追記してください。
 
 ---
 

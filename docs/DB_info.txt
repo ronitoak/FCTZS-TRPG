@@ -289,10 +289,3 @@
 | v_character_list         | job                    | 6         | text                     | YES         | view  | |
 | v_character_list         | player_id              | 7         | text                     | YES         | view  | |
 | v_character_list         | updated_at             | 8         | timestamp with time zone | YES         | view  | |
-
-# --- おまけ機能テーブル (列定義は本番再取得で補完) ---
-# nightreign_characters
-# nightreign_slot_presets
-# nightreign_relic_effects
-# nightreign_user_relics
-# Worker の /api/nightreign/* から select=* で参照。詳細列は上記再取得SQLで追記すること。

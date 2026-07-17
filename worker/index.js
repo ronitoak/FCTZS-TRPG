@@ -40,12 +40,18 @@ const SUPABASE_TABLES = Object.freeze({
   recentCommentsWithNames: "recent_comments_with_names",
   posts: "posts",
   systemAttributes: "system_attributes",
-  systemSkillBases: "system_skill_bases",
-  nightreignCharacters: "nightreign_characters",
-  nightreignSlotPresets: "nightreign_slot_presets",
-  nightreignRelicEffects: "nightreign_relic_effects",
-  nightreignUserRelics: "nightreign_user_relics"
+  systemSkillBases: "system_skill_bases"
 });
+
+const R2_ALLOWED_TYPES = Object.freeze(["character", "scenario", "run", "general"]);
+const R2_ALLOWED_EXTENSIONS = Object.freeze([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+const R2_ALLOWED_MIME_TYPES = Object.freeze([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif"
+]);
+const R2_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 const PATCH_ALLOWED_RESOURCES = Object.freeze([
   SUPABASE_TABLES.sessions,
@@ -79,8 +85,7 @@ const UPSERT_ENDPOINTS = Object.freeze({
 const SIMPLE_INSERT_ENDPOINTS = Object.freeze({
   "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}`,
   "/api/player_profiles": `/rest/v1/${SUPABASE_TABLES.playerProfiles}`,
-  "/api/posts": `/rest/v1/${SUPABASE_TABLES.posts}`,
-  "/api/nightreign/user_relics": `/rest/v1/${SUPABASE_TABLES.nightreignUserRelics}`
+  "/api/posts": `/rest/v1/${SUPABASE_TABLES.posts}`
 });
 
 // 一覧APIは現行画面で参照する互換列だけに絞り、ID指定の詳細APIは既存の全列契約を維持する。
@@ -109,13 +114,23 @@ function hexToUint8Array(hex) {
 * @param {string} customUsername - カスタムユーザー名
 * @param {string} customAvatarUrl - カスタムアバターURL
 */
+/** 本番誤送信を防ぐため、テスト用Webhookが有効ならそちらを優先する。 */
+function resolveDiscordWebhookUrl(env, webhookUrl = null) {
+  if (webhookUrl) return webhookUrl;
+  const useTest = env.DISCORD_USE_TEST_WEBHOOK === "true" || env.DISCORD_USE_TEST_WEBHOOK === "1";
+  if (useTest && env.DISCORD_TEST_WEBHOOK_URL) {
+    return env.DISCORD_TEST_WEBHOOK_URL;
+  }
+  return env.DISCORD_WEBHOOK_URL || null;
+}
+
 async function sendDiscordNotification(content, embed, env, webhookUrl, customUsername = null, customAvatarUrl = null) {
   console.log("Discord通知を開始します..."); // 外部通知の開始点をWorkerログで追跡できるようにする。
-  const url = webhookUrl || env.DISCORD_WEBHOOK_URL;
+  const url = resolveDiscordWebhookUrl(env, webhookUrl);
   if (!url) {
     console.log("URLが見つかりません"); // 通知先未設定は定期処理全体を失敗させず、通知だけを省略する。
     return;
-  }; // URLが設定されていなければ何もしない
+  }
 
   const payload = {
     content: content,
@@ -359,10 +374,7 @@ const FIXED_GET_PROXY_ROUTES = Object.freeze({
   "/api/character_last_session": `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`,
   "/api/scenario_list": `/rest/v1/${SUPABASE_TABLES.scenarioListView}?select=${SCENARIO_LIST_SELECT}`,
   "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`,
-  "/api/session_list": `/rest/v1/${SUPABASE_TABLES.sessionListView}?select=${SESSION_VIEW_LIST_SELECT}`,
-  "/api/nightreign/characters": `/rest/v1/${SUPABASE_TABLES.nightreignCharacters}?select=*&order=id.asc`,
-  "/api/nightreign/relic_effects": `/rest/v1/${SUPABASE_TABLES.nightreignRelicEffects}?select=*&order=category.asc,effect_name.asc`,
-  "/api/nightreign/user_relics": `/rest/v1/${SUPABASE_TABLES.nightreignUserRelics}?select=*&order=created_at.desc`
+  "/api/session_list": `/rest/v1/${SUPABASE_TABLES.sessionListView}?select=${SESSION_VIEW_LIST_SELECT}`
 });
 
 /**
@@ -398,13 +410,14 @@ async function handleFetch(request, env, ctx) {
 async function routeApiRequest(request, env, ctx, url) {
   if (request.method === "GET")    return await handleGet(request, env, url);
 
-  // 通常書込みはRLSへ利用者JWTを渡す。Discord Interactionは署名検証済み経路で先に分離済み。
+  // 通常書込みはAuth APIでJWTを実検証する。Discord Interactionは署名検証済み経路で先に分離済み。
   if (
     ["POST", "PATCH", "DELETE"].includes(request.method)
     && url.pathname !== "/api/interactions"
-    && !hasBearerAuthorization(request)
   ) {
-    return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: jsonHeaders });
+    if (!await validateUserBearer(request, env)) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+    }
   }
 
   if (request.method === "POST")   return await handlePost(request, env, ctx, url);
@@ -419,12 +432,21 @@ async function handleInteraction(request, env, ctx) {
   const timestamp = request.headers.get('X-Signature-Timestamp');
   const body = await request.text();
 
-  // Discord Developer Portalの登録要件なので、本文解釈より先に署名を検証する。
-  const isVerified = nacl.sign.detached.verify(
-    new TextEncoder().encode(timestamp + body),
-    hexToUint8Array(signature),
-    hexToUint8Array(env.DISCORD_PUBLIC_KEY)
-  );
+  if (!signature || !timestamp || !env.DISCORD_PUBLIC_KEY) {
+    return new Response('Invalid request signature', { status: 401 });
+  }
+
+  let isVerified = false;
+  try {
+    // Discord Developer Portalの登録要件なので、本文解釈より先に署名を検証する。
+    isVerified = nacl.sign.detached.verify(
+      new TextEncoder().encode(timestamp + body),
+      hexToUint8Array(signature),
+      hexToUint8Array(env.DISCORD_PUBLIC_KEY)
+    );
+  } catch {
+    return new Response('Invalid request signature', { status: 401 });
+  }
 
   if (!isVerified) {
     return new Response('Invalid request signature', { status: 401 });
@@ -493,17 +515,13 @@ async function sbFetch(env, request, pathAndQuery, options = {}) {
   return { res, text };
 }
 
-function hasBearerAuthorization(request) {
-  return /^Bearer\s+\S+$/i.test(request.headers.get("Authorization") || "");
-}
-
 /**
- * R2はSupabase RLSの保護外なので、書式だけでなくAuth APIで利用者JWTを検証する。
- * JWTやAuth APIの応答本文はログ・レスポンスへ含めない。
+ * Auth APIで利用者JWTを検証し、成功時のみuser JSONを返す。
+ * JWT本文はログ・レスポンスへ含めない。
  */
-async function validateUserBearer(request, env) {
+async function getAuthenticatedUser(request, env) {
   const authorization = request.headers.get("Authorization") || "";
-  if (!/^Bearer\s+\S+$/i.test(authorization)) return false;
+  if (!/^Bearer\s+\S+$/i.test(authorization)) return null;
 
   try {
     const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
@@ -513,11 +531,31 @@ async function validateUserBearer(request, env) {
         Authorization: authorization
       }
     });
-    return response.ok;
+    if (!response.ok) return null;
+    return await response.json();
   } catch {
     console.warn("利用者認証APIへの接続に失敗しました");
-    return false;
+    return null;
   }
+}
+
+async function validateUserBearer(request, env) {
+  return !!(await getAuthenticatedUser(request, env));
+}
+
+/** JWTのauth.users.idから、紐づくplayers.player_idを解決する。 */
+async function resolveCallerPlayerId(request, env) {
+  const user = await getAuthenticatedUser(request, env);
+  if (!user?.id) return null;
+
+  const { res, text } = await sbFetch(
+    env,
+    request,
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&user_id=eq.${encodeURIComponent(user.id)}&limit=1`
+  );
+  if (!res.ok) return null;
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) && rows[0]?.player_id ? String(rows[0].player_id) : null;
 }
 
 /**
@@ -1001,7 +1039,14 @@ async function handleGet(request, env, url) {
 
     if (request.method === "GET" && url.pathname === "/api/character_attributes") {
       const charId = url.searchParams.get("character_id");
-      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.characterAttributes}?character_id=eq.${charId}`);
+      if (!charId) {
+        return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
+      }
+      const { res, text } = await sbFetch(
+        env,
+        request,
+        `/rest/v1/${SUPABASE_TABLES.characterAttributes}?character_id=eq.${encodeURIComponent(charId)}`
+      );
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -1014,71 +1059,170 @@ async function handleGet(request, env, url) {
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
-    // 特定キャラのスロットプリセット取得
-    if (request.method === "GET" && url.pathname === "/api/nightreign/slot_presets") {
-      const charId = url.searchParams.get("character_id");
-      if (!charId) return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
-
-      const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.nightreignSlotPresets}?select=*&character_id=eq.${charId}&order=created_at.asc`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
 }
 
 async function handlePost(request, env, ctx, url) {
   try {
     // Cloudflare R2 画像アップロード
     if (url.pathname === "/api/upload") {
-      if (!await validateUserBearer(request, env)) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
-      }
-
       if (!env.R2_BUCKET) {
         return new Response(JSON.stringify({ error: "R2_BUCKET is not bound" }), { status: 500, headers: jsonHeaders });
       }
 
       const formData = await request.formData();
       const file = formData.get("file");
-      const type = formData.get("type") || "general"; // character, scenario, run, general
+      const typeRaw = String(formData.get("type") || "general");
+      const type = R2_ALLOWED_TYPES.includes(typeRaw) ? typeRaw : null;
 
       if (!file) {
         return new Response(JSON.stringify({ error: "No file uploaded" }), { status: 400, headers: jsonHeaders });
       }
+      if (!type) {
+        return new Response(JSON.stringify({ error: "Invalid upload type" }), { status: 400, headers: jsonHeaders });
+      }
 
-      // ファイルの拡張子を取得
+      const fileSize = Number(file.size);
+      if (Number.isFinite(fileSize) && fileSize > R2_MAX_UPLOAD_BYTES) {
+        return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: jsonHeaders });
+      }
+
       const originalName = file.name || "image.png";
       const extMatch = originalName.match(/\.[^.]+$/);
-      const ext = extMatch ? extMatch[0].toLowerCase() : ".png";
+      const ext = extMatch ? extMatch[0].toLowerCase() : "";
+      if (!R2_ALLOWED_EXTENSIONS.includes(ext)) {
+        return new Response(JSON.stringify({ error: "Unsupported file extension" }), { status: 400, headers: jsonHeaders });
+      }
 
-      // 一意なファイル名を生成
+      const mimeType = String(file.type || "").toLowerCase();
+      if (mimeType && !R2_ALLOWED_MIME_TYPES.includes(mimeType)) {
+        return new Response(JSON.stringify({ error: "Unsupported content type" }), { status: 400, headers: jsonHeaders });
+      }
+
       const key = `${type}/${crypto.randomUUID()}${ext}`;
-
-      // R2へアップロード
       await env.R2_BUCKET.put(key, file.stream(), {
         httpMetadata: {
-          contentType: file.type || "image/png"
+          contentType: mimeType || "image/png"
         }
       });
 
-      // 公開URLの組み立て
       const baseUrl = env.R2_PUBLIC_URL || "";
       const imageUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}${key}`;
 
       return new Response(JSON.stringify({ url: imageUrl }), { status: 201, headers: jsonHeaders });
     }
 
+    // 卓GMが参加者予定を一日NGにする専用経路（他者行更新のためService Roleを使う）。
+    if (url.pathname === "/api/player_availability/session_block") {
+      const body = await request.json();
+      const runId = body?.run_id != null ? String(body.run_id) : "";
+      const sessionDate = body?.session_date || body?.target_date;
+      const requestedIds = Array.isArray(body?.player_ids)
+        ? body.player_ids.map(id => String(id)).filter(Boolean)
+        : [];
+
+      if (!runId || !sessionDate || requestedIds.length === 0) {
+        return new Response(JSON.stringify({ error: "run_id, session_date, player_ids required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const callerPlayerId = await resolveCallerPlayerId(request, env);
+      if (!callerPlayerId) {
+        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+      }
+
+      const { res: runRes, text: runText } = await sbFetch(
+        env,
+        request,
+        `/rest/v1/${SUPABASE_TABLES.runs}?select=id,gm_id,player_ids,user_id&id=eq.${encodeURIComponent(runId)}&limit=1`
+      );
+      if (!runRes.ok) {
+        return new Response(JSON.stringify({ error: "Run lookup failed", detail: runText }), { status: runRes.status, headers: jsonHeaders });
+      }
+      const runRows = JSON.parse(runText);
+      const run = Array.isArray(runRows) ? runRows[0] : null;
+      if (!run) {
+        return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
+      }
+
+      const runPlayerIds = new Set(
+        [run.gm_id, ...(Array.isArray(run.player_ids) ? run.player_ids : [])]
+          .filter(Boolean)
+          .map(String)
+      );
+      const isRunMember = runPlayerIds.has(callerPlayerId);
+      if (!isRunMember) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
+      }
+
+      const invalidTargets = requestedIds.filter(id => !runPlayerIds.has(id));
+      if (invalidTargets.length > 0) {
+        return new Response(JSON.stringify({ error: "player_ids must belong to the run" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const targetDate = new Date(sessionDate);
+      if (Number.isNaN(targetDate.getTime())) {
+        return new Response(JSON.stringify({ error: "Invalid session_date" }), { status: 400, headers: jsonHeaders });
+      }
+      const ymd = targetDate.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+      const updates = [];
+      for (const playerId of requestedIds) {
+        for (const slot of ["afternoon", "night"]) {
+          updates.push({
+            player_id: playerId,
+            target_date: ymd,
+            time_slot: slot,
+            status: "ng",
+            raw_text: "System: Session Booked (Full Day)"
+          });
+        }
+      }
+
+      const { res, text } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.playerAvailability}`,
+        {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: updates
+        }
+      );
+      if (!res.ok) {
+        return new Response(JSON.stringify({ error: "Availability sync failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      }
+      return new Response(JSON.stringify({ ok: true, count: updates.length }), { status: 200, headers: jsonHeaders });
+    }
+
     const body = await request.json();
+    const callerPlayerId = await resolveCallerPlayerId(request, env);
 
     // ---- Comments ----
     if (url.pathname === "/api/comments") {
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      const commentBody = { ...body };
+      if (callerPlayerId) {
+        // 表示名のなりすましを避けるため、紐づきプレイヤー名があれば上書きする。
+        const { res: playerRes, text: playerText } = await sbFetch(
+          env,
+          request,
+          `/rest/v1/${SUPABASE_TABLES.players}?select=player_name&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
+        );
+        if (playerRes.ok) {
+          const players = JSON.parse(playerText);
+          if (Array.isArray(players) && players[0]?.player_name) {
+            commentBody.author = players[0].player_name;
+          }
+        }
+      }
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [commentBody] });
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     // ---- Characters (一括作成) ----
     if (url.pathname === "/api/character_full") {
+      if (!callerPlayerId) {
+        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+      }
       const { character, attributes, skills } = body;
-      const { res: charRes, text: charText } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characters}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [character] });
+      const ownedCharacter = { ...(character || {}), player_id: callerPlayerId };
+      const { res: charRes, text: charText } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characters}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [ownedCharacter] });
       if (!charRes.ok) return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
 
       const newCharId = JSON.parse(charText)[0].id;
@@ -1094,7 +1238,15 @@ async function handlePost(request, env, ctx, url) {
 
     // 複合キーの重複を通常更新として扱う資源だけ、宣言済み経路でUpsertする。
     if (UPSERT_ENDPOINTS[url.pathname]) {
-      const { res, text } = await sbFetch(env, request, UPSERT_ENDPOINTS[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: body });
+      let upsertBody = body;
+      if (url.pathname === "/api/player_availability") {
+        if (!callerPlayerId) {
+          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        }
+        const rows = Array.isArray(body) ? body : [body];
+        upsertBody = rows.map(row => ({ ...row, player_id: callerPlayerId }));
+      }
+      const { res, text } = await sbFetch(env, request, UPSERT_ENDPOINTS[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: upsertBody });
       if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -1131,19 +1283,31 @@ async function handlePost(request, env, ctx, url) {
 
     // 募集保存の応答を先に確定し、Discord通知はwaitUntilで非同期に継続する。
     if (url.pathname === "/api/recruitments") {
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      if (!callerPlayerId) {
+        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+      }
+      const recruitPayload = Array.isArray(body)
+        ? body.map(row => ({ ...row, owner_player_id: callerPlayerId }))
+        : { ...body, owner_player_id: callerPlayerId };
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: recruitPayload });
       if (res.ok) {
         const insertedData = JSON.parse(text);
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
-        ctx.waitUntil(recruited({ ...record, ...body }, env));
+        ctx.waitUntil(recruited({ ...record, ...(Array.isArray(body) ? body[0] : body), owner_player_id: callerPlayerId }, env));
       }
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
     if (url.pathname === "/api/recruitment_applicants") {
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: body });
+      if (!callerPlayerId) {
+        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+      }
+      const applicantPayload = Array.isArray(body)
+        ? body.map(row => ({ ...row, player_id: callerPlayerId }))
+        : { ...body, player_id: callerPlayerId };
+      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: applicantPayload });
       if (res.ok) {
-        const payload = Array.isArray(body) ? body[0] : body;
+        const payload = Array.isArray(applicantPayload) ? applicantPayload[0] : applicantPayload;
         if (payload.recruitment_id || payload.recruit_id) {
           ctx.waitUntil(checkAndNotifyIfFulfilled(payload.recruitment_id || payload.recruit_id, env));
         }
@@ -1154,7 +1318,35 @@ async function handlePost(request, env, ctx, url) {
     // ---- シンプルなInsert系 ----
     if (SIMPLE_INSERT_ENDPOINTS[url.pathname]) {
       const targetUrl = SIMPLE_INSERT_ENDPOINTS[url.pathname];
-      const requestBody = url.pathname === "/api/player_profiles" ? body : [body];
+      let requestBody = body;
+
+      if (url.pathname === "/api/player_profiles") {
+        if (!callerPlayerId) {
+          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        }
+        requestBody = { ...body, player_id: callerPlayerId };
+      } else if (url.pathname === "/api/posts") {
+        if (!callerPlayerId) {
+          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        }
+        if (body?.character_id) {
+          const { res: charRes, text: charText } = await sbFetch(
+            env,
+            request,
+            `/rest/v1/${SUPABASE_TABLES.characters}?select=id&id=eq.${encodeURIComponent(body.character_id)}&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
+          );
+          if (!charRes.ok) {
+            return new Response(JSON.stringify({ error: "Character ownership check failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
+          }
+          const owned = JSON.parse(charText);
+          if (!Array.isArray(owned) || owned.length === 0) {
+            return new Response(JSON.stringify({ error: "character_id is not owned by caller" }), { status: 403, headers: jsonHeaders });
+          }
+        }
+        requestBody = [body];
+      } else {
+        requestBody = [body];
+      }
 
       const { res, text } = await sbFetch(env, request, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
       if (!res.ok) return new Response(JSON.stringify({ error: "Insert failed", detail: text }), { status: res.status, headers: jsonHeaders });

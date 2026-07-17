@@ -87,7 +87,8 @@ function renderCharacters(root, characters, lastByCharId) {
     const player = Utils.escapeHtml(c.players?.player_name ?? "");
     const system = Utils.escapeHtml(c.system ?? "");
     const state = typeof c.state === "string" ? c.state : "";
-    const imagePath = Utils.getCharacterImagePath(c.id, c.image_url);
+    const imagePath = Utils.sanitizeUrlForAttr(Utils.getCharacterImagePath(c.id, c.image_url))
+      || Utils.DEFAULT_CHARACTER_IMAGE;
     const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const cardLink = document.createElement("a");

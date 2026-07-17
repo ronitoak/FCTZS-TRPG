@@ -5,6 +5,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
     type: "fix",
+    title: "書込み認証と所有権の防御を強化",
+    detail: "全書込みのJWT実検証、募集・応募・予定の所有者サーバー解決、予定一日占有のWorker化、R2アップロード制限、nightreign API削除を行いました。DiscordはテストWebhook切替に対応しています。"
+  },
+  {
+    date: "2026-07-17",
+    type: "fix",
     title: "卓一覧APIの列参照とキャラ並び順を修正",
     detail: "存在しない runs.gm / players 列の参照をやめ、gm_id から名称解決するようにしました。キャラクター一覧は直近セッション優先ソートを維持し、ビューが空のときも卓データから復元します。"
   },

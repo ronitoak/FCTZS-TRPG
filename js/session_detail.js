@@ -473,8 +473,12 @@ function registerSessionDetailEvents() {
               }).filter(id => id !== null);
           }
 
+          if (currentRunData.gm_id) {
+              syncPlayerIds = [...new Set([...syncPlayerIds, currentRunData.gm_id].map(String))];
+          }
+
           if (syncPlayerIds.length > 0) {
-              await Utils.syncSchedulesForFullDay(startTimestamp, syncPlayerIds);
+              await Utils.syncSchedulesForFullDay(startTimestamp, syncPlayerIds, currentRunData.id);
           }
 
           location.reload();

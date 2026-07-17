@@ -161,9 +161,14 @@ Utils.domReady(async () => {
         };
 
         try {
-            await Utils.apiPost("runs", payload);
+            const result = await Utils.apiPost("runs", payload);
+            const row = Array.isArray(result) ? result[0] : result;
             alert("セッションを登録しました");
-            location.href = "../index.html";
+            if (row?.id) {
+                location.href = `detail.html?id=${encodeURIComponent(row.id)}`;
+            } else {
+                location.href = "index.html";
+            }
         } catch (err) {
             console.error(err);
             alert("登録失敗: " + err.message);

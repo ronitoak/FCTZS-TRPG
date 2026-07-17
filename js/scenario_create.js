@@ -76,9 +76,14 @@ Utils.domReady(async () => {
         };
 
         try {
-            await Utils.apiPost("scenarios", payload);
+            const result = await Utils.apiPost("scenarios", payload);
+            const row = Array.isArray(result) ? result[0] : result;
             alert("シナリオを登録しました");
-            location.href = "index.html"; // シナリオ一覧へ
+            if (row?.id) {
+                location.href = `detail.html?id=${encodeURIComponent(row.id)}`;
+            } else {
+                location.href = "index.html";
+            }
         } catch (err) {
             console.error(err);
             alert("登録失敗: " + err.message);

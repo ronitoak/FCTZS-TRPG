@@ -1,7 +1,7 @@
 # FCTZS-TRPG データベース概要
 
 最終更新: 2026-07-17  
-関連ファイル: [`DB_info.txt`](./DB_info.txt)（列の機械可読一覧）、[`database-optimization.md`](./database-optimization.md)（移行・検証SQL）、[`security-checklist.md`](./security-checklist.md)（RLS/GRANT監査）  
+関連ファイル: [`DB_info.txt`](./DB_info.txt)（列の機械可読一覧）、[`database-optimization.md`](./database-optimization.md)（移行・検証SQL）、[`security-checklist.md`](./security-checklist.md)（RLS/GRANT監査）、[`platform-roadmap.md`](./platform-roadmap.md) / [`api-contract.md`](./api-contract.md)（公開基盤・API正本）  
 ファイル名: `DB-overview.md`（GitHub Pages / ツール互換のため ASCII 名）
 
 この文書は、Supabase `public` スキーマの**全体像**を人間向けにまとめたものです。列の詳細は `DB_info.txt` を参照してください。

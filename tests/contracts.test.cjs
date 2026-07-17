@@ -11,6 +11,25 @@ const root = join(__dirname, "..");
 const workerSource = readFileSync(join(root, "worker", "index.js"), "utf8");
 const scheduleSource = readFileSync(join(root, "js", "schedule.js"), "utf8");
 
+test("フロント公開URLはsite-config経由で切り替え可能", () => {
+  const siteConfig = readFileSync(join(root, "js", "site-config.js"), "utf8");
+  const utilsSource = readFileSync(join(root, "js", "utils.js"), "utf8");
+  assert.match(siteConfig, /window\.FCTZS_CONFIG/);
+  assert.match(siteConfig, /AUTH_REDIRECT_URL/);
+  assert.match(utilsSource, /SITE_CONFIG/);
+  assert.match(utilsSource, /window\.FCTZS_CONFIG/);
+  assert.match(workerSource, /function resolveSiteUrl\(/);
+  assert.match(workerSource, /env\?\.SITE_URL/);
+});
+
+test("Pages準備スクリプトが公開対象をdistへ切り出す", () => {
+  const prepareSource = readFileSync(join(root, "scripts", "prepare-pages.mjs"), "utf8");
+  assert.match(prepareSource, /FCTZS_SITE_URL/);
+  assert.match(prepareSource, /COPY_DIRS/);
+  assert.doesNotMatch(prepareSource, /["']public["']/);
+  assert.doesNotMatch(prepareSource, /["']worker["']/);
+});
+
 test("Workerは既存APIルートを互換入口として維持する", () => {
   const legacyRoutes = [
     "/api/interactions",

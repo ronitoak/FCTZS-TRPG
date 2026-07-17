@@ -1,0 +1,10 @@
+# Cloudflare Pages 成果物
+/dist/
+
+# 依存・ローカル
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*

@@ -10,9 +10,10 @@
 
 本システムは、サーバーレス環境を組み合わせたSPA（Single Page Application）として構成されている。
 
-* **フロントエンド**: `Cloudflare Pages`
-* **構成**: Vanilla JS, HTML, CSS (`public/` フォルダ配下)
-* **デプロイ**: GitHub (`main` ブランチ) へのプッシュで自動ビルド・デプロイ。
+* **フロントエンド**: `Cloudflare Pages`（移行中。手順は `docs/cloudflare-pages.md`）
+* **構成**: Vanilla JS, HTML, CSS（ソースはリポジトリ直下。Pages 成果物は `dist/`）
+* **デプロイ**: GitHub Actions → Cloudflare Pages（`docs/platform-roadmap.md`）
+* **Flutter**: 現行 Web と並列の学習用クライアント（`flutter/README.md`）
 
 
 * **バックエンド（API）**: `Cloudflare Workers` (`index.js`)

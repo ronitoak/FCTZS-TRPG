@@ -1,8 +1,7 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (legacy)
 
+# Cloudflare Pages へ移行後は無効化済み。緊急時のみ手動実行する。
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
@@ -19,12 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # もしビルドが無い純静的なら、この2つだけでOK
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Prepare static site
+        run: node scripts/prepare-pages.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .   # 公開したいディレクトリ（例: dist や docs に変更）
+          path: dist
 
   deploy:
     needs: build

@@ -3,7 +3,12 @@ import nacl from 'tweetnacl'; // Discord Interactionを信頼する前にEd25519
 
 // worker/worker.js は実エントリではなく、このファイルをデプロイ対象として扱う。
 // URLやテーブル名の散在は変更漏れを生むため、外部契約に関わる固定値をここへ集約する。
-const SITE_URL = "https://ronitoak.github.io/FCTZS-TRPG";
+// Discord埋め込みリンク用。本番フロントを Pages へ切り替えたら Worker の SITE_URL 変数を更新する。
+const DEFAULT_SITE_URL = "https://fctzs.daruji.workers.dev";
+function resolveSiteUrl(env) {
+  const raw = env?.SITE_URL || DEFAULT_SITE_URL;
+  return String(raw).replace(/\/+$/, "");
+}
 const GITHUB_IMAGE_BASE_URL = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img";
 const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
 const DISCORD_DEFAULT_NAME = "右坂 弦介";
@@ -317,7 +322,7 @@ async function notifyScheduledSessions(env) {
                   title: `卓名：${runTitle} （${sessionTitle}）`,
                   description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${gmName}\n\n**【PL】**\n${displayPlayerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
                   color: DISCORD_COLORS.sessionNotice,
-                  url: `${SITE_URL}/sessions/detail.html?id=${session.run_id}`
+                  url: `${resolveSiteUrl(env)}/sessions/detail.html?id=${session.run_id}`
                 },
                 env,
                 env.DISCORD_WEBHOOK_URL,
@@ -1553,7 +1558,7 @@ async function recruited(data, env) {
     const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
     const count = data.target_count;
     const memo = data.memo || "詳細情報なし";
-    const detailUrl = `${SITE_URL}/recruit/index.html`;
+    const detailUrl = `${resolveSiteUrl(env)}/recruit/index.html`;
 
     // 2. Discordへ通知 (Bot Tokenを使用するためここは直接fetch)
     await fetch(`${DISCORD_API_BASE_URL}/channels/${env.RECRUIT_CHANNEL_ID}/messages`, {

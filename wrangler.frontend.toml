@@ -1,0 +1,9 @@
+# フロント公開用 Worker（静的アセットのみ）
+# API 用の worker/wrangler.toml（fctzs-trpg）とは別ファイル。
+name = "fctzs"
+compatibility_date = "2024-11-12"
+
+[assets]
+directory = "./dist"
+# マルチページ HTML 用。無いパスは dist/404.html を返す。
+not_found_handling = "404-page"

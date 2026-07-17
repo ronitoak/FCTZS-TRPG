@@ -22,9 +22,23 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Check Cloudflare secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN が空です。GitHub Secrets に設定してください。"
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID が空です。GitHub Secrets に設定してください。"
+            exit 1
+          fi
+          echo "Cloudflare Secrets は設定済みです（値は表示しません）"
+
       - name: Prepare Pages artifact
         env:
-          # Cloudflare Pages の本番URLに合わせて Repository Variables を設定する。
           FCTZS_SITE_URL: ${{ vars.FCTZS_SITE_URL }}
           FCTZS_AUTH_REDIRECT_URL: ${{ vars.FCTZS_AUTH_REDIRECT_URL }}
           FCTZS_API_BASE: ${{ vars.FCTZS_API_BASE }}
@@ -32,10 +46,16 @@ jobs:
           FCTZS_R2_PUBLIC_URL: ${{ vars.FCTZS_R2_PUBLIC_URL }}
         run: node scripts/prepare-pages.mjs
 
-      - name: Publish to Cloudflare Pages
+      - name: Verify dist exists
+        run: |
+          test -f dist/index.html || { echo "::error::dist/index.html がありません"; exit 1; }
+          ls -la dist | head -n 30
+
+      # 公開URLが *.workers.dev のため Pages ではなく Worker 静的アセットでデプロイする。
+      - name: Publish frontend Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # 初回は Cloudflare Dashboard で Pages プロジェクトを作成し、名前を合わせる。
-          command: pages deploy dist --project-name=fctzs
+          wranglerVersion: "4.24.3"
+          command: deploy --config wrangler.frontend.toml

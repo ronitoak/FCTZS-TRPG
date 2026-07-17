@@ -35,6 +35,7 @@
 ## 9. 開発パッチノートの記載
 - 機能追加や機能改修、不具合修正を行った際は、`js/patch-notes-data.js` の `PATCH_NOTES` 配列の先頭に新しいエントリを追加してください。
 - エントリは `{ date: "YYYY-MM-DD", type: "種別", title: "機能名", detail: "変更内容" }` 形式とし、`date` には作業日、`type` には `release`・`feature`・`improvement`・`fix` のいずれかを指定してください。
+- 過去のエントリは絶対に削除しないでください。
 - 利用者向けは `release` / `feature` / `fix`。インフラ・内部改善などユーザーが追わなくてよい更新は `improvement` に統一する。
 - トップ（`index.html`）の最新5件は `release` / `feature` / `fix` のみ表示する。`improvement` は `patch-notes/index.html` の全履歴にのみ出す。
 - 過去のエントリは絶対に削除しないでください。表示の振り分けは `js/patch-notes.js` が行う。

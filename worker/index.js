@@ -1379,7 +1379,18 @@ async function handlePost(request, env, ctx, url) {
     }
 
     if (url.pathname === "/api/runs") {
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.runs}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [body] });
+      // junction同期トリガーは SECURITY INVOKER のため、利用者JWTだと run_players RLS で失敗する。
+      // Auth UUID を明示したうえで Service Role で INSERT し、トリガー側の RLS を回避する。
+      const user = await getAuthenticatedUser(request, env);
+      if (!user?.id) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      }
+      const runPayload = { ...body, user_id: user.id };
+      const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runs}`, {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: [runPayload]
+      });
       if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
       const insertedData = JSON.parse(text);
       if (insertedData && insertedData[0]) ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
@@ -1491,14 +1502,39 @@ async function handlePatch(request, env, ctx, url) {
       }
     }
 
-    // ② 特殊処理（runsのみ以前からユーザー証明書を使っていたので request を渡す）
+    // ② runs: player_ids/characters 更新で junction トリガーが走るため Service Role を使う。
+    // 所有権は更新前に確認し、user_id の書き換えは拒否する。
     if (url.pathname === "/api/runs") {
       try {
+        const user = await getAuthenticatedUser(request, env);
+        if (!user?.id) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+        }
         const body = await request.json();
-        const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`, {
+        const patchBody = { ...body };
+        delete patchBody.user_id;
+
+        const { res: ownedRes, text: ownedText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`,
+          { method: "GET" }
+        );
+        if (!ownedRes.ok) {
+          return new Response(JSON.stringify({ error: "Run lookup failed", detail: ownedText }), { status: ownedRes.status, headers: jsonHeaders });
+        }
+        const ownedRows = JSON.parse(ownedText);
+        if (!Array.isArray(ownedRows) || ownedRows.length === 0) {
+          return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
+        }
+        const unauthorized = ownedRows.some(row => String(row.user_id || "") !== String(user.id));
+        if (unauthorized) {
+          return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
+        }
+
+        const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`, {
           method: "PATCH",
-          headers: { "Prefer": "return=representation" },
-          body: body
+          headers: { Prefer: "return=representation" },
+          body: patchBody
         });
         if (res.ok) {
           const updatedData = JSON.parse(text);

@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
     type: "fix",
+    title: "卓作成時の run_players RLS エラーを解消",
+    detail: "junction同期トリガーが利用者JWTのRLSに掛かっていたため、所有者の Auth UUID を明示したうえで Service Role 経由で卓を作成・更新するよう変更しました。"
+  },
+  {
+    date: "2026-07-17",
+    type: "fix",
     title: "ログイン本人のプレイヤー解決を Auth UUID / Discord ID で分離",
     detail: "Auth UUID と Discord snowflake を混同しないよう、players.user_id と players.discord_id を別経路で解決し、未連携時は discord_id から user_id を自動紐付けします。募集応募はログイン中の自分のみになりました。"
   },

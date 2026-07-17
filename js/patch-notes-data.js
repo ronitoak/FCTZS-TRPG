@@ -1,6 +1,9 @@
 "use strict";
 
 // トップと履歴専用画面で内容が食い違わないよう、表示に依存しない変更履歴を単一の正本として提供する。
+// type 規約:
+//   release / feature / fix … トップ最新5件と詳細ページの両方
+//   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",

@@ -9,6 +9,9 @@
     fix: { label: "不具合修正", className: "fix" }
   };
 
+  // トップは利用者向けのみ。インフラ・内部改善（improvement）は詳細ページ専用。
+  const SUMMARY_TYPES = new Set(["release", "feature", "fix"]);
+
   function getNotes() {
     return Array.isArray(window.PATCH_NOTES) ? window.PATCH_NOTES : [];
   }
@@ -42,10 +45,16 @@
 
   function renderSummary(root, notes) {
     const limit = Number.parseInt(root.dataset.limit || "5", 10);
+    const summaryNotes = notes.filter(note => SUMMARY_TYPES.has(note.type));
     const list = document.createElement("ul");
     list.className = "patch-notes-summary";
 
-    notes.slice(0, Number.isFinite(limit) ? limit : 5).forEach(note => {
+    if (summaryNotes.length === 0) {
+      root.innerHTML = '<p class="u-muted">お知らせはありません。<a href="./patch-notes/index.html">全履歴を見る</a></p>';
+      return;
+    }
+
+    summaryNotes.slice(0, Number.isFinite(limit) ? limit : 5).forEach(note => {
       const item = document.createElement("li");
       item.className = "patch-note-summary-item";
 

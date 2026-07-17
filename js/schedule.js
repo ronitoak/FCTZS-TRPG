@@ -463,7 +463,13 @@ async function main() {
           });
       });
 
-      if (payload.length === 0) {
+      // 同一プレイヤー・日付・時間帯がCSV内で重複しても1件に畳む（後勝ち）。
+      const dedupedPayload = [...payload.reduce((map, row) => {
+          map.set(`${row.player_id}|${row.target_date}|${row.time_slot}`, row);
+          return map;
+      }, new Map()).values()];
+
+      if (dedupedPayload.length === 0) {
           alert("取り込む予定データがありませんでした");
           return closeModal("csv-mapping-modal");
       }
@@ -473,10 +479,10 @@ async function main() {
           btn.disabled = true;
           btn.textContent = "インポート中...";
 
-          const res = await Utils.apiPost("player_availability", payload);
+          const res = await Utils.apiPost("player_availability", dedupedPayload);
           if (res) {
               closeModal("csv-mapping-modal");
-              alert(`${payload.length}件の予定データをインポートしました！`);
+              alert(`${dedupedPayload.length}件の予定データをインポートしました！`);
               if (compareMode) await runComparison();
               else await fetchScheduleData();
           }

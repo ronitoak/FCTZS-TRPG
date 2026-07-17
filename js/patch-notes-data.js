@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
     type: "fix",
+    title: "調整さんCSVインポートの Upsert 重複エラーを修正",
+    detail: "複数プレイヤー分の予定をログイン中本人のIDへ上書きしていたため複合キーが衝突していました。本人のみ／複数人取込を分岐し、同一キーは後勝ちで畳むよう修正しました。"
+  },
+  {
+    date: "2026-07-17",
+    type: "fix",
     title: "卓作成時の run_players RLS エラーを解消",
     detail: "junction同期トリガーが利用者JWTのRLSに掛かっていたため、所有者の Auth UUID を明示したうえで Service Role 経由で卓を作成・更新するよう変更しました。"
   },

@@ -1344,16 +1344,64 @@ async function handlePost(request, env, ctx, url) {
     // 複合キーの重複を通常更新として扱う資源だけ、宣言済み経路でUpsertする。
     if (UPSERT_ENDPOINTS[url.pathname]) {
       let upsertBody = body;
+      let useServiceRole = false;
+
       if (url.pathname === "/api/player_availability") {
         if (!callerPlayerId) {
-          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+          return new Response(JSON.stringify({
+            error: "Player mapping required",
+            detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
+          }), { status: 403, headers: jsonHeaders });
         }
-        const rows = Array.isArray(body) ? body : [body];
-        upsertBody = rows.map(row => ({ ...row, player_id: callerPlayerId }));
+
+        const rows = (Array.isArray(body) ? body : [body])
+          .map(row => ({
+            player_id: row?.player_id != null && String(row.player_id).trim() !== ""
+              ? String(row.player_id)
+              : callerPlayerId,
+            target_date: row?.target_date,
+            time_slot: row?.time_slot,
+            status: row?.status,
+            raw_text: row?.raw_text ?? null
+          }))
+          .filter(row => row.target_date && row.time_slot && row.status);
+
+        // 同一コマンド内の複合キー重複は PostgREST ON CONFLICT が拒否するため、後勝ちで畳む。
+        const dedupedByKey = new Map();
+        for (const row of rows) {
+          const key = `${row.player_id}|${row.target_date}|${row.time_slot}`;
+          dedupedByKey.set(key, row);
+        }
+        upsertBody = [...dedupedByKey.values()];
+
+        const distinctPlayerIds = [...new Set(upsertBody.map(row => row.player_id))];
+        const isSelfOnly = distinctPlayerIds.length === 1 && distinctPlayerIds[0] === callerPlayerId;
+
+        if (isSelfOnly) {
+          // 自分の予定だけなら利用者JWT + RLS で十分。player_id は呼び出し元に固定する。
+          upsertBody = upsertBody.map(row => ({ ...row, player_id: callerPlayerId }));
+        } else {
+          // 調整さんCSVなど複数人一括は、他人行のRLSを避けるため Service Role を使う。
+          useServiceRole = true;
+        }
       }
-      const { res, text } = await sbFetch(env, request, UPSERT_ENDPOINTS[url.pathname], { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: upsertBody });
+
+      const { res, text } = useServiceRole
+        ? await sbServiceFetch(env, UPSERT_ENDPOINTS[url.pathname], {
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: upsertBody
+          })
+        : await sbFetch(env, request, UPSERT_ENDPOINTS[url.pathname], {
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates" },
+            body: upsertBody
+          });
       if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
-      return new Response(text, { status: 201, headers: jsonHeaders });
+      return new Response(text || JSON.stringify({ ok: true, count: Array.isArray(upsertBody) ? upsertBody.length : 1 }), {
+        status: 201,
+        headers: jsonHeaders
+      });
     }
 
     // ---- 通常の Insert 系 ----

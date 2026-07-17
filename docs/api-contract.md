@@ -50,7 +50,12 @@
 | POST | `/api/player_availability/session_block` | 卓メンバー検証後に参加者予定を NG |
 | POST | `/api/upload` | multipart。画像 MIME / 5MB / type 制限 |
 
-プレイヤーが `players.user_id` に紐づいていない JWT は、所有者必須の API で 403 になる。
+本人解決は次の順で行う（Auth UUID と Discord snowflake を直接比較しない）:
+
+1. `players.user_id = auth.users.id`（Auth UUID）
+2. 未連携なら `players.discord_id = Discord snowflake` で検索し、見つかれば `user_id` を自動連携
+
+どちらでも解決できない JWT は、所有者必須の API で 403 になる。
 
 ---
 

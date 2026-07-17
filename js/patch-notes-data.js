@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
     type: "fix",
+    title: "ログイン本人のプレイヤー解決を Auth UUID / Discord ID で分離",
+    detail: "Auth UUID と Discord snowflake を混同しないよう、players.user_id と players.discord_id を別経路で解決し、未連携時は discord_id から user_id を自動紐付けします。募集応募はログイン中の自分のみになりました。"
+  },
+  {
+    date: "2026-07-17",
+    type: "fix",
     title: "ココフォリア出力をシステム別の参照形式へ寄せた",
     detail: "能力値キー解決、公式の技能→能力マップ（複数対応時は最大判定値）、CoC7のCC記法・MOV・幸運、システム別の参照形式へ寄せました。"
   },

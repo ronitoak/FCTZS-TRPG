@@ -18,7 +18,7 @@ async function initData() {
     await Utils.initAuthAndHeader('common-nav', '../');
     try {
         [allPlayers, allScenarios] = await Promise.all([
-            Utils.apiGet("players?select=player_id,player_name,user_id"),
+            Utils.apiGet("players?select=player_id,player_name,user_id,discord_id"),
             Utils.apiGet("scenarios?select=id,title,image_url,trend_story_chaos,trend_avatar_clear,trend_harmony_active")
         ]);
 
@@ -170,25 +170,13 @@ function renderRecruitments() {
                 e.target.disabled = true;
                 e.target.textContent = "処理中...";
 
-                // 応募テーブルに登録
+                // player_id は Worker が JWT（Auth UUID / Discord ID）から解決する。
                 await Utils.apiPost("recruitment_applicants", [{
-                    recruitment_id: recruitId,
-                    player_id: playerId
+                    recruitment_id: recruitId
                 }]);
-
-                // 満員になったかのチェック
-                const recruit = allRecruitments.find(r => r.id === recruitId);
-                const newCount = allApplicants.filter(a => a.recruitment_id === recruitId).length + 1;
-
-                if (newCount >= recruit.target_count) {
-                    // 満員になったらステータスを更新
-                    await Utils.apiPatch("recruitments", { status: "fulfilled" }, `id=eq.${recruitId}`);
-
-                } else {
-                    alert("参加しました！");
-                }
-
-                await loadRecruitments(); // 画面を再描画
+                // 満員更新は Worker（Service Role）側の checkAndNotifyIfFulfilled に任せる。
+                alert("参加しました！");
+                await loadRecruitments();
             } catch (err) {
                 console.error(err);
                 alert("参加処理に失敗しました。すでに参加している可能性があります: " + err.message);

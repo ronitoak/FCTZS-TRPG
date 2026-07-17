@@ -314,7 +314,7 @@ async function main() {
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
-      Utils.apiGet("players?select=player_id,player_name,user_id").catch(() => []),
+      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id").catch(() => []),
     ]);
 
     const playersById = new Map(
@@ -342,7 +342,7 @@ async function main() {
     }
 
     const myPlayer = session
-      ? (Array.isArray(players) ? players : []).find(player => player.user_id === session.user.id)
+      ? Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], session.user)
       : null;
 
     if (!session || !myPlayer) {

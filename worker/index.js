@@ -567,19 +567,100 @@ async function validateUserBearer(request, env) {
   return !!(await getAuthenticatedUser(request, env));
 }
 
-/** JWTのauth.users.idから、紐づくplayers.player_idを解決する。 */
+/** Auth user から Discord snowflake だけを取り出す（Auth UUID と混同しない）。 */
+function extractDiscordIdFromAuthUser(user) {
+  if (!user) return null;
+  const meta = user.user_metadata || {};
+  const candidates = [
+    meta.provider_id,
+    meta.sub,
+    ...(Array.isArray(user.identities)
+      ? user.identities.flatMap(identity => {
+          if (identity?.provider !== "discord") return [];
+          const data = identity.identity_data || {};
+          return [identity.id, data.provider_id, data.sub, data.id];
+        })
+      : [])
+  ];
+  for (const candidate of candidates) {
+    const value = String(candidate || "").trim();
+    // Discord snowflake は数値文字列。UUID 形式は除外する。
+    if (/^\d{17,20}$/.test(value)) return value;
+  }
+  return null;
+}
+
+/**
+ * JWT の本人を players.player_id へ解決する。
+ * 1) players.user_id = auth.users.id（Auth UUID）
+ * 2) 未連携時は players.discord_id = Discord snowflake で検索し、user_id を自動連携
+ * Auth UUID と Discord ID を直接比較しない。
+ */
 async function resolveCallerPlayerId(request, env) {
   const user = await getAuthenticatedUser(request, env);
   if (!user?.id) return null;
+  const authUserId = String(user.id);
 
-  const { res, text } = await sbFetch(
+  const { res: byUserRes, text: byUserText } = await sbFetch(
     env,
     request,
-    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&user_id=eq.${encodeURIComponent(user.id)}&limit=1`
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,user_id,discord_id&user_id=eq.${encodeURIComponent(authUserId)}&limit=1`
   );
-  if (!res.ok) return null;
-  const rows = JSON.parse(text);
-  return Array.isArray(rows) && rows[0]?.player_id ? String(rows[0].player_id) : null;
+  if (byUserRes.ok) {
+    const byUserRows = JSON.parse(byUserText);
+    if (Array.isArray(byUserRows) && byUserRows[0]?.player_id) {
+      return String(byUserRows[0].player_id);
+    }
+  }
+
+  const discordId = extractDiscordIdFromAuthUser(user);
+  if (!discordId) return null;
+
+  const { res: byDiscordRes, text: byDiscordText } = await sbFetch(
+    env,
+    request,
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,user_id,discord_id&discord_id=eq.${encodeURIComponent(discordId)}&limit=1`
+  );
+  if (!byDiscordRes.ok) return null;
+  const byDiscordRows = JSON.parse(byDiscordText);
+  if (!Array.isArray(byDiscordRows) || !byDiscordRows[0]?.player_id) return null;
+
+  const playerId = String(byDiscordRows[0].player_id);
+  const linkedUserId = byDiscordRows[0].user_id ? String(byDiscordRows[0].user_id) : "";
+
+  // RLS は players.user_id = auth.uid() を見るため、Discord 解決後に Auth UUID を書き戻す。
+  if (linkedUserId !== authUserId) {
+    try {
+      const { res: conflictRes, text: conflictText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&user_id=eq.${encodeURIComponent(authUserId)}&limit=1`
+      );
+      const conflictRows = conflictRes.ok ? JSON.parse(conflictText) : [];
+      const conflictPlayerId = Array.isArray(conflictRows) && conflictRows[0]?.player_id
+        ? String(conflictRows[0].player_id)
+        : null;
+      if (!conflictPlayerId || conflictPlayerId === playerId) {
+        await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${encodeURIComponent(playerId)}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: { user_id: authUserId }
+          }
+        );
+      } else {
+        console.error("players.user_id 自動連携をスキップ: 別プレイヤーに同一 Auth UUID が既にある", {
+          playerId,
+          conflictPlayerId
+        });
+      }
+    } catch (err) {
+      console.error("players.user_id 自動連携に失敗:", err);
+    }
+  }
+
+  return playerId;
 }
 
 /**
@@ -1308,7 +1389,10 @@ async function handlePost(request, env, ctx, url) {
     // 募集保存の応答を先に確定し、Discord通知はwaitUntilで非同期に継続する。
     if (url.pathname === "/api/recruitments") {
       if (!callerPlayerId) {
-        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        return new Response(JSON.stringify({
+          error: "Player mapping required",
+          detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
+        }), { status: 403, headers: jsonHeaders });
       }
       const recruitPayload = Array.isArray(body)
         ? body.map(row => ({ ...row, owner_player_id: callerPlayerId }))
@@ -1324,7 +1408,10 @@ async function handlePost(request, env, ctx, url) {
 
     if (url.pathname === "/api/recruitment_applicants") {
       if (!callerPlayerId) {
-        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        return new Response(JSON.stringify({
+          error: "Player mapping required",
+          detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
+        }), { status: 403, headers: jsonHeaders });
       }
       const applicantPayload = Array.isArray(body)
         ? body.map(row => ({ ...row, player_id: callerPlayerId }))

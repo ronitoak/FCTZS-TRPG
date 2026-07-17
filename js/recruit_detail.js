@@ -113,9 +113,7 @@ function renderDetail() {
             <h2 class="scenario-detail-h2" style="margin: 0; border: none; padding: 0;">現在の応募者</h2>
             
             <div class="input-group" style="display: flex; gap: 8px; align-items: center; margin: 0;">
-                <select id="action-player-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.95em;">
-                    <option value="">-- プレイヤーを選択 --</option>
-                </select>
+                <span id="action-player-label" class="u-muted" style="font-size: 0.9em;"></span>
                 <button type="button" id="btn-apply" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">応募する</button>
                 <button type="button" id="btn-cancel-apply" class="btn-cancel" style="padding: 6px 12px; font-size: 0.95em;">取り消す</button>
             </div>
@@ -144,60 +142,69 @@ function renderDetail() {
     `;
 }
 
-function setupActionForms() {
-    const select = document.getElementById("action-player-select");
-    if (select) {
-        allPlayers.forEach(p => {
-            const opt = document.createElement("option");
-            opt.value = p.player_id;
-            opt.textContent = p.player_name;
-            select.appendChild(opt);
-        });
+async function setupActionForms() {
+    // 応募はログイン中の自分（Auth UUID / Discord ID → player_id）だけを使う。他人のplayer_id選択は廃止。
+    const { session, player: me } = await Utils.getCurrentUserPlayerContext({
+      players: allPlayers,
+      loadProfile: false
+    });
+    const label = document.getElementById("action-player-label");
+    const applyBtn = document.getElementById("btn-apply");
+    const cancelBtn = document.getElementById("btn-cancel-apply");
+
+    if (!session) {
+      if (label) label.textContent = "応募にはDiscordログインが必要です";
+      if (applyBtn) applyBtn.disabled = true;
+      if (cancelBtn) cancelBtn.disabled = true;
+    } else if (!me) {
+      if (label) label.textContent = "プレイヤー名簿との連携がありません（discord_id未登録の可能性）";
+      if (applyBtn) applyBtn.disabled = true;
+      if (cancelBtn) cancelBtn.disabled = true;
+    } else if (label) {
+      label.textContent = `応募者: ${me.player_name}`;
     }
 
-    // 応募ボタン
     document.getElementById("btn-apply")?.addEventListener("click", async () => {
-        const playerId = select.value;
-        if (!playerId) return alert("プレイヤーを選択してください。");
+        if (!me?.player_id) return alert("ログイン中のプレイヤーを解決できません。");
 
         if (currentRecruit.status !== "open") return alert("この募集は現在受け付けていません。");
-        if (currentApplicants.some(a => a.player_id === playerId)) return alert("すでにこの募集に応募しています。");
+        if (currentApplicants.some(a => a.player_id === me.player_id)) return alert("すでにこの募集に応募しています。");
 
         const btn = document.getElementById("btn-apply");
         btn.disabled = true;
 
         try {
+            // player_id は Worker が JWT から解決して上書きする。
             await Utils.apiPost("recruitment_applicants", [{
-                recruitment_id: currentRecruit.id, // DBの外部キー名へ揃え、募集との関連を確実に保存する。
-                player_id: playerId
+                recruitment_id: currentRecruit.id
             }]);
             alert("応募しました！");
             location.reload();
         } catch (err) {
             console.error(err);
-            alert("応募に失敗しました。特設サイト関連に報告してください。");
+            alert("応募に失敗しました: " + (err.message || "特設サイト関連に報告してください。"));
             btn.disabled = false;
         }
     });
 
-    // 参加取り消しボタン
     document.getElementById("btn-cancel-apply")?.addEventListener("click", async () => {
-        const playerId = select.value;
-        if (!playerId) return alert("プレイヤーを選択してください。");
-        if (!currentApplicants.some(a => a.player_id === playerId)) return alert("この募集には応募していません。");
+        if (!me?.player_id) return alert("ログイン中のプレイヤーを解決できません。");
+        if (!currentApplicants.some(a => a.player_id === me.player_id)) return alert("この募集には応募していません。");
         if (!confirm("本当に参加を取り消しますか？")) return;
 
         const btn = document.getElementById("btn-cancel-apply");
         btn.disabled = true;
 
         try {
-            // 一覧と同じ外部キー名で絞り込み、別募集の応募を削除しないようにする。
-            await Utils.apiDelete("recruitment_applicants", `recruitment_id=eq.${currentRecruit.id}&player_id=eq.${playerId}`);
+            await Utils.apiDelete(
+              "recruitment_applicants",
+              `recruitment_id=eq.${currentRecruit.id}&player_id=eq.${encodeURIComponent(me.player_id)}`
+            );
             alert("参加を取り消しました。");
             location.reload();
         } catch (err) {
             console.error(err);
-            alert("取り消しに失敗しました。特設サイト関連に報告してください。");
+            alert("取り消しに失敗しました: " + (err.message || "特設サイト関連に報告してください。"));
             btn.disabled = false;
         }
     });

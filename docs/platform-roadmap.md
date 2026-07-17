@@ -6,7 +6,7 @@
 
 | 項目 | 方針 |
 |------|------|
-| フロント公開 | **Cloudflare Pages**（GitHub Pages から移行中） |
+| フロント公開 | **Cloudflare**（静的アセット Worker `fctzs`）。GitHub Pages から移行済み・締めは [`cloudflare-pages.md` §8](./cloudflare-pages.md) |
 | API / バックエンド | **Cloudflare Workers** + **Supabase** を正本のまま維持 |
 | クライアント追加 | **Flutter** を現行 Web と**並列**で学習・試作 |
 | 学習テーマ | リッチUI / 自前サーバー / スマホアプリ（本番と分離） |

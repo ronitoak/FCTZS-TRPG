@@ -129,6 +129,19 @@ function resolveDiscordWebhookUrl(env, webhookUrl = null) {
   return env.DISCORD_WEBHOOK_URL || null;
 }
 
+/**
+ * sessions.notes の「[観戦希望]」以降から Discord メンション `<@数字>` を抽出する。
+ * フロント（session_detail.js）が追記する形式と揃える。
+ */
+function extractViewerMentions(notes) {
+  if (!notes || typeof notes !== "string") return [];
+  const markerIndex = notes.indexOf("[観戦希望]");
+  if (markerIndex < 0) return [];
+  const viewerSection = notes.slice(markerIndex);
+  const matches = viewerSection.match(/<@\d+>/g);
+  return matches ? [...new Set(matches)] : [];
+}
+
 async function sendDiscordNotification(content, embed, env, webhookUrl, customUsername = null, customAvatarUrl = null) {
   console.log("Discord通知を開始します..."); // 外部通知の開始点をWorkerログで追跡できるようにする。
   const url = resolveDiscordWebhookUrl(env, webhookUrl);
@@ -228,7 +241,7 @@ async function notifyScheduledSessions(env) {
         const startDate = encodeURIComponent(now.toISOString());
         const endDate = encodeURIComponent(tomorrow.toISOString());
 
-        const { res: sessionRes, text: sessionText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.sessions}?select=id,start,run_id,title,stream_url&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`);
+        const { res: sessionRes, text: sessionText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.sessions}?select=id,start,run_id,title,stream_url,notes&status=eq.scheduled&start=gte.${startDate}&start=lt.${endDate}`);
 
         if (!sessionRes.ok) {
           console.error("Supabase APIエラー(Sessions):", sessionText);
@@ -304,9 +317,15 @@ async function notifyScheduledSessions(env) {
 
               const displayPlayerList = displayPlayers.length > 0 ? displayPlayers.join("\n") : "- 参加者情報なし";
 
+              const viewerMentions = extractViewerMentions(session.notes);
+              const viewerSection = viewerMentions.length > 0
+                ? `\n\n**【観戦】**\n${viewerMentions.map(m => `- ${m}`).join("\n")}`
+                : "";
+
               const mentions = [];
               if (gmDiscordId) mentions.push(`<@${gmDiscordId}>`);
               playerDiscordIds.forEach(dId => mentions.push(`<@${dId}>`));
+              viewerMentions.forEach(m => mentions.push(m));
 
               const notificationLine = mentions.length > 0 ? [...new Set(mentions)].join(" ") : "";
 
@@ -320,7 +339,7 @@ async function notifyScheduledSessions(env) {
                 `${notificationLine}\n🔔 **セッション通知**`,
                 {
                   title: `卓名：${runTitle} （${sessionTitle}）`,
-                  description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${gmName}\n\n**【PL】**\n${displayPlayerList}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
+                  description: `**開始予定：${timeString}**\n\n**【GM】**\n- ${gmName}\n\n**【PL】**\n${displayPlayerList}${viewerSection}\n\n**【配信URL（ネタバレ注意）】**\n${streamURL}\n\nFCTZS TRPG部に集合！`,
                   color: DISCORD_COLORS.sessionNotice,
                   url: `${resolveSiteUrl(env)}/sessions/detail.html?id=${session.run_id}`
                 },

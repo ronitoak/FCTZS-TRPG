@@ -4,6 +4,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-17",
+    type: "fix",
+    title: "セッション通知に観戦希望者メンションを反映",
+    detail: "定期Discord通知が sessions.notes の観戦希望（<@ID>）を読んでいなかったため、Cron通知のメンションと埋め込み【観戦】へ含めるよう修正しました。"
+  },
+  {
+    date: "2026-07-17",
     type: "improvement",
     title: "Cloudflare Pages移行とFlutter並列の土台を整備",
     detail: "公開URLをsite-configへ集約し、Pages用dist生成とデプロイworkflowを追加しました。Worker API契約とFlutter学習用スケルトンもdocs/flutterへ用意しています。"

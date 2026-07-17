@@ -2,8 +2,9 @@ name = "fctzs-trpg" # 自分のWorker名に合わせて変更
 main = "index.js"
 compatibility_date = "2024-04-01"
 
-# Discord埋め込み用フロントURLは Dashboard の vars で SITE_URL を設定する。
-# 例: SITE_URL = "https://fctzs-trpg.pages.dev"
+# Discord埋め込み用フロントURL。deploy 時に Dashboard の vars を上書きするため、ここにも正本を置く。
+[vars]
+SITE_URL = "https://fctzs.daruji.workers.dev"
 
 [triggers]
 crons = ["0 3 * * *"]
@@ -11,3 +12,8 @@ crons = ["0 3 * * *"]
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "fctzs-trpg-assets"
+
+# Dashboard で有効化した Workers Logs を deploy で落とさない
+[observability]
+[observability.logs]
+enabled = true

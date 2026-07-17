@@ -142,7 +142,8 @@ Discord 通知の「詳細を見る」リンクなどが、新しいフロント
      `https://fctzs.daruji.workers.dev/...` になっていれば成功
    - まだ `github.io` のままなら、変数名の typo（`SITE_URL` 完全一致）と、編集した Worker が API 側かを確認
 
-ローカルの `wrangler.toml` に書かなくても、Dashboard の Variables が本番に効きます。
+`wrangler deploy` はローカル `wrangler.toml` でリモート設定を上書きする。  
+`SITE_URL` と observability は [`worker/wrangler.toml`](../worker/wrangler.toml) に書いておき、Dashboard だけに頼らないこと。
 
 ---
 

@@ -131,6 +131,44 @@
       </div>
     </dialog>
 
+    <!-- 部活外通過シナリオ追加：player_detail.js が制御 -->
+    <dialog id="external-passed-modal" class="modal">
+      <div class="modal-content" style="max-width: 480px;">
+        <h3 style="margin-top: 0;">部活外シナリオを追加</h3>
+        <p class="u-muted" style="font-size: 0.85rem;">サイト未登録のシナリオを個人の通過済履歴として残せます（シナリオ一覧には出ません）。</p>
+        <form id="external-passed-form" style="display: grid; gap: 10px;">
+          <div class="form-group" style="margin: 0;">
+            <label>シナリオ名</label>
+            <input type="text" name="external_title" class="form-control" placeholder="必須" required maxlength="200">
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label>システム</label>
+            <input type="text" name="external_system" class="form-control" placeholder="任意" maxlength="100">
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label>メモ</label>
+            <input type="text" name="external_note" class="form-control" placeholder="任意" maxlength="200">
+          </div>
+          <div class="modal-actions" style="margin-top: 4px;">
+            <button type="submit" class="btn-primary">追加</button>
+            <button type="button" id="close-external-passed-modal" class="btn-secondary">閉じる</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <!-- GM可能シナリオ追加：player_detail.js が候補リストを描画 -->
+    <dialog id="gmable-register-modal" class="modal">
+      <div class="modal-content" style="max-width: 520px;">
+        <h3 style="margin-top: 0;">GM可能シナリオを登録</h3>
+        <p class="u-muted" style="font-size: 0.85rem;">通過・GM経験のあるシナリオから選べます。未経験のものは <a href="../scenarios/index.html">シナリオ一覧</a> の詳細から登録できます。</p>
+        <div id="gmable-modal-candidates" style="max-height: 320px; overflow-y: auto; margin: 12px 0;"></div>
+        <div class="modal-actions">
+          <button type="button" id="close-gmable-register-modal" class="btn-secondary">閉じる</button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- コメント欄：comments.js の描画先 -->
     <div id="comments-root"></div>
       <footer>

@@ -1707,14 +1707,24 @@ dialog.modal::backdrop {
   align-items: stretch;
 }
 
+/*
+ * 行高さはカレンダー側の内容で決め、左カラムはそれに合わせて内側スクロールする。
+ * height:0 + min-height:100% で左のコンテンツ高さが行サイズへ波及しないようにする。
+ */
 .dashboard-personal {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   min-width: 0;
+  height: 0;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dashboard-personal .dashboard-card {
+  flex: 0 0 auto;
   min-width: 0;
   overflow: hidden;
 }
@@ -1807,7 +1817,9 @@ dialog.modal::backdrop {
   }
 
   .dashboard-personal {
-    grid-template-rows: auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   .dashboard-login-card,

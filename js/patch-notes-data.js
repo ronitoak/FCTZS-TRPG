@@ -11,6 +11,7 @@ window.PATCH_NOTES = Object.freeze([
     title: "Homeダッシュボードのレイアウトを再配置",
     detail: "ログイン後は左に自分の次回予定・募集、右に予定カレンダー、下段に部全体の直近予定と進行中セッションを表示するようにしました。"
   },
+
   {
     date: "2026-07-18",
     type: "feature",

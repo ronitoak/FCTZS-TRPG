@@ -8,6 +8,24 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter並列クライアントで特設サイトをゲスト閲覧できるようにした",
+    detail: "ホーム・プレイヤー・シナリオ・セッション・募集・キャラクターの一覧/詳細と相互遷移を実装しました（書込み・ログインは未対応）。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
+    title: "Flutter並列クライアントの最初のマイルストーンを開始",
+    detail: "flutter/fctzs_app を作成し、API Base表示・Players/Scenarios一覧・プルリフレッシュ（ゲストGET）まで実装しました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
+    title: "プラットフォーム方針ドキュメントを現行構成に整合",
+    detail: "ロードマップのPhase進捗とWorkers静的配信の表記を揃え、移行締めのコード完了と運用チェックを分離しました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "リポジトリ内の不要ファイルを整理",
     detail: "空ファイル・実験用Worker雛形・陳腐化した仕様ドラフト・未使用スクリプトを削除し、readmeの構成説明を現行運用に合わせました。"
   },

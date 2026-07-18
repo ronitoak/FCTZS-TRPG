@@ -1,8 +1,5 @@
-/// 一覧GETだけの最小 UI 例。
-/// 使い方:
-/// 1. flutter create fctzs_app
-/// 2. flutter pub add http
-/// 3. 本ファイルと api_client.dart を lib/ へコピーし、main.dart を置き換える
+/// 一覧GETだけの最小 UI 例（控え）。
+/// 実装の正本は flutter/fctzs_app/lib/main.dart。
 import 'package:flutter/material.dart';
 import 'api_client.dart';
 

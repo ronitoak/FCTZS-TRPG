@@ -1,10 +1,10 @@
 /**
- * Cloudflare Pages 向けに静的フロントだけを dist/ へコピーする。
+ * Workers Static Assets（フロント Worker fctzs）向けに静的フロントだけを dist/ へコピーする。
  * worker/ tests/ public/ などは公開成果物に含めない。
  *
  * 環境変数（任意）:
- *   FCTZS_SITE_URL          例: https://fctzs-trpg.pages.dev
- *   FCTZS_AUTH_REDIRECT_URL 例: https://fctzs-trpg.pages.dev/
+ *   FCTZS_SITE_URL          例: https://fctzs.daruji.workers.dev
+ *   FCTZS_AUTH_REDIRECT_URL 例: https://fctzs.daruji.workers.dev/
  *   FCTZS_API_BASE          例: https://fctzs-trpg.daruji.workers.dev
  */
 import {

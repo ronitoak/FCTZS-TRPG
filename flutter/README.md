@@ -1,41 +1,50 @@
 # Flutter 並列クライアント（学習用）
 
-現行の静的 Web（Cloudflare Pages）は本番閲覧用として残し、Flutter は**同じ Worker API** を叩く別アプリとして進める。
+現行の静的 Web（Cloudflare Workers Static Assets / Worker `fctzs`）は本番閲覧用として残し、Flutter は**同じ Worker API** を叩く別アプリとして閲覧できるようにする。
 
 詳細契約: [`docs/api-contract.md`](../docs/api-contract.md)  
-全体方針: [`docs/platform-roadmap.md`](../docs/platform-roadmap.md)
+全体方針: [`docs/platform-roadmap.md`](../docs/platform-roadmap.md)  
+API メモ: [`API_STARTER.md`](./API_STARTER.md)
 
 ## 前提
 
-- Flutter SDK 3.x
+- Flutter SDK 3.x（本環境例: `%USERPROFILE%\flutter`）
 - API Base: `https://fctzs-trpg.daruji.workers.dev`（変更時は `--dart-define=API_BASE=...`）
-- 認証: 当面は **GET のみ（ゲスト閲覧）** から始め、ログインは次ステップ
+- 認証: 当面は **GET のみ（ゲスト閲覧）**。書込み・Discord ログインは未移植
 
-## 最小スコープ（最初のマイルストーン）
+## プロジェクト
 
-1. アプリ起動 → API Base を表示
-2. `GET /api/players` を一覧表示
-3. `GET /api/scenario_summary`（失敗時 `/api/scenarios`）を一覧表示
-4. プルリフレッシュ
+実アプリ: [`fctzs_app/`](./fctzs_app/)  
+たたき台の控え: [`lib_starter/`](./lib_starter/)
 
-書込み・Discord ログインは Web 側が安定している機能を1つだけ後から移植する。
-
-## プロジェクトの作り方
-
-このディレクトリはスケルトン文書のみ。実プロジェクトは次で作成する:
+### 起動
 
 ```bash
-cd flutter
-flutter create fctzs_app
-cd fctzs_app
-flutter pub add http
+cd flutter/fctzs_app
+flutter pub get
+flutter run -d chrome
+# または
+flutter run -d windows
 ```
 
-実装のたたき台は [`lib_starter/`](./lib_starter/) を `fctzs_app/lib/` へコピーして始める。
+### 閲覧できる画面（ゲスト）
+
+| タブ | 内容 |
+|------|------|
+| ホーム | 直近開催・進行中卓（`active`）・最近コメント |
+| PL | プレイヤー一覧 / 詳細（プロフィール・キャラ・参加卓） |
+| シナリオ | 一覧検索 / 詳細（紹介・関連卓・通過キャラ・気になる人数・コメント） |
+| セッション | 卓一覧・開催一覧 / 卓詳細（GM・PL・キャラ・開催URL） |
+| 募集 | 一覧検索 / 詳細（応募者） |
+| キャラ | 一覧検索 / 詳細（能力・技能・通過シナリオ） |
+
+一覧はプルリフレッシュ対応。詳細間はタップで相互遷移する。
+
+### 次のマイルストーン案
+
+- スケジュール照合（`/api/schedule_match`）
+- Discord ログインと書込み（コメント / 気になる / 応募）を1機能だけ移植
 
 ## 移行 vs 並列の再判断
 
-Pages 安定後、かつ Flutter で閲覧3画面（Players / Scenarios / Recruit または Sessions）が動いた時点で決める。
-
-- 並列継続: Web=管理、Flutter=スマホ体験
-- 段階移行: 機能単位で Flutter へ寄せる
+閲覧3画面以上が動いている。並列継続（Web=管理、Flutter=スマホ閲覧）を当面の前提とする。

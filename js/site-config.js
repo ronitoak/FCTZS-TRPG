@@ -2,7 +2,7 @@
 
 /**
  * フロント公開先・API・OAuth の環境依存値。
- * Cloudflare Pages へ切り替えるときは CI の prepare-pages が値を上書きする。
+ * CI の prepare-pages が dist 生成時に値を上書きする（Workers Static Assets 向け）。
  * 手動確認時は本ファイルを編集するか、HTML 読込前に window.FCTZS_CONFIG を定義する。
  */
 window.FCTZS_CONFIG = Object.freeze({

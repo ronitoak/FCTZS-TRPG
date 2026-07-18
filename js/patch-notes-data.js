@@ -7,19 +7,25 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-18",
-    type: "fix",
+    type: "feature",
+    title: "セッション一覧に検索・絞り込みを追加",
+    detail: "キーワード（タイトル・シナリオ・GM・PL）、ステータス、システムで卓一覧をリアルタイムに絞り込めるようにしました。"
+  },
+  {
+    date: "2026-07-18",
+    type: "improvement",
     title: "卓情報更新の Forbidden を緩和",
     detail: "Service Role 経由の卓更新で Auth所有者のみ許可していたため、GM・参加プレイヤーや user_id 未設定の旧卓が更新できませんでした。メンバー編集を許可し、未所有卓は更新時に所有者を紐付けます。"
   },
   {
     date: "2026-07-17",
-    type: "fix",
+    type: "improvement",
     title: "調整さんCSVインポートの Upsert 重複エラーを修正",
     detail: "複数プレイヤー分の予定をログイン中本人のIDへ上書きしていたため複合キーが衝突していました。本人のみ／複数人取込を分岐し、同一キーは後勝ちで畳むよう修正しました。"
   },
   {
     date: "2026-07-17",
-    type: "fix",
+    type: "improvement",
     title: "卓作成時の run_players RLS エラーを解消",
     detail: "junction同期トリガーが利用者JWTのRLSに掛かっていたため、所有者の Auth UUID を明示したうえで Service Role 経由で卓を作成・更新するよう変更しました。"
   },

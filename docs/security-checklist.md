@@ -1,6 +1,6 @@
 # セキュリティ確認チェックリスト
 
-最終更新: 2026-07-17  
+最終更新: 2026-07-19  
 コード側の境界（JWT実検証・所有者フィールド上書き・予定同期のWorker化・R2制限）とあわせて、Dashboard で DB 実効を確認する。
 
 ## 1. 寛容ポリシーが残っていないこと
@@ -30,7 +30,7 @@ WHERE n.nspname = 'public'
   AND c.relname IN (
     'players', 'player_profiles', 'player_availability',
     'characters', 'character_attributes', 'character_skills', 'character_scenarios',
-    'scenarios', 'runs', 'run_players', 'run_characters', 'sessions',
+    'scenarios', 'scenario_interests', 'runs', 'run_players', 'run_characters', 'sessions',
     'recruitments', 'recruitment_applicants', 'comments', 'posts'
   )
 ORDER BY c.relname;

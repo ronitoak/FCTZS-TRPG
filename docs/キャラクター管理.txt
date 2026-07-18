@@ -10,6 +10,8 @@
 
 所属プレイヤーの紐付け、および通過したシナリオ履歴の自動マッピング。
 
+代理作成: 新規登録時に「プレイヤー」欄で所有者を選べる。characters.player_id は所有者、characters.user_id は作成者（Auth UUID）となり、RLS上の編集権限は作成者側に紐づく（Worker の POST /api/character_full が Service Role で挿入）。
+
 2.2. 画面イメージ（UI構成要素）
 キャラクター一覧・検索画面:
 
@@ -35,9 +37,12 @@ reading,text,YES,キャラクター名のよみがな
 system,text,YES,"TRPGシステム名（例: CoC6, Emoklore）"
 state,text,YES,状態（生存、ロストなど）
 player_id,text,YES,所有プレイヤーのID（外部キー）
+user_id,uuid,YES,作成者（Auth UUID）。編集権限の主体
 job / age / gender,text / int / text,YES,職業 / 年齢 / 性別
 height / weight,integer,YES,身長 / 体重
 origin / memo,text,YES,出自 / キャラクターメモ・設定
+iachara_url / image_url / race / original_species,text,YES,いあきゃらURL / 画像 / 種族 / オリジナル種
+updated_at,timestamptz,NO,更新日時
 
 character_attributes テーブル（能力値）
 カラム名,データ型,Nullable,説明
@@ -45,6 +50,8 @@ character_id,text,NO,キャラクターID（複合主キー）
 key,text,NO,"能力値のキー名（例: STR, HP）（複合主キー）"
 value_int,integer,YES,数値型の値
 value_emotion,USER-DEFINED,YES,感情データ用（エモクロアTRPG等に対応）
+updated_at,timestamptz,NO,更新日時
+user_id,uuid,YES,所有者 Auth UUID
 
 character_skills テーブル（習得技能値）
 カラム名,データ型,Nullable,説明
@@ -52,3 +59,6 @@ character_id,text,NO,キャラクターID（複合主キー）
 name,text,NO,"技能名（例: 目星, 調査）（複合主キー）"
 value,integer,NO,最終的な合計技能値（％）
 skill_key / label,text,YES,システム共通化用の内部キー / 表示ラベル
+user_id,uuid,YES,所有者 Auth UUID
+
+関連ビュー: v_character_list / v_character_details（属性・感情・技能・通過シナリオを集約）

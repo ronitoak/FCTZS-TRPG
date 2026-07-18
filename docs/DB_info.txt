@@ -1,8 +1,7 @@
 # FCTZS-TRPG public スキーマ列一覧
-# 更新日: 2026-07-17
-# 出典: 既存 information_schema ダンプをベースに、database-optimization 適用後の
-#       junction / 軽量ビュー、および Worker・フロントが参照する列を反映。
-# 注意: column_id は旧ダンプ由来のため欠番があり、新規追加列は概算番号の場合がある。
+# 更新日: 2026-07-19
+# 出典: 本番 information_schema 相当の列一覧JSON（ユーザー提供）で全面置換。
+#       JSONに無い旧行は捨て、column_id は提供値をそのまま使用。
 #       本番の正本は下記SQLで再取得し、本ファイルを置き換えること。
 #
 # --- 再取得用SQL (Supabase SQL Editor) ---
@@ -21,271 +20,275 @@
 # ORDER BY c.table_name, c.ordinal_position;
 # ----------------------------------------
 
-| table_name               | column_name            | column_id | data_type                | is_nullable | kind  | notes |
-| ------------------------ | ---------------------- | --------- | ------------------------ | ----------- | ----- | ----- |
-| character_attributes     | character_id           | 1         | text                     | NO          | table | 親: characters.id |
-| character_attributes     | key                    | 2         | text                     | NO          | table | STR等のキー |
-| character_attributes     | value_int              | 3         | integer                  | YES         | table | |
-| character_attributes     | value_emotion          | 4         | USER-DEFINED             | YES         | table | emotion enum |
-| character_attributes     | updated_at             | 5         | timestamp with time zone | NO          | table | |
-| character_attributes     | user_id                | 6         | uuid                     | YES         | table | 所有者 |
-| character_last_session   | character_id           | 1         | text                     | YES         | view  | run_characters接合版 |
-| character_last_session   | last_session_start     | 2         | timestamp with time zone | YES         | view  | |
-| character_scenarios      | character_id           | 1         | text                     | NO          | table | PK複合 |
-| character_scenarios      | scenario_id            | 2         | text                     | NO          | table | PK複合 |
-| character_scenarios      | user_id                | 3         | uuid                     | YES         | table | |
-| character_skill_basecalc | character_id           | 1         | text                     | YES         | view  | レガシー |
-| character_skill_basecalc | system                 | 2         | text                     | YES         | view  | |
-| character_skill_basecalc | skill_key              | 3         | text                     | YES         | view  | |
-| character_skill_basecalc | name                   | 4         | text                     | YES         | view  | |
-| character_skill_basecalc | sort_order             | 5         | integer                  | YES         | view  | |
-| character_skill_basecalc | base_value             | 6         | integer                  | YES         | view  | |
-| character_skill_list     | character_id           | 1         | text                     | YES         | view  | レガシー |
-| character_skill_list     | system                 | 2         | text                     | YES         | view  | |
-| character_skill_list     | name                   | 3         | text                     | YES         | view  | |
-| character_skill_list     | sort_order             | 4         | integer                  | YES         | view  | |
-| character_skill_list     | base_value             | 5         | integer                  | YES         | view  | |
-| character_skill_list     | override_value         | 6         | integer                  | YES         | view  | |
-| character_skill_list     | display_value          | 7         | integer                  | YES         | view  | |
-| character_skills         | character_id           | 1         | text                     | NO          | table | |
-| character_skills         | name                   | 2         | text                     | NO          | table | |
-| character_skills         | value                  | 3         | integer                  | NO          | table | |
-| character_skills         | skill_key              | 4         | text                     | YES         | table | |
-| character_skills         | label                  | 5         | text                     | YES         | table | |
-| character_skills         | user_id                | 6         | uuid                     | YES         | table | |
-| characters               | id                     | 1         | text                     | NO          | table | PK |
-| characters               | name                   | 2         | text                     | NO          | table | |
-| characters               | system                 | 4         | text                     | YES         | table | |
-| characters               | state                  | 5         | text                     | YES         | table | |
-| characters               | updated_at             | 9         | timestamp with time zone | NO          | table | |
-| characters               | job                    | 10        | text                     | YES         | table | |
-| characters               | age                    | 11        | integer                  | YES         | table | |
-| characters               | gender                 | 12        | text                     | YES         | table | |
-| characters               | height                 | 13        | integer                  | YES         | table | |
-| characters               | weight                 | 14        | integer                  | YES         | table | |
-| characters               | origin                 | 15        | text                     | YES         | table | |
-| characters               | memo                   | 16        | text                     | YES         | table | |
-| characters               | iachara_url            | 25        | text                     | YES         | table | |
-| characters               | race                   | 26        | text                     | YES         | table | |
-| characters               | original_species       | 27        | text                     | YES         | table | |
-| characters               | user_id                | 28        | uuid                     | YES         | table | |
-| characters               | player_id              | 29        | text                     | YES         | table | FK→players |
-| characters               | reading                | 30        | text                     | YES         | table | |
-| characters               | image_url              | —         | text                     | YES         | table | アプリ参照。ordinalは本番再取得で確定 |
-| comments                 | id                     | 1         | uuid                     | NO          | table | PK |
-| comments                 | target_type            | 2         | text                     | NO          | table | run/session等 |
-| comments                 | target_id              | 3         | text                     | NO          | table | |
-| comments                 | author                 | 4         | text                     | NO          | table | |
-| comments                 | body                   | 5         | text                     | NO          | table | |
-| comments                 | created_at             | 6         | timestamp with time zone | NO          | table | |
-| comments                 | user_id                | 7         | uuid                     | YES         | table | |
-| player_availability      | player_id              | 1         | text                     | NO          | table | PK複合 |
-| player_availability      | target_date            | 2         | date                     | NO          | table | PK複合 |
-| player_availability      | time_slot              | 3         | text                     | NO          | table | PK複合 |
-| player_availability      | status                 | 4         | text                     | NO          | table | |
-| player_availability      | created_at             | 5         | timestamp with time zone | NO          | table | |
-| player_availability      | updated_at             | 6         | timestamp with time zone | NO          | table | |
-| player_availability      | raw_text               | 7         | text                     | YES         | table | |
-| player_availability      | user_id                | 8         | uuid                     | YES         | table | |
-| player_detail_summary    | player_id              | 1         | text                     | YES         | view  | 軽量ビュー |
-| player_detail_summary    | player_name            | 2         | text                     | YES         | view  | |
-| player_detail_summary    | memo                   | 3         | text                     | YES         | view  | |
-| player_detail_summary    | icon_url               | 4         | text                     | YES         | view  | |
-| player_detail_summary    | profile_text           | 5         | text                     | YES         | view  | |
-| player_detail_summary    | tier_list_first        | 6         | text                     | YES         | view  | |
-| player_detail_summary    | tier_list_second       | 7         | text                     | YES         | view  | |
-| player_detail_summary    | tier_list_third        | 8         | text                     | YES         | view  | |
-| player_detail_summary    | desire_avatar          | 9         | integer                  | YES         | view  | |
-| player_detail_summary    | desire_story           | 10        | integer                  | YES         | view  | |
-| player_detail_summary    | desire_clear           | 11        | integer                  | YES         | view  | |
-| player_detail_summary    | desire_chaos           | 12        | integer                  | YES         | view  | |
-| player_detail_summary    | desire_active          | 13        | integer                  | YES         | view  | |
-| player_detail_summary    | desire_harmony         | 14        | integer                  | YES         | view  | |
-| player_detail_summary    | character_count        | 15        | integer                  | YES         | view  | |
-| player_profiles          | player_id              | 1         | text                     | NO          | table | PK |
-| player_profiles          | icon_url               | 2         | text                     | YES         | table | |
-| player_profiles          | profile_text           | 3         | text                     | YES         | table | |
-| player_profiles          | tier_list_first        | 5         | text                     | YES         | table | |
-| player_profiles          | tier_list_second       | 6         | text                     | YES         | table | |
-| player_profiles          | tier_list_third        | 7         | text                     | YES         | table | |
-| player_profiles          | created_at             | 8         | timestamp with time zone | YES         | table | |
-| player_profiles          | updated_at             | 9         | timestamp with time zone | YES         | table | |
-| player_profiles          | desire_avatar          | 10        | integer                  | YES         | table | |
-| player_profiles          | desire_story           | 11        | integer                  | YES         | table | |
-| player_profiles          | desire_clear           | 12        | integer                  | YES         | table | |
-| player_profiles          | desire_chaos           | 13        | integer                  | YES         | table | |
-| player_profiles          | desire_active          | 14        | integer                  | YES         | table | |
-| player_profiles          | desire_harmony         | 15        | integer                  | YES         | table | |
-| player_profiles          | favorite_character_ids | 16        | ARRAY                    | YES         | table | text[] |
-| player_profiles          | favorite_scenario_ids  | 17        | ARRAY                    | YES         | table | text[] |
-| players                  | player_id              | 1         | text                     | NO          | table | PK |
-| players                  | player_name            | 2         | text                     | NO          | table | |
-| players                  | discord_id             | 3         | text                     | NO          | table | |
-| players                  | created_at             | 4         | timestamp with time zone | YES         | table | |
-| players                  | memo                   | 5         | text                     | YES         | table | |
-| players                  | user_id                | 6         | uuid                     | YES         | table | Auth紐付け。部分一意indexあり |
-| posts                    | id                     | 1         | bigint                   | NO          | table | PK |
-| posts                    | created_at             | 2         | timestamp with time zone | NO          | table | |
-| posts                    | author                 | 3         | text                     | NO          | table | |
-| posts                    | body                   | 5         | text                     | NO          | table | |
-| posts                    | user_id                | 6         | uuid                     | NO          | table | |
-| posts                    | character_id           | 7         | text                     | YES         | table | |
-| recent_comments_with_names | id                   | 1         | uuid                     | YES         | view  | 軽量ビュー |
-| recent_comments_with_names | created_at           | 2         | timestamp with time zone | YES         | view  | |
-| recent_comments_with_names | target_type          | 3         | text                     | YES         | view  | |
-| recent_comments_with_names | target_id            | 4         | text                     | YES         | view  | |
-| recent_comments_with_names | author               | 5         | text                     | YES         | view  | |
-| recent_comments_with_names | body                 | 6         | text                     | YES         | view  | |
-| recent_comments_with_names | target_name          | 7         | text                     | YES         | view  | 対象名称を解決 |
-| recruitment_applicants   | recruitment_id         | 1         | text                     | NO          | table | PK複合 |
-| recruitment_applicants   | player_id              | 2         | text                     | NO          | table | PK複合 |
-| recruitment_applicants   | created_at             | 3         | timestamp with time zone | YES         | table | |
-| recruitment_applicants   | user_id                | 4         | uuid                     | YES         | table | |
-| recruitment_list         | id                     | 1         | text                     | YES         | view  | 軽量ビュー |
-| recruitment_list         | owner_player_id        | 2         | text                     | YES         | view  | |
-| recruitment_list         | owner_player_name      | 3         | text                     | YES         | view  | |
-| recruitment_list         | scenario_id            | 4         | text                     | YES         | view  | |
-| recruitment_list         | scenario_title         | 5         | text                     | YES         | view  | |
-| recruitment_list         | scenario_image_url     | 6         | text                     | YES         | view  | |
-| recruitment_list         | recruit_role           | 7         | text                     | YES         | view  | |
-| recruitment_list         | target_count           | 8         | integer                  | YES         | view  | |
-| recruitment_list         | memo                   | 9         | text                     | YES         | view  | |
-| recruitment_list         | status                 | 10        | text                     | YES         | view  | |
-| recruitment_list         | created_at             | 11        | timestamp with time zone | YES         | view  | |
-| recruitment_list         | applicant_count        | 12        | integer                  | YES         | view  | |
-| recruitments             | id                     | 1         | text                     | NO          | table | PK |
-| recruitments             | owner_player_id        | 2         | text                     | NO          | table | |
-| recruitments             | scenario_id            | 3         | text                     | YES         | table | |
-| recruitments             | recruit_role           | 4         | text                     | NO          | table | GM/PL |
-| recruitments             | target_count           | 5         | integer                  | NO          | table | |
-| recruitments             | memo                   | 6         | text                     | YES         | table | |
-| recruitments             | status                 | 7         | text                     | NO          | table | |
-| recruitments             | created_at             | 8         | timestamp with time zone | YES         | table | |
-| recruitments             | updated_at             | 9         | timestamp with time zone | YES         | table | |
-| recruitments             | user_id                | 10        | uuid                     | YES         | table | |
-| run_characters           | run_id                 | 1         | text                     | NO          | table | junction PK複合 |
-| run_characters           | character_id           | 2         | text                     | NO          | table | junction PK複合 |
-| run_characters           | sort_order             | 3         | integer                  | NO          | table | 配列順序を保持 |
-| run_characters           | user_id                | 4         | uuid                     | YES         | table | DEFAULT auth.uid() |
-| run_players              | run_id                 | 1         | text                     | NO          | table | junction PK複合 |
-| run_players              | player_id              | 2         | text                     | NO          | table | junction PK複合 |
-| run_players              | sort_order             | 3         | integer                  | NO          | table | 配列順序を保持 |
-| run_players              | user_id                | 4         | uuid                     | YES         | table | DEFAULT auth.uid() |
-| runs                     | id                     | 1         | text                     | NO          | table | PK |
-| runs                     | scenario_id            | 2         | text                     | YES         | table | |
-| runs                     | title                  | 4         | text                     | YES         | table | |
-| runs                     | updated_at             | 11        | timestamp with time zone | NO          | table | |
-| runs                     | characters             | 13        | ARRAY                    | YES         | table | text[] 互換期間中の正 |
-| runs                     | status                 | 14        | USER-DEFINED             | NO          | table | run status enum |
-| runs                     | user_id                | 15        | uuid                     | YES         | table | |
-| runs                     | gm_id                  | 16        | text                     | YES         | table | →players.player_id。名称はAPI側で解決 |
-| runs                     | player_ids             | 17        | ARRAY                    | YES         | table | text[] 互換期間中の正 |
-| runs                     | image_url              | —         | text                     | YES         | table | アプリ参照（存在しない環境ではselectから除外） |
-| scenario_list            | id                     | 1         | text                     | YES         | view  | レガシー一覧 |
-| scenario_list            | title                  | 2         | text                     | YES         | view  | |
-| scenario_list            | system                 | 3         | text                     | YES         | view  | |
-| scenario_list            | description            | 4         | text                     | YES         | view  | |
-| scenario_list            | notes                  | 5         | text                     | YES         | view  | |
-| scenario_list            | updated_at             | 6         | timestamp with time zone | YES         | view  | |
-| scenario_list            | author                 | 7         | text                     | YES         | view  | |
-| scenario_list            | has_active_run         | 8         | boolean                  | YES         | view  | |
-| scenario_list            | next_scheduled_start   | 9         | timestamp with time zone | YES         | view  | |
-| scenario_list            | trend_story_chaos      | 10        | text                     | YES         | view  | |
-| scenario_list            | trend_avatar_clear     | 11        | text                     | YES         | view  | |
-| scenario_list            | trend_harmony_active   | 12        | text                     | YES         | view  | |
-| scenario_list            | min_players            | 13        | integer                  | YES         | view  | |
-| scenario_list            | max_players            | 14        | integer                  | YES         | view  | |
-| scenario_list            | play_time_minutes      | 15        | integer                  | YES         | view  | |
-| scenario_list            | lost_rate              | 16        | text                     | YES         | view  | |
-| scenario_summary         | id                     | 1         | text                     | YES         | view  | 軽量ビュー |
-| scenario_summary         | title                  | 2         | text                     | YES         | view  | |
-| scenario_summary         | system                 | 3         | text                     | YES         | view  | |
-| scenario_summary         | author                 | 4         | text                     | YES         | view  | |
-| scenario_summary         | image_url              | 5         | text                     | YES         | view  | |
-| scenario_summary         | updated_at             | 6         | timestamp with time zone | YES         | view  | |
-| scenario_summary         | trend_story_chaos      | 7         | text                     | YES         | view  | |
-| scenario_summary         | trend_avatar_clear     | 8         | text                     | YES         | view  | |
-| scenario_summary         | trend_harmony_active   | 9         | text                     | YES         | view  | |
-| scenario_summary         | min_players            | 10        | integer                  | YES         | view  | |
-| scenario_summary         | max_players            | 11        | integer                  | YES         | view  | |
-| scenario_summary         | play_time_minutes      | 12        | integer                  | YES         | view  | |
-| scenario_summary         | lost_rate              | 13        | text                     | YES         | view  | |
-| scenario_summary         | run_count              | 14        | integer                  | YES         | view  | |
-| scenarios                | id                     | 1         | text                     | NO          | table | PK |
-| scenarios                | title                  | 2         | text                     | NO          | table | |
-| scenarios                | system                 | 3         | text                     | YES         | table | |
-| scenarios                | description            | 7         | text                     | YES         | table | |
-| scenarios                | notes                  | 8         | text                     | YES         | table | |
-| scenarios                | updated_at             | 10        | timestamp with time zone | NO          | table | |
-| scenarios                | author                 | 11        | text                     | YES         | table | |
-| scenarios                | user_id                | 12        | uuid                     | YES         | table | |
-| scenarios                | trend_story_chaos      | 13        | text                     | YES         | table | |
-| scenarios                | trend_avatar_clear     | 14        | text                     | YES         | table | |
-| scenarios                | trend_harmony_active   | 15        | text                     | YES         | table | |
-| scenarios                | min_players            | 16        | integer                  | YES         | table | |
-| scenarios                | max_players            | 17        | integer                  | YES         | table | |
-| scenarios                | play_time_minutes      | 18        | integer                  | YES         | table | |
-| scenarios                | lost_rate              | 19        | text                     | YES         | table | |
-| scenarios                | image_url              | —         | text                     | YES         | table | アプリ参照 |
-| session_list             | id                     | 1         | text                     | YES         | view  | レガシー |
-| session_list             | run_id                 | 2         | text                     | YES         | view  | |
-| session_list             | start                  | 3         | timestamp with time zone | YES         | view  | |
-| session_list             | status                 | 4         | USER-DEFINED             | YES         | view  | |
-| session_list             | notes                  | 5         | text                     | YES         | view  | |
-| session_list             | updated_at             | 6         | timestamp with time zone | YES         | view  | |
-| session_list             | title                  | 7         | text                     | YES         | view  | |
-| sessions                 | id                     | 1         | text                     | NO          | table | PK |
-| sessions                 | run_id                 | 2         | text                     | YES         | table | →runs.id |
-| sessions                 | start                  | 3         | timestamp with time zone | YES         | table | |
-| sessions                 | title                  | 5         | text                     | YES         | table | |
-| sessions                 | notes                  | 9         | text                     | YES         | table | |
-| sessions                 | updated_at             | 12        | timestamp with time zone | NO          | table | |
-| sessions                 | status                 | 14        | USER-DEFINED             | NO          | table | session status enum |
-| sessions                 | replay_url             | 15        | text                     | YES         | table | |
-| sessions                 | stream_url             | 16        | text                     | YES         | table | |
-| sessions                 | user_id                | 17        | uuid                     | YES         | table | |
-| system_attributes        | system                 | 1         | text                     | NO          | table | マスタ |
-| system_attributes        | key                    | 2         | text                     | NO          | table | |
-| system_attributes        | label                  | 3         | text                     | NO          | table | |
-| system_attributes        | kind                   | 4         | text                     | NO          | table | |
-| system_attributes        | sort_order             | 5         | integer                  | NO          | table | |
-| system_attributes        | note                   | 6         | text                     | YES         | table | |
-| system_skill_bases       | system                 | 1         | text                     | NO          | table | マスタ |
-| system_skill_bases       | name                   | 2         | text                     | NO          | table | |
-| system_skill_bases       | base_value             | 3         | integer                  | NO          | table | |
-| system_skill_bases       | sort_order             | 4         | integer                  | NO          | table | |
-| system_skill_bases       | updated_at             | 5         | timestamp with time zone | NO          | table | |
-| system_skill_bases       | dex_mul                | 6         | numeric                  | YES         | table | |
-| system_skill_bases       | dex_div                | 7         | numeric                  | YES         | table | |
-| system_skill_bases       | edu_mul                | 8         | numeric                  | YES         | table | |
-| system_skill_bases       | edu_div                | 9         | numeric                  | YES         | table | |
-| system_skill_bases       | skill_key              | 10        | text                     | YES         | table | |
-| v_character_details      | id                     | 1         | text                     | YES         | view  | レガシー集約 |
-| v_character_details      | name                   | 2         | text                     | YES         | view  | |
-| v_character_details      | reading                | 3         | text                     | YES         | view  | |
-| v_character_details      | system                 | 4         | text                     | YES         | view  | |
-| v_character_details      | state                  | 5         | text                     | YES         | view  | |
-| v_character_details      | job                    | 6         | text                     | YES         | view  | |
-| v_character_details      | age                    | 7         | integer                  | YES         | view  | |
-| v_character_details      | gender                 | 8         | text                     | YES         | view  | |
-| v_character_details      | height                 | 9         | integer                  | YES         | view  | |
-| v_character_details      | weight                 | 10        | integer                  | YES         | view  | |
-| v_character_details      | origin                 | 11        | text                     | YES         | view  | |
-| v_character_details      | memo                   | 12        | text                     | YES         | view  | |
-| v_character_details      | iachara_url            | 13        | text                     | YES         | view  | |
-| v_character_details      | race                   | 14        | text                     | YES         | view  | |
-| v_character_details      | original_species       | 15        | text                     | YES         | view  | |
-| v_character_details      | player_id              | 16        | text                     | YES         | view  | |
-| v_character_details      | player_name            | 17        | text                     | YES         | view  | |
-| v_character_details      | attributes             | 18        | jsonb                    | YES         | view  | |
-| v_character_details      | emotions               | 19        | jsonb                    | YES         | view  | |
-| v_character_details      | skills                 | 20        | jsonb                    | YES         | view  | |
-| v_character_details      | scenarios              | 21        | jsonb                    | YES         | view  | |
-| v_character_list         | id                     | 1         | text                     | YES         | view  | レガシー |
-| v_character_list         | name                   | 2         | text                     | YES         | view  | |
-| v_character_list         | reading                | 3         | text                     | YES         | view  | |
-| v_character_list         | system                 | 4         | text                     | YES         | view  | |
-| v_character_list         | state                  | 5         | text                     | YES         | view  | |
-| v_character_list         | job                    | 6         | text                     | YES         | view  | |
-| v_character_list         | player_id              | 7         | text                     | YES         | view  | |
-| v_character_list         | updated_at             | 8         | timestamp with time zone | YES         | view  | |
+| table_name                 | column_name               | column_id | data_type                | is_nullable | kind  | notes                         |
+| -------------------------- | ------------------------- | --------- | ------------------------ | ----------- | ----- | ----------------------------- |
+| character_attributes       | character_id              | 1         | text                     | NO          | table | 親: characters.id              |
+| character_attributes       | key                       | 2         | text                     | NO          | table | STR等のキー                       |
+| character_attributes       | value_int                 | 3         | integer                  | YES         | table |                               |
+| character_attributes       | value_emotion             | 4         | USER-DEFINED             | YES         | table | emotion enum                  |
+| character_attributes       | updated_at                | 5         | timestamp with time zone | NO          | table |                               |
+| character_attributes       | user_id                   | 6         | uuid                     | YES         | table | 所有者                           |
+| character_last_session     | character_id              | 1         | text                     | YES         | view  | run_characters接合版             |
+| character_last_session     | last_session_start        | 2         | timestamp with time zone | YES         | view  |                               |
+| character_scenarios        | character_id              | 1         | text                     | NO          | table | PK複合                          |
+| character_scenarios        | scenario_id               | 2         | text                     | NO          | table | PK複合                          |
+| character_scenarios        | user_id                   | 3         | uuid                     | YES         | table |                               |
+| character_skill_basecalc   | character_id              | 1         | text                     | YES         | view  | レガシー                          |
+| character_skill_basecalc   | system                    | 2         | text                     | YES         | view  |                               |
+| character_skill_basecalc   | skill_key                 | 3         | text                     | YES         | view  |                               |
+| character_skill_basecalc   | name                      | 4         | text                     | YES         | view  |                               |
+| character_skill_basecalc   | sort_order                | 5         | integer                  | YES         | view  |                               |
+| character_skill_basecalc   | base_value                | 6         | integer                  | YES         | view  |                               |
+| character_skill_list       | character_id              | 1         | text                     | YES         | view  | レガシー                          |
+| character_skill_list       | system                    | 2         | text                     | YES         | view  |                               |
+| character_skill_list       | name                      | 3         | text                     | YES         | view  |                               |
+| character_skill_list       | sort_order                | 4         | integer                  | YES         | view  |                               |
+| character_skill_list       | base_value                | 5         | integer                  | YES         | view  |                               |
+| character_skill_list       | override_value            | 6         | integer                  | YES         | view  |                               |
+| character_skill_list       | display_value             | 7         | integer                  | YES         | view  |                               |
+| character_skills           | character_id              | 1         | text                     | NO          | table |                               |
+| character_skills           | name                      | 2         | text                     | NO          | table |                               |
+| character_skills           | value                     | 3         | integer                  | NO          | table |                               |
+| character_skills           | skill_key                 | 4         | text                     | YES         | table |                               |
+| character_skills           | label                     | 5         | text                     | YES         | table |                               |
+| character_skills           | user_id                   | 6         | uuid                     | YES         | table |                               |
+| characters                 | id                        | 1         | text                     | NO          | table | PK                            |
+| characters                 | name                      | 2         | text                     | NO          | table |                               |
+| characters                 | system                    | 4         | text                     | YES         | table |                               |
+| characters                 | state                     | 5         | text                     | YES         | table |                               |
+| characters                 | updated_at                | 9         | timestamp with time zone | NO          | table |                               |
+| characters                 | job                       | 10        | text                     | YES         | table |                               |
+| characters                 | age                       | 11        | integer                  | YES         | table |                               |
+| characters                 | gender                    | 12        | text                     | YES         | table |                               |
+| characters                 | height                    | 13        | integer                  | YES         | table |                               |
+| characters                 | weight                    | 14        | integer                  | YES         | table |                               |
+| characters                 | origin                    | 15        | text                     | YES         | table |                               |
+| characters                 | memo                      | 16        | text                     | YES         | table |                               |
+| characters                 | iachara_url               | 25        | text                     | YES         | table |                               |
+| characters                 | race                      | 26        | text                     | YES         | table |                               |
+| characters                 | original_species          | 27        | text                     | YES         | table |                               |
+| characters                 | user_id                   | 28        | uuid                     | YES         | table |                               |
+| characters                 | player_id                 | 29        | text                     | YES         | table | FK→players                    |
+| characters                 | reading                   | 30        | text                     | YES         | table |                               |
+| characters                 | image_url                 | 31        | text                     | YES         | table |                               |
+| comments                   | id                        | 1         | uuid                     | NO          | table | PK                            |
+| comments                   | target_type               | 2         | text                     | NO          | table | run/session等                  |
+| comments                   | target_id                 | 3         | text                     | NO          | table |                               |
+| comments                   | author                    | 4         | text                     | NO          | table |                               |
+| comments                   | body                      | 5         | text                     | NO          | table |                               |
+| comments                   | created_at                | 6         | timestamp with time zone | NO          | table |                               |
+| comments                   | user_id                   | 7         | uuid                     | YES         | table |                               |
+| player_availability        | player_id                 | 1         | text                     | NO          | table | PK複合                          |
+| player_availability        | target_date               | 2         | date                     | NO          | table | PK複合                          |
+| player_availability        | time_slot                 | 3         | text                     | NO          | table | PK複合                          |
+| player_availability        | status                    | 4         | text                     | NO          | table |                               |
+| player_availability        | created_at                | 5         | timestamp with time zone | NO          | table |                               |
+| player_availability        | updated_at                | 6         | timestamp with time zone | NO          | table |                               |
+| player_availability        | raw_text                  | 7         | text                     | YES         | table |                               |
+| player_availability        | user_id                   | 8         | uuid                     | YES         | table |                               |
+| player_detail_summary      | player_id                 | 1         | text                     | YES         | view  | 軽量ビュー                         |
+| player_detail_summary      | player_name               | 2         | text                     | YES         | view  |                               |
+| player_detail_summary      | memo                      | 3         | text                     | YES         | view  |                               |
+| player_detail_summary      | icon_url                  | 4         | text                     | YES         | view  |                               |
+| player_detail_summary      | profile_text              | 5         | text                     | YES         | view  |                               |
+| player_detail_summary      | tier_list_first           | 6         | text                     | YES         | view  |                               |
+| player_detail_summary      | tier_list_second          | 7         | text                     | YES         | view  |                               |
+| player_detail_summary      | tier_list_third           | 8         | text                     | YES         | view  |                               |
+| player_detail_summary      | desire_avatar             | 9         | integer                  | YES         | view  |                               |
+| player_detail_summary      | desire_story              | 10        | integer                  | YES         | view  |                               |
+| player_detail_summary      | desire_clear              | 11        | integer                  | YES         | view  |                               |
+| player_detail_summary      | desire_chaos              | 12        | integer                  | YES         | view  |                               |
+| player_detail_summary      | desire_active             | 13        | integer                  | YES         | view  |                               |
+| player_detail_summary      | desire_harmony            | 14        | integer                  | YES         | view  |                               |
+| player_detail_summary      | character_count           | 15        | integer                  | YES         | view  |                               |
+| player_profiles            | player_id                 | 1         | text                     | NO          | table | PK                            |
+| player_profiles            | icon_url                  | 2         | text                     | YES         | table |                               |
+| player_profiles            | profile_text              | 3         | text                     | YES         | table |                               |
+| player_profiles            | tier_list_first           | 5         | text                     | YES         | table |                               |
+| player_profiles            | tier_list_second          | 6         | text                     | YES         | table |                               |
+| player_profiles            | tier_list_third           | 7         | text                     | YES         | table |                               |
+| player_profiles            | created_at                | 8         | timestamp with time zone | YES         | table |                               |
+| player_profiles            | updated_at                | 9         | timestamp with time zone | YES         | table |                               |
+| player_profiles            | desire_avatar             | 10        | integer                  | YES         | table |                               |
+| player_profiles            | desire_story              | 11        | integer                  | YES         | table |                               |
+| player_profiles            | desire_clear              | 12        | integer                  | YES         | table |                               |
+| player_profiles            | desire_chaos              | 13        | integer                  | YES         | table |                               |
+| player_profiles            | desire_active             | 14        | integer                  | YES         | table |                               |
+| player_profiles            | desire_harmony            | 15        | integer                  | YES         | table |                               |
+| player_profiles            | favorite_character_ids    | 16        | ARRAY                    | YES         | table | text[]                        |
+| player_profiles            | favorite_scenario_ids     | 17        | ARRAY                    | YES         | table | text[]                        |
+| player_profiles            | gmable_scenario_ids       | 18        | ARRAY                    | YES         | table | GM可能シナリオID（気になる通知先）           |
+| player_profiles            | external_passed_scenarios | 19        | jsonb                    | NO          | table | 部活外通過の個人履歴 [{id,title,...}]   |
+| players                    | player_id                 | 1         | text                     | NO          | table | PK                            |
+| players                    | player_name               | 2         | text                     | NO          | table |                               |
+| players                    | discord_id                | 3         | text                     | NO          | table |                               |
+| players                    | created_at                | 4         | timestamp with time zone | YES         | table |                               |
+| players                    | memo                      | 5         | text                     | YES         | table |                               |
+| players                    | user_id                   | 6         | uuid                     | YES         | table | Auth紐付け。部分一意indexあり           |
+| posts                      | id                        | 1         | bigint                   | NO          | table | PK                            |
+| posts                      | created_at                | 2         | timestamp with time zone | NO          | table |                               |
+| posts                      | author                    | 3         | text                     | NO          | table |                               |
+| posts                      | body                      | 5         | text                     | NO          | table |                               |
+| posts                      | user_id                   | 6         | uuid                     | NO          | table |                               |
+| posts                      | character_id              | 7         | text                     | YES         | table |                               |
+| recent_comments_with_names | id                        | 1         | uuid                     | YES         | view  | 軽量ビュー                         |
+| recent_comments_with_names | created_at                | 2         | timestamp with time zone | YES         | view  |                               |
+| recent_comments_with_names | target_type               | 3         | text                     | YES         | view  |                               |
+| recent_comments_with_names | target_id                 | 4         | text                     | YES         | view  |                               |
+| recent_comments_with_names | author                    | 5         | text                     | YES         | view  |                               |
+| recent_comments_with_names | body                      | 6         | text                     | YES         | view  |                               |
+| recent_comments_with_names | target_name               | 7         | text                     | YES         | view  | 対象名称を解決                       |
+| recruitment_applicants     | recruitment_id            | 1         | text                     | NO          | table | PK複合                          |
+| recruitment_applicants     | player_id                 | 2         | text                     | NO          | table | PK複合                          |
+| recruitment_applicants     | created_at                | 3         | timestamp with time zone | YES         | table |                               |
+| recruitment_applicants     | user_id                   | 4         | uuid                     | YES         | table |                               |
+| recruitment_list           | id                        | 1         | text                     | YES         | view  | 軽量ビュー                         |
+| recruitment_list           | owner_player_id           | 2         | text                     | YES         | view  |                               |
+| recruitment_list           | owner_player_name         | 3         | text                     | YES         | view  |                               |
+| recruitment_list           | scenario_id               | 4         | text                     | YES         | view  |                               |
+| recruitment_list           | scenario_title            | 5         | text                     | YES         | view  |                               |
+| recruitment_list           | scenario_image_url        | 6         | text                     | YES         | view  |                               |
+| recruitment_list           | recruit_role              | 7         | text                     | YES         | view  |                               |
+| recruitment_list           | target_count              | 8         | integer                  | YES         | view  |                               |
+| recruitment_list           | memo                      | 9         | text                     | YES         | view  |                               |
+| recruitment_list           | status                    | 10        | text                     | YES         | view  |                               |
+| recruitment_list           | created_at                | 11        | timestamp with time zone | YES         | view  |                               |
+| recruitment_list           | applicant_count           | 12        | integer                  | YES         | view  |                               |
+| recruitments               | id                        | 1         | text                     | NO          | table | PK                            |
+| recruitments               | owner_player_id           | 2         | text                     | NO          | table |                               |
+| recruitments               | scenario_id               | 3         | text                     | YES         | table |                               |
+| recruitments               | recruit_role              | 4         | text                     | NO          | table | GM/PL                         |
+| recruitments               | target_count              | 5         | integer                  | NO          | table |                               |
+| recruitments               | memo                      | 6         | text                     | YES         | table |                               |
+| recruitments               | status                    | 7         | text                     | NO          | table |                               |
+| recruitments               | created_at                | 8         | timestamp with time zone | YES         | table |                               |
+| recruitments               | updated_at                | 9         | timestamp with time zone | YES         | table |                               |
+| recruitments               | user_id                   | 10        | uuid                     | YES         | table |                               |
+| run_characters             | run_id                    | 1         | text                     | NO          | table | junction PK複合                 |
+| run_characters             | character_id              | 2         | text                     | NO          | table | junction PK複合                 |
+| run_characters             | sort_order                | 3         | integer                  | NO          | table | 配列順序を保持                       |
+| run_characters             | user_id                   | 4         | uuid                     | YES         | table | DEFAULT auth.uid()            |
+| run_players                | run_id                    | 1         | text                     | NO          | table | junction PK複合                 |
+| run_players                | player_id                 | 2         | text                     | NO          | table | junction PK複合                 |
+| run_players                | sort_order                | 3         | integer                  | NO          | table | 配列順序を保持                       |
+| run_players                | user_id                   | 4         | uuid                     | YES         | table | DEFAULT auth.uid()            |
+| runs                       | id                        | 1         | text                     | NO          | table | PK                            |
+| runs                       | scenario_id               | 2         | text                     | YES         | table |                               |
+| runs                       | title                     | 4         | text                     | YES         | table |                               |
+| runs                       | updated_at                | 11        | timestamp with time zone | NO          | table |                               |
+| runs                       | characters                | 13        | ARRAY                    | YES         | table | text[] 互換期間中の正                |
+| runs                       | status                    | 14        | USER-DEFINED             | NO          | table | run status enum               |
+| runs                       | user_id                   | 15        | uuid                     | YES         | table |                               |
+| runs                       | gm_id                     | 16        | text                     | YES         | table | →players.player_id。名称はAPI側で解決 |
+| runs                       | player_ids                | 17        | ARRAY                    | YES         | table | text[] 互換期間中の正                |
+| runs                       | image_url                 | 18        | text                     | YES         | table |                               |
+| scenario_interests         | player_id                 | 1         | text                     | NO          | table | PK複合・気になる                     |
+| scenario_interests         | scenario_id               | 2         | text                     | NO          | table | PK複合・気になる                     |
+| scenario_interests         | created_at                | 3         | timestamp with time zone | NO          | table |                               |
+| scenario_list              | id                        | 1         | text                     | YES         | view  | レガシー一覧                        |
+| scenario_list              | title                     | 2         | text                     | YES         | view  |                               |
+| scenario_list              | system                    | 3         | text                     | YES         | view  |                               |
+| scenario_list              | description               | 4         | text                     | YES         | view  |                               |
+| scenario_list              | notes                     | 5         | text                     | YES         | view  |                               |
+| scenario_list              | updated_at                | 6         | timestamp with time zone | YES         | view  |                               |
+| scenario_list              | author                    | 7         | text                     | YES         | view  |                               |
+| scenario_list              | image_url                 | 8         | text                     | YES         | view  |                               |
+| scenario_list              | trend_story_chaos         | 9         | text                     | YES         | view  |                               |
+| scenario_list              | trend_avatar_clear        | 10        | text                     | YES         | view  |                               |
+| scenario_list              | trend_harmony_active      | 11        | text                     | YES         | view  |                               |
+| scenario_list              | min_players               | 12        | integer                  | YES         | view  |                               |
+| scenario_list              | max_players               | 13        | integer                  | YES         | view  |                               |
+| scenario_list              | play_time_minutes         | 14        | integer                  | YES         | view  |                               |
+| scenario_list              | lost_rate                 | 15        | text                     | YES         | view  |                               |
+| scenario_summary           | id                        | 1         | text                     | YES         | view  | 軽量ビュー                         |
+| scenario_summary           | title                     | 2         | text                     | YES         | view  |                               |
+| scenario_summary           | system                    | 3         | text                     | YES         | view  |                               |
+| scenario_summary           | author                    | 4         | text                     | YES         | view  |                               |
+| scenario_summary           | image_url                 | 5         | text                     | YES         | view  |                               |
+| scenario_summary           | updated_at                | 6         | timestamp with time zone | YES         | view  |                               |
+| scenario_summary           | trend_story_chaos         | 7         | text                     | YES         | view  |                               |
+| scenario_summary           | trend_avatar_clear        | 8         | text                     | YES         | view  |                               |
+| scenario_summary           | trend_harmony_active      | 9         | text                     | YES         | view  |                               |
+| scenario_summary           | min_players               | 10        | integer                  | YES         | view  |                               |
+| scenario_summary           | max_players               | 11        | integer                  | YES         | view  |                               |
+| scenario_summary           | play_time_minutes         | 12        | integer                  | YES         | view  |                               |
+| scenario_summary           | lost_rate                 | 13        | text                     | YES         | view  |                               |
+| scenario_summary           | run_count                 | 14        | integer                  | YES         | view  |                               |
+| scenarios                  | id                        | 1         | text                     | NO          | table | PK                            |
+| scenarios                  | title                     | 2         | text                     | NO          | table |                               |
+| scenarios                  | system                    | 3         | text                     | YES         | table |                               |
+| scenarios                  | description               | 7         | text                     | YES         | table |                               |
+| scenarios                  | notes                     | 8         | text                     | YES         | table |                               |
+| scenarios                  | updated_at                | 10        | timestamp with time zone | NO          | table |                               |
+| scenarios                  | author                    | 11        | text                     | YES         | table |                               |
+| scenarios                  | user_id                   | 12        | uuid                     | YES         | table |                               |
+| scenarios                  | image_url                 | 13        | text                     | YES         | table |                               |
+| scenarios                  | trend_story_chaos         | 14        | text                     | YES         | table |                               |
+| scenarios                  | trend_avatar_clear        | 15        | text                     | YES         | table |                               |
+| scenarios                  | trend_harmony_active      | 16        | text                     | YES         | table |                               |
+| scenarios                  | min_players               | 17        | integer                  | YES         | table |                               |
+| scenarios                  | max_players               | 18        | integer                  | YES         | table |                               |
+| scenarios                  | play_time_minutes         | 19        | integer                  | YES         | table |                               |
+| scenarios                  | lost_rate                 | 20        | text                     | YES         | table |                               |
+| session_list               | id                        | 1         | text                     | YES         | view  | レガシー                          |
+| session_list               | run_id                    | 2         | text                     | YES         | view  |                               |
+| session_list               | start                     | 3         | timestamp with time zone | YES         | view  |                               |
+| session_list               | status                    | 4         | USER-DEFINED             | YES         | view  |                               |
+| session_list               | notes                     | 5         | text                     | YES         | view  |                               |
+| session_list               | updated_at                | 6         | timestamp with time zone | YES         | view  |                               |
+| session_list               | title                     | 7         | text                     | YES         | view  |                               |
+| sessions                   | id                        | 1         | text                     | NO          | table | PK                            |
+| sessions                   | run_id                    | 2         | text                     | YES         | table | →runs.id                      |
+| sessions                   | start                     | 3         | timestamp with time zone | YES         | table |                               |
+| sessions                   | title                     | 5         | text                     | YES         | table |                               |
+| sessions                   | notes                     | 9         | text                     | YES         | table |                               |
+| sessions                   | updated_at                | 12        | timestamp with time zone | NO          | table |                               |
+| sessions                   | status                    | 14        | USER-DEFINED             | NO          | table | session status enum           |
+| sessions                   | replay_url                | 15        | text                     | YES         | table |                               |
+| sessions                   | stream_url                | 16        | text                     | YES         | table |                               |
+| sessions                   | user_id                   | 17        | uuid                     | YES         | table |                               |
+| system_attributes          | system                    | 1         | text                     | NO          | table | マスタ                           |
+| system_attributes          | key                       | 2         | text                     | NO          | table |                               |
+| system_attributes          | label                     | 3         | text                     | NO          | table |                               |
+| system_attributes          | kind                      | 4         | text                     | NO          | table |                               |
+| system_attributes          | sort_order                | 5         | integer                  | NO          | table |                               |
+| system_attributes          | note                      | 6         | text                     | YES         | table |                               |
+| system_skill_bases         | system                    | 1         | text                     | NO          | table | マスタ                           |
+| system_skill_bases         | name                      | 2         | text                     | NO          | table |                               |
+| system_skill_bases         | base_value                | 3         | integer                  | NO          | table |                               |
+| system_skill_bases         | sort_order                | 4         | integer                  | NO          | table |                               |
+| system_skill_bases         | updated_at                | 5         | timestamp with time zone | NO          | table |                               |
+| system_skill_bases         | dex_mul                   | 6         | numeric                  | YES         | table |                               |
+| system_skill_bases         | dex_div                   | 7         | numeric                  | YES         | table |                               |
+| system_skill_bases         | edu_mul                   | 8         | numeric                  | YES         | table |                               |
+| system_skill_bases         | edu_div                   | 9         | numeric                  | YES         | table |                               |
+| system_skill_bases         | skill_key                 | 10        | text                     | YES         | table |                               |
+| v_character_details        | id                        | 1         | text                     | YES         | view  | レガシー集約                        |
+| v_character_details        | name                      | 2         | text                     | YES         | view  |                               |
+| v_character_details        | reading                   | 3         | text                     | YES         | view  |                               |
+| v_character_details        | system                    | 4         | text                     | YES         | view  |                               |
+| v_character_details        | state                     | 5         | text                     | YES         | view  |                               |
+| v_character_details        | job                       | 6         | text                     | YES         | view  |                               |
+| v_character_details        | age                       | 7         | integer                  | YES         | view  |                               |
+| v_character_details        | gender                    | 8         | text                     | YES         | view  |                               |
+| v_character_details        | height                    | 9         | integer                  | YES         | view  |                               |
+| v_character_details        | weight                    | 10        | integer                  | YES         | view  |                               |
+| v_character_details        | origin                    | 11        | text                     | YES         | view  |                               |
+| v_character_details        | memo                      | 12        | text                     | YES         | view  |                               |
+| v_character_details        | iachara_url               | 13        | text                     | YES         | view  |                               |
+| v_character_details        | race                      | 14        | text                     | YES         | view  |                               |
+| v_character_details        | original_species          | 15        | text                     | YES         | view  |                               |
+| v_character_details        | player_id                 | 16        | text                     | YES         | view  |                               |
+| v_character_details        | player_name               | 17        | text                     | YES         | view  |                               |
+| v_character_details        | attributes                | 18        | jsonb                    | YES         | view  |                               |
+| v_character_details        | emotions                  | 19        | jsonb                    | YES         | view  |                               |
+| v_character_details        | skills                    | 20        | jsonb                    | YES         | view  |                               |
+| v_character_details        | scenarios                 | 21        | jsonb                    | YES         | view  |                               |
+| v_character_list           | id                        | 1         | text                     | YES         | view  | レガシー                          |
+| v_character_list           | name                      | 2         | text                     | YES         | view  |                               |
+| v_character_list           | reading                   | 3         | text                     | YES         | view  |                               |
+| v_character_list           | system                    | 4         | text                     | YES         | view  |                               |
+| v_character_list           | state                     | 5         | text                     | YES         | view  |                               |
+| v_character_list           | job                       | 6         | text                     | YES         | view  |                               |
+| v_character_list           | player_id                 | 7         | text                     | YES         | view  |                               |
+| v_character_list           | updated_at                | 8         | timestamp with time zone | YES         | view  |                               |

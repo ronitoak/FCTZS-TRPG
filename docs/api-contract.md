@@ -1,6 +1,6 @@
 # Worker API 契約（Web / Flutter 共通正本）
 
-最終更新: 2026-07-17  
+最終更新: 2026-07-19  
 実装: [`worker/index.js`](../worker/index.js)  
 静的契約テスト: [`tests/contracts.test.cjs`](../tests/contracts.test.cjs)
 

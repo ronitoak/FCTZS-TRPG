@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "システム説明書とDBドキュメントを現行スキーマに更新",
+    detail: "docs.htmlとdocs配下を、気になる・GM可能・部活外通過・ホーム再配置・セッション検索・代理作成を含む現行仕様とinformation_schema準拠の列一覧に合わせました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "プレイヤー詳細の部活外・GM可能登録をモーダル化",
     detail: "PL通過済の「部活外を追加」とGM可能の「登録」を見出し横ボタン＋モーダル操作に変更し、一覧を見やすくしました。"
   },

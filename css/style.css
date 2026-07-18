@@ -1698,8 +1698,51 @@ dialog.modal::backdrop {
   margin-bottom: 20px;
 }
 
-.dashboard-calendar-card {
+/* メンバーHome上段: 左1/3（自分向け）+ 右2/3（カレンダー） */
+.dashboard-primary {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: stretch;
+}
+
+.dashboard-personal {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 20px;
+  min-width: 0;
+}
+
+.dashboard-personal .dashboard-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dashboard-personal .dashboard-card a,
+.dashboard-personal .dashboard-card p,
+.dashboard-personal .dashboard-card li {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-personal .dashboard-recruitment-list a {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* メンバーHome下段: 部の活動 */
+.dashboard-club {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
   margin-bottom: 24px;
+}
+
+.dashboard-calendar-card {
+  margin-bottom: 0;
+  min-width: 0;
 }
 
 .dashboard-calendar-header {
@@ -1757,8 +1800,14 @@ dialog.modal::backdrop {
 .dashboard-status--closed { background: #edf2f7; color: #718096; }
 
 @media (max-width: 760px) {
-  .dashboard-grid {
+  .dashboard-grid,
+  .dashboard-primary,
+  .dashboard-club {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-personal {
+    grid-template-rows: auto;
   }
 
   .dashboard-login-card,

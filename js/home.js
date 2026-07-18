@@ -387,6 +387,9 @@ async function main() {
     homeDashboardState.runs = myRuns;
     homeDashboardState.sessions = mySessions;
 
+    const clubNextEl = document.getElementById("club-next-session");
+    const clubOngoingEl = document.getElementById("club-ongoing-scenarios");
+
     document.getElementById("dashboard-player-name").textContent = `${myPlayer.player_name} のダッシュボード`;
     renderNextSession(document.getElementById("my-next-session"), mySessions, runsById, scenariosById);
     renderMyRecruitments(
@@ -395,12 +398,19 @@ async function main() {
       [],
       scenariosById
     );
+    // 部全体の直近・進行中もログイン後に表示（観戦・状況把握用）
+    if (clubNextEl) renderNextSession(clubNextEl, sessions, runsById, scenariosById);
+    if (clubOngoingEl) renderOngoing(clubOngoingEl, runs, scenariosById, sessionsByRunId, playersById);
     await refreshHomeAvailability();
 
   } catch (err) {
     const msg = Utils.escapeHtml(err?.message || "読み込みエラー");
-    nextEl.innerHTML = `<p>Next Sessionの読み込みに失敗しました：${msg}</p>`;
+    nextEl.innerHTML = `<p>直近の予定の読み込みに失敗しました：${msg}</p>`;
     ongoingEl.innerHTML = `<p>進行中情報の読み込みに失敗しました：${msg}</p>`;
+    const clubNextEl = document.getElementById("club-next-session");
+    const clubOngoingEl = document.getElementById("club-ongoing-scenarios");
+    if (clubNextEl) clubNextEl.innerHTML = `<p>直近の予定の読み込みに失敗しました：${msg}</p>`;
+    if (clubOngoingEl) clubOngoingEl.innerHTML = `<p>進行中情報の読み込みに失敗しました：${msg}</p>`;
   }
 }
 

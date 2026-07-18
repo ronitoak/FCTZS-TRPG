@@ -1547,22 +1547,74 @@ async function handlePost(request, env, ctx, url) {
     }
 
     // ---- Characters (一括作成) ----
+    // player_id はフォームで選んだ所有者。user_id は作成者（Auth）で編集権限を持つ。
     if (url.pathname === "/api/character_full") {
-      if (!callerPlayerId) {
+      const authUser = await getAuthenticatedUser(request, env);
+      if (!authUser?.id || !callerPlayerId) {
         return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
       }
       const { character, attributes, skills } = body;
-      const ownedCharacter = { ...(character || {}), player_id: callerPlayerId };
-      const { res: charRes, text: charText } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characters}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [ownedCharacter] });
-      if (!charRes.ok) return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
+      const ownerPlayerId = character?.player_id != null ? String(character.player_id).trim() : "";
+      if (!ownerPlayerId) {
+        return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const { res: ownerRes, text: ownerText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&player_id=eq.${encodeURIComponent(ownerPlayerId)}&limit=1`
+      );
+      if (!ownerRes.ok) {
+        return new Response(JSON.stringify({ error: "Player lookup failed", detail: ownerText }), { status: ownerRes.status, headers: jsonHeaders });
+      }
+      const ownerRows = JSON.parse(ownerText);
+      if (!Array.isArray(ownerRows) || ownerRows.length === 0) {
+        return new Response(JSON.stringify({ error: "player_id not found" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const { user_id: _ignoredUserId, ...characterFields } = character || {};
+      const ownedCharacter = {
+        ...characterFields,
+        player_id: ownerPlayerId,
+        user_id: authUser.id
+      };
+      const { res: charRes, text: charText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.characters}`,
+        { method: "POST", headers: { Prefer: "return=representation" }, body: [ownedCharacter] }
+      );
+      if (!charRes.ok) {
+        return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
+      }
 
       const newCharId = JSON.parse(charText)[0].id;
 
       if (attributes?.length > 0) {
-        await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characterAttributes}`, { method: "POST", body: attributes.map(a => ({ ...a, character_id: newCharId })) });
+        const { res: attrRes, text: attrText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.characterAttributes}`,
+          {
+            method: "POST",
+            headers: { Prefer: "return=minimal" },
+            body: attributes.map(a => ({ ...a, character_id: newCharId, user_id: authUser.id }))
+          }
+        );
+        if (!attrRes.ok) {
+          console.warn("キャラクター能力値の保存に失敗:", attrText);
+        }
       }
       if (skills?.length > 0) {
-        await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characterSkills}`, { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: skills.map(s => ({ ...s, character_id: newCharId })) });
+        const { res: skillRes, text: skillText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.characterSkills}`,
+          {
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: skills.map(s => ({ ...s, character_id: newCharId, user_id: authUser.id }))
+          }
+        );
+        if (!skillRes.ok) {
+          console.warn("キャラクター技能の保存に失敗:", skillText);
+        }
       }
       return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
     }

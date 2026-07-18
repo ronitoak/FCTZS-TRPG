@@ -532,6 +532,18 @@ a { color: inherit; text-decoration: none; }
   font-weight: bold;
 }
 
+.external-passed-badge {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid #d69e2e;
+  border-radius: 999px;
+  background: #fefcbf;
+  color: #975a16;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
 /* 4. 通過キャラクターセクションの調整 */
 .scenario-detail-section {
     margin-top: 32px;

@@ -156,6 +156,7 @@ async function main() {
     let gmableScenarios = Array.isArray(player.gmable_scenario_ids)
       ? player.gmable_scenario_ids.map(String)
       : [];
+    let externalPassed = normalizeExternalPassedScenarios(player.external_passed_scenarios);
 
     const { player: viewerPlayer } = await Utils.getCurrentUserPlayerContext({
       loadProfile: false
@@ -189,9 +190,10 @@ async function main() {
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-        ${buildScenariosHtml("PL通過済シナリオ", passedScenarios, favScenarios, "通過履歴はまだありません。", {
+        ${buildPassedScenariosHtml(passedScenarios, externalPassed, favScenarios, {
           gmableIds: gmableScenarios,
-          showGmableToggle: isOwner
+          showGmableToggle: isOwner,
+          isOwner
         })}
         ${buildScenariosHtml("GM経験済シナリオ", gmScenarios, favScenarios, "GM履歴はまだありません。", {
           gmableIds: gmableScenarios,
@@ -216,11 +218,26 @@ async function main() {
         } else {
           await Utils.apiPatch("player_profiles", payload, `player_id=eq.${playerId}`);
         }
-        Utils.showToast(column === "gmable_scenario_ids" ? "GM可能シナリオを更新しました！" : "お気に入りを更新しました！");
+        const toastMessage = column === "gmable_scenario_ids"
+          ? "GM可能シナリオを更新しました！"
+          : column === "external_passed_scenarios"
+            ? "部活外の通過シナリオを更新しました！"
+            : "お気に入りを更新しました！";
+        Utils.showToast(toastMessage);
       } catch(err) {
         console.error("プロフィール配列の保存エラー", err);
         Utils.showToast("保存に失敗しました: " + err.message, "error");
       }
+    }
+
+    function refreshExternalPassedList() {
+      const listEl = document.getElementById("external-passed-list");
+      const countEl = document.getElementById("passed-scenarios-count");
+      if (countEl) {
+        countEl.textContent = String(passedScenarios.length + externalPassed.length);
+      }
+      if (!listEl) return;
+      listEl.innerHTML = buildExternalPassedListHtml(externalPassed, isOwner);
     }
 
     root.addEventListener("click", async (e) => {
@@ -307,6 +324,47 @@ async function main() {
         }
         updateFavoritesSilent("gmable_scenario_ids", gmableScenarios);
       }
+
+      const removeExternalBtn = e.target.closest(".btn-remove-external-passed");
+      if (removeExternalBtn) {
+        e.preventDefault();
+        if (!isOwner) return;
+        const id = String(removeExternalBtn.getAttribute("data-id") || "");
+        if (!id) return;
+        externalPassed = externalPassed.filter(item => String(item.id) !== id);
+        refreshExternalPassedList();
+        updateFavoritesSilent("external_passed_scenarios", externalPassed);
+      }
+    });
+
+    const externalForm = document.getElementById("external-passed-form");
+    externalForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!isOwner) return;
+      const titleInput = externalForm.querySelector('[name="external_title"]');
+      const systemInput = externalForm.querySelector('[name="external_system"]');
+      const noteInput = externalForm.querySelector('[name="external_note"]');
+      const title = (titleInput?.value || "").trim();
+      if (!title) {
+        alert("シナリオ名を入力してください。");
+        return;
+      }
+      if (externalPassed.length >= 100) {
+        alert("部活外シナリオは最大100件までです。");
+        return;
+      }
+      externalPassed = [
+        ...externalPassed,
+        {
+          id: createExternalPassedId(),
+          title,
+          system: (systemInput?.value || "").trim(),
+          note: (noteInput?.value || "").trim()
+        }
+      ];
+      refreshExternalPassedList();
+      externalForm.reset();
+      await updateFavoritesSilent("external_passed_scenarios", externalPassed);
     });
 
     Utils.renderRadarChart(player, "desire-radar-chart");
@@ -515,9 +573,113 @@ function buildScheduleShellHtml(year, month) {
   `;
 }
 
+function createExternalPassedId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `ext-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeExternalPassedScenarios(raw) {
+  let rows = raw;
+  if (typeof rows === "string") {
+    try {
+      rows = JSON.parse(rows);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(item => {
+      if (!item || typeof item !== "object") return null;
+      const title = String(item.title || "").trim();
+      if (!title) return null;
+      return {
+        id: String(item.id || createExternalPassedId()),
+        title,
+        system: String(item.system || "").trim(),
+        note: String(item.note || "").trim()
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 100);
+}
+
+function buildExternalPassedListHtml(externalList, isOwner) {
+  const items = Array.isArray(externalList) ? externalList : [];
+  if (items.length === 0) {
+    return `<p class="u-muted" style="margin: 0; font-size: 0.85rem;">部活外の登録はまだありません。</p>`;
+  }
+  return `<ul style="margin: 0; padding: 0; list-style: none;">${items.map(item => {
+    const systemTag = item.system
+      ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(item.system)}</span>`
+      : "";
+    const noteHtml = item.note
+      ? `<small class="u-muted" style="display: block; margin-left: 0;">${Utils.escapeHtml(item.note)}</small>`
+      : "";
+    const removeBtn = isOwner
+      ? `<button type="button" class="btn-remove-external-passed" data-id="${Utils.escapeHtml(item.id)}" title="削除" style="margin-left: auto; background: none; border: none; color: #c53030; cursor: pointer; font-size: 0.85rem;">削除</button>`
+      : "";
+    return `
+      <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 4px 0; border-bottom: 1px solid #edf2f7;">
+        <span class="external-passed-badge">部活外</span>
+        <strong>${Utils.escapeHtml(item.title)}</strong>
+        ${systemTag}
+        ${removeBtn}
+        ${noteHtml}
+      </li>
+    `;
+  }).join("")}</ul>`;
+}
+
+function buildPassedScenariosHtml(siteScenarios, externalList, favoriteIds = [], options = {}) {
+  const siteList = Array.isArray(siteScenarios) ? siteScenarios : [];
+  const external = Array.isArray(externalList) ? externalList : [];
+  const total = siteList.length + external.length;
+  const isOwner = !!options.isOwner;
+  const siteHtml = buildScenariosHtml("PL通過済シナリオ", siteList, favoriteIds, "", {
+    gmableIds: options.gmableIds,
+    showGmableToggle: options.showGmableToggle,
+    bareContent: true
+  });
+
+  const emptySite = siteList.length === 0
+    ? `<p style="text-align: center; color: #a0aec0; margin: 0 0 8px;">部内卓の通過履歴はまだありません。</p>`
+    : "";
+
+  const formHtml = isOwner ? `
+    <details style="margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+      <summary style="cursor: pointer; font-weight: bold; color: var(--primary-color);">部活外シナリオを追加</summary>
+      <p class="u-muted" style="font-size: 0.8rem; margin: 8px 0;">サイト未登録のシナリオを個人履歴として残せます（シナリオ一覧には出ません）。</p>
+      <form id="external-passed-form" style="display: grid; gap: 8px;">
+        <input type="text" name="external_title" class="form-control" placeholder="シナリオ名（必須）" required maxlength="200">
+        <input type="text" name="external_system" class="form-control" placeholder="システム（任意）" maxlength="100">
+        <input type="text" name="external_note" class="form-control" placeholder="メモ（任意）" maxlength="200">
+        <button type="submit" class="btn-primary" style="justify-self: start; font-size: 0.85rem;">追加</button>
+      </form>
+    </details>
+  ` : "";
+
+  return `
+    <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">PL通過済シナリオ (<span id="passed-scenarios-count">${total}</span>)本</h2>
+      <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 320px;">
+        ${emptySite}
+        ${siteHtml}
+        <div style="margin-top: ${siteList.length ? "12px" : "0"}; padding-top: ${siteList.length ? "10px" : "0"}; border-top: ${siteList.length ? "1px dashed #e2e8f0" : "none"};">
+          <div id="external-passed-list">${buildExternalPassedListHtml(external, isOwner)}</div>
+        </div>
+        ${formHtml}
+      </div>
+    </section>
+  `;
+}
+
 function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText = "通過履歴はまだありません。", options = {}) {
   const gmableIds = Array.isArray(options.gmableIds) ? options.gmableIds.map(String) : [];
   const showGmableToggle = !!options.showGmableToggle;
+  const bareContent = !!options.bareContent;
   let contentHtml = "";
 
   if (scenariosList && scenariosList.length > 0) {
@@ -539,9 +701,11 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
         </li>`;
     });
     contentHtml += `</ul>`;
-  } else {
+  } else if (!bareContent) {
     contentHtml = `<p style="text-align: center; color: #a0aec0;">${Utils.escapeHtml(fallbackText)}</p>`;
   }
+
+  if (bareContent) return contentHtml;
 
   return `
     <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">

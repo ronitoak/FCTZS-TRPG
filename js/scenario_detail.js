@@ -24,7 +24,7 @@ async function main() {
       Utils.apiGet(`runs?scenario_id=${encodeURIComponent(id)}`),
       Utils.apiGet(`characters?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
       Utils.apiGet(`character_scenarios?scenario_id=${encodeURIComponent(id)}`).catch(() => []),
-      Utils.apiGet("players?select=player_id,player_name").catch(() => [])
+      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id").catch(() => [])
     ]);
 
     // 開催記録は当該シナリオの卓IDだけに絞り、全session_listを載せずに次回予定を計算する。
@@ -145,10 +145,39 @@ async function main() {
       `
       : `<p class="scenario-detail-muted"><small>通過キャラクターはまだ登録されていません</small></p>`;
 
+    const { session: authSession, player: myPlayer, profile: myProfile } = await Utils.getCurrentUserPlayerContext({
+      players: Array.isArray(playersData) ? playersData : [],
+      loadProfile: true
+    });
+    const canReact = !!(authSession && myPlayer);
+    let interestState = { interested: false, count: 0 };
+    try {
+      interestState = await Utils.apiGet("scenario_interests", `scenario_id=${encodeURIComponent(scenario.id)}`) || interestState;
+    } catch (err) {
+      console.warn("気になる状態の取得に失敗:", err);
+    }
+    let gmableIds = Array.isArray(myProfile?.gmable_scenario_ids)
+      ? myProfile.gmable_scenario_ids.map(String)
+      : [];
+    let isGmable = gmableIds.includes(String(scenario.id));
+    let hasProfileRecord = myProfile != null;
+
     // カード内でIDを露出させないよう、共通の名前解決Mapを描画処理へ渡す。
     root.innerHTML = `
       <header class="scenario-detail-header">
-        <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
+        <div class="scenario-detail-header-row">
+          <h1 class="scenario-detail-title">${Utils.escapeHtml(scenario.title ?? scenario.id)}</h1>
+          <div class="scenario-reaction-actions">
+            <button type="button" id="btn-scenario-interest" class="btn-scenario-reaction ${interestState.interested ? "is-active" : ""}" ${canReact ? "" : "disabled"} title="${canReact ? "気になるを切り替え" : "ログインが必要です"}">
+              <span class="scenario-reaction-label">${interestState.interested ? "気になる解除" : "気になる"}</span>
+              <span id="scenario-interest-count" class="scenario-reaction-count">${Number(interestState.count) || 0}</span>
+            </button>
+            <button type="button" id="btn-scenario-gmable" class="btn-scenario-reaction ${isGmable ? "is-active" : ""}" ${canReact ? "" : "disabled"} title="${canReact ? "GM可能を切り替え" : "ログインが必要です"}">
+              ${isGmable ? "GM可能を解除" : "このシナリオをGM可能にする"}
+            </button>
+          </div>
+        </div>
+        ${canReact ? "" : `<p class="scenario-detail-muted u-muted"><small>「気になる」「GM可能」の操作には Discord ログインが必要です。</small></p>`}
       </header>
 
       <section class="scenario-detail-top">
@@ -222,6 +251,98 @@ async function main() {
         </div>
       </section>
     `;
+
+    const interestBtn = document.getElementById("btn-scenario-interest");
+    const interestCountEl = document.getElementById("scenario-interest-count");
+    const gmableBtn = document.getElementById("btn-scenario-gmable");
+
+    function syncInterestButton(state) {
+      if (!interestBtn) return;
+      const on = !!state.interested;
+      interestBtn.classList.toggle("is-active", on);
+      const label = interestBtn.querySelector(".scenario-reaction-label");
+      if (label) label.textContent = on ? "気になる解除" : "気になる";
+      if (interestCountEl) interestCountEl.textContent = String(Number(state.count) || 0);
+    }
+
+    function syncGmableButton(on) {
+      if (!gmableBtn) return;
+      gmableBtn.classList.toggle("is-active", on);
+      gmableBtn.textContent = on ? "GM可能を解除" : "このシナリオをGM可能にする";
+    }
+
+    interestBtn?.addEventListener("click", async () => {
+      if (!canReact || !myPlayer) {
+        alert("気になるを登録するには Discord ログインが必要です。");
+        return;
+      }
+      interestBtn.disabled = true;
+      try {
+        if (interestState.interested) {
+          const result = await Utils.apiDelete(
+            "scenario_interests",
+            `scenario_id=${encodeURIComponent(scenario.id)}`
+          );
+          interestState = {
+            interested: false,
+            count: Number(result?.count) || Math.max(0, (Number(interestState.count) || 1) - 1)
+          };
+        } else {
+          const result = await Utils.apiPost("scenario_interests", { scenario_id: scenario.id });
+          interestState = {
+            interested: true,
+            count: Number(result?.count) || (Number(interestState.count) || 0) + 1
+          };
+          if (result?.notified) {
+            Utils.showToast("気になるを登録し、GM可能プレイヤーへ通知しました");
+          } else {
+            Utils.showToast("気になるを登録しました");
+          }
+        }
+        syncInterestButton(interestState);
+      } catch (err) {
+        console.error(err);
+        alert("気になるの更新に失敗しました: " + (err.message || err));
+      } finally {
+        interestBtn.disabled = false;
+      }
+    });
+
+    gmableBtn?.addEventListener("click", async () => {
+      if (!canReact || !myPlayer) {
+        alert("GM可能の登録には Discord ログインが必要です。");
+        return;
+      }
+      gmableBtn.disabled = true;
+      try {
+        const scenarioKey = String(scenario.id);
+        if (isGmable) {
+          gmableIds = gmableIds.filter(id => id !== scenarioKey);
+        } else {
+          gmableIds = [...new Set([...gmableIds, scenarioKey])];
+        }
+        const payload = { gmable_scenario_ids: gmableIds };
+        if (!hasProfileRecord) {
+          payload.player_id = myPlayer.player_id;
+          await Utils.apiPost("player_profiles", payload);
+          hasProfileRecord = true;
+        } else {
+          await Utils.apiPatch(
+            "player_profiles",
+            payload,
+            `player_id=eq.${encodeURIComponent(myPlayer.player_id)}`
+          );
+        }
+        isGmable = gmableIds.includes(scenarioKey);
+        syncGmableButton(isGmable);
+        Utils.showToast(isGmable ? "GM可能に登録しました" : "GM可能を解除しました");
+      } catch (err) {
+        console.error(err);
+        alert("GM可能の更新に失敗しました: " + (err.message || err));
+      } finally {
+        gmableBtn.disabled = false;
+      }
+    });
 
     document.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'btn-open-scenario-edit') {

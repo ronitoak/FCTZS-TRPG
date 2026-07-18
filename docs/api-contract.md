@@ -49,6 +49,9 @@
 | POST | `/api/player_availability` | 自分の `player_id` のみ |
 | POST | `/api/player_availability/session_block` | 卓メンバー検証後に参加者予定を NG |
 | POST | `/api/upload` | multipart。画像 MIME / 5MB / type 制限 |
+| GET | `/api/scenario_interests?scenario_id=` | `{ interested, count }`。interested はログイン本人のみ |
+| POST | `/api/scenario_interests` | `{ scenario_id }`。新規ON時のみ GM可能者へ Discord DM |
+| DELETE | `/api/scenario_interests?scenario_id=` | 本人の気になる解除（通知なし） |
 
 本人解決は次の順で行う（Auth UUID と Discord snowflake を直接比較しない）:
 

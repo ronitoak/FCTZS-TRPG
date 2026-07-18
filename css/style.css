@@ -442,6 +442,96 @@ a { color: inherit; text-decoration: none; }
     white-space: normal; /* renderMultilineTextの<br>を活かす */
 }
 
+.scenario-detail-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.scenario-detail-header .scenario-detail-title {
+  margin: 0;
+}
+
+.scenario-reaction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-scenario-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--container-bg);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-scenario-reaction:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn-scenario-reaction.is-active {
+  background: #ebf8ff;
+  border-color: #3182ce;
+  color: #2b6cb0;
+}
+
+.btn-scenario-reaction:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.scenario-reaction-count {
+  min-width: 1.5em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #edf2f7;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.btn-scenario-reaction.is-active .scenario-reaction-count {
+  background: #bee3f8;
+}
+
+.btn-gmable-scenario {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #4a5568;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-gmable-scenario.is-active,
+.gmable-badge {
+  border-color: #3182ce;
+  background: #ebf8ff;
+  color: #2b6cb0;
+}
+
+.gmable-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #3182ce;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
 /* 4. 通過キャラクターセクションの調整 */
 .scenario-detail-section {
     margin-top: 32px;

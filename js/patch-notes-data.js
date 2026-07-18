@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-07-19",
+    type: "feature",
+    title: "シナリオの「気になる」とGM可能登録を追加",
+    detail: "シナリオ詳細で気になるをトグルでき、初回ON時のみGM可能登録者へDiscord DMで通知します。プレイヤー詳細とシナリオ詳細からGM可能シナリオを登録できます。"
+  },
+  {
     date: "2026-07-18",
     type: "feature",
     title: "Homeダッシュボードのレイアウトを再配置",

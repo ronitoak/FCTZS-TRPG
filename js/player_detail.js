@@ -35,7 +35,8 @@ async function main() {
         const runIds = [...new Set(runRows.map(run => run.id).filter(Boolean))];
         const scenarioIds = [...new Set([
           ...runRows.map(run => run.scenario_id),
-          ...((profileData?.favorite_scenario_ids) || [])
+          ...((profileData?.favorite_scenario_ids) || []),
+          ...((profileData?.gmable_scenario_ids) || [])
         ].filter(Boolean))];
         const [sessions, scenarios, availabilities] = await Promise.all([
           runIds.length > 0
@@ -152,6 +153,25 @@ async function main() {
 
     let favChars = player.favorite_character_ids || [];
     let favScenarios = player.favorite_scenario_ids || [];
+    let gmableScenarios = Array.isArray(player.gmable_scenario_ids)
+      ? player.gmable_scenario_ids.map(String)
+      : [];
+
+    const { player: viewerPlayer } = await Utils.getCurrentUserPlayerContext({
+      loadProfile: false
+    });
+    const isOwner = !!(viewerPlayer && String(viewerPlayer.player_id) === String(playerId));
+
+    const gmableScenarioRows = (scenarios || []).filter(s => gmableScenarios.includes(String(s.id)));
+    // 通過・経験外でも GM可能に登録したシナリオを表示できるよう候補をまとめる
+    const gmableCandidates = [...scenarios];
+    const knownIds = new Set(gmableCandidates.map(s => String(s.id)));
+    for (const s of [...passedScenarios, ...gmScenarios]) {
+      if (!knownIds.has(String(s.id))) {
+        gmableCandidates.push(s);
+        knownIds.add(String(s.id));
+      }
+    }
 
     root.innerHTML = `
       <div class="player-detail-grid" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
@@ -169,8 +189,18 @@ async function main() {
       </div>
 
       <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
-        ${buildScenariosHtml("PL通過済シナリオ", passedScenarios, favScenarios)}
-        ${buildScenariosHtml("GM経験済シナリオ", gmScenarios, favScenarios, "GM履歴はまだありません。")}
+        ${buildScenariosHtml("PL通過済シナリオ", passedScenarios, favScenarios, "通過履歴はまだありません。", {
+          gmableIds: gmableScenarios,
+          showGmableToggle: isOwner
+        })}
+        ${buildScenariosHtml("GM経験済シナリオ", gmScenarios, favScenarios, "GM履歴はまだありません。", {
+          gmableIds: gmableScenarios,
+          showGmableToggle: isOwner
+        })}
+      </div>
+
+      <div style="margin-top: 20px;">
+        ${buildGmableScenariosHtml(gmableScenarioRows, gmableCandidates, isOwner)}
       </div>
     `;
 
@@ -186,9 +216,9 @@ async function main() {
         } else {
           await Utils.apiPatch("player_profiles", payload, `player_id=eq.${playerId}`);
         }
-        Utils.showToast("お気に入りを更新しました！");
+        Utils.showToast(column === "gmable_scenario_ids" ? "GM可能シナリオを更新しました！" : "お気に入りを更新しました！");
       } catch(err) {
-        console.error("お気に入り保存エラー", err);
+        console.error("プロフィール配列の保存エラー", err);
         Utils.showToast("保存に失敗しました: " + err.message, "error");
       }
     }
@@ -239,6 +269,43 @@ async function main() {
           favScenarioBtn.style.color = "#ecc94b";
         }
         updateFavoritesSilent("favorite_scenario_ids", favScenarios);
+      }
+
+      const gmableBtn = e.target.closest(".btn-gmable-scenario");
+      if (gmableBtn) {
+        e.preventDefault();
+        if (!isOwner) return;
+        const id = String(gmableBtn.getAttribute("data-id") || "");
+        if (!id) return;
+        if (gmableScenarios.includes(id)) {
+          gmableScenarios = gmableScenarios.filter(x => x !== id);
+          gmableBtn.classList.remove("is-active");
+          gmableBtn.textContent = "GM可";
+        } else {
+          gmableScenarios = [...gmableScenarios, id];
+          gmableBtn.classList.add("is-active");
+          gmableBtn.textContent = "GM可✓";
+        }
+        // 一覧表示の他ボタンも同期
+        root.querySelectorAll(".btn-gmable-scenario").forEach(btn => {
+          if (String(btn.getAttribute("data-id")) !== id) return;
+          const on = gmableScenarios.includes(id);
+          btn.classList.toggle("is-active", on);
+          btn.textContent = on ? "GM可✓" : "GM可";
+        });
+        const gmableList = document.getElementById("gmable-scenarios-list");
+        if (gmableList) {
+          const rows = gmableCandidates.filter(s => gmableScenarios.includes(String(s.id)));
+          gmableList.innerHTML = rows.length
+            ? rows.map(s => `
+                <li style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+                  <button type="button" class="btn-gmable-scenario is-active" data-id="${Utils.escapeHtml(String(s.id))}">GM可✓</button>
+                  <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}">${Utils.escapeHtml(s.title || s.id)}</a>
+                </li>
+              `).join("")
+            : `<p class="u-muted" style="text-align: center;">まだ GM可能シナリオがありません。通過済・経験済の一覧、またはシナリオ詳細から登録できます。</p>`;
+        }
+        updateFavoritesSilent("gmable_scenario_ids", gmableScenarios);
       }
     });
 
@@ -448,7 +515,9 @@ function buildScheduleShellHtml(year, month) {
   `;
 }
 
-function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText = "通過履歴はまだありません。") {
+function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText = "通過履歴はまだありません。", options = {}) {
+  const gmableIds = Array.isArray(options.gmableIds) ? options.gmableIds.map(String) : [];
+  const showGmableToggle = !!options.showGmableToggle;
   let contentHtml = "";
 
   if (scenariosList && scenariosList.length > 0) {
@@ -456,12 +525,17 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
     scenariosList.forEach(s => {
       const isFav = favoriteIds.includes(String(s.id));
       const starColor = isFav ? "#ecc94b" : "#e2e8f0";
+      const isGmable = gmableIds.includes(String(s.id));
       const systemTag = s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">${Utils.escapeHtml(s.system)}</span>` : "";
+      const gmableBtn = showGmableToggle
+        ? `<button type="button" class="btn-gmable-scenario ${isGmable ? "is-active" : ""}" data-id="${Utils.escapeHtml(String(s.id))}" title="このシナリオをGM可能にする">${isGmable ? "GM可✓" : "GM可"}</button>`
+        : (isGmable ? `<span class="gmable-badge">GM可</span>` : "");
 
       contentHtml += `
         <li style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
           <button class="btn-fav-scenario" data-id="${s.id}" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: ${starColor}; padding: 0; outline: none;">★</button>
-          <span style="font-weight: bold;">${Utils.escapeHtml(s.title)}</span>${systemTag}
+          ${gmableBtn}
+          <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}" style="font-weight: bold; color: inherit; text-decoration: none;">${Utils.escapeHtml(s.title)}</a>${systemTag}
         </li>`;
     });
     contentHtml += `</ul>`;
@@ -475,6 +549,57 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
       <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 250px;">
         ${contentHtml}
       </div>
+    </section>
+  `;
+}
+
+function buildGmableScenariosHtml(registeredRows, candidateRows, isOwner) {
+  const registered = Array.isArray(registeredRows) ? registeredRows : [];
+  const candidates = Array.isArray(candidateRows) ? candidateRows : [];
+  const registeredIds = new Set(registered.map(s => String(s.id)));
+
+  let listHtml = "";
+  if (registered.length > 0) {
+    listHtml = `<ul id="gmable-scenarios-list" style="margin: 0; padding: 0; list-style: none;">${registered.map(s => `
+      <li style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+        ${isOwner
+          ? `<button type="button" class="btn-gmable-scenario is-active" data-id="${Utils.escapeHtml(String(s.id))}">GM可✓</button>`
+          : `<span class="gmable-badge">GM可</span>`}
+        <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}">${Utils.escapeHtml(s.title || s.id)}</a>
+        ${s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(s.system)}</span>` : ""}
+      </li>
+    `).join("")}</ul>`;
+  } else {
+    listHtml = `<div id="gmable-scenarios-list"><p class="u-muted" style="text-align: center;">まだ GM可能シナリオがありません。通過済・経験済の一覧、またはシナリオ詳細から登録できます。</p></div>`;
+  }
+
+  let pickerHtml = "";
+  if (isOwner) {
+    const unregistered = candidates.filter(s => !registeredIds.has(String(s.id)));
+    pickerHtml = `
+      <details style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <summary style="cursor: pointer; font-weight: bold; color: var(--primary-color);">シナリオを追加で登録する</summary>
+        <p class="u-muted" style="font-size: 0.85rem;">通過・GM経験のあるシナリオから選べます。未経験のものは <a href="../scenarios/index.html">シナリオ一覧</a> の詳細から登録できます。</p>
+        <ul style="margin: 8px 0 0; padding: 0; list-style: none; max-height: 200px; overflow-y: auto;">
+          ${unregistered.length
+            ? unregistered.map(s => `
+                <li style="display: flex; align-items: center; gap: 8px; padding: 3px 0;">
+                  <button type="button" class="btn-gmable-scenario" data-id="${Utils.escapeHtml(String(s.id))}">GM可</button>
+                  <span>${Utils.escapeHtml(s.title || s.id)}</span>
+                </li>
+              `).join("")
+            : `<li class="u-muted">追加候補はありません。</li>`}
+        </ul>
+      </details>
+    `;
+  }
+
+  return `
+    <section class="player-gmable-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">GM可能シナリオ (${registered.length})</h2>
+      <p class="u-muted" style="font-size: 0.85rem; margin-top: 0;">ここに登録したシナリオで、他プレイヤーが「気になる」を押すと Discord DM で通知されます。</p>
+      ${listHtml}
+      ${pickerHtml}
     </section>
   `;
 }

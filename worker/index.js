@@ -36,6 +36,7 @@ const SUPABASE_TABLES = Object.freeze({
   scenarios: "scenarios",
   scenarioListView: "scenario_list",
   scenarioSummary: "scenario_summary",
+  scenarioInterests: "scenario_interests",
   runs: "runs",
   sessions: "sessions",
   sessionListView: "session_list",
@@ -140,6 +141,127 @@ function extractViewerMentions(notes) {
   const viewerSection = notes.slice(markerIndex);
   const matches = viewerSection.match(/<@\d+>/g);
   return matches ? [...new Set(matches)] : [];
+}
+
+/** PostgREST の array contains (cs) 用に値をクォートする。 */
+function formatPostgrestCsValue(value) {
+  const raw = String(value ?? "");
+  return `"${raw.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Discord Bot 経由でユーザーへ DM を送る。
+ * Webhook と違い、受信者本人にしか見えない。
+ */
+async function sendDiscordDirectMessage(discordUserId, content, env) {
+  const token = env.DISCORD_BOT_TOKEN;
+  if (!token || !discordUserId) return { ok: false, reason: "missing_token_or_user" };
+
+  const channelRes = await fetch(`${DISCORD_API_BASE_URL}/users/@me/channels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ recipient_id: String(discordUserId) })
+  });
+  if (!channelRes.ok) {
+    const detail = await channelRes.text().catch(() => "");
+    console.warn("Discord DMチャンネル作成に失敗:", channelRes.status, detail);
+    return { ok: false, reason: "channel", status: channelRes.status };
+  }
+  const channel = await channelRes.json();
+  const messageRes = await fetch(`${DISCORD_API_BASE_URL}/channels/${channel.id}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ content })
+  });
+  if (!messageRes.ok) {
+    const detail = await messageRes.text().catch(() => "");
+    console.warn("Discord DM送信に失敗:", messageRes.status, detail);
+    return { ok: false, reason: "message", status: messageRes.status };
+  }
+  return { ok: true };
+}
+
+async function countScenarioInterests(env, scenarioId) {
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.scenarioInterests}?select=player_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`
+  );
+  if (!res.ok) {
+    console.warn("気になる件数の取得に失敗:", text);
+    return 0;
+  }
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+/**
+ * 気になる初回ON時: GM可能登録者へ DM（テスト時は Webhook プレビューのみ）。
+ */
+async function notifyGmablePlayersOfInterest(env, {
+  scenarioId,
+  interestedPlayerId,
+  interestedPlayerName,
+  scenarioTitle
+}) {
+  const siteUrl = resolveSiteUrl(env);
+  const detailUrl = `${siteUrl}/scenarios/detail.html?id=${encodeURIComponent(scenarioId)}`;
+  const content = `${interestedPlayerName || "誰か"}さんが「${scenarioTitle || scenarioId}」を気になるに登録しました\n${detailUrl}`;
+
+  const cs = formatPostgrestCsValue(scenarioId);
+  const { res: profileRes, text: profileText } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.playerProfiles}?select=player_id&gmable_scenario_ids=cs.{${cs}}`
+  );
+  if (!profileRes.ok) {
+    console.warn("GM可能プレイヤーの取得に失敗:", profileText);
+    return;
+  }
+  const profiles = JSON.parse(profileText);
+  const targetIds = (Array.isArray(profiles) ? profiles : [])
+    .map(row => String(row.player_id))
+    .filter(id => id && id !== String(interestedPlayerId));
+
+  if (targetIds.length === 0) return;
+
+  const encodedIds = targetIds.map(encodeURIComponent).join(",");
+  const { res: playersRes, text: playersText } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,discord_id&player_id=in.(${encodedIds})`
+  );
+  if (!playersRes.ok) {
+    console.warn("通知先プレイヤーの取得に失敗:", playersText);
+    return;
+  }
+  const playerRows = JSON.parse(playersText);
+  const players = (Array.isArray(playerRows) ? playerRows : []).filter(p => p?.discord_id);
+
+  const useTest = env.DISCORD_USE_TEST_WEBHOOK === "true" || env.DISCORD_USE_TEST_WEBHOOK === "1";
+  if (useTest) {
+    const previewTargets = players
+      .map(p => `${p.player_name || p.player_id} (<@${p.discord_id}>)`)
+      .join(", ");
+    await sendDiscordNotification(
+      `[TEST] 気になる通知プレビュー（実DMは送信しません）\n宛先: ${previewTargets || "なし"}\n\n${content}`,
+      {
+        title: "気になる通知（テスト）",
+        description: content,
+        color: DISCORD_COLORS.recruitment
+      },
+      env,
+      env.DISCORD_TEST_WEBHOOK_URL || null
+    );
+    return;
+  }
+
+  for (const player of players) {
+    await sendDiscordDirectMessage(player.discord_id, content, env);
+  }
 }
 
 async function sendDiscordNotification(content, embed, env, webhookUrl, customUsername = null, customAvatarUrl = null) {
@@ -920,6 +1042,31 @@ async function handleGet(request, env, url) {
 
         // ---- Scenarios  ----
     // シナリオ一覧の取得
+    // 気になる: 件数（公開）とログイン中本人の状態
+    if (request.method === "GET" && url.pathname === "/api/scenario_interests") {
+      const scenarioId = url.searchParams.get("scenario_id");
+      if (!scenarioId) {
+        return new Response(JSON.stringify({ error: "scenario_id required" }), { status: 400, headers: jsonHeaders });
+      }
+      const count = await countScenarioInterests(env, scenarioId);
+      let interested = false;
+      const callerPlayerId = await resolveCallerPlayerId(request, env);
+      if (callerPlayerId) {
+        const { res, text } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.scenarioInterests}?select=player_id&scenario_id=eq.${encodeURIComponent(scenarioId)}&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
+        );
+        if (res.ok) {
+          const rows = JSON.parse(text);
+          interested = Array.isArray(rows) && rows.length > 0;
+        }
+      }
+      return new Response(JSON.stringify({ scenario_id: scenarioId, interested, count }), {
+        status: 200,
+        headers: jsonHeaders
+      });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/scenarios") {
       let queryParams = [];
 
@@ -1299,6 +1446,85 @@ async function handlePost(request, env, ctx, url) {
     const body = await request.json();
     const callerPlayerId = await resolveCallerPlayerId(request, env);
 
+    // ---- 気になる ON（新規INSERT時のみ GM可能者へDM） ----
+    if (url.pathname === "/api/scenario_interests") {
+      if (!callerPlayerId) {
+        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+      }
+      const scenarioId = body?.scenario_id != null ? String(body.scenario_id).trim() : "";
+      if (!scenarioId) {
+        return new Response(JSON.stringify({ error: "scenario_id required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const { res: scenarioRes, text: scenarioText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.scenarios}?select=id,title&id=eq.${encodeURIComponent(scenarioId)}&limit=1`
+      );
+      if (!scenarioRes.ok) {
+        return new Response(JSON.stringify({ error: "Scenario lookup failed", detail: scenarioText }), { status: scenarioRes.status, headers: jsonHeaders });
+      }
+      const scenarioRows = JSON.parse(scenarioText);
+      const scenario = Array.isArray(scenarioRows) ? scenarioRows[0] : null;
+      if (!scenario) {
+        return new Response(JSON.stringify({ error: "Scenario not found" }), { status: 404, headers: jsonHeaders });
+      }
+
+      const { res: existingRes, text: existingText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.scenarioInterests}?select=player_id&scenario_id=eq.${encodeURIComponent(scenarioId)}&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
+      );
+      if (!existingRes.ok) {
+        return new Response(JSON.stringify({ error: "Interest lookup failed", detail: existingText }), { status: existingRes.status, headers: jsonHeaders });
+      }
+      const existingRows = JSON.parse(existingText);
+      if (Array.isArray(existingRows) && existingRows.length > 0) {
+        const count = await countScenarioInterests(env, scenarioId);
+        return new Response(JSON.stringify({
+          scenario_id: scenarioId,
+          interested: true,
+          count,
+          notified: false
+        }), { status: 200, headers: jsonHeaders });
+      }
+
+      const { res: insertRes, text: insertText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.scenarioInterests}`,
+        {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: [{ player_id: callerPlayerId, scenario_id: scenarioId }]
+        }
+      );
+      if (!insertRes.ok) {
+        return new Response(JSON.stringify({ error: "Interest insert failed", detail: insertText }), { status: insertRes.status, headers: jsonHeaders });
+      }
+
+      const { res: playerRes, text: playerText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?select=player_name&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
+      );
+      const playerRows = playerRes.ok ? JSON.parse(playerText) : [];
+      const interestedPlayerName = Array.isArray(playerRows) && playerRows[0]?.player_name
+        ? playerRows[0].player_name
+        : callerPlayerId;
+
+      ctx.waitUntil(notifyGmablePlayersOfInterest(env, {
+        scenarioId,
+        interestedPlayerId: callerPlayerId,
+        interestedPlayerName,
+        scenarioTitle: scenario.title
+      }));
+
+      const count = await countScenarioInterests(env, scenarioId);
+      return new Response(JSON.stringify({
+        scenario_id: scenarioId,
+        interested: true,
+        count,
+        notified: true
+      }), { status: 201, headers: jsonHeaders });
+    }
+
     // ---- Comments ----
     if (url.pathname === "/api/comments") {
       const commentBody = { ...body };
@@ -1618,6 +1844,37 @@ async function handlePatch(request, env, ctx, url) {
 
 async function handleDelete(request, env, url) {
   if (request.method === "DELETE") {
+    // 気になる OFF（通知なし）
+    if (url.pathname === "/api/scenario_interests") {
+      try {
+        const callerPlayerId = await resolveCallerPlayerId(request, env);
+        if (!callerPlayerId) {
+          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        }
+        const scenarioId = url.searchParams.get("scenario_id");
+        if (!scenarioId) {
+          return new Response(JSON.stringify({ error: "scenario_id required" }), { status: 400, headers: jsonHeaders });
+        }
+        const { res, text } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.scenarioInterests}?scenario_id=eq.${encodeURIComponent(scenarioId)}&player_id=eq.${encodeURIComponent(callerPlayerId)}`,
+          { method: "DELETE", headers: { Prefer: "return=minimal" } }
+        );
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: "Interest delete failed", detail: text }), { status: res.status, headers: jsonHeaders });
+        }
+        const count = await countScenarioInterests(env, scenarioId);
+        return new Response(JSON.stringify({
+          scenario_id: scenarioId,
+          interested: false,
+          count,
+          notified: false
+        }), { status: 200, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+
     const resource = url.pathname.replace("/api/", "");
     if (DELETE_ALLOWED_RESOURCES.includes(resource)) {
       try {

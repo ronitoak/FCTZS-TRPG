@@ -34,6 +34,12 @@ system,text,YES,対応TRPGシステム名
 author,text,YES,シナリオ作者名
 description / notes,text,YES,シナリオ概要（説明） / 注意事項や特記
 
+scenario_interests テーブル（気になる）
+カラム名,データ型,Nullable,説明
+player_id,text,NO,興味を示したプレイヤーID（複合主キー）
+scenario_id,text,NO,対象シナリオID（複合主キー）
+created_at,timestamptz,NO,登録日時（OFF→ONの初回のみGM可能者へDM通知）
+
 runs テーブル（立卓された個別の「卓」単位）
 カラム名,データ型,Nullable,説明
 id,text,NO,卓ID（主キー）

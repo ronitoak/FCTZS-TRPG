@@ -46,6 +46,7 @@ desire_clear,integer,YES,攻略欲（0〜5）
 desire_active,integer,YES,活躍欲（0〜5）
 favorite_character_ids,text[] (ARRAY),YES,お気に入りキャラクターIDの配列（推し設定）
 favorite_scenario_ids,text[] (ARRAY),YES,お気に入りシナリオIDの配列（推し設定）
+gmable_scenario_ids,text[] (ARRAY),YES,GM可能なシナリオIDの配列（気になる通知の宛先）
 
 player_availability テーブル（予定データ）
 カラム名,データ型,Nullable,説明

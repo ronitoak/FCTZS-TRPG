@@ -1,3 +1,0 @@
-D:
-cd D:\hobby\TRPG\root\FCTZS-TRPG\worker
-npx wrangler deploy

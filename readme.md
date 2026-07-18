@@ -1,31 +1,21 @@
-承知いたしました。今後のメンテナンスやFlutter移行時の設計図として、システム全体の中枢となる「1〜4」の仕様をMarkdown形式で書き出します。
-
-体裁は気にせず、現在のシステムの実態（これまでに実装・修正してきた内容）を正確に反映させた備忘録としてまとめました。
-
----
-
 # FCTZS TRPG部 システム仕様書（開発者向け）
+
+詳細なスキーマ・API・運用手順は `docs/` および `docs.html` を正本とする。本ファイルは構成の要約である。
 
 ## 1. システム全体構成（アーキテクチャ）
 
-本システムは、サーバーレス環境を組み合わせたSPA（Single Page Application）として構成されている。
+本システムは、サーバーレス環境を組み合わせたマルチページ構成として動作する。
 
-* **フロントエンド**: `Cloudflare Pages`（移行中。手順は `docs/cloudflare-pages.md`）
-* **構成**: Vanilla JS, HTML, CSS（ソースはリポジトリ直下。Pages 成果物は `dist/`）
-* **デプロイ**: GitHub Actions → Cloudflare Pages（`docs/platform-roadmap.md`）
+* **フロントエンド**: Cloudflare Workers 静的配信（例: `https://fctzs.daruji.workers.dev/`）。手順は `docs/cloudflare-pages.md` / `docs/platform-roadmap.md`
+* **構成**: Vanilla JS, HTML, CSS（ソースはリポジトリ直下。成果物は `dist/`）
 * **Flutter**: 現行 Web と並列の学習用クライアント（`flutter/README.md`）
 
+* **バックエンド（API）**: Cloudflare Workers（`worker/index.js`）
+* **役割**: フロントからのリクエスト処理、Supabase 仲介、Discord 連携、Cron
 
-* **バックエンド（API）**: `Cloudflare Workers` (`index.js`)
-* **役割**: フロントエンドからのリクエスト（GET/POST/PATCH/DELETE）の処理、Supabaseとの通信仲介、Discord APIとの連携、および定期処理（Cron）。
+* **データベース**: Supabase (PostgreSQL)。列一覧は `docs/DB_info.txt`、概要は `docs/DB-overview.md`
 
-
-* **データベース**: `Supabase` (PostgreSQL)
-* **役割**: 全データの永続化。直接のDBアクセスはWorkerまたはフロントエンド（一部）からREST API経由で行う。
-
-
-* **外部連携**: `Discord`
-* **機能**: Webhook経由での各種通知（募集満員、セッション前日通知）、およびInteraction APIを利用したボタン操作（参加/キャンセル）の処理。
+* **外部連携**: Discord（Webhook / Interaction / Bot DM）
 
 
 

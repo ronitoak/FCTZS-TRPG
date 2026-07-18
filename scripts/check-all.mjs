@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import vm from "node:vm";
 
 const root = resolve(import.meta.dirname, "..");
-const excludedDirectories = new Set([".git", "node_modules", "public", "still-lab-0906", "patient-mud-191a"]);
+const excludedDirectories = new Set([".git", "node_modules", "public"]);
 const failures = [];
 
 function walk(directory, predicate) {

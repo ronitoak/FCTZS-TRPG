@@ -8,3 +8,5 @@ Thumbs.db
 *.log
 .env
 .env.*
+*APIkey*.txt
+*apikey*.txt

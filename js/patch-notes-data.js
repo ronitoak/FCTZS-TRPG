@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "リポジトリ内の不要ファイルを整理",
+    detail: "空ファイル・実験用Worker雛形・陳腐化した仕様ドラフト・未使用スクリプトを削除し、readmeの構成説明を現行運用に合わせました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "システム説明書とDBドキュメントを現行スキーマに更新",
     detail: "docs.htmlとdocs配下を、気になる・GM可能・部活外通過・ホーム再配置・セッション検索・代理作成を含む現行仕様とinformation_schema準拠の列一覧に合わせました。"
   },

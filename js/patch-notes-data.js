@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter WebからR2画像が読めないCORSエラーを解消",
+    detail: "公開アセット用R2バケットにGET/HEAD向けCORSを設定し、fctzs-flutter など別オリジンからの画像表示を可能にしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter閲覧アプリの見た目を特設サイトに寄せた",
     detail: "配色・カード・ステータスバッジ・見出し下線など、css/style.css のトーンに合わせて一覧と詳細のUIを調整しました。"
   },

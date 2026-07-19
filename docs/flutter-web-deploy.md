@@ -43,5 +43,9 @@ URL 秘匿だけでは弱い。部員だけにしたい場合:
 ## 注意
 
 - Flutter 側はゲスト GET のみ。API CORS は既に `*` のため別オリジンから叩ける
+- **R2 画像**: Flutter Web は `Image.network` が XHR になるため、バケット側 CORS が必要。設定ファイルは [`r2-cors.json`](./r2-cors.json)。適用例:
+  ```bash
+  npx wrangler r2 bucket cors set fctzs-trpg-assets --file docs/r2-cors.json --force
+  ```
 - `build/web` は git 管理しない（`.gitignore`）
 - サブパス配信する場合は `flutter build web --base-href /app/` と Worker ルート構成の変更が必要（現在はルート `/`）

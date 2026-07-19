@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../media/image_urls.dart';
 import '../theme/app_theme.dart';
 
 String str(dynamic value, [String fallback = '—']) {
@@ -209,36 +210,57 @@ class CoverImage extends StatelessWidget {
     super.key,
     this.height = 160,
     this.fit = BoxFit.cover,
+    this.fallback = FctzsImages.scenarioDefault,
   });
+
+  /// キャラクター用（デフォルト画像が異なる）。
+  const CoverImage.character(
+    this.url, {
+    super.key,
+    this.height = 160,
+    this.fit = BoxFit.cover,
+  }) : fallback = FctzsImages.characterDefault;
 
   final String? url;
   final double height;
   final BoxFit fit;
+  final String fallback;
+
+  Widget _placeholder() {
+    return Container(
+      height: height,
+      width: double.infinity,
+      color: FctzsColors.bg,
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported_outlined, color: FctzsColors.textMuted),
+    );
+  }
+
+  /// CanvasKit のバイト取得が失敗しても、特設サイトの <img> と同様に表示できるよう
+  /// Web では HTML 要素へフォールバックする（CORS / 一部コーデック差の回避）。
+  static const _webStrategy = WebHtmlElementStrategy.fallback;
 
   @override
   Widget build(BuildContext context) {
-    final src = url?.trim();
-    if (src == null || src.isEmpty || src == '—') {
-      return Container(
-        height: height,
-        width: double.infinity,
-        color: FctzsColors.bg,
-        alignment: Alignment.center,
-        child: const Icon(Icons.image_not_supported_outlined, color: FctzsColors.textMuted),
-      );
-    }
+    // Web と同様: DBのURLが404でも onerror 相当でデフォルト画像へ落とす。
+    final primary = FctzsImages.absoluteUrl(url) ?? fallback;
     return Image.network(
-      src,
+      primary,
       height: height,
       width: double.infinity,
       fit: fit,
-      errorBuilder: (_, _, _) => Container(
-        height: height,
-        width: double.infinity,
-        color: FctzsColors.bg,
-        alignment: Alignment.center,
-        child: const Icon(Icons.broken_image_outlined, color: FctzsColors.textMuted),
-      ),
+      webHtmlElementStrategy: _webStrategy,
+      errorBuilder: (_, _, _) {
+        if (primary == fallback) return _placeholder();
+        return Image.network(
+          fallback,
+          height: height,
+          width: double.infinity,
+          fit: fit,
+          webHtmlElementStrategy: _webStrategy,
+          errorBuilder: (_, _, _) => _placeholder(),
+        );
+      },
     );
   }
 }
@@ -250,6 +272,8 @@ class EntityCard extends StatelessWidget {
     required this.onTap,
     this.imageUrl,
     this.imageHeight = 140,
+    this.showCover = false,
+    this.useCharacterFallback = false,
     this.badge,
     required this.title,
     this.subtitle,
@@ -260,6 +284,9 @@ class EntityCard extends StatelessWidget {
   final VoidCallback? onTap;
   final String? imageUrl;
   final double imageHeight;
+  /// true のとき画像枠を出し、URLが空/404ならデフォルト画像へフォールバックする。
+  final bool showCover;
+  final bool useCharacterFallback;
   final Widget? badge;
   final String title;
   final String? subtitle;
@@ -281,10 +308,12 @@ class EntityCard extends StatelessWidget {
           children: [
             if (leading != null)
               leading!
-            else if (imageUrl != null && imageUrl!.trim().isNotEmpty && imageUrl != '—')
+            else if (showCover)
               Stack(
                 children: [
-                  CoverImage(imageUrl, height: imageHeight),
+                  useCharacterFallback
+                      ? CoverImage.character(imageUrl, height: imageHeight)
+                      : CoverImage(imageUrl, height: imageHeight),
                   if (badge != null)
                     Positioned(top: 8, right: 8, child: badge!),
                 ],
@@ -294,11 +323,7 @@ class EntityCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (badge != null &&
-                      leading == null &&
-                      (imageUrl == null ||
-                          imageUrl!.trim().isEmpty ||
-                          imageUrl == '—')) ...[
+                  if (badge != null && leading == null && !showCover) ...[
                     Align(alignment: Alignment.centerRight, child: badge!),
                     const SizedBox(height: 6),
                   ],

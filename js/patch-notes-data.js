@@ -8,6 +8,18 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter Webで一部のR2画像が表示されない問題を修正",
+    detail: "CanvasKitの画像バイト取得に失敗するケース向けに、特設サイトのimgタグと同様のHTML要素表示へフォールバックするようにしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
+    title: "Flutterで欠落したR2画像をデフォルト画像にフォールバック",
+    detail: "DB上のimage_urlが404のとき、特設サイトと同様にR2のデフォルト画像へ切り替えるようにしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter WebからR2画像が読めないCORSエラーを解消",
     detail: "公開アセット用R2バケットにGET/HEAD向けCORSを設定し、fctzs-flutter など別オリジンからの画像表示を可能にしました。"
   },

@@ -149,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: str(r['title'], r['id']),
                         subtitle: 'GM: ${str(r['gm_name'])}',
                         badge: StatusBadge(str(r['status'])),
+                        showCover: true,
                         imageUrl: str(r['image_url'], ''),
                         imageHeight: 120,
                         onTap: () => Navigator.of(context).push(

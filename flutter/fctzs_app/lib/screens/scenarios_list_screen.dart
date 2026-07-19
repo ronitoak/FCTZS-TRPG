@@ -80,6 +80,7 @@ class _ScenariosListScreenState extends State<ScenariosListScreen> {
                         ? '人数未設定'
                         : '${minP ?? '?'}〜${maxP ?? '?'}人';
                     return EntityCard(
+                      showCover: true,
                       imageUrl: str(row['image_url'], ''),
                       imageHeight: 160,
                       title: str(row['title']),

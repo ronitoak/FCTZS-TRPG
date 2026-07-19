@@ -78,6 +78,7 @@ class _RecruitListScreenState extends State<RecruitListScreen> {
                     final count = row['applicant_count'] ?? 0;
                     final target = row['target_count'] ?? '?';
                     return EntityCard(
+                      showCover: true,
                       imageUrl: str(row['scenario_image_url'], ''),
                       imageHeight: 140,
                       badge: StatusBadge(str(row['status'])),

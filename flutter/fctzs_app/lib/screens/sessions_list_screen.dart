@@ -117,6 +117,7 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                             ? (r['player_names'] as List).join(', ')
                             : '';
                         return EntityCard(
+                          showCover: true,
                           imageUrl: str(r['image_url'], ''),
                           imageHeight: 130,
                           badge: StatusBadge(str(r['status'])),

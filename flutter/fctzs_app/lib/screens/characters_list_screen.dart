@@ -126,7 +126,7 @@ class _CharactersListScreenState extends State<CharactersListScreen> {
                           children: [
                             Stack(
                               children: [
-                                CoverImage(
+                                CoverImage.character(
                                   str(row['image_url'], ''),
                                   height: 180,
                                   fit: BoxFit.scaleDown,

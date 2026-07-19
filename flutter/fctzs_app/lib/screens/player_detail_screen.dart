@@ -99,11 +99,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 KvTile('推し2', str(s['tier_list_second'])),
                 KvTile('推し3', str(s['tier_list_third'])),
                 const SectionTitle('プレイスタイル'),
-                KvTile('化身欲', str(s['desire_avatar'])),
+                KvTile('没入欲', str(s['desire_avatar'])),
                 KvTile('物語欲', str(s['desire_story'])),
                 KvTile('攻略欲', str(s['desire_clear'])),
                 KvTile('混沌欲', str(s['desire_chaos'])),
-                KvTile('活躍欲', str(s['desire_active'])),
+                KvTile('主体欲', str(s['desire_active'])),
                 KvTile('調和欲', str(s['desire_harmony'])),
                 const SectionTitle('所持キャラクター'),
                 if (data.characters.isEmpty)

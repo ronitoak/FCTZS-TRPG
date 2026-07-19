@@ -12,11 +12,11 @@ class DesireRadarChart extends StatelessWidget {
     this.size = 160,
   });
 
-  /// [物語欲, 化身欲, 協調欲, 混沌欲, 攻略欲, 活躍欲]
+  /// [物語欲, 没入欲, 協調欲, 混沌欲, 攻略欲, 主体欲]
   final List<double> values;
   final double size;
 
-  static const labels = ['物語', '化身', '協調', '混沌', '攻略', '活躍'];
+  static const labels = ['物語', '没入', '協調', '混沌', '攻略', '主体'];
 
   /// player_profiles の desire_* から値を取り出す（未設定は 3）。
   factory DesireRadarChart.fromProfile(

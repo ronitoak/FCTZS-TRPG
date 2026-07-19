@@ -47,11 +47,11 @@ icon_url,text,YES,アイコンに使うキャラクターID等
 profile_text,text,YES,自己紹介テキスト
 tier_list_first / second / third,text,YES,ティアリスト用テキスト
 desire_story,integer,YES,物語欲（0〜5）
-desire_avatar,integer,YES,化身欲（0〜5）
+desire_avatar,integer,YES,没入欲（0〜5）
 desire_harmony,integer,YES,協調欲（0〜5）
 desire_chaos,integer,YES,混沌欲（0〜5）
 desire_clear,integer,YES,攻略欲（0〜5）
-desire_active,integer,YES,活躍欲（0〜5）
+desire_active,integer,YES,主体欲（0〜5）
 favorite_character_ids,text[] (ARRAY),YES,お気に入りキャラクターIDの配列（推し設定）
 favorite_scenario_ids,text[] (ARRAY),YES,お気に入りシナリオIDの配列（推し設定）
 gmable_scenario_ids,text[] (ARRAY),YES,GM可能なシナリオIDの配列（気になる通知の宛先）

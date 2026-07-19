@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "プレイスタイル用語を没入欲・主体欲に変更",
+    detail: "プレイヤーのプレイスタイル傾向で、化身欲を没入欲、活躍欲を主体欲に名称変更しました（Web・Flutter共通）。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutterプレイヤー一覧をアイコン＋レーダー表示に変更",
     detail: "プレイヤー一覧を名前・アイコン（icon_url のキャラ画像）・プレイスタイルのレーダーチャート表示にし、IDは出さないようにしました。"
   },

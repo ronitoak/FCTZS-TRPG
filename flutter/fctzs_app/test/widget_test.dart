@@ -6,6 +6,7 @@ void main() {
   testWidgets('起動時にホームとナビゲーションを表示する', (WidgetTester tester) async {
     await tester.pumpWidget(const FctzsApp());
 
+    expect(find.text('FCTZS TRPG部'), findsOneWidget);
     expect(find.text('ホーム'), findsWidgets);
     expect(find.textContaining('API: https://fctzs-trpg.daruji.workers.dev'), findsOneWidget);
     expect(find.text('PL'), findsOneWidget);

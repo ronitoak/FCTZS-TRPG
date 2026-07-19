@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'player_detail_screen.dart';
 import 'run_detail_screen.dart';
@@ -70,6 +71,7 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: FctzsColors.bg,
       appBar: AppBar(title: Text(widget.characterId)),
       body: AsyncBody<_CharacterDetailBundle>(
         future: _future,

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'character_detail_screen.dart';
 
@@ -47,10 +48,33 @@ class _CharactersListScreenState extends State<CharactersListScreen> {
     return str(row['player_name']);
   }
 
+  Color? _cardBg(String state) {
+    switch (state.toLowerCase()) {
+      case 'lost':
+        return FctzsColors.lostBg;
+      case 'rescued':
+        return FctzsColors.rescuedBg;
+      default:
+        return null;
+    }
+  }
+
+  Color? _cardFg(String state) {
+    switch (state.toLowerCase()) {
+      case 'lost':
+        return FctzsColors.lostText;
+      case 'rescued':
+        return FctzsColors.rescuedText;
+      default:
+        return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('キャラクター')),
+      backgroundColor: FctzsColors.bg,
+      appBar: AppBar(title: const Text('キャラクター一覧')),
       body: Column(
         children: [
           SearchField(
@@ -80,28 +104,66 @@ class _CharactersListScreenState extends State<CharactersListScreen> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final row = filtered[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: (str(row['image_url'], '') != '—' &&
-                                str(row['image_url'], '').isNotEmpty)
-                            ? NetworkImage(str(row['image_url']))
-                            : null,
-                        child: (str(row['image_url'], '') == '—' ||
-                                str(row['image_url'], '').isEmpty)
-                            ? const Icon(Icons.person)
-                            : null,
-                      ),
-                      title: Text(str(row['name'])),
-                      subtitle: Text(
-                        '${str(row['system'])} / ${str(row['job'])} / ${str(row['state'])}\n'
-                        'PL: ${_playerName(row)}',
-                      ),
-                      isThreeLine: true,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CharacterDetailScreen(
-                            characterId: str(row['id']),
+                    final state = str(row['state'], '');
+                    final bg = _cardBg(state);
+                    final fg = _cardFg(state);
+                    return Material(
+                      color: bg ?? FctzsColors.surface,
+                      elevation: 2,
+                      shadowColor: const Color(0x14000000),
+                      borderRadius: BorderRadius.circular(FctzsColors.radius),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CharacterDetailScreen(
+                              characterId: str(row['id']),
+                            ),
                           ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Stack(
+                              children: [
+                                CoverImage(
+                                  str(row['image_url'], ''),
+                                  height: 180,
+                                  fit: BoxFit.scaleDown,
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: StatusBadge(state),
+                                ),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    str(row['name']),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: fg ?? FctzsColors.textMain,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${str(row['system'])} / ${str(row['job'])}\nPL: ${_playerName(row)}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.45,
+                                      color: fg ?? FctzsColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );

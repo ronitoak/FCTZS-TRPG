@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'player_detail_screen.dart';
 import 'run_detail_screen.dart';
 import 'scenario_detail_screen.dart';
-import 'player_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -56,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList()
       ..sort((a, b) => str(a['start']).compareTo(str(b['start'])));
 
-    // Web ホームと同様: status === "active" を進行中とみなす
     final ongoing = runs
         .map((e) => Map<String, dynamic>.from(e as Map))
         .where((r) => str(r['status'], '').toLowerCase() == 'active')
@@ -82,8 +82,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final api = ApiScope.of(context);
     return Scaffold(
+      backgroundColor: FctzsColors.bg,
       appBar: AppBar(
-        title: const Text('ホーム'),
+        title: const Text('FCTZS TRPG部'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(28),
           child: Padding(
@@ -92,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 'API: ${api.apiBase}',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: const TextStyle(color: FctzsColors.textMuted, fontSize: 12),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -107,81 +108,97 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
-                const SectionTitle('直近の開催予定'),
+                const SectionTitle('直近の予定'),
                 if (data.upcoming.isEmpty)
-                  const ListTile(title: Text('予定なし'))
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: MutedText('予定なし'),
+                  )
                 else
                   ...data.upcoming.map((s) {
                     final runId = str(s['run_id'], '');
-                    return ListTile(
-                      title: Text(str(s['title'], '無題セッション')),
-                      subtitle: Text(
-                        '${formatDateTime(s['start'])} / ${str(s['status'])}',
-                      ),
-                      onTap: runId == '—'
-                          ? null
-                          : () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => RunDetailScreen(runId: runId),
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: EntityCard(
+                        title: str(s['title'], '無題セッション'),
+                        subtitle: formatDateTime(s['start']),
+                        badge: StatusBadge(str(s['status'])),
+                        onTap: runId == '—'
+                            ? null
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => RunDetailScreen(runId: runId),
+                                  ),
                                 ),
-                              ),
+                      ),
                     );
                   }),
-                const SectionTitle('進行中の卓'),
+                const SectionTitle('進行中のセッション'),
                 if (data.ongoingRuns.isEmpty)
-                  const ListTile(title: Text('進行中なし'))
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: MutedText('進行中なし'),
+                  )
                 else
                   ...data.ongoingRuns.map((r) {
-                    return ListTile(
-                      title: Text(str(r['title'], r['id'])),
-                      subtitle: Text(
-                        'GM: ${str(r['gm_name'])} / ${str(r['status'])}',
-                      ),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => RunDetailScreen(runId: str(r['id'])),
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: EntityCard(
+                        title: str(r['title'], r['id']),
+                        subtitle: 'GM: ${str(r['gm_name'])}',
+                        badge: StatusBadge(str(r['status'])),
+                        imageUrl: str(r['image_url'], ''),
+                        imageHeight: 120,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RunDetailScreen(runId: str(r['id'])),
+                          ),
                         ),
                       ),
                     );
                   }),
                 const SectionTitle('最近のコメント'),
                 if (data.comments.isEmpty)
-                  const ListTile(title: Text('コメントなし'))
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: MutedText('コメントなし'),
+                  )
                 else
                   ...data.comments.map((c) {
                     final type = str(c['target_type']);
                     final id = str(c['target_id']);
-                    return ListTile(
-                      title: Text(str(c['body'])),
-                      subtitle: Text(
-                        '${str(c['author'])} → ${str(c['target_name'], id)} ($type)\n${formatDateTime(c['created_at'])}',
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: EntityCard(
+                        title: str(c['body']),
+                        subtitle:
+                            '${str(c['author'])} → ${str(c['target_name'], id)} ($type)\n${formatDateTime(c['created_at'])}',
+                        onTap: () {
+                          if (type == 'player') {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => PlayerDetailScreen(playerId: id),
+                              ),
+                            );
+                          } else if (type == 'scenario') {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ScenarioDetailScreen(scenarioId: id),
+                              ),
+                            );
+                          } else if (type == 'run' || type == 'session') {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => RunDetailScreen(runId: id),
+                              ),
+                            );
+                          }
+                        },
                       ),
-                      isThreeLine: true,
-                      onTap: () {
-                        if (type == 'player') {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => PlayerDetailScreen(playerId: id),
-                            ),
-                          );
-                        } else if (type == 'scenario') {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ScenarioDetailScreen(scenarioId: id),
-                            ),
-                          );
-                        } else if (type == 'run' || type == 'session') {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RunDetailScreen(runId: id),
-                            ),
-                          );
-                        }
-                      },
                     );
                   }),
-                const SizedBox(height: 24),
               ],
             ),
           );

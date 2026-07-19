@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'character_detail_screen.dart';
 import 'player_detail_screen.dart';
@@ -87,6 +88,7 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: FctzsColors.bg,
       appBar: AppBar(title: Text(widget.runId)),
       body: AsyncBody<_RunDetailBundle>(
         future: _future,

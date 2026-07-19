@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../theme/app_theme.dart';
 
 String str(dynamic value, [String fallback = '—']) {
   if (value == null) return fallback;
@@ -33,6 +34,34 @@ class ApiScope extends InheritedWidget {
   bool updateShouldNotify(ApiScope oldWidget) => api != oldWidget.api;
 }
 
+class StatusBadge extends StatelessWidget {
+  const StatusBadge(this.status, {super.key, this.label});
+
+  final String? status;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = statusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label ?? statusLabel(status),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
 class SearchField extends StatelessWidget {
   const SearchField({
     super.key,
@@ -48,12 +77,12 @@ class SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
       child: TextField(
         controller: controller,
         decoration: InputDecoration(
           hintText: hintText,
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const Icon(Icons.search, color: FctzsColors.textMuted),
           suffixIcon: controller.text.isEmpty
               ? null
               : IconButton(
@@ -63,7 +92,6 @@ class SearchField extends StatelessWidget {
                     onChanged('');
                   },
                 ),
-          border: const OutlineInputBorder(),
           isDense: true,
         ),
         onChanged: onChanged,
@@ -104,6 +132,7 @@ class AsyncBody<T> extends StatelessWidget {
                   child: Text(
                     '読み込み失敗\n${snapshot.error}',
                     textAlign: TextAlign.center,
+                    style: const TextStyle(color: FctzsColors.textMuted),
                   ),
                 ),
               ],
@@ -124,6 +153,7 @@ class RefreshList extends StatelessWidget {
     required this.itemBuilder,
     this.emptyText = '0件',
     this.header,
+    this.padding = const EdgeInsets.fromLTRB(12, 4, 12, 16),
   });
 
   final Future<void> Function() onRefresh;
@@ -131,6 +161,7 @@ class RefreshList extends StatelessWidget {
   final IndexedWidgetBuilder itemBuilder;
   final String emptyText;
   final Widget? header;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -139,10 +170,16 @@ class RefreshList extends StatelessWidget {
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
+          padding: padding,
           children: [
             ?header,
             const SizedBox(height: 80),
-            Center(child: Text(emptyText)),
+            Center(
+              child: Text(
+                emptyText,
+                style: const TextStyle(color: FctzsColors.textMuted),
+              ),
+            ),
           ],
         ),
       );
@@ -151,8 +188,9 @@ class RefreshList extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: padding,
         itemCount: itemCount + (header != null ? 1 : 0),
-        separatorBuilder: (_, _) => const Divider(height: 1),
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (header != null) {
             if (index == 0) return header!;
@@ -166,33 +204,161 @@ class RefreshList extends StatelessWidget {
 }
 
 class CoverImage extends StatelessWidget {
-  const CoverImage(this.url, {super.key, this.height = 160});
+  const CoverImage(
+    this.url, {
+    super.key,
+    this.height = 160,
+    this.fit = BoxFit.cover,
+  });
 
   final String? url;
   final double height;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
     final src = url?.trim();
-    if (src == null || src.isEmpty) {
+    if (src == null || src.isEmpty || src == '—') {
       return Container(
         height: height,
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        width: double.infinity,
+        color: FctzsColors.bg,
         alignment: Alignment.center,
-        child: const Icon(Icons.image_not_supported_outlined),
+        child: const Icon(Icons.image_not_supported_outlined, color: FctzsColors.textMuted),
       );
     }
     return Image.network(
       src,
       height: height,
       width: double.infinity,
-      fit: BoxFit.cover,
+      fit: fit,
       errorBuilder: (_, _, _) => Container(
         height: height,
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        width: double.infinity,
+        color: FctzsColors.bg,
         alignment: Alignment.center,
-        child: const Icon(Icons.broken_image_outlined),
+        child: const Icon(Icons.broken_image_outlined, color: FctzsColors.textMuted),
       ),
+    );
+  }
+}
+
+/// 特設サイトのカード相当。
+class EntityCard extends StatelessWidget {
+  const EntityCard({
+    super.key,
+    required this.onTap,
+    this.imageUrl,
+    this.imageHeight = 140,
+    this.badge,
+    required this.title,
+    this.subtitle,
+    this.footer,
+    this.leading,
+  });
+
+  final VoidCallback? onTap;
+  final String? imageUrl;
+  final double imageHeight;
+  final Widget? badge;
+  final String title;
+  final String? subtitle;
+  final Widget? footer;
+  final Widget? leading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: FctzsColors.surface,
+      elevation: 2,
+      shadowColor: const Color(0x14000000),
+      borderRadius: BorderRadius.circular(FctzsColors.radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (leading != null)
+              leading!
+            else if (imageUrl != null && imageUrl!.trim().isNotEmpty && imageUrl != '—')
+              Stack(
+                children: [
+                  CoverImage(imageUrl, height: imageHeight),
+                  if (badge != null)
+                    Positioned(top: 8, right: 8, child: badge!),
+                ],
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (badge != null &&
+                      leading == null &&
+                      (imageUrl == null ||
+                          imageUrl!.trim().isEmpty ||
+                          imageUrl == '—')) ...[
+                    Align(alignment: Alignment.centerRight, child: badge!),
+                    const SizedBox(height: 6),
+                  ],
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: FctzsColors.textMain,
+                    ),
+                  ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.45,
+                        color: FctzsColors.textMuted,
+                      ),
+                    ),
+                  ],
+                  if (footer != null) ...[
+                    const SizedBox(height: 10),
+                    footer!,
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DetailPanel extends StatelessWidget {
+  const DetailPanel({super.key, required this.child, this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FctzsColors.surface,
+        borderRadius: BorderRadius.circular(FctzsColors.radius),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }
@@ -205,10 +371,34 @@ class KvTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      title: Text(label, style: Theme.of(context).textTheme.labelMedium),
-      subtitle: Text(value),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: FctzsColors.textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: FctzsColors.textMain,
+                fontSize: 14,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -220,9 +410,37 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+      padding: const EdgeInsets.only(bottom: 8),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: FctzsColors.headingLine, width: 2),
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: FctzsColors.textMain,
+        ),
+      ),
+    );
+  }
+}
+
+class MutedText extends StatelessWidget {
+  const MutedText(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(color: FctzsColors.textMuted, fontSize: 13),
     );
   }
 }

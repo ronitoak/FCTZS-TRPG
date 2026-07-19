@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'scenario_detail_screen.dart';
 
@@ -44,7 +45,8 @@ class _ScenariosListScreenState extends State<ScenariosListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('シナリオ')),
+      backgroundColor: FctzsColors.bg,
+      appBar: AppBar(title: const Text('シナリオ一覧')),
       body: Column(
         children: [
           SearchField(
@@ -77,19 +79,13 @@ class _ScenariosListScreenState extends State<ScenariosListScreen> {
                     final players = (minP == null && maxP == null)
                         ? '人数未設定'
                         : '${minP ?? '?'}〜${maxP ?? '?'}人';
-                    return ListTile(
-                      leading: SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: CoverImage(str(row['image_url'], ''), height: 56),
-                      ),
-                      title: Text(str(row['title'])),
-                      subtitle: Text(
-                        '${str(row['system'])} / ${str(row['author'])}\n'
-                        '$players'
-                        '${row['run_count'] != null ? ' / 卓${row['run_count']}回' : ''}',
-                      ),
-                      isThreeLine: true,
+                    return EntityCard(
+                      imageUrl: str(row['image_url'], ''),
+                      imageHeight: 160,
+                      title: str(row['title']),
+                      subtitle:
+                          '${str(row['system'])} / ${str(row['author'])}\n$players'
+                          '${row['run_count'] != null ? ' / 卓${row['run_count']}回' : ''}',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ScenarioDetailScreen(

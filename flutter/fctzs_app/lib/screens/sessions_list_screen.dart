@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'run_detail_screen.dart';
 
@@ -62,10 +63,14 @@ class _SessionsListScreenState extends State<SessionsListScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: FctzsColors.bg,
       appBar: AppBar(
-        title: const Text('セッション'),
+        title: const Text('セッション一覧'),
         bottom: TabBar(
           controller: _tabs,
+          labelColor: FctzsColors.primary,
+          unselectedLabelColor: FctzsColors.textMuted,
+          indicatorColor: FctzsColors.primary,
           tabs: const [
             Tab(text: '卓'),
             Tab(text: '開催'),
@@ -111,12 +116,13 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                         final pl = r['player_names'] is List
                             ? (r['player_names'] as List).join(', ')
                             : '';
-                        return ListTile(
-                          title: Text(str(r['title'], r['id'])),
-                          subtitle: Text(
-                            'GM: ${str(r['gm_name'])} / ${str(r['status'])}\nPL: ${pl.isEmpty ? '—' : pl}',
-                          ),
-                          isThreeLine: true,
+                        return EntityCard(
+                          imageUrl: str(r['image_url'], ''),
+                          imageHeight: 130,
+                          badge: StatusBadge(str(r['status'])),
+                          title: str(r['title'], r['id']),
+                          subtitle:
+                              'GM: ${str(r['gm_name'])}\nPL: ${pl.isEmpty ? '—' : pl}',
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => RunDetailScreen(runId: str(r['id'])),
@@ -131,11 +137,10 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                       itemBuilder: (context, index) {
                         final s = sessions[index];
                         final runId = str(s['run_id'], '');
-                        return ListTile(
-                          title: Text(str(s['title'], '無題')),
-                          subtitle: Text(
-                            '${formatDateTime(s['start'])} / ${str(s['status'])}',
-                          ),
+                        return EntityCard(
+                          badge: StatusBadge(str(s['status'])),
+                          title: str(s['title'], '無題'),
+                          subtitle: formatDateTime(s['start']),
                           onTap: runId == '—'
                               ? null
                               : () => Navigator.of(context).push(

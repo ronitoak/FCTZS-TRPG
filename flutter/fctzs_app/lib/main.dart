@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'api/api_client.dart';
 import 'screens/app_shell.dart';
+import 'theme/app_theme.dart';
 import 'widgets/common.dart';
 
 void main() {
@@ -17,11 +18,8 @@ class FctzsApp extends StatelessWidget {
     return ApiScope(
       api: FctzsApiClient(),
       child: MaterialApp(
-        title: 'FCTZS TRPG',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2B6CB0)),
-          useMaterial3: true,
-        ),
+        title: 'FCTZS TRPG部',
+        theme: buildFctzsTheme(),
         home: const AppShell(),
       ),
     );

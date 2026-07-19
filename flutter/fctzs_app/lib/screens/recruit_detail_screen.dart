@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'player_detail_screen.dart';
 import 'scenario_detail_screen.dart';
@@ -62,6 +63,7 @@ class _RecruitDetailScreenState extends State<RecruitDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: FctzsColors.bg,
       appBar: AppBar(title: Text(widget.recruitmentId)),
       body: AsyncBody<_RecruitDetailBundle>(
         future: _future,

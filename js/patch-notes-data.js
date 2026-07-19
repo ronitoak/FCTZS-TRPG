@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter閲覧アプリの見た目を特設サイトに寄せた",
+    detail: "配色・カード・ステータスバッジ・見出し下線など、css/style.css のトーンに合わせて一覧と詳細のUIを調整しました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter Webを別Workerで限定公開できる経路を追加",
     detail: "Worker fctzs-flutter（https://fctzs-flutter.daruji.workers.dev/）向けのビルド・デプロイと GitHub Actions を用意しました。手順は docs/flutter-web-deploy.md です。"
   },

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'recruit_detail_screen.dart';
 
@@ -44,7 +45,8 @@ class _RecruitListScreenState extends State<RecruitListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('募集')),
+      backgroundColor: FctzsColors.bg,
+      appBar: AppBar(title: const Text('募集一覧')),
       body: Column(
         children: [
           SearchField(
@@ -75,21 +77,14 @@ class _RecruitListScreenState extends State<RecruitListScreen> {
                     final row = filtered[index];
                     final count = row['applicant_count'] ?? 0;
                     final target = row['target_count'] ?? '?';
-                    return ListTile(
-                      leading: SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: CoverImage(
-                          str(row['scenario_image_url'], ''),
-                          height: 56,
-                        ),
-                      ),
-                      title: Text(str(row['scenario_title'], 'シナリオ未設定')),
-                      subtitle: Text(
-                        '${str(row['recruit_role'])}募集 / ${str(row['status'])}\n'
-                        '主: ${str(row['owner_player_name'])} / $count/$target人',
-                      ),
-                      isThreeLine: true,
+                    return EntityCard(
+                      imageUrl: str(row['scenario_image_url'], ''),
+                      imageHeight: 140,
+                      badge: StatusBadge(str(row['status'])),
+                      title: str(row['scenario_title'], 'シナリオ未設定'),
+                      subtitle:
+                          '${str(row['recruit_role'])}募集\n'
+                          '主: ${str(row['owner_player_name'])} / $count/$target人',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => RecruitDetailScreen(

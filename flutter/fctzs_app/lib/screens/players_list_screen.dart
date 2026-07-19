@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'player_detail_screen.dart';
 
@@ -46,7 +47,8 @@ class _PlayersListScreenState extends State<PlayersListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('プレイヤー')),
+      backgroundColor: FctzsColors.bg,
+      appBar: AppBar(title: const Text('プレイヤー一覧')),
       body: Column(
         children: [
           SearchField(
@@ -71,9 +73,31 @@ class _PlayersListScreenState extends State<PlayersListScreen> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final row = filtered[index];
-                    return ListTile(
-                      title: Text(str(row['player_name'])),
-                      subtitle: Text(str(row['player_id'])),
+                    return EntityCard(
+                      title: str(row['player_name']),
+                      subtitle: str(row['player_id']),
+                      leading: Container(
+                        height: 72,
+                        color: FctzsColors.bg,
+                        alignment: Alignment.center,
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: FctzsColors.primary.withValues(alpha: 0.15),
+                          child: Text(
+                            () {
+                              final name = str(row['player_name']);
+                              return name.isEmpty || name == '—'
+                                  ? '?'
+                                  : name.characters.first;
+                            }(),
+                            style: const TextStyle(
+                              color: FctzsColors.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => PlayerDetailScreen(

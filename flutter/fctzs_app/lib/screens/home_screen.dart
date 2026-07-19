@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../media/image_urls.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'player_detail_screen.dart';
@@ -18,11 +19,13 @@ class _HomeBundle {
     required this.upcoming,
     required this.ongoingRuns,
     required this.comments,
+    required this.scenarioImages,
   });
 
   final List<Map<String, dynamic>> upcoming;
   final List<Map<String, dynamic>> ongoingRuns;
   final List<Map<String, dynamic>> comments;
+  final Map<String, String?> scenarioImages;
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -41,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final api = ApiScope.of(context);
     final sessions = await api.fetchSessions();
     final runs = await api.fetchRuns();
+    final scenarios = await api.fetchScenarios();
     final comments = await api.fetchRecentComments();
 
     final now = DateTime.now();
@@ -69,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .take(15)
           .toList(),
+      scenarioImages: FctzsImages.scenarioImageMap(scenarios),
     );
   }
 
@@ -150,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         subtitle: 'GM: ${str(r['gm_name'])}',
                         badge: StatusBadge(str(r['status'])),
                         showCover: true,
-                        imageUrl: str(r['image_url'], ''),
+                        imageUrl: FctzsImages.coverForRun(r, data.scenarioImages),
                         imageHeight: 120,
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(

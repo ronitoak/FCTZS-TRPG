@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../media/image_urls.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'character_detail_screen.dart';
@@ -22,12 +23,14 @@ class _RunDetailBundle {
     required this.sessions,
     required this.characters,
     required this.scenarioTitle,
+    required this.coverUrl,
   });
 
   final Map<String, dynamic>? run;
   final List<Map<String, dynamic>> sessions;
   final List<Map<String, dynamic>> characters;
   final String scenarioTitle;
+  final String coverUrl;
 }
 
 class _RunDetailScreenState extends State<RunDetailScreen> {
@@ -48,12 +51,14 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
     final run = runs.isEmpty ? null : Map<String, dynamic>.from(runs.first as Map);
     final sessions = await api.fetchSessionsForRun(widget.runId);
     var scenarioTitle = '—';
+    String? scenarioImageUrl;
     var characters = <Map<String, dynamic>>[];
     if (run != null) {
       final scenarioId = str(run['scenario_id'], '');
       if (scenarioId != '—') {
         final scenario = await api.fetchScenario(scenarioId);
         scenarioTitle = str(scenario?['title'], scenarioId);
+        scenarioImageUrl = scenario?['image_url']?.toString();
       }
       final charIds = (run['characters'] is List)
           ? (run['characters'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
@@ -63,12 +68,17 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
         characters = byIds.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     }
+    final coverUrl = FctzsImages.resolveRunCover(
+      runImageUrl: run?['image_url'],
+      scenarioImageUrl: scenarioImageUrl,
+    );
     return _RunDetailBundle(
       run: run,
       sessions: sessions.map((e) => Map<String, dynamic>.from(e as Map)).toList()
         ..sort((a, b) => str(a['start']).compareTo(str(b['start']))),
       characters: characters,
       scenarioTitle: scenarioTitle,
+      coverUrl: coverUrl,
     );
   }
 
@@ -119,7 +129,7 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                CoverImage(str(r['image_url'], ''), height: 180),
+                CoverImage(data.coverUrl, height: 180),
                 ListTile(
                   title: Text(str(r['title'], r['id']), style: Theme.of(context).textTheme.headlineSmall),
                   subtitle: Text(str(r['status'])),

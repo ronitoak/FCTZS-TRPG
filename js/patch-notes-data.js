@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter卓カバーをシナリオ画像へフォールバック",
+    detail: "卓（セッション）に専用画像がないとき、紐づくシナリオのカバーを表示し、それもなければデフォルト画像を使うようにしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter一覧をカードグリッド表示に変更",
     detail: "プレイヤー・シナリオ・セッション・募集・キャラクターの一覧を、画面幅に応じて1行に複数並ぶタイル表示にしました。"
   },

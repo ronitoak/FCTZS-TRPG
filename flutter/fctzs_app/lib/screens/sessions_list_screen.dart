@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../media/image_urls.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'run_detail_screen.dart';
@@ -44,10 +45,12 @@ class _SessionsListScreenState extends State<SessionsListScreen>
     final api = ApiScope.of(context);
     final runs = await api.fetchRuns();
     final sessions = await api.fetchSessions();
+    final scenarios = await api.fetchScenarios();
     return _SessionsBundle(
       runs: runs.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
       sessions: sessions.map((e) => Map<String, dynamic>.from(e as Map)).toList()
         ..sort((a, b) => str(b['start']).compareTo(str(a['start']))),
+      scenarioImages: FctzsImages.scenarioImageMap(scenarios),
     );
   }
 
@@ -119,7 +122,7 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                             : '';
                         return EntityCard(
                           showCover: true,
-                          imageUrl: str(r['image_url'], ''),
+                          imageUrl: FctzsImages.coverForRun(r, data.scenarioImages),
                           imageHeight: 130,
                           badge: StatusBadge(str(r['status'])),
                           title: str(r['title'], r['id']),
@@ -166,7 +169,12 @@ class _SessionsListScreenState extends State<SessionsListScreen>
 }
 
 class _SessionsBundle {
-  _SessionsBundle({required this.runs, required this.sessions});
+  _SessionsBundle({
+    required this.runs,
+    required this.sessions,
+    required this.scenarioImages,
+  });
   final List<Map<String, dynamic>> runs;
   final List<Map<String, dynamic>> sessions;
+  final Map<String, String?> scenarioImages;
 }

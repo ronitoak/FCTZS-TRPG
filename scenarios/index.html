@@ -14,7 +14,10 @@
     <hr />
     <h1 style="display: flex; justify-content: space-between; align-items: center;">
         <span>シナリオ集</span>
-        <a href="./create.html" class="btn-primary" style="font-size: 14px; font-weight: bold;">新規追加</a>
+        <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+          <button type="button" id="btn-open-external-scenarios-modal" class="btn-secondary" style="font-size: 14px; font-weight: bold;">部活外シナリオ</button>
+          <a href="./create.html" class="btn-primary" style="font-size: 14px; font-weight: bold;">新規追加</a>
+        </span>
     </h1>
     <p>この部活動で遊んだシナリオたち</p>
 
@@ -108,6 +111,20 @@
     <section id="scenarios-list">
       <p>読み込み中…</p>
     </section>
+
+    <!-- 全員の部活外通過シナリオ一覧：scenarios.js がプロフィールから読み込んで描画 -->
+    <dialog id="external-scenarios-modal" class="modal">
+      <div class="modal-content" style="max-width: 620px;">
+        <h3 style="margin-top: 0;">みんなの部活外シナリオ</h3>
+        <p class="u-muted" style="font-size: 0.85rem;">各メンバーが部活外で通過したシナリオの一覧です。</p>
+        <div id="external-scenarios-list" style="max-height: 55vh; overflow-y: auto;">
+          <p>読み込み中…</p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="close-external-scenarios-modal" class="btn-secondary">閉じる</button>
+        </div>
+      </div>
+    </dialog>
 
     <footer>
         <hr />

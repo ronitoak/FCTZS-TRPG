@@ -7,6 +7,102 @@ let allScenarios = [];
 let runCountByScenarioId = new Map();
 let currentUserProfile = null;
 
+function normalizeExternalScenarios(raw) {
+  let rows = raw;
+  if (typeof rows === "string") {
+    try {
+      rows = JSON.parse(rows);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(item => {
+      if (!item || typeof item !== "object") return null;
+      const title = String(item.title || "").trim();
+      if (!title) return null;
+      return {
+        title,
+        system: String(item.system || "").trim(),
+        note: String(item.note || "").trim()
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildExternalScenariosHtml(profiles, players) {
+  const playerNameById = new Map(
+    (Array.isArray(players) ? players : []).map(player => [
+      String(player.player_id),
+      String(player.player_name || player.player_id)
+    ])
+  );
+  const rows = (Array.isArray(profiles) ? profiles : []).flatMap(profile => {
+    const playerId = String(profile.player_id || "");
+    const playerName = playerNameById.get(playerId) || playerId || "名前不明";
+    return normalizeExternalScenarios(profile.external_passed_scenarios).map(scenario => ({
+      ...scenario,
+      playerName
+    }));
+  });
+
+  rows.sort((a, b) => {
+    const playerOrder = a.playerName.localeCompare(b.playerName, "ja");
+    return playerOrder !== 0 ? playerOrder : a.title.localeCompare(b.title, "ja");
+  });
+
+  if (rows.length === 0) {
+    return `<p class="u-muted" style="text-align: center;">部活外シナリオの登録はまだありません。</p>`;
+  }
+
+  return `
+    <p class="u-muted" style="margin: 0 0 10px; font-size: 0.85rem;">全 ${rows.length} 件</p>
+    <ul style="margin: 0; padding: 0; list-style: none;">
+      ${rows.map(row => `
+        <li style="padding: 8px 0; border-bottom: 1px solid #edf2f7;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;">
+            <span class="external-passed-badge">部活外</span>
+            <strong>${Utils.escapeHtml(row.title)}</strong>
+            ${row.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(row.system)}</span>` : ""}
+          </div>
+          <small class="u-muted" style="display: block; margin-top: 3px;">
+            ${Utils.escapeHtml(row.playerName)}${row.note ? ` ／ ${Utils.escapeHtml(row.note)}` : ""}
+          </small>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+function setupExternalScenariosModal() {
+  const openButton = document.getElementById("btn-open-external-scenarios-modal");
+  const closeButton = document.getElementById("close-external-scenarios-modal");
+  const modal = document.getElementById("external-scenarios-modal");
+  const list = document.getElementById("external-scenarios-list");
+  if (!openButton || !modal || !list) return;
+
+  openButton.addEventListener("click", async () => {
+    list.innerHTML = "<p>読み込み中…</p>";
+    modal.showModal();
+    try {
+      const [profiles, players] = await Promise.all([
+        Utils.apiGet("player_profiles", "select=player_id,external_passed_scenarios"),
+        Utils.apiGet("players", "select=player_id,player_name")
+      ]);
+      list.innerHTML = buildExternalScenariosHtml(profiles, players);
+    } catch (error) {
+      console.error("部活外シナリオ一覧の取得に失敗しました", error);
+      list.innerHTML = `<p class="u-muted" style="text-align: center;">部活外シナリオの読み込みに失敗しました。</p>`;
+    }
+  });
+
+  closeButton?.addEventListener("click", () => modal.close());
+  modal.addEventListener("click", event => {
+    if (event.target === modal) modal.close();
+  });
+}
+
 function renderScenarios(scenarios) {
   const root = document.getElementById("scenarios-list");
   if (!root) return;
@@ -166,6 +262,7 @@ function applyFilters() {
 
 async function main() {
   await Utils.initAuthAndHeader('common-nav', '../');
+  setupExternalScenariosModal();
 
   try {
     const result = await Utils.apiGetWithFallback(

@@ -17,7 +17,7 @@ API メモ: [`API_STARTER.md`](./API_STARTER.md)
 実アプリ: [`fctzs_app/`](./fctzs_app/)  
 たたき台の控え: [`lib_starter/`](./lib_starter/)
 
-### 起動
+### 起動（ローカル）
 
 ```bash
 cd flutter/fctzs_app
@@ -26,6 +26,20 @@ flutter run -d chrome
 # または
 flutter run -d windows
 ```
+
+### 限定公開（Flutter Web → Cloudflare）
+
+本番フロントとは別 Worker `fctzs-flutter` に載せる。手順正本: [`docs/flutter-web-deploy.md`](../docs/flutter-web-deploy.md)
+
+```bash
+# リポジトリルートで
+set FCTZS_FLUTTER_BIN=%USERPROFILE%\flutter\bin\flutter.bat
+node scripts/build-flutter-web.mjs
+npx wrangler deploy --config wrangler.flutter.toml
+```
+
+公開後の目安 URL: `https://fctzs-flutter.daruji.workers.dev/`  
+GitHub Actions の **Deploy Flutter Web** からもデプロイできる。
 
 ### 閲覧できる画面（ゲスト）
 

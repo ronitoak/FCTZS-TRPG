@@ -1,0 +1,9 @@
+# Flutter Web 閲覧クライアント用 Worker（静的アセットのみ）
+# 本番フロント fctzs / API fctzs-trpg とは別。学習・限定公開向け。
+name = "fctzs-flutter"
+compatibility_date = "2024-11-12"
+
+[assets]
+directory = "./flutter/fctzs_app/build/web"
+# Flutter Web はクライアントルーティングのため SPA フォールバック
+not_found_handling = "single-page-application"

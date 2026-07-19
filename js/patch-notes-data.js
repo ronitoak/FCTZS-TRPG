@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
+    type: "improvement",
+    title: "Flutter Webを別Workerで限定公開できる経路を追加",
+    detail: "Worker fctzs-flutter（https://fctzs-flutter.daruji.workers.dev/）向けのビルド・デプロイと GitHub Actions を用意しました。手順は docs/flutter-web-deploy.md です。"
+  },
+  {
+    date: "2026-07-19",
     type: "feature",
     title: "全員の部活外通過シナリオを一覧で確認できるようにした",
     detail: "シナリオ一覧の「部活外シナリオ」ボタンから、各メンバーが登録した部活外の通過シナリオをまとめて確認できます。"

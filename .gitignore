@@ -1,6 +1,11 @@
 # Cloudflare Pages 成果物
 /dist/
 
+# Flutter ビルド成果物
+flutter/fctzs_app/build/
+flutter/fctzs_app/.dart_tool/
+flutter/fctzs_app/.flutter-plugins-dependencies
+
 # 依存・ローカル
 node_modules/
 .DS_Store

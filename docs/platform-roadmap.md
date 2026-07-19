@@ -1,6 +1,6 @@
 # プラットフォーム方針
 
-最終更新: 2026-07-19（Phase 3: fctzs_app 開始）
+最終更新: 2026-07-19（Flutter Web 限定公開経路を追加）
 
 ## 確定方針
 
@@ -22,10 +22,12 @@
         ▼
 [Supabase]  Postgres + Auth + RLS
 
-[Flutter app] ──同API──▶ Workers （並列・学習用）
+[Flutter Web]  Worker fctzs-flutter（限定公開可）──同API──▶ Workers
+[Flutter app]  （ローカル / 実機）──同API──▶ Workers
 ```
 
-手順書ファイル名に「Pages」が残る場合があるが、実装・公開経路は Workers Static Assets である。
+手順書ファイル名に「Pages」が残る場合があるが、実装・公開経路は Workers Static Assets である。  
+Flutter Web 公開: [`flutter-web-deploy.md`](./flutter-web-deploy.md)
 
 ## Phase 進捗
 

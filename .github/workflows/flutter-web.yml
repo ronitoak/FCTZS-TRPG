@@ -1,0 +1,68 @@
+name: Deploy Flutter Web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "flutter/**"
+      - "wrangler.flutter.toml"
+      - "scripts/build-flutter-web.mjs"
+      - ".github/workflows/flutter-web.yml"
+
+concurrency:
+  group: flutter-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check Cloudflare secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN が空です。"
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID が空です。"
+            exit 1
+          fi
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build Flutter Web
+        env:
+          FCTZS_API_BASE: ${{ vars.FCTZS_API_BASE }}
+        run: node scripts/build-flutter-web.mjs
+
+      - name: Verify build/web
+        run: |
+          test -f flutter/fctzs_app/build/web/index.html || {
+            echo "::error::flutter/fctzs_app/build/web/index.html がありません"
+            exit 1
+          }
+
+      - name: Publish Flutter Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.24.3"
+          command: deploy --config wrangler.flutter.toml

@@ -9,6 +9,7 @@
 | 役割 | URL / 名前 |
 |------|------------|
 | フロント | Worker 名 `fctzs`（静的アセット）→ [https://fctzs.daruji.workers.dev/](https://fctzs.daruji.workers.dev/) |
+| Flutter 閲覧 | Worker 名 `fctzs-flutter` → [https://fctzs-flutter.daruji.workers.dev/](https://fctzs-flutter.daruji.workers.dev/)（手順: [`flutter-web-deploy.md`](./flutter-web-deploy.md)） |
 | API | Worker 名 `fctzs-trpg` → [https://fctzs-trpg.daruji.workers.dev](https://fctzs-trpg.daruji.workers.dev) |
 
 補足: 公開 URL が `*.workers.dev` のため、CI は `wrangler pages deploy` ではなく  

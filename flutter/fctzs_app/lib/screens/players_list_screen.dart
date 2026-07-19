@@ -71,30 +71,26 @@ class _PlayersListScreenState extends State<PlayersListScreen> {
                 return RefreshList(
                   onRefresh: _refresh,
                   itemCount: filtered.length,
+                  childAspectRatio: 1.25,
                   itemBuilder: (context, index) {
                     final row = filtered[index];
                     return EntityCard(
                       title: str(row['player_name']),
                       subtitle: str(row['player_id']),
-                      leading: Container(
-                        height: 72,
-                        color: FctzsColors.bg,
-                        alignment: Alignment.center,
-                        child: CircleAvatar(
-                          radius: 28,
-                          backgroundColor: FctzsColors.primary.withValues(alpha: 0.15),
-                          child: Text(
-                            () {
-                              final name = str(row['player_name']);
-                              return name.isEmpty || name == '—'
-                                  ? '?'
-                                  : name.characters.first;
-                            }(),
-                            style: const TextStyle(
-                              color: FctzsColors.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
-                            ),
+                      leading: CircleAvatar(
+                        radius: 28,
+                        backgroundColor: FctzsColors.primary.withValues(alpha: 0.15),
+                        child: Text(
+                          () {
+                            final name = str(row['player_name']);
+                            return name.isEmpty || name == '—'
+                                ? '?'
+                                : name.characters.first;
+                          }(),
+                          style: const TextStyle(
+                            color: FctzsColors.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
                           ),
                         ),
                       ),

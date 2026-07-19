@@ -81,8 +81,8 @@ class _ScenariosListScreenState extends State<ScenariosListScreen> {
                         : '${minP ?? '?'}〜${maxP ?? '?'}人';
                     return EntityCard(
                       showCover: true,
+                      useCharacterFallback: false,
                       imageUrl: str(row['image_url'], ''),
-                      imageHeight: 160,
                       title: str(row['title']),
                       subtitle:
                           '${str(row['system'])} / ${str(row['author'])}\n$players'

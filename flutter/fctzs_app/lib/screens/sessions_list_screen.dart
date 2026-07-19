@@ -111,6 +111,7 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                     RefreshList(
                       onRefresh: _refresh,
                       itemCount: runs.length,
+                      childAspectRatio: 0.85,
                       itemBuilder: (context, index) {
                         final r = runs[index];
                         final pl = r['player_names'] is List
@@ -135,6 +136,7 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                     RefreshList(
                       onRefresh: _refresh,
                       itemCount: sessions.length,
+                      childAspectRatio: 1.55,
                       itemBuilder: (context, index) {
                         final s = sessions[index];
                         final runId = str(s['run_id'], '');

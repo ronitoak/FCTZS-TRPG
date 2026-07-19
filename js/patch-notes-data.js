@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter一覧をカードグリッド表示に変更",
+    detail: "プレイヤー・シナリオ・セッション・募集・キャラクターの一覧を、画面幅に応じて1行に複数並ぶタイル表示にしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "部活外シナリオをログインなしで登録可能にした",
     detail: "プレイヤー詳細の「部活外を追加」を、Discordログインなしで利用できるようにしました。どのプレイヤーの部活外履歴も追加・削除できます。"
   },

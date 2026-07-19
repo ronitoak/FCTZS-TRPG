@@ -154,7 +154,12 @@ class RefreshList extends StatelessWidget {
     required this.itemBuilder,
     this.emptyText = '0件',
     this.header,
-    this.padding = const EdgeInsets.fromLTRB(12, 4, 12, 16),
+    this.padding = const EdgeInsets.fromLTRB(12, 8, 12, 16),
+    /// 特設サイトの `minmax(320px, 1fr)` 相当。狭い画面では1列、広い画面では複数列。
+    this.maxCrossAxisExtent = 340,
+    this.childAspectRatio = 0.82,
+    this.crossAxisSpacing = 12,
+    this.mainAxisSpacing = 12,
   });
 
   final Future<void> Function() onRefresh;
@@ -163,6 +168,10 @@ class RefreshList extends StatelessWidget {
   final String emptyText;
   final Widget? header;
   final EdgeInsetsGeometry padding;
+  final double maxCrossAxisExtent;
+  final double childAspectRatio;
+  final double crossAxisSpacing;
+  final double mainAxisSpacing;
 
   @override
   Widget build(BuildContext context) {
@@ -187,18 +196,26 @@ class RefreshList extends StatelessWidget {
     }
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView.separated(
+      child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: padding,
-        itemCount: itemCount + (header != null ? 1 : 0),
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          if (header != null) {
-            if (index == 0) return header!;
-            return itemBuilder(context, index - 1);
-          }
-          return itemBuilder(context, index);
-        },
+        slivers: [
+          if (header != null) SliverToBoxAdapter(child: header),
+          SliverPadding(
+            padding: padding,
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: maxCrossAxisExtent,
+                mainAxisSpacing: mainAxisSpacing,
+                crossAxisSpacing: crossAxisSpacing,
+                childAspectRatio: childAspectRatio,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                itemBuilder,
+                childCount: itemCount,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -222,7 +239,8 @@ class CoverImage extends StatelessWidget {
   }) : fallback = FctzsImages.characterDefault;
 
   final String? url;
-  final double height;
+  /// null のときは親の制約いっぱいに広げる（グリッドカード向け）。
+  final double? height;
   final BoxFit fit;
   final String fallback;
 
@@ -295,6 +313,7 @@ class EntityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final media = showCover || leading != null;
     return Material(
       color: FctzsColors.surface,
       elevation: 2,
@@ -306,51 +325,77 @@ class EntityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (leading != null)
-              leading!
-            else if (showCover)
-              Stack(
-                children: [
-                  useCharacterFallback
-                      ? CoverImage.character(imageUrl, height: imageHeight)
-                      : CoverImage(imageUrl, height: imageHeight),
-                  if (badge != null)
-                    Positioned(top: 8, right: 8, child: badge!),
-                ],
+            if (media)
+              Expanded(
+                flex: 5,
+                child: leading != null
+                    ? ColoredBox(
+                        color: FctzsColors.bg,
+                        child: Center(child: leading),
+                      )
+                    : Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Positioned.fill(
+                            child: useCharacterFallback
+                                ? CoverImage.character(
+                                    imageUrl,
+                                    height: null,
+                                    fit: BoxFit.cover,
+                                  )
+                                : CoverImage(
+                                    imageUrl,
+                                    height: null,
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
+                          if (badge != null)
+                            Positioned(top: 8, right: 8, child: badge!),
+                        ],
+                      ),
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (badge != null && leading == null && !showCover) ...[
-                    Align(alignment: Alignment.centerRight, child: badge!),
-                    const SizedBox(height: 6),
-                  ],
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: FctzsColors.textMain,
-                    ),
-                  ),
-                  if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 6),
+            Expanded(
+              flex: media ? 3 : 1,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment:
+                      media ? MainAxisAlignment.start : MainAxisAlignment.center,
+                  children: [
+                    if (badge != null && !media) ...[
+                      Align(alignment: Alignment.centerRight, child: badge!),
+                      const SizedBox(height: 6),
+                    ],
                     Text(
-                      subtitle!,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: FctzsColors.textMuted,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: FctzsColors.textMain,
                       ),
                     ),
+                    if (subtitle != null && subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.4,
+                          color: FctzsColors.textMuted,
+                        ),
+                      ),
+                    ],
+                    if (footer != null) ...[
+                      const SizedBox(height: 8),
+                      footer!,
+                    ],
                   ],
-                  if (footer != null) ...[
-                    const SizedBox(height: 10),
-                    footer!,
-                  ],
-                ],
+                ),
               ),
             ),
           ],

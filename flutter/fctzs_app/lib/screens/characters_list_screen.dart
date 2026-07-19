@@ -102,6 +102,7 @@ class _CharactersListScreenState extends State<CharactersListScreen> {
                 return RefreshList(
                   onRefresh: _refresh,
                   itemCount: filtered.length,
+                  childAspectRatio: 0.8,
                   itemBuilder: (context, index) {
                     final row = filtered[index];
                     final state = str(row['state'], '');
@@ -124,43 +125,56 @@ class _CharactersListScreenState extends State<CharactersListScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Stack(
-                              children: [
-                                CoverImage.character(
-                                  str(row['image_url'], ''),
-                                  height: 180,
-                                  fit: BoxFit.scaleDown,
-                                ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: StatusBadge(state),
-                                ),
-                              ],
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            Expanded(
+                              flex: 5,
+                              child: Stack(
+                                fit: StackFit.expand,
                                 children: [
-                                  Text(
-                                    str(row['name']),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: fg ?? FctzsColors.textMain,
+                                  Positioned.fill(
+                                    child: CoverImage.character(
+                                      str(row['image_url'], ''),
+                                      height: null,
+                                      fit: BoxFit.cover,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    '${str(row['system'])} / ${str(row['job'])}\nPL: ${_playerName(row)}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      height: 1.45,
-                                      color: fg ?? FctzsColors.textMuted,
-                                    ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: StatusBadge(state),
                                   ),
                                 ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      str(row['name']),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: fg ?? FctzsColors.textMain,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${str(row['system'])} / ${str(row['job'])}\nPL: ${_playerName(row)}',
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        height: 1.4,
+                                        color: fg ?? FctzsColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

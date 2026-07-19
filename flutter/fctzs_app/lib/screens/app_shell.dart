@@ -18,13 +18,14 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
+  // Web ヘッダ（utils.js）と同じ順: Home | Characters | Sessions | Scenarios | Recruit | Players
   static const _pages = <Widget>[
     HomeScreen(),
-    PlayersListScreen(),
-    ScenariosListScreen(),
-    SessionsListScreen(),
-    RecruitListScreen(),
     CharactersListScreen(),
+    SessionsListScreen(),
+    ScenariosListScreen(),
+    RecruitListScreen(),
+    PlayersListScreen(),
   ];
 
   @override
@@ -45,14 +46,9 @@ class _AppShellState extends State<AppShell> {
             label: 'ホーム',
           ),
           NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'PL',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book),
-            label: 'シナリオ',
+            icon: Icon(Icons.badge_outlined),
+            selectedIcon: Icon(Icons.badge),
+            label: 'キャラ',
           ),
           NavigationDestination(
             icon: Icon(Icons.event_outlined),
@@ -60,14 +56,19 @@ class _AppShellState extends State<AppShell> {
             label: 'セッション',
           ),
           NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'シナリオ',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.campaign_outlined),
             selectedIcon: Icon(Icons.campaign),
             label: '募集',
           ),
           NavigationDestination(
-            icon: Icon(Icons.badge_outlined),
-            selectedIcon: Icon(Icons.badge),
-            label: 'キャラ',
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'PL',
           ),
         ],
       ),

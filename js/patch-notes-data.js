@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter下部タブの並びをWebヘッダに合わせた",
+    detail: "下部ナビゲーションを「ホーム・キャラ・セッション・シナリオ・募集・PL」の順にし、特設サイトのヘッダと同じ並びにしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter Webのfaviconを特設サイトと統一",
     detail: "Flutter Web版のファビコンを、特設サイトと同じ画像に揃えました。"
   },

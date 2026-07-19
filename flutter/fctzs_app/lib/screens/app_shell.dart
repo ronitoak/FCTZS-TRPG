@@ -46,13 +46,13 @@ class _AppShellState extends State<AppShell> {
             label: 'ホーム',
           ),
           NavigationDestination(
-            icon: Icon(Icons.badge_outlined),
-            selectedIcon: Icon(Icons.badge),
+            icon: Icon(Icons.face_outlined),
+            selectedIcon: Icon(Icons.face),
             label: 'キャラ',
           ),
           NavigationDestination(
-            icon: Icon(Icons.event_outlined),
-            selectedIcon: Icon(Icons.event),
+            icon: Icon(Icons.diversity_3_outlined),
+            selectedIcon: Icon(Icons.diversity_3),
             label: 'セッション',
           ),
           NavigationDestination(

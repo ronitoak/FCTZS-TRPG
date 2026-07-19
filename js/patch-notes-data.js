@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutter Webのfaviconを特設サイトと統一",
+    detail: "Flutter Web版のファビコンを、特設サイトと同じ画像に揃えました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter卓カバーをシナリオ画像へフォールバック",
     detail: "卓（セッション）に専用画像がないとき、紐づくシナリオのカバーを表示し、それもなければデフォルト画像を使うようにしました。"
   },

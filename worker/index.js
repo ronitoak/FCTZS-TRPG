@@ -58,6 +58,7 @@ const R2_ALLOWED_MIME_TYPES = Object.freeze([
   "image/gif"
 ]);
 const R2_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const PUBLIC_EXTERNAL_PASSED_PATH = "/api/player_profiles/external_passed";
 
 const PATCH_ALLOWED_RESOURCES = Object.freeze([
   SUPABASE_TABLES.sessions,
@@ -560,6 +561,7 @@ async function routeApiRequest(request, env, ctx, url) {
   if (
     ["POST", "PATCH", "DELETE"].includes(request.method)
     && url.pathname !== "/api/interactions"
+    && !(request.method === "PATCH" && url.pathname === PUBLIC_EXTERNAL_PASSED_PATH)
   ) {
     if (!await validateUserBearer(request, env)) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
@@ -1811,6 +1813,80 @@ async function handlePost(request, env, ctx, url) {
 
 async function handlePatch(request, env, ctx, url) {
   if (request.method === "PATCH") {
+    // 部活外通過だけはログインなしで共同編集できる。ほかのプロフィール列はこの経路で受け付けない。
+    if (url.pathname === PUBLIC_EXTERNAL_PASSED_PATH) {
+      try {
+        const body = await request.json();
+        const playerId = body?.player_id != null ? String(body.player_id).trim() : "";
+        const sourceRows = body?.external_passed_scenarios;
+        if (!playerId || !Array.isArray(sourceRows)) {
+          return new Response(JSON.stringify({
+            error: "player_id and external_passed_scenarios are required"
+          }), { status: 400, headers: jsonHeaders });
+        }
+        if (sourceRows.length > 100) {
+          return new Response(JSON.stringify({
+            error: "external_passed_scenarios must contain at most 100 items"
+          }), { status: 400, headers: jsonHeaders });
+        }
+
+        const normalizedRows = [];
+        const knownIds = new Set();
+        for (const row of sourceRows) {
+          const id = row?.id != null ? String(row.id).trim() : "";
+          const title = row?.title != null ? String(row.title).trim() : "";
+          const system = row?.system != null ? String(row.system).trim() : "";
+          const note = row?.note != null ? String(row.note).trim() : "";
+          if (!id || !title || id.length > 100 || title.length > 200 || system.length > 100 || note.length > 200) {
+            return new Response(JSON.stringify({
+              error: "Invalid external passed scenario"
+            }), { status: 400, headers: jsonHeaders });
+          }
+          if (knownIds.has(id)) {
+            return new Response(JSON.stringify({
+              error: "Duplicate external passed scenario id"
+            }), { status: 400, headers: jsonHeaders });
+          }
+          knownIds.add(id);
+          normalizedRows.push({ id, title, system, note });
+        }
+
+        const { res: playerRes, text: playerText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+        );
+        if (!playerRes.ok) {
+          return new Response(JSON.stringify({ error: "Player lookup failed", detail: playerText }), {
+            status: playerRes.status,
+            headers: jsonHeaders
+          });
+        }
+        const players = JSON.parse(playerText);
+        if (!Array.isArray(players) || players.length === 0) {
+          return new Response(JSON.stringify({ error: "Player not found" }), { status: 404, headers: jsonHeaders });
+        }
+
+        const { res, text } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.playerProfiles}?on_conflict=player_id`,
+          {
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+            body: [{ player_id: playerId, external_passed_scenarios: normalizedRows }]
+          }
+        );
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: "External passed scenarios update failed", detail: text }), {
+            status: res.status,
+            headers: jsonHeaders
+          });
+        }
+        return new Response(text, { status: 200, headers: jsonHeaders });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+      }
+    }
+
     const resource = url.pathname.replace("/api/", "");
     // ① ホワイトリストに合致する汎用PATCH処理
     if (PATCH_ALLOWED_RESOURCES.includes(resource)) {

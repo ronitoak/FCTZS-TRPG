@@ -12,10 +12,12 @@
 | 形式 | JSON |
 | CORS | `Access-Control-Allow-Origin: *` |
 | GET | 認証任意（付けると利用者 JWT が PostgREST へ転送される） |
-| POST / PATCH / DELETE | **有効な Bearer JWT 必須**（Auth API で実検証） |
+| POST / PATCH / DELETE | 原則として**有効な Bearer JWT 必須**（Auth API で実検証） |
 | Discord Interaction | `/api/interactions` のみ Ed25519。Bearer 不要 |
 
 所有権の最終防衛線は Supabase RLS。Worker は募集・応募・予定などで `player_id` を JWT から上書きする。
+
+例外として `PATCH /api/player_profiles/external_passed` は部活外通過履歴の共同編集専用で、Bearer JWT不要。`player_id` と最大100件の `external_passed_scenarios` だけを受け付け、ほかのプロフィール列は変更できない。
 
 関連: [`DB-overview.md`](./DB-overview.md) / [`security-checklist.md`](./security-checklist.md)
 
@@ -49,6 +51,7 @@
 | POST | `/api/player_availability` | 自分の `player_id` のみ |
 | POST | `/api/player_availability/session_block` | 卓メンバー検証後に参加者予定を NG |
 | POST | `/api/upload` | multipart。画像 MIME / 5MB / type 制限 |
+| PATCH | `/api/player_profiles/external_passed` | 認証不要。対象プレイヤーの部活外通過履歴を追加・削除する共同編集用 |
 | GET | `/api/scenario_interests?scenario_id=` | `{ interested, count }`。interested はログイン本人のみ |
 | POST | `/api/scenario_interests` | `{ scenario_id }`。新規ON時のみ GM可能者へ Discord DM |
 | DELETE | `/api/scenario_interests?scenario_id=` | 本人の気になる解除（通知なし） |

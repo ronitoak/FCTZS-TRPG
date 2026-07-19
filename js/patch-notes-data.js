@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "部活外シナリオをログインなしで登録可能にした",
+    detail: "プレイヤー詳細の「部活外を追加」を、Discordログインなしで利用できるようにしました。どのプレイヤーの部活外履歴も追加・削除できます。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter Webで一部のR2画像が表示されない問題を修正",
     detail: "CanvasKitの画像バイト取得に失敗するケース向けに、特設サイトのimgタグと同様のHTML要素表示へフォールバックするようにしました。"
   },

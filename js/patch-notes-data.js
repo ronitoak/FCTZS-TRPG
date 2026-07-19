@@ -8,6 +8,18 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
+    title: "Flutterプレイヤー一覧をアイコン＋レーダー表示に変更",
+    detail: "プレイヤー一覧を名前・アイコン（icon_url のキャラ画像）・プレイスタイルのレーダーチャート表示にし、IDは出さないようにしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
+    title: "Flutterセッション一覧を進行中／終了済タブに変更",
+    detail: "セッション一覧の上部タブを「進行中」「終了済」にし、完了（done）の卓は終了済、それ以外は進行中に表示するようにしました。"
+  },
+  {
+    date: "2026-07-19",
+    type: "improvement",
     title: "Flutter下部タブの並びをWebヘッダに合わせた",
     detail: "下部ナビゲーションを「ホーム・キャラ・セッション・シナリオ・募集・PL」の順にし、特設サイトのヘッダと同じ並びにしました。"
   },

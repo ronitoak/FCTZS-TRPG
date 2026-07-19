@@ -48,6 +48,8 @@ class FctzsApiClient {
 
   Future<List<dynamic>> fetchPlayers() => getList('/api/players');
 
+  Future<List<dynamic>> fetchPlayerProfiles() => getList('/api/player_profiles');
+
   Future<Map<String, dynamic>?> fetchPlayerDetailSummary(String playerId) =>
       getFirst('/api/player_detail_summary', query: {'player_id': playerId});
 

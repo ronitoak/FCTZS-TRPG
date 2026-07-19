@@ -49,4 +49,14 @@ abstract final class FctzsImages {
       scenarioImageUrl: scenarioId == null ? null : scenarioImages[scenarioId],
     );
   }
+
+  /// キャラ画像: image_url（絶対URL）→ id が URL ならそれ → デフォルト。
+  static String characterImage({
+    dynamic characterId,
+    dynamic imageUrl,
+  }) {
+    return absoluteUrl(imageUrl) ??
+        absoluteUrl(characterId) ??
+        characterDefault;
+  }
 }

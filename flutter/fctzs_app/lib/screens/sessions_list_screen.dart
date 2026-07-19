@@ -44,12 +44,9 @@ class _SessionsListScreenState extends State<SessionsListScreen>
   Future<_SessionsBundle> _load() async {
     final api = ApiScope.of(context);
     final runs = await api.fetchRuns();
-    final sessions = await api.fetchSessions();
     final scenarios = await api.fetchScenarios();
     return _SessionsBundle(
       runs: runs.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
-      sessions: sessions.map((e) => Map<String, dynamic>.from(e as Map)).toList()
-        ..sort((a, b) => str(b['start']).compareTo(str(a['start']))),
       scenarioImages: FctzsImages.scenarioImageMap(scenarios),
     );
   }
@@ -63,6 +60,39 @@ class _SessionsListScreenState extends State<SessionsListScreen>
   bool _match(String hay) =>
       _query.isEmpty || hay.toLowerCase().contains(_query.toLowerCase());
 
+  bool _isDone(Map<String, dynamic> run) =>
+      str(run['status'], '').toLowerCase() == 'done';
+
+  Widget _runGrid({
+    required List<Map<String, dynamic>> runs,
+    required Map<String, String?> scenarioImages,
+  }) {
+    return RefreshList(
+      onRefresh: _refresh,
+      itemCount: runs.length,
+      childAspectRatio: 0.85,
+      itemBuilder: (context, index) {
+        final r = runs[index];
+        final pl = r['player_names'] is List
+            ? (r['player_names'] as List).join(', ')
+            : '';
+        return EntityCard(
+          showCover: true,
+          imageUrl: FctzsImages.coverForRun(r, scenarioImages),
+          imageHeight: 130,
+          badge: StatusBadge(str(r['status'])),
+          title: str(r['title'], r['id']),
+          subtitle: 'GM: ${str(r['gm_name'])}\nPL: ${pl.isEmpty ? '—' : pl}',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RunDetailScreen(runId: str(r['id'])),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,8 +105,8 @@ class _SessionsListScreenState extends State<SessionsListScreen>
           unselectedLabelColor: FctzsColors.textMuted,
           indicatorColor: FctzsColors.primary,
           tabs: const [
-            Tab(text: '卓'),
-            Tab(text: '開催'),
+            Tab(text: '進行中'),
+            Tab(text: '終了済'),
           ],
         ),
       ),
@@ -92,7 +122,7 @@ class _SessionsListScreenState extends State<SessionsListScreen>
               future: _future,
               onRefresh: _refresh,
               builder: (context, data) {
-                final runs = data.runs.where((r) {
+                final filtered = data.runs.where((r) {
                   final hay = [
                     str(r['title']),
                     str(r['gm_name']),
@@ -103,60 +133,14 @@ class _SessionsListScreenState extends State<SessionsListScreen>
                   ].join(' ');
                   return _match(hay);
                 }).toList();
-                final sessions = data.sessions.where((s) {
-                  final hay = [str(s['title']), str(s['status']), str(s['run_id'])].join(' ');
-                  return _match(hay);
-                }).toList();
+                final ongoing = filtered.where((r) => !_isDone(r)).toList();
+                final done = filtered.where(_isDone).toList();
 
                 return TabBarView(
                   controller: _tabs,
                   children: [
-                    RefreshList(
-                      onRefresh: _refresh,
-                      itemCount: runs.length,
-                      childAspectRatio: 0.85,
-                      itemBuilder: (context, index) {
-                        final r = runs[index];
-                        final pl = r['player_names'] is List
-                            ? (r['player_names'] as List).join(', ')
-                            : '';
-                        return EntityCard(
-                          showCover: true,
-                          imageUrl: FctzsImages.coverForRun(r, data.scenarioImages),
-                          imageHeight: 130,
-                          badge: StatusBadge(str(r['status'])),
-                          title: str(r['title'], r['id']),
-                          subtitle:
-                              'GM: ${str(r['gm_name'])}\nPL: ${pl.isEmpty ? '—' : pl}',
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RunDetailScreen(runId: str(r['id'])),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    RefreshList(
-                      onRefresh: _refresh,
-                      itemCount: sessions.length,
-                      childAspectRatio: 1.55,
-                      itemBuilder: (context, index) {
-                        final s = sessions[index];
-                        final runId = str(s['run_id'], '');
-                        return EntityCard(
-                          badge: StatusBadge(str(s['status'])),
-                          title: str(s['title'], '無題'),
-                          subtitle: formatDateTime(s['start']),
-                          onTap: runId == '—'
-                              ? null
-                              : () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => RunDetailScreen(runId: runId),
-                                    ),
-                                  ),
-                        );
-                      },
-                    ),
+                    _runGrid(runs: ongoing, scenarioImages: data.scenarioImages),
+                    _runGrid(runs: done, scenarioImages: data.scenarioImages),
                   ],
                 );
               },
@@ -171,10 +155,8 @@ class _SessionsListScreenState extends State<SessionsListScreen>
 class _SessionsBundle {
   _SessionsBundle({
     required this.runs,
-    required this.sessions,
     required this.scenarioImages,
   });
   final List<Map<String, dynamic>> runs;
-  final List<Map<String, dynamic>> sessions;
   final Map<String, String?> scenarioImages;
 }

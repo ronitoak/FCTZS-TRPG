@@ -1938,6 +1938,19 @@ dialog.modal::backdrop {
   max-width: 320px;
 }
 
+.player-link-choice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.player-link-choice-buttons .btn-primary,
+.player-link-choice-buttons .btn-secondary {
+  font-size: 0.9rem;
+  padding: 6px 12px;
+}
+
 #player-link-discord-id-value {
   margin-top: 8px;
   max-width: 320px;

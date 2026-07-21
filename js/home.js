@@ -499,24 +499,39 @@ function setupDashboardEvents() {
 
 function populatePlayerLinkClaimSelect(players, meDiscordId) {
   const select = document.getElementById("player-link-select");
+  const statusEl = document.getElementById("player-link-claim-status");
+  const buttonsEl = document.getElementById("player-link-choice-buttons");
   if (!select) return;
+
   const list = Array.isArray(players) ? players : [];
-  // フィルタしすぎない。user_id 未設定なら候補に出す（最終判定は連携API）
-  const claimable = list
-    .filter(p => !p.user_id)
-    .sort((a, b) => {
-      const aMatch = meDiscordId && String(a.discord_id || "").trim() === String(meDiscordId) ? 0 : 1;
-      const bMatch = meDiscordId && String(b.discord_id || "").trim() === String(meDiscordId) ? 0 : 1;
-      if (aMatch !== bMatch) return aMatch - bMatch;
-      return String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja");
-    });
+  // user_id 未設定を優先。0件なら全件を出して状況を見える化する
+  let claimable = list.filter(p => !p.user_id);
+  const showingAll = claimable.length === 0 && list.length > 0;
+  if (showingAll) claimable = [...list];
+
+  claimable.sort((a, b) => {
+    const aMatch = meDiscordId && String(a.discord_id || "").trim() === String(meDiscordId) ? 0 : 1;
+    const bMatch = meDiscordId && String(b.discord_id || "").trim() === String(meDiscordId) ? 0 : 1;
+    if (aMatch !== bMatch) return aMatch - bMatch;
+    return String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja");
+  });
+
+  if (statusEl) {
+    if (list.length === 0) {
+      statusEl.textContent = "名簿の読み込みに失敗しました。再読み込みしてください。";
+    } else if (showingAll) {
+      statusEl.textContent = `未連携の名簿が無いため全 ${claimable.length} 人を表示しています（既に連携済みの名前は選べません）。`;
+    } else {
+      statusEl.textContent = `連携候補 ${claimable.length} 人（名簿全体 ${list.length} 人）`;
+    }
+  }
 
   select.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = claimable.length > 0
     ? "-- 自分の名前を選択 --"
-    : "-- 連携できる名簿がありません（管理者に追加を依頼） --";
+    : "-- 名簿が空です --";
   select.appendChild(placeholder);
 
   for (const p of claimable) {
@@ -524,7 +539,11 @@ function populatePlayerLinkClaimSelect(players, meDiscordId) {
     opt.value = p.player_id;
     const rowDiscord = p.discord_id ? String(p.discord_id).trim() : "";
     const isMatch = meDiscordId && rowDiscord && rowDiscord === String(meDiscordId);
-    if (isMatch) {
+    const linked = Boolean(p.user_id);
+    if (linked && !isMatch) {
+      opt.disabled = true;
+      opt.textContent = `${p.player_name || p.player_id}（連携済み）`;
+    } else if (isMatch) {
       opt.textContent = `${p.player_name || p.player_id}（Discord一致・推奨）`;
       opt.selected = true;
     } else if (rowDiscord) {
@@ -534,6 +553,42 @@ function populatePlayerLinkClaimSelect(players, meDiscordId) {
     }
     select.appendChild(opt);
   }
+
+  if (buttonsEl) {
+    buttonsEl.innerHTML = "";
+    const clickable = claimable.filter(p => !p.user_id || (meDiscordId && String(p.discord_id || "").trim() === String(meDiscordId)));
+    for (const p of clickable.slice(0, 24)) {
+      const rowDiscord = p.discord_id ? String(p.discord_id).trim() : "";
+      const isMatch = meDiscordId && rowDiscord && rowDiscord === String(meDiscordId);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = isMatch ? "btn-primary" : "btn-secondary";
+      btn.textContent = isMatch
+        ? `${p.player_name || p.player_id}（一致）`
+        : (p.player_name || p.player_id);
+      btn.addEventListener("click", () => {
+        select.value = p.player_id;
+        document.getElementById("player-link-claim-btn")?.click();
+      });
+      buttonsEl.appendChild(btn);
+    }
+  }
+}
+
+/** 連携UI用に認証ヘッダ無しで名簿を取る（JWT付きGETが空になる環境対策） */
+async function fetchPlayersForLinkBanner() {
+  const base = (window.FCTZS_CONFIG && window.FCTZS_CONFIG.API_BASE) || "";
+  const url = `${base}/api/players?select=player_id,player_name,user_id,discord_id`;
+  const res = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+    headers: { Accept: "application/json" }
+  });
+  if (!res.ok) {
+    throw new Error(`players HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
 async function main() {
@@ -552,16 +607,26 @@ async function main() {
   try {
     // ホームは専用巨大JSONではなく、一覧用の列限定APIを並列取得して画面側で組み立てる。
     let playersLoadError = false;
-    const [scenarios, runs, sessions, players] = await Promise.all([
+    const [scenarios, runs, sessions, playersFromApi] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
-      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id", "", { omitAuth: true }).catch((err) => {
+      fetchPlayersForLinkBanner().catch((err) => {
         console.warn("players 取得に失敗:", err);
         playersLoadError = true;
         return [];
       }),
     ]);
+    let players = Array.isArray(playersFromApi) ? playersFromApi : [];
+    // 念のため再取得（初回が空のとき）
+    if (players.length === 0 && !playersLoadError) {
+      try {
+        players = await fetchPlayersForLinkBanner();
+      } catch (err) {
+        console.warn("players 再取得に失敗:", err);
+        playersLoadError = true;
+      }
+    }
 
     const playersById = new Map(
       (Array.isArray(players) ? players : []).map(p => [String(p.player_id), p])
@@ -649,11 +714,8 @@ async function main() {
         }
       }
 
-      // 選択ボックスは user_id 未設定の名簿をすべて出す
-      const unlinkedPlayers = (Array.isArray(players) ? players : []).filter(p => !p.user_id);
-      if (unlinkedPlayers.length > 0) {
-        claimablePlayers = unlinkedPlayers;
-      }
+      // 選択ボックス用は常に公開名簿を使う（/api/me の候補に依存しない）
+      claimablePlayers = players;
     }
 
     const linkBanner = document.getElementById("player-link-banner");
@@ -664,6 +726,17 @@ async function main() {
       const needsLink = Boolean(session && !myPlayer);
       linkBanner.hidden = !needsLink;
       if (needsLink) {
+        // バナー表示時点で名簿を再取得して確実に埋める
+        if (!Array.isArray(claimablePlayers) || claimablePlayers.length === 0) {
+          try {
+            claimablePlayers = await fetchPlayersForLinkBanner();
+            players = claimablePlayers;
+            playersLoadError = false;
+          } catch (err) {
+            console.warn("バナー用 players 再取得失敗:", err);
+            playersLoadError = true;
+          }
+        }
         populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
         const discordId = meDiscordId || "";
         if (discordIdInput) {

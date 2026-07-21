@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-22",
     type: "improvement",
+    title: "プレイヤー名候補の表示を修正",
+    detail: "未連携時の名前選択が空になる問題を修正しました。名簿を認証なしで再取得し、候補件数の表示と名前ボタン一覧を追加しています。"
+  },
+  {
+    date: "2026-07-22",
+    type: "improvement",
     title: "Discord ID一致時の自動連携と候補表示",
     detail: "名簿に同じDiscord IDがあるのに未連携扱いになる問題を修正し、一致した場合は自動連携します。選択ボックスはuser_id未設定の名簿をすべて表示するようにしました。"
   },

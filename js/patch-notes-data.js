@@ -7,7 +7,7 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
-    type: "fix",
+    type: "improvement",
     title: "キャラ一覧の最終セッション並びを復元",
     detail: "キャラクター一覧が直近参加セッション順に並ばなくなっていた不具合を修正しました。character_last_session に加え、卓参加情報からも最終日をマージして並べます。"
   },
@@ -25,7 +25,7 @@ window.PATCH_NOTES = Object.freeze([
   },
   {
     date: "2026-07-21",
-    type: "fix",
+    type: "improvement",
     title: "壊れた画像URLをクリア",
     detail: "R2上に存在しない404画像URL（キャラ22件・シナリオ3件）をNULLにし、デフォルト画像へフォールバックするようにしました。"
   },

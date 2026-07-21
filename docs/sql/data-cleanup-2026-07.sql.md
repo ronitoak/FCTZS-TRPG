@@ -88,5 +88,5 @@ WHERE EXISTS (SELECT 1 FROM public.characters WHERE id = 'c-103')
 
 - [x] A の空文字確認が 0 件（2026-07-21 運用者適用）
 - [x] B の行が存在する（2026-07-21 運用者適用）
-- [x] 画像監査は [`image-url-audit.md`](../image-url-audit.md) 実施。404 の NULL 化は [`image-url-nullify-404-2026-07.sql.md`](./image-url-nullify-404-2026-07.sql.md)（適用待ち）
+- [x] 画像監査は [`image-url-audit.md`](../image-url-audit.md) 実施。404 の NULL 化は [`image-url-nullify-404-2026-07.sql.md`](./image-url-nullify-404-2026-07.sql.md)（**適用済 2026-07-21**）
 - [x] junction 読取の進捗は [`junction-read-progress.md`](../junction-read-progress.md) を更新

@@ -219,6 +219,16 @@ test("作成画面のuploadは認証付き共通APIへ統一される", () => {
   });
 });
 
+test("キャラ一覧の最終セッションは軽量ビュー優先", () => {
+  const source = readFileSync(join(root, "js", "character.js"), "utf8");
+  assert.match(source, /apiGet\("character_last_session"\)/);
+  assert.match(source, /return map;/);
+  const viewCall = source.indexOf('apiGet("character_last_session")');
+  const runsFallback = source.indexOf('apiGet("runs")');
+  assert.ok(viewCall >= 0 && runsFallback > viewCall, "runs 補完は character_last_session の後（失敗時）である必要がある");
+  assert.match(source, /character_last_session の取得に失敗したため/);
+});
+
 test("履歴同期は卓参加者のcharacterだけをService Roleで追加する", () => {
   assert.match(workerSource, /const allowedPlayerIds = new Set/);
   assert.match(workerSource, /select=id,player_id&id=in\./);

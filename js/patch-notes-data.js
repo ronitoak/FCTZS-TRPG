@@ -8,6 +8,18 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "壊れた画像URLをクリア",
+    detail: "R2上に存在しない404画像URL（キャラ22件・シナリオ3件）をNULLにし、デフォルト画像へフォールバックするようにしました。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "キャラ一覧の最終セッション取得を軽量化",
+    detail: "キャラクター一覧の並び替え用に、毎回卓・セッション全件を取らず character_last_session ビューだけを使うようにしました（ビュー取得失敗時のみ従来の補完）。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
     title: "卓参加者の保存をjunctionのみに",
     detail: "卓の作成・更新で runs の参加者配列列へは書かず、run_players / run_characters だけを更新するようにしました。API応答の player_ids / characters は従来どおり junction から組み立てます。Worker再デプロイ後に有効です。"
   },

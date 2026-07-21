@@ -1,6 +1,8 @@
 # 画像 URL 監査結果と NULL 化 SQL
 
-実施日: 2026-07-21  
+最終更新: 2026-07-21  
+**適用**: 完了（2026-07-21・ユーザー Dashboard 実行）  
+実施日（監査）: 2026-07-21  
 手順: [`image-url-audit.md`](../image-url-audit.md)  
 詳細 JSON: [`image-url-audit-report.json`](../image-url-audit-report.json)
 
@@ -29,9 +31,9 @@
 
 ---
 
-## Supabase SQL Editor で実行
+## Supabase SQL Editor で実行（適用済・再実行不要）
 
-確認してから `COMMIT`。
+当時の手順メモ。確認してから `COMMIT`。
 
 ```sql
 BEGIN;

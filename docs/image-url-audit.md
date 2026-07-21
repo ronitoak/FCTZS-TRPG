@@ -12,7 +12,7 @@
 | runs | 0 | — | — |
 
 - レポート JSON: [`image-url-audit-report.json`](./image-url-audit-report.json)
-- NULL 化 SQL（Dashboard 手動）: [`sql/image-url-nullify-404-2026-07.sql.md`](./sql/image-url-nullify-404-2026-07.sql.md)
+- NULL 化 SQL: [`sql/image-url-nullify-404-2026-07.sql.md`](./sql/image-url-nullify-404-2026-07.sql.md)（**適用済 2026-07-21**）
 
 ---
 

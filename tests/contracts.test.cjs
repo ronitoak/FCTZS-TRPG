@@ -244,9 +244,13 @@ test("ログイン本人解決は /api/me で行う", () => {
   assert.match(workerSource, /\/api\/me/);
   assert.match(workerSource, /\/api\/me\/link/);
   assert.match(workerSource, /resolveCallerPlayerId/);
+  assert.match(workerSource, /resolveDiscordIdForRequest/);
+  assert.match(workerSource, /listClaimablePlayers/);
+  assert.match(workerSource, /fetchAuthAdminUser/);
   const homeSource = readFileSync(join(root, "js", "home.js"), "utf8");
   assert.match(homeSource, /apiGet\("me"\)/);
   assert.match(homeSource, /apiPost\("me\/link"/);
+  assert.match(homeSource, /claimable_players/);
   assert.match(homeSource, /populatePlayerLinkClaimSelect/);
 });
 

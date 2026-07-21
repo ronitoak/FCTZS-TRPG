@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-22",
+    type: "fix",
+    title: "プレイヤー自己連携の候補・Discord ID検出",
+    detail: "未連携時に名前候補が出ない／Discord IDをコピーできない問題を修正しました。WorkerがAuth AdminとJWTからDiscord IDを補完し、連携候補名簿も /api/me から返すようにしました。"
+  },
+  {
+    date: "2026-07-22",
     type: "feature",
     title: "プレイヤー自己連携",
     detail: "ホームの未連携案内から、自分のプレイヤー名を選んで Discord アカウントと名簿を紐付けできるようにしました。Discord IDのコピーも安定化し、プレイヤー一覧へ誘導するだけの導線はやめました。"

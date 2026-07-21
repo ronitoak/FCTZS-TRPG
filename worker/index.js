@@ -948,32 +948,129 @@ async function validateUserBearer(request, env) {
   return !!(await getAuthenticatedUser(request, env));
 }
 
-/** Auth user から Discord snowflake だけを取り出す（Auth UUID と混同しない）。 */
+function decodeBearerJwtPayload(request) {
+  const authorization = request.headers.get("Authorization") || "";
+  const match = authorization.match(/^Bearer\s+(\S+)$/i);
+  if (!match) return null;
+  try {
+    const payloadPart = match[1].split(".")[1];
+    if (!payloadPart) return null;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+/** Auth user / JWT / Admin API から Discord snowflake を取り出す。 */
 function extractDiscordIdFromAuthUser(user) {
   if (!user) return null;
   const meta = user.user_metadata || {};
   const appMeta = user.app_metadata || {};
+  const identities = Array.isArray(user.identities) ? user.identities : [];
   const candidates = [
     meta.provider_id,
     meta.sub,
     meta.discord_id,
+    meta.custom_claims?.provider_id,
+    meta.custom_claims?.sub,
     appMeta.provider_id,
-    ...(Array.isArray(user.identities)
-      ? user.identities.flatMap(identity => {
-          if (identity?.provider !== "discord") return [];
-          const data = identity.identity_data || {};
-          return [data.provider_id, data.sub, data.id, identity.id];
-        })
-      : [])
+    appMeta.sub,
+    ...identities.flatMap(identity => {
+      const provider = String(identity?.provider || "").toLowerCase();
+      if (provider && provider !== "discord") return [];
+      const data = identity.identity_data || {};
+      return [data.provider_id, data.sub, data.id, data.user_id, identity.id];
+    })
   ];
   for (const candidate of candidates) {
     const raw = String(candidate || "").trim();
     if (!raw) continue;
-    // "discord:123..." や URL 末尾の snowflake も拾う
+    // UUID は除外し、Discord snowflake（おおむね17〜20桁）だけを採用する
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw)) {
+      continue;
+    }
     const matched = raw.match(/(\d{17,20})/);
     if (matched) return matched[1];
   }
   return null;
+}
+
+/** Service Role の Admin API で identities 付きユーザーを取り、Discord ID を補完する。 */
+async function fetchAuthAdminUser(env, userId) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY || !userId) return null;
+  try {
+    const response = await fetch(
+      `${env.SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+      {
+        method: "GET",
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+        }
+      }
+    );
+    if (!response.ok) {
+      console.warn("Auth Admin ユーザー取得に失敗:", response.status);
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn("Auth Admin ユーザー取得エラー:", err);
+    return null;
+  }
+}
+
+async function resolveDiscordIdForRequest(request, env, user) {
+  let discordId = extractDiscordIdFromAuthUser(user);
+  if (discordId) return discordId;
+
+  const jwtPayload = decodeBearerJwtPayload(request);
+  if (jwtPayload) {
+    discordId = extractDiscordIdFromAuthUser({
+      id: jwtPayload.sub,
+      user_metadata: jwtPayload.user_metadata || jwtPayload,
+      app_metadata: jwtPayload.app_metadata || {},
+      identities: jwtPayload.identities || []
+    });
+    if (discordId) return discordId;
+  }
+
+  const adminUser = await fetchAuthAdminUser(env, user?.id || jwtPayload?.sub);
+  if (adminUser) {
+    discordId = extractDiscordIdFromAuthUser(adminUser);
+    if (discordId) return discordId;
+  }
+  return null;
+}
+
+async function listClaimablePlayers(env, discordId) {
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,user_id,discord_id&order=player_name.asc`
+  );
+  if (!res.ok) {
+    console.warn("claimable players 取得失敗:", text);
+    return [];
+  }
+  const rows = JSON.parse(text);
+  const list = Array.isArray(rows) ? rows : [];
+  return list
+    .filter(p => {
+      const userId = p.user_id ? String(p.user_id) : "";
+      if (userId) return false;
+      const rowDiscord = p.discord_id ? String(p.discord_id).trim() : "";
+      // Discord ID 未検出時は user_id 未設定の名簿をすべて候補にする
+      if (!discordId) return true;
+      // 検出済みなら未登録 or 一致のみ
+      return !rowDiscord || rowDiscord === String(discordId);
+    })
+    .map(p => ({
+      player_id: p.player_id,
+      player_name: p.player_name,
+      discord_id: p.discord_id ? String(p.discord_id).trim() : ""
+    }));
 }
 
 /**
@@ -999,7 +1096,7 @@ async function resolveCallerPlayerId(request, env) {
     }
   }
 
-  const discordId = extractDiscordIdFromAuthUser(user);
+  const discordId = await resolveDiscordIdForRequest(request, env, user);
   if (!discordId) return null;
 
   const { res: byDiscordRes, text: byDiscordText } = await sbServiceFetch(
@@ -1138,14 +1235,16 @@ async function handleGet(request, env, url) {
       if (!user?.id) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
       }
-      const discordId = extractDiscordIdFromAuthUser(user);
+      const discordId = await resolveDiscordIdForRequest(request, env, user);
+      const claimablePlayers = await listClaimablePlayers(env, discordId);
       const playerId = await resolveCallerPlayerId(request, env);
       if (!playerId) {
         return new Response(JSON.stringify({
           linked: false,
           player: null,
           discord_id: discordId,
-          auth_user_id: String(user.id)
+          auth_user_id: String(user.id),
+          claimable_players: claimablePlayers
         }), { status: 200, headers: jsonHeaders });
       }
       const { res, text } = await sbServiceFetch(
@@ -1161,7 +1260,8 @@ async function handleGet(request, env, url) {
         linked: Boolean(player),
         player,
         discord_id: discordId || player?.discord_id || null,
-        auth_user_id: String(user.id)
+        auth_user_id: String(user.id),
+        claimable_players: []
       }), { status: 200, headers: jsonHeaders });
     }
 
@@ -1630,7 +1730,7 @@ async function handlePost(request, env, ctx, url) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
       }
       const authUserId = String(user.id);
-      const discordId = extractDiscordIdFromAuthUser(user);
+      const discordId = await resolveDiscordIdForRequest(request, env, user);
       if (!discordId) {
         return new Response(JSON.stringify({
           error: "Discord ID を取得できません。一度ログアウトしてから Discord で再ログインしてください。"

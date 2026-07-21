@@ -488,24 +488,28 @@ function populatePlayerLinkClaimSelect(players, meDiscordId) {
   const claimable = list
     .filter(p => {
       const userId = p.user_id ? String(p.user_id) : "";
-      const discordId = p.discord_id ? String(p.discord_id).trim() : "";
       if (userId) return false;
+      const discordId = p.discord_id ? String(p.discord_id).trim() : "";
       if (discordId && meDiscordId && discordId !== String(meDiscordId)) return false;
       return true;
     })
     .sort((a, b) => String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja"));
 
-  select.innerHTML = '<option value="">-- 自分の名前を選択 --</option>';
+  select.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = claimable.length > 0
+    ? "-- 自分の名前を選択 --"
+    : "-- 連携できる名簿がありません --";
+  select.appendChild(placeholder);
+
   for (const p of claimable) {
     const opt = document.createElement("option");
     opt.value = p.player_id;
-    opt.textContent = p.player_name || p.player_id;
-    select.appendChild(opt);
-  }
-  if (claimable.length === 0) {
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "連携可能な名簿がありません（管理者に追加を依頼）";
+    const hasDiscord = p.discord_id ? String(p.discord_id).trim() : "";
+    opt.textContent = hasDiscord
+      ? `${p.player_name || p.player_id}`
+      : `${p.player_name || p.player_id}（Discord未登録）`;
     select.appendChild(opt);
   }
 }
@@ -530,7 +534,7 @@ async function main() {
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
-      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id").catch((err) => {
+      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id", "", { omitAuth: true }).catch((err) => {
         console.warn("players 取得に失敗:", err);
         playersLoadError = true;
         return [];
@@ -561,9 +565,10 @@ async function main() {
       sessionsByRunId.get(runId).push(s);
     }
 
-    // 本人解決は Worker /api/me（Auth API + Discord 自動連携）を正とし、失敗時のみ名簿照合へフォールバック。
+    // 本人解決は Worker /api/me（Auth API + Discord 自動連携 + 候補名簿）を正とする。
     let myPlayer = null;
     let meDiscordId = null;
+    let claimablePlayers = [];
     let authUserForMatch = session?.user || null;
     if (session && window.supabase?.auth?.getUser) {
       try {
@@ -577,6 +582,7 @@ async function main() {
       try {
         const me = await Utils.apiGet("me");
         meDiscordId = me?.discord_id || null;
+        claimablePlayers = Array.isArray(me?.claimable_players) ? me.claimable_players : [];
         if (me?.player?.player_id) {
           myPlayer = me.player;
         }
@@ -589,6 +595,9 @@ async function main() {
       if (!meDiscordId) {
         meDiscordId = Utils.extractDiscordIdFromUser(authUserForMatch);
       }
+      if (claimablePlayers.length === 0) {
+        claimablePlayers = (Array.isArray(players) ? players : []).filter(p => !p.user_id);
+      }
     }
 
     const linkBanner = document.getElementById("player-link-banner");
@@ -599,24 +608,23 @@ async function main() {
       const needsLink = Boolean(session && !myPlayer);
       linkBanner.hidden = !needsLink;
       if (needsLink) {
-        populatePlayerLinkClaimSelect(players, meDiscordId);
+        populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
         const discordId = meDiscordId || "";
         if (discordIdInput) {
           discordIdInput.value = discordId;
-          discordIdInput.hidden = !discordId;
+          // IDが取れないときも欄を出して状況が分かるようにする
+          discordIdInput.hidden = false;
+          discordIdInput.placeholder = discordId ? "" : "Discord ID を取得できませんでした";
         }
         if (linkBannerId) {
-          if (discordId) {
-            linkBannerId.hidden = false;
-            linkBannerId.textContent = `検出された Discord ID: ${discordId}`;
-          } else {
-            linkBannerId.hidden = false;
-            linkBannerId.textContent =
-              "Discord ID を取得できませんでした。一度ログアウトし、Discord で再ログインしてから再度お試しください。";
-          }
+          linkBannerId.hidden = false;
+          linkBannerId.textContent = discordId
+            ? `検出された Discord ID: ${discordId}`
+            : "Discord ID を取得できませんでした。API再デプロイ後に、一度ログアウト→Discord再ログインを試してください。";
         }
         if (copyIdBtn) {
-          copyIdBtn.hidden = !discordId;
+          copyIdBtn.hidden = false;
+          copyIdBtn.disabled = !discordId;
         }
       }
     }

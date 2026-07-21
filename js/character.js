@@ -10,6 +10,21 @@ const SYSTEM_DISPLAY_NAMES = {
   "ガイアケアTRPG": "ガイアケアTRPG"
 };
 
+/** Postgres / ISO の日時文字列をミリ秒へ（失敗時は NaN）。 */
+function parseSessionTime(value) {
+  if (value == null || value === "") return NaN;
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+  const raw = String(value).trim();
+  let t = Date.parse(raw);
+  if (Number.isFinite(t)) return t;
+  // "2026-07-01 15:00:00+00" など空白区切りを ISO 寄せする
+  let normalized = raw.replace(" ", "T");
+  t = Date.parse(normalized);
+  if (Number.isFinite(t)) return t;
+  normalized = normalized.replace(/([+-]\d{2})$/, "$1:00");
+  return Date.parse(normalized);
+}
+
 /** 最終セッション日時マップをビューと卓参加の両方から作り、より新しい方を採用する。 */
 async function buildLastSessionMap() {
   const map = new Map();
@@ -24,13 +39,13 @@ async function buildLastSessionMap() {
   try {
     const lastRows = await Utils.apiGet("character_last_session");
     for (const r of Array.isArray(lastRows) ? lastRows : []) {
-      merge(r?.character_id, Date.parse(r.last_session_start ?? ""));
+      merge(r?.character_id, parseSessionTime(r.last_session_start));
     }
   } catch (err) {
     console.warn("character_last_session の取得に失敗しました", err);
   }
 
-  // ビュー欠落や junction 未同期分を runs（membership は Worker が junction から付与）で補完する。
+  // ビュー欠落や日時パース差を runs（membership は Worker が junction から付与）で補完する。
   try {
     const [runs, sessions] = await Promise.all([
       Utils.apiGet("runs"),
@@ -39,7 +54,7 @@ async function buildLastSessionMap() {
     const latestByRunId = new Map();
     for (const s of Array.isArray(sessions) ? sessions : []) {
       if (!s?.run_id) continue;
-      const t = Date.parse(s.start ?? "");
+      const t = parseSessionTime(s.start);
       if (!Number.isFinite(t)) continue;
       const key = String(s.run_id);
       const prev = latestByRunId.get(key);

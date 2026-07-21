@@ -11,8 +11,10 @@ const comparisonRequestToken = Utils.createLatestRequestToken();
 
 let globalPlayers = [];
 let parsedCsvData = null;
-// セッションのrun_idを利用者向け卓名へ解決するため、卓データを共有する。
+// 比較モーダル用（進行中・計画中のみ）
 let globalRuns = [];
+// カレンダー表示用（全卓。セッションの卓名解決に使う）
+let allRunsById = new Map();
 
 // 時間帯表示用の辞書
 const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
@@ -20,8 +22,16 @@ const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
 // 取得完了後だけ描画し、通信中の古い状態をカレンダーへ混在させない。
 async function fetchScheduleData() {
   try {
-    const data = await Utils.apiGet("sessions");
-    allSessions = Array.isArray(data) ? data : [];
+    const [sessions, runs] = await Promise.all([
+      Utils.apiGet("sessions"),
+      Utils.apiGet("runs")
+    ]);
+    allSessions = Array.isArray(sessions) ? sessions : [];
+    allRunsById = new Map(
+      (Array.isArray(runs) ? runs : [])
+        .filter(run => run?.id != null)
+        .map(run => [String(run.id), run])
+    );
     renderCalendar();
   } catch (err) {
     console.error("セッションの取得に失敗しました", err);
@@ -39,6 +49,11 @@ function renderCalendar() {
 
   Utils.renderCalendar(grid, year, month, {
     events: allSessions,
+    // ホームと同じく卓タイトルを優先（セッション個別タイトルはフォールバック）
+    getEventTitle: session => {
+      const run = allRunsById.get(String(session.run_id));
+      return run?.title || session.title || "名称未設定";
+    },
     getEventHref: session => `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`,
     onCellRender: (cell, context) => {
       if (!compareMode) return;

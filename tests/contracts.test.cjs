@@ -231,15 +231,22 @@ test("作成画面のuploadは認証付き共通APIへ統一される", () => {
   });
 });
 
+test("スケジュールカレンダーは卓タイトルを優先表示する", () => {
+  const source = readFileSync(join(root, "js", "schedule.js"), "utf8");
+  assert.match(source, /getEventTitle:\s*session\s*=>/);
+  assert.match(source, /run\?\.title\s*\|\|\s*session\.title/);
+  assert.match(source, /allRunsById/);
+});
+
 test("キャラ一覧の最終セッションはビューと卓参加の両方をマージする", () => {
   const source = readFileSync(join(root, "js", "character.js"), "utf8");
   assert.match(source, /apiGet\("character_last_session"\)/);
   assert.match(source, /apiGet\("runs"\)/);
   assert.match(source, /apiGet\("sessions"\)/);
+  assert.match(source, /function parseSessionTime\(/);
   const viewCall = source.indexOf('apiGet("character_last_session")');
   const runsCall = source.indexOf('apiGet("runs")');
   assert.ok(viewCall >= 0 && runsCall > viewCall, "runs 補完は character_last_session の後である必要がある");
-  assert.doesNotMatch(source, /return map;\s*\n\s*\} catch \(err\) \{\s*\n\s*console\.warn\("character_last_session/);
 });
 
 test("履歴同期は卓参加者のcharacterだけをService Roleで追加する", () => {

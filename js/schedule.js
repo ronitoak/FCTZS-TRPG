@@ -271,13 +271,10 @@ function handleRunSelection(e) {
   if (selectedRun.gm_id) targetIds.push(selectedRun.gm_id);
   if (Array.isArray(selectedRun.player_ids)) targetIds.push(...selectedRun.player_ids);
 
-  // ID移行前の卓データは名前の文字列・配列で保持されているため、比較用に併用する。
+  // 表示名は Worker が付与する player_names / gm_name を使う。
   const targetNames = [];
   if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
-  else if (selectedRun.gm_name) targetNames.push(selectedRun.gm_name);
-
   if (Array.isArray(selectedRun.player_names)) targetNames.push(...selectedRun.player_names);
-  else if (Array.isArray(selectedRun.players)) targetNames.push(...selectedRun.players);
 
   checkboxes.forEach(cb => {
     const pName = cb.getAttribute("data-name");

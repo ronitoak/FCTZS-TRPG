@@ -5,7 +5,7 @@
 
 前提:
 
-1. API Worker `fctzs-trpg` が **junction 明示洗替＋配列ミラー**（dual-write）をデプロイ済みであること  
+1. API Worker `fctzs-trpg` が **junction 明示洗替**をデプロイ済みであること（配列ミラーは不要）  
 2. Cron / `canEditRun` / `session_block` も junction 優先であること（同 Worker）  
 3. 通常の卓作成・更新はすべて Worker 経由であること（Dashboard 直書きで配列だけ更新しない）
 

@@ -456,8 +456,8 @@ function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, 
   const gmName = r.gm_name || (gmObj ? gmObj.player_name : '—');
   const gm = Utils.escapeHtml(gmName);
 
-  // ID配列がない旧卓では、従来のplayers配列を表示用フォールバックに使う。
-  const targetPlayers = (Array.isArray(r.player_ids) && r.player_ids.length > 0) ? r.player_ids : (Array.isArray(r.players) ? r.players : []);
+  // 参加者は player_ids（junction 由来）を名前解決して表示する。
+  const targetPlayers = Array.isArray(r.player_ids) ? r.player_ids : [];
   const resolvedPlayers = targetPlayers.map(identifier => {
       const pObj = playerMapById.get(identifier) || playerMapByName.get(identifier);
       return pObj ? pObj.player_name : identifier;

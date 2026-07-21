@@ -327,8 +327,7 @@ function registerSessionDetailEvents() {
           gmSelect.value = currentRunData.gm_id || "";
       }
 
-      // 新形式のID配列を優先し、未移行データだけ旧文字列から初期値を復元する。
-      tempPlayers = [...(currentRunData.player_ids || currentRunData.players || [])];
+      tempPlayers = [...(currentRunData.player_ids || [])];
 
       try {
           const ids = (currentRunData.characters || []).filter(Boolean);
@@ -464,13 +463,7 @@ function registerSessionDetailEvents() {
 
           // ② 参加プレイヤー全員のスケジュールを 'ng' にする
           if (currentRunData.player_ids && currentRunData.player_ids.length > 0) {
-              syncPlayerIds = currentRunData.player_ids; // 移行済みの場合はそのままIDを使用
-          } else if (currentRunData.players && currentRunData.players.length > 0) {
-              // 未移行データ用フォールバック（旧ロジック残し）
-              syncPlayerIds = currentRunData.players.map(name => {
-                  const found = allPlayers.find(p => p.player_name === name || p.name === name);
-                  return found ? found.player_id : null;
-              }).filter(id => id !== null);
+              syncPlayerIds = currentRunData.player_ids;
           }
 
           if (currentRunData.gm_id) {

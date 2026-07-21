@@ -36,4 +36,4 @@
 
 ## 配列列
 
-`runs.player_ids` / `characters` の DROP は将来: [`sql/drop-runs-array-columns-future.sql.md`](./sql/drop-runs-array-columns-future.sql.md)
+`runs.player_ids` / `characters` の DROP: [`sql/drop-runs-array-columns-future.sql.md`](./sql/drop-runs-array-columns-future.sql.md)（Worker 再デプロイ後・手動。画面 UX は不変）

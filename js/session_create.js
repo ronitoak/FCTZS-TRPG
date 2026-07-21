@@ -155,7 +155,7 @@ Utils.domReady(async () => {
             scenario_id: form.scenario_id.value,
             gm_id: form.gm_id ? form.gm_id.value : null, // 名前変更に影響されないGM識別子を保存する。
             characters: charIds, 
-            player_ids: allPlayerIds, // 旧players文字列と併存させ、ID参照へ段階移行する。
+            player_ids: allPlayerIds,
             status: 'planning',
             image_url: imageUrl
         };

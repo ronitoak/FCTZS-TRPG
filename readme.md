@@ -10,7 +10,7 @@
 | API | Cloudflare Workers（`worker/index.js`、Worker `fctzs-trpg`） | [`docs/api-contract.md`](docs/api-contract.md) |
 | DB | Supabase（PostgreSQL + Auth + RLS） | [`docs/DB-overview.md`](docs/DB-overview.md), [`docs/DB_info.txt`](docs/DB_info.txt) |
 | 画像 | R2（`POST /api/upload`） | Worker + [`docs/r2-cors.json`](docs/r2-cors.json) |
-| Flutter（並列） | ゲスト閲覧＋スケジュール照合（Worker `fctzs-flutter`） | [`flutter/README.md`](flutter/README.md), [`docs/flutter-web-parity.md`](docs/flutter-web-parity.md) |
+| Flutter（並列・後回し） | 閲覧＋ログイン書込みまで実装済。追加パリティは DB/Worker/Web 完了後 | [`flutter/README.md`](flutter/README.md), [`docs/flutter-web-parity.md`](docs/flutter-web-parity.md) |
 | Discord | Webhook / Interactions / Cron | Worker + テスト用 `DISCORD_USE_TEST_WEBHOOK` |
 
 公開 URL 目安:

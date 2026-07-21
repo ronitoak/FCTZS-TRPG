@@ -135,8 +135,8 @@ const SIMPLE_INSERT_ENDPOINTS = Object.freeze({
 
 // 一覧APIは現行画面で参照する互換列だけに絞り、ID指定の詳細APIは既存の全列契約を維持する。
 const CHARACTER_LIST_SELECT = "id,name,job,player_id,system,state,image_url,players(player_name)";
-// runs に gm/players 列は存在しない。名称は gm_id / player_ids から Worker 側で解決する。
-const RUN_LIST_SELECT = "id,title,scenario_id,gm_id,player_ids,characters,status,image_url,updated_at";
+// runs に gm/players 列は存在しない。参加者は junction から組み立て、名称は gm_id / player_ids から Worker 側で解決する。
+const RUN_LIST_SELECT = "id,title,scenario_id,gm_id,status,image_url,updated_at";
 const SESSION_LIST_SELECT = "id,run_id,start,status,title";
 const PLAYER_LIST_SELECT = "player_id,player_name,user_id,discord_id";
 const SCENARIO_LIST_SELECT = "id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate";
@@ -240,7 +240,7 @@ async function countScenarioInterests(env, scenarioId) {
 
 /**
  * run_players / run_characters から player_ids・characters を組み立て直す。
- * junction 取得に成功した側は配列列を使わず、junction の結果（空含む）を正とする。
+ * DB の配列列には依存しない（常に junction。取得失敗時は空配列）。
  */
 async function hydrateRunsMembershipFromJunctions(env, request, runs) {
   if (!Array.isArray(runs) || runs.length === 0) return runs;
@@ -286,17 +286,12 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
     }
   } catch (err) {
     console.error("junction membership hydrate failed:", err);
-    return runs;
   }
 
   for (const run of runs) {
     const runId = String(run.id);
-    if (playersHydrated) {
-      run.player_ids = playersByRun.get(runId) || [];
-    }
-    if (charactersHydrated) {
-      run.characters = charactersByRun.get(runId) || [];
-    }
+    run.player_ids = playersHydrated ? (playersByRun.get(runId) || []) : [];
+    run.characters = charactersHydrated ? (charactersByRun.get(runId) || []) : [];
   }
 
   return runs;
@@ -1440,7 +1435,7 @@ async function handleGet(request, env, url) {
         queryParams.push(`title.ilike.${kw}`);
       }
 
-      queryParams.push(id ? "select=*" : `select=${RUN_LIST_SELECT}`);
+      queryParams.push(id ? `select=${RUN_LIST_SELECT},user_id` : `select=${RUN_LIST_SELECT}`);
       queryParams.push("order=updated_at.desc");
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.runs}?${queryParams.join("&")}`;

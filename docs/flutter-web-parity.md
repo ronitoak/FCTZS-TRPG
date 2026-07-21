@@ -1,7 +1,7 @@
 # Web / Flutter 機能パリティ表
 
 最終更新: 2026-07-21  
-方針: **Web = 管理・書込みの正本**、**Flutter = スマホ閲覧 → 段階的に書込み**（[`platform-roadmap.md`](./platform-roadmap.md)）
+方針: **Web = 管理・書込みの正本**。Flutter の追加パリティは **DB / Worker / Web のタスク完了後**（[`platform-roadmap.md`](./platform-roadmap.md)）。
 
 凡例: ○ あり / △ 一部 / × なし / — 対象外
 
@@ -49,7 +49,9 @@
 
 ※ ローカルでログインすると、戻り先は localhost のまま（古い公開版へ飛ばない）。
 
-## 次に埋める候補
+## 次に埋める候補（Flutter 再開後）
+
+DB / Worker / Web の残り（配列列 DROP・Phase C 等）が片付いてから着手する。
 
 1. プロフィール編集  
 2. キャラ／シナリオ作成  

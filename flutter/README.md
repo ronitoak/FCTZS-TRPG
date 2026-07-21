@@ -2,8 +2,11 @@
 
 現行の静的 Web（Cloudflare Workers Static Assets / Worker `fctzs`）は本番閲覧用として残し、Flutter は**同じ Worker API** を叩く別アプリとして閲覧できるようにする。
 
+**優先順**: DB / Worker / Web の残りが完了するまで、Flutter の**新規機能追加は後回し**（[`docs/platform-roadmap.md`](../docs/platform-roadmap.md)）。既に入っている閲覧・ログイン書込みはそのまま維持する。
+
 詳細契約: [`docs/api-contract.md`](../docs/api-contract.md)  
 全体方針: [`docs/platform-roadmap.md`](../docs/platform-roadmap.md)  
+パリティ: [`docs/flutter-web-parity.md`](../docs/flutter-web-parity.md)  
 API メモ: [`API_STARTER.md`](./API_STARTER.md)
 
 ## 前提

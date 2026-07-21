@@ -176,11 +176,11 @@
 | runs                       | scenario_id               | 2         | text                     | YES         | table |                               |
 | runs                       | title                     | 4         | text                     | YES         | table |                               |
 | runs                       | updated_at                | 11        | timestamp with time zone | NO          | table |                               |
-| runs                       | characters                | 13        | ARRAY                    | YES         | table | text[] 互換期間中の正                |
+| runs                       | characters                | 13        | ARRAY                    | YES         | table | text[] 非推奨・DROP候補（読取はjunction） |
 | runs                       | status                    | 14        | USER-DEFINED             | NO          | table | run status enum               |
 | runs                       | user_id                   | 15        | uuid                     | YES         | table |                               |
 | runs                       | gm_id                     | 16        | text                     | YES         | table | →players.player_id。名称はAPI側で解決 |
-| runs                       | player_ids                | 17        | ARRAY                    | YES         | table | text[] 互換期間中の正                |
+| runs                       | player_ids                | 17        | ARRAY                    | YES         | table | text[] 非推奨・DROP候補（読取はjunction） |
 | runs                       | image_url                 | 18        | text                     | YES         | table |                               |
 | scenario_interests         | player_id                 | 1         | text                     | NO          | table | PK複合・気になる                     |
 | scenario_interests         | scenario_id               | 2         | text                     | NO          | table | PK複合・気になる                     |

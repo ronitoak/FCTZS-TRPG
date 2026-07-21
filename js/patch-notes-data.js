@@ -7,6 +7,18 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
+    type: "fix",
+    title: "キャラ一覧の最終セッション並びを復元",
+    detail: "キャラクター一覧が直近参加セッション順に並ばなくなっていた不具合を修正しました。character_last_session に加え、卓参加情報からも最終日をマージして並べます。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "卓一覧のDB配列列依存を除去",
+    detail: "卓一覧APIが runs の参加者配列列を読まなくなり、常に run_players / run_characters から組み立てるようにしました。画面の表示形式は従来どおりです。配列列のDROPはWorker再デプロイ後の手動SQLです。"
+  },
+  {
+    date: "2026-07-21",
     type: "improvement",
     title: "キャラ詳細の巨大ビューAPIを410で退役",
     detail: "GET /api/character_details は410 Goneになりました。詳細は characters / character_attributes / character_skill_list / character_scenarios の分割取得を使います。Flutterも同様に切り替え済みです。Worker・Flutter再デプロイ後に有効です。"

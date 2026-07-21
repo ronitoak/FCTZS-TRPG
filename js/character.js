@@ -10,7 +10,7 @@ const SYSTEM_DISPLAY_NAMES = {
   "ガイアケアTRPG": "ガイアケアTRPG"
 };
 
-/** 最終セッション日時マップを character_last_session から作る。失敗時のみ runs/sessions で補完する。 */
+/** 最終セッション日時マップをビューと卓参加の両方から作り、より新しい方を採用する。 */
 async function buildLastSessionMap() {
   const map = new Map();
 
@@ -26,11 +26,11 @@ async function buildLastSessionMap() {
     for (const r of Array.isArray(lastRows) ? lastRows : []) {
       merge(r?.character_id, Date.parse(r.last_session_start ?? ""));
     }
-    return map;
   } catch (err) {
-    console.warn("character_last_session の取得に失敗したため runs/sessions から補完します", err);
+    console.warn("character_last_session の取得に失敗しました", err);
   }
 
+  // ビュー欠落や junction 未同期分を runs（membership は Worker が junction から付与）で補完する。
   try {
     const [runs, sessions] = await Promise.all([
       Utils.apiGet("runs"),
@@ -52,7 +52,7 @@ async function buildLastSessionMap() {
       for (const raw of chars) merge(raw, runLatest);
     }
   } catch (fallbackErr) {
-    console.warn("最終セッションの runs/sessions 補完にも失敗しました", fallbackErr);
+    console.warn("最終セッションの runs/sessions 補完に失敗しました", fallbackErr);
   }
 
   return map;

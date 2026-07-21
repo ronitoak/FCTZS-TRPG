@@ -98,9 +98,6 @@ function renderOngoing(container, runs, scenariosById, sessionsByRunId, playersB
             const p = playersById?.get(String(id));
             return p ? p.player_name : id;
         }).map(Utils.escapeHtml).join(" / ");
-    } else {
-        const players = Array.isArray(r.players) ? r.players : [];
-        playersText = players.length ? players.map(Utils.escapeHtml).join(" / ") : "";
     }
 
     // このrunに紐づくsession一覧から「次回」を取る

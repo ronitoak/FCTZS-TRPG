@@ -195,6 +195,16 @@ test("GET /api/runs は junction から membership を組み立てる", () => {
   assert.match(workerSource, /hydrateRunsMembershipFromJunctions\(env, request, runs\)/);
   assert.doesNotMatch(workerSource, /player_ids\.cs\./);
   assert.doesNotMatch(workerSource, /characters=cs\./);
+  assert.doesNotMatch(
+    workerSource,
+    /RUN_LIST_SELECT = "[^"]*player_ids/,
+    "一覧 select に配列列を含めない"
+  );
+  assert.doesNotMatch(
+    workerSource,
+    /RUN_LIST_SELECT = "[^"]*characters/,
+    "一覧 select に配列列を含めない"
+  );
 });
 
 test("卓のPOST/PATCHはjunction明示洗替のみ行い配列列へは書かない", () => {
@@ -221,14 +231,15 @@ test("作成画面のuploadは認証付き共通APIへ統一される", () => {
   });
 });
 
-test("キャラ一覧の最終セッションは軽量ビュー優先", () => {
+test("キャラ一覧の最終セッションはビューと卓参加の両方をマージする", () => {
   const source = readFileSync(join(root, "js", "character.js"), "utf8");
   assert.match(source, /apiGet\("character_last_session"\)/);
-  assert.match(source, /return map;/);
+  assert.match(source, /apiGet\("runs"\)/);
+  assert.match(source, /apiGet\("sessions"\)/);
   const viewCall = source.indexOf('apiGet("character_last_session")');
-  const runsFallback = source.indexOf('apiGet("runs")');
-  assert.ok(viewCall >= 0 && runsFallback > viewCall, "runs 補完は character_last_session の後（失敗時）である必要がある");
-  assert.match(source, /character_last_session の取得に失敗したため/);
+  const runsCall = source.indexOf('apiGet("runs")');
+  assert.ok(viewCall >= 0 && runsCall > viewCall, "runs 補完は character_last_session の後である必要がある");
+  assert.doesNotMatch(source, /return map;\s*\n\s*\} catch \(err\) \{\s*\n\s*console\.warn\("character_last_session/);
 });
 
 test("履歴同期は卓参加者のcharacterだけをService Roleで追加する", () => {

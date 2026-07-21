@@ -7,7 +7,13 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-22",
-    type: "fix",
+    type: "improvement",
+    title: "Discord ID取得をOAuthトークン経由に補強",
+    detail: "AuthメタデータにDiscord IDが無い場合でも、OAuthのprovider_tokenでDiscord APIからIDを取得できるようにしました。コピー・自己連携の両方が対象です。APIとフロントの再デプロイ後、一度再ログインしてください。"
+  },
+  {
+    date: "2026-07-22",
+    type: "improvement",
     title: "プレイヤー自己連携の候補・Discord ID検出",
     detail: "未連携時に名前候補が出ない／Discord IDをコピーできない問題を修正しました。WorkerがAuth AdminとJWTからDiscord IDを補完し、連携候補名簿も /api/me から返すようにしました。"
   },

@@ -435,9 +435,21 @@ function setupDashboardEvents() {
 
   document.getElementById("player-link-copy-id-btn")?.addEventListener("click", async () => {
     const input = document.getElementById("player-link-discord-id-value");
-    const value = (input?.value || "").trim();
+    let value = (input?.value || "").trim();
     if (!value) {
-      Utils.showToast("コピーできる Discord ID がありません", "error");
+      try {
+        const session = (await window.supabase?.auth?.getSession())?.data?.session || null;
+        value = (await Utils.resolveDiscordIdForCurrentSession(session)) || "";
+        if (input && value) {
+          input.value = value;
+          input.placeholder = "";
+        }
+      } catch (err) {
+        console.warn("Discord ID 再取得に失敗:", err);
+      }
+    }
+    if (!value) {
+      Utils.showToast("Discord ID を取得できません。Logout後、Discordで再ログインしてください", "error");
       return;
     }
     try {
@@ -470,7 +482,11 @@ function setupDashboardEvents() {
     const btn = document.getElementById("player-link-claim-btn");
     if (btn) btn.disabled = true;
     try {
-      await Utils.apiPost("me/link", { player_id: playerId });
+      const session = (await window.supabase?.auth?.getSession())?.data?.session || null;
+      await Utils.apiPost("me/link", {
+        player_id: playerId,
+        provider_token: session?.provider_token || null
+      });
       Utils.showToast("プレイヤーと連携しました", "success");
       location.reload();
     } catch (err) {
@@ -579,8 +595,13 @@ async function main() {
       }
     }
     if (session) {
+      const providerToken = session.provider_token || null;
       try {
-        const me = await Utils.apiGet("me");
+        const me = await Utils.apiGet("me", "", {
+          headers: providerToken
+            ? { "X-Discord-Provider-Token": providerToken }
+            : {}
+        });
         meDiscordId = me?.discord_id || null;
         claimablePlayers = Array.isArray(me?.claimable_players) ? me.claimable_players : [];
         if (me?.player?.player_id) {
@@ -593,7 +614,7 @@ async function main() {
         myPlayer = Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], authUserForMatch);
       }
       if (!meDiscordId) {
-        meDiscordId = Utils.extractDiscordIdFromUser(authUserForMatch);
+        meDiscordId = await Utils.resolveDiscordIdForCurrentSession(session);
       }
       if (claimablePlayers.length === 0) {
         claimablePlayers = (Array.isArray(players) ? players : []).filter(p => !p.user_id);
@@ -620,11 +641,13 @@ async function main() {
           linkBannerId.hidden = false;
           linkBannerId.textContent = discordId
             ? `検出された Discord ID: ${discordId}`
-            : "Discord ID を取得できませんでした。API再デプロイ後に、一度ログアウト→Discord再ログインを試してください。";
+            : (session?.provider_token
+              ? "Discord ID の取得に失敗しました。再読み込みを試してください。"
+              : "Discord の再ログインが必要です（Logout → Discord Login）。OAuthトークンがセッションにありません。");
         }
         if (copyIdBtn) {
           copyIdBtn.hidden = false;
-          copyIdBtn.disabled = !discordId;
+          copyIdBtn.disabled = false;
         }
       }
     }

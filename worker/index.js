@@ -885,7 +885,7 @@ function handleOptions() {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS, PATCH, DELETE",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Discord-Provider-Token",
     }
   });
 }
@@ -1022,7 +1022,7 @@ async function fetchAuthAdminUser(env, userId) {
   }
 }
 
-async function resolveDiscordIdForRequest(request, env, user) {
+async function resolveDiscordIdForRequest(request, env, user, providerToken = null) {
   let discordId = extractDiscordIdFromAuthUser(user);
   if (discordId) return discordId;
 
@@ -1042,7 +1042,35 @@ async function resolveDiscordIdForRequest(request, env, user) {
     discordId = extractDiscordIdFromAuthUser(adminUser);
     if (discordId) return discordId;
   }
+
+  // Auth メタデータに無い場合、Discord OAuth の provider_token で @me を叩く
+  const tokenFromHeader = request.headers.get("X-Discord-Provider-Token");
+  const token = String(providerToken || tokenFromHeader || "").trim();
+  if (token) {
+    discordId = await fetchDiscordIdWithProviderToken(token);
+    if (discordId) return discordId;
+  }
   return null;
+}
+
+async function fetchDiscordIdWithProviderToken(providerToken) {
+  if (!providerToken) return null;
+  try {
+    const response = await fetch("https://discord.com/api/users/@me", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${providerToken}` }
+    });
+    if (!response.ok) {
+      console.warn("Discord @me 取得に失敗:", response.status);
+      return null;
+    }
+    const data = await response.json();
+    const id = String(data?.id || "").trim();
+    return /^\d{17,20}$/.test(id) ? id : null;
+  } catch (err) {
+    console.warn("Discord @me 取得エラー:", err);
+    return null;
+  }
 }
 
 async function listClaimablePlayers(env, discordId) {
@@ -1730,12 +1758,6 @@ async function handlePost(request, env, ctx, url) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
       }
       const authUserId = String(user.id);
-      const discordId = await resolveDiscordIdForRequest(request, env, user);
-      if (!discordId) {
-        return new Response(JSON.stringify({
-          error: "Discord ID を取得できません。一度ログアウトしてから Discord で再ログインしてください。"
-        }), { status: 400, headers: jsonHeaders });
-      }
 
       let body;
       try {
@@ -1744,8 +1766,16 @@ async function handlePost(request, env, ctx, url) {
         return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: jsonHeaders });
       }
       const playerId = String(body?.player_id || "").trim();
+      const providerToken = String(body?.provider_token || "").trim();
       if (!playerId) {
         return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const discordId = await resolveDiscordIdForRequest(request, env, user, providerToken || null);
+      if (!discordId) {
+        return new Response(JSON.stringify({
+          error: "Discord ID を取得できません。一度ログアウトしてから Discord で再ログインしてください。"
+        }), { status: 400, headers: jsonHeaders });
       }
 
       const alreadyLinked = await resolveCallerPlayerId(request, env);

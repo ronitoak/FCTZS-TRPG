@@ -247,11 +247,14 @@ test("ログイン本人解決は /api/me で行う", () => {
   assert.match(workerSource, /resolveDiscordIdForRequest/);
   assert.match(workerSource, /listClaimablePlayers/);
   assert.match(workerSource, /fetchAuthAdminUser/);
+  assert.match(workerSource, /fetchDiscordIdWithProviderToken/);
+  assert.match(workerSource, /X-Discord-Provider-Token/);
   const homeSource = readFileSync(join(root, "js", "home.js"), "utf8");
-  assert.match(homeSource, /apiGet\("me"\)/);
+  assert.match(homeSource, /apiGet\("me"/);
   assert.match(homeSource, /apiPost\("me\/link"/);
   assert.match(homeSource, /claimable_players/);
-  assert.match(homeSource, /populatePlayerLinkClaimSelect/);
+  assert.match(homeSource, /resolveDiscordIdForCurrentSession/);
+  assert.match(homeSource, /provider_token/);
 });
 
 test("卓membershipと最終セッションはService Roleで読む", () => {

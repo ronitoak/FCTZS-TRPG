@@ -1892,6 +1892,11 @@ dialog.modal::backdrop {
   background: #fffaf0;
 }
 
+/* display:flex が hidden を打ち消さないようにする */
+.player-link-banner[hidden] {
+  display: none !important;
+}
+
 .player-link-banner-body {
   flex: 1 1 240px;
   min-width: 0;

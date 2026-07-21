@@ -581,7 +581,7 @@ async function fetchPlayersForLinkBanner() {
     || "https://fctzs-trpg.daruji.workers.dev";
   const url = `${String(base).replace(/\/$/, "")}/api/players?select=player_id,player_name,user_id,discord_id`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -589,17 +589,123 @@ async function fetchPlayersForLinkBanner() {
       signal: controller.signal,
       headers: { Accept: "application/json" }
     });
-    if (!res.ok) {
-      throw new Error(`players HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`players HTTP ${res.status}`);
     const data = await res.json();
-    if (!Array.isArray(data)) {
-      throw new Error("players 応答が配列ではありません");
-    }
+    if (!Array.isArray(data)) throw new Error("players 応答が配列ではありません");
     return data;
   } finally {
     clearTimeout(timer);
   }
+}
+
+function apiGetWithTimeout(resource, ms = 12000) {
+  return Promise.race([
+    Utils.apiGet(resource),
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${resource} timeout`)), ms))
+  ]);
+}
+
+/**
+ * ダッシュボード用APIより先に連携バナーだけを解決する。
+ * scenarios/runs 待ちで「読み込み中」のまま固まらないようにする。
+ */
+async function resolvePlayerLinkBanner(session) {
+  const linkBanner = document.getElementById("player-link-banner");
+  const statusEl = document.getElementById("player-link-claim-status");
+  const linkBannerId = document.getElementById("player-link-banner-id");
+  const copyIdBtn = document.getElementById("player-link-copy-id-btn");
+  const discordIdInput = document.getElementById("player-link-discord-id-value");
+
+  if (!session) {
+    if (linkBanner) linkBanner.hidden = true;
+    return { myPlayer: null, meDiscordId: null, players: [], playersLoadError: false };
+  }
+
+  if (statusEl) statusEl.textContent = "名簿を取得しています…";
+  if (linkBanner) linkBanner.hidden = false;
+
+  let players = [];
+  let playersLoadError = false;
+  try {
+    players = await fetchPlayersForLinkBanner();
+    populatePlayerLinkClaimSelect(players, null);
+  } catch (err) {
+    console.warn("players 取得失敗:", err);
+    playersLoadError = true;
+    if (statusEl) {
+      statusEl.textContent = `名簿取得に失敗しました: ${err.name === "AbortError" ? "タイムアウト" : (err.message || err)}`;
+    }
+  }
+
+  let meDiscordId = null;
+  try {
+    meDiscordId = await Utils.resolveDiscordIdForCurrentSession(session);
+  } catch (err) {
+    console.warn("Discord ID 解決失敗:", err);
+  }
+
+  let myPlayer = null;
+  const providerToken = session.provider_token || null;
+  try {
+    const me = await Promise.race([
+      Utils.apiGet("me", "", {
+        headers: providerToken ? { "X-Discord-Provider-Token": providerToken } : {}
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("me timeout")), 10000))
+    ]);
+    if (me?.discord_id) meDiscordId = me.discord_id;
+    if (me?.player?.player_id) myPlayer = me.player;
+  } catch (err) {
+    console.warn("/api/me 失敗:", err);
+  }
+
+  if (!myPlayer) {
+    myPlayer = Utils.findPlayerForAuthUser(players, session.user);
+  }
+
+  if (!myPlayer && meDiscordId) {
+    const matched = players.find(p => String(p?.discord_id || "").trim() === String(meDiscordId));
+    if (matched?.player_id) {
+      try {
+        const linked = await Utils.apiPost("me/link", {
+          player_id: matched.player_id,
+          provider_token: providerToken
+        });
+        myPlayer = linked?.player || matched;
+        Utils.showToast(`${matched.player_name || "プレイヤー"} として自動連携しました`, "success");
+        location.reload();
+        return { myPlayer, meDiscordId, players, playersLoadError };
+      } catch (err) {
+        console.warn("自動連携失敗:", err);
+        // 自動連携に失敗してもバナーは残し、一致候補を選択済みにする
+      }
+    }
+  }
+
+  if (myPlayer) {
+    if (linkBanner) linkBanner.hidden = true;
+    return { myPlayer, meDiscordId, players, playersLoadError };
+  }
+
+  populatePlayerLinkClaimSelect(players, meDiscordId);
+  if (discordIdInput) {
+    discordIdInput.value = meDiscordId || "";
+    discordIdInput.hidden = false;
+    discordIdInput.placeholder = meDiscordId ? "" : "Discord ID を取得できませんでした";
+  }
+  if (linkBannerId) {
+    linkBannerId.hidden = false;
+    linkBannerId.textContent = meDiscordId
+      ? `検出された Discord ID: ${meDiscordId}`
+      : (providerToken
+        ? "Discord ID の取得に失敗しました。再読み込みを試してください。"
+        : "Discord の再ログインが必要です（Logout → Discord Login）。");
+  }
+  if (copyIdBtn) {
+    copyIdBtn.hidden = false;
+    copyIdBtn.disabled = false;
+  }
+  return { myPlayer: null, meDiscordId, players, playersLoadError };
 }
 
 async function main() {
@@ -609,35 +715,36 @@ async function main() {
   const memberDashboard = document.getElementById("member-dashboard");
   if (!nextEl || !ongoingEl || !guestDashboard || !memberDashboard) return;
 
-  const session = await Utils.initAuthAndHeader('common-nav', './');
+  const session = await Utils.initAuthAndHeader("common-nav", "./");
   setupDashboardEvents();
 
   nextEl.textContent = "";
   ongoingEl.textContent = "";
 
+  // 連携UIをダッシュボード用APIより先に独立実行する
+  let myPlayer = null;
+  let meDiscordId = null;
+  let players = [];
+  let playersLoadError = false;
   try {
-    // ホームは専用巨大JSONではなく、一覧用の列限定APIを並列取得して画面側で組み立てる。
-    let playersLoadError = false;
-    const [scenarios, runs, sessions, playersFromApi] = await Promise.all([
-      Utils.apiGet("scenarios"),
-      Utils.apiGet("runs"),
-      Utils.apiGet("sessions"),
-      fetchPlayersForLinkBanner().catch((err) => {
-        console.warn("players 取得に失敗:", err);
-        playersLoadError = true;
-        return [];
-      }),
+    const linkResult = await resolvePlayerLinkBanner(session);
+    myPlayer = linkResult.myPlayer;
+    meDiscordId = linkResult.meDiscordId;
+    players = linkResult.players || [];
+    playersLoadError = Boolean(linkResult.playersLoadError);
+  } catch (err) {
+    console.error("連携バナー処理エラー:", err);
+    playersLoadError = true;
+    const statusEl = document.getElementById("player-link-claim-status");
+    if (statusEl) statusEl.textContent = `連携処理エラー: ${err.message || err}`;
+  }
+
+  try {
+    const [scenarios, runs, sessions] = await Promise.all([
+      apiGetWithTimeout("scenarios").catch(err => { console.warn(err); return []; }),
+      apiGetWithTimeout("runs").catch(err => { console.warn(err); return []; }),
+      apiGetWithTimeout("sessions").catch(err => { console.warn(err); return []; })
     ]);
-    let players = Array.isArray(playersFromApi) ? playersFromApi : [];
-    // 念のため再取得（初回が空のとき）
-    if (players.length === 0 && !playersLoadError) {
-      try {
-        players = await fetchPlayersForLinkBanner();
-      } catch (err) {
-        console.warn("players 再取得に失敗:", err);
-        playersLoadError = true;
-      }
-    }
 
     const playersById = new Map(
       (Array.isArray(players) ? players : []).map(p => [String(p.player_id), p])
@@ -661,125 +768,6 @@ async function main() {
       const runId = String(s.run_id);
       if (!sessionsByRunId.has(runId)) sessionsByRunId.set(runId, []);
       sessionsByRunId.get(runId).push(s);
-    }
-
-    // 本人解決は Worker /api/me（Auth API + Discord 自動連携 + 候補名簿）を正とする。
-    let myPlayer = null;
-    let meDiscordId = null;
-    let claimablePlayers = [];
-    let authUserForMatch = session?.user || null;
-    if (session && window.supabase?.auth?.getUser) {
-      try {
-        const { data } = await window.supabase.auth.getUser();
-        if (data?.user) authUserForMatch = data.user;
-      } catch (err) {
-        console.warn("auth.getUser に失敗:", err);
-      }
-    }
-    if (session) {
-      const providerToken = session.provider_token || null;
-      try {
-        const me = await Promise.race([
-          Utils.apiGet("me", "", {
-            headers: providerToken
-              ? { "X-Discord-Provider-Token": providerToken }
-              : {}
-          }),
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("me timeout")), 12000);
-          })
-        ]);
-        meDiscordId = me?.discord_id || null;
-        claimablePlayers = Array.isArray(me?.claimable_players) ? me.claimable_players : [];
-        if (me?.player?.player_id) {
-          myPlayer = me.player;
-        }
-      } catch (err) {
-        console.warn("/api/me の取得に失敗したため名簿照合へフォールバック:", err);
-      }
-
-      // クライアントでも Discord ID を確定（コピーできた経路と同じ）
-      if (!meDiscordId) {
-        meDiscordId = await Utils.resolveDiscordIdForCurrentSession(session);
-      }
-
-      if (!myPlayer) {
-        myPlayer = Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], authUserForMatch);
-      }
-
-      // Authメタデータ照合に失敗しても、確定した Discord ID で名簿を直接照合する
-      if (!myPlayer && meDiscordId) {
-        const matchedByDiscord = (Array.isArray(players) ? players : []).find(
-          p => String(p?.discord_id || "").trim() === String(meDiscordId)
-        );
-        if (matchedByDiscord?.player_id) {
-          try {
-            const linked = await Utils.apiPost("me/link", {
-              player_id: matchedByDiscord.player_id,
-              provider_token: providerToken
-            });
-            myPlayer = linked?.player || matchedByDiscord;
-            Utils.showToast(`${matchedByDiscord.player_name || "プレイヤー"} として自動連携しました`, "success");
-            location.reload();
-            return;
-          } catch (err) {
-            console.warn("Discord ID一致プレイヤーの自動連携に失敗:", err);
-            // 読み取り用には一致プレイヤーを仮採用（user_id 未書き込みの可能性あり）
-            myPlayer = matchedByDiscord;
-          }
-        }
-      }
-
-      // 選択ボックス用は常に公開名簿を使う（/api/me の候補に依存しない）
-      claimablePlayers = players;
-    }
-
-    const linkBanner = document.getElementById("player-link-banner");
-    const linkBannerId = document.getElementById("player-link-banner-id");
-    const copyIdBtn = document.getElementById("player-link-copy-id-btn");
-    const discordIdInput = document.getElementById("player-link-discord-id-value");
-    if (linkBanner) {
-      const needsLink = Boolean(session && !myPlayer);
-      linkBanner.hidden = !needsLink;
-      if (needsLink) {
-        const discordId = meDiscordId || "";
-        if (discordIdInput) {
-          discordIdInput.value = discordId;
-          discordIdInput.hidden = false;
-          discordIdInput.placeholder = discordId ? "" : "Discord ID を取得できませんでした";
-        }
-        if (linkBannerId) {
-          linkBannerId.hidden = false;
-          linkBannerId.textContent = discordId
-            ? `検出された Discord ID: ${discordId}`
-            : (session?.provider_token
-              ? "Discord ID の取得に失敗しました。再読み込みを試してください。"
-              : "Discord の再ログインが必要です（Logout → Discord Login）。OAuthトークンがセッションにありません。");
-        }
-        if (copyIdBtn) {
-          copyIdBtn.hidden = false;
-          copyIdBtn.disabled = false;
-        }
-
-        // 取得待ちで「読み込み中」のまま固まらないよう、先に描画してから名簿を埋める
-        populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
-        const statusEl = document.getElementById("player-link-claim-status");
-        if (!Array.isArray(claimablePlayers) || claimablePlayers.length === 0) {
-          if (statusEl) statusEl.textContent = "名簿を取得しています…";
-          try {
-            claimablePlayers = await fetchPlayersForLinkBanner();
-            players = claimablePlayers;
-            playersLoadError = false;
-            populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
-          } catch (err) {
-            console.warn("バナー用 players 再取得失敗:", err);
-            playersLoadError = true;
-            if (statusEl) {
-              statusEl.textContent = `名簿取得に失敗しました: ${err.name === "AbortError" ? "タイムアウト" : (err.message || err)}`;
-            }
-          }
-        }
-      }
     }
 
     if (!session || !myPlayer) {

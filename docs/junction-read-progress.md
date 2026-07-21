@@ -27,7 +27,7 @@
 3. **読取切替**: `/api/runs` → **完了**（2026-07-21、Worker 再デプロイ必要）  
 4. **書込みは配列のまま**維持し、読取が安定していることを確認  
 5. **正の逆転**: 書込みを junction 更新 → 配列を生成／非推奨化（別リリース）  
-6. レガシー重いビュー削除はクライアントが使わなくなってから（[`legacy-api-retirement.md`](./legacy-api-retirement.md)）
+6. レガシー重いビュー削除: `scenario_list` / `session_list` は API 410 済。DB DROP は任意（[`sql/drop-legacy-list-views-2026-07.sql.md`](./sql/drop-legacy-list-views-2026-07.sql.md)）
 
 ## ブロッカー
 

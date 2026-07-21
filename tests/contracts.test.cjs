@@ -44,12 +44,10 @@ test("Workerは既存APIルートを互換入口として維持する", () => {
     "/api/schedule_match",
     "/api/scenarios",
     "/api/character_scenarios",
-    "/api/scenario_list",
     "/api/runs",
     "/api/recruitments",
     "/api/recruitment_applicants",
     "/api/sessions",
-    "/api/session_list",
     "/api/sessions/detail",
     "/api/system_attributes",
     "/api/system_skill_bases",
@@ -77,6 +75,15 @@ test("WorkerはDB軽量ビューの追加APIを公開する", () => {
   lightweightRoutes.forEach(route => {
     assert.ok(workerSource.includes(route), `軽量APIルートがありません: ${route}`);
   });
+});
+
+test("Workerは退役した一覧APIを410で明示する", () => {
+  assert.match(workerSource, /RETIRED_GET_ROUTES/);
+  assert.match(workerSource, /\/api\/scenario_list/);
+  assert.match(workerSource, /\/api\/session_list/);
+  assert.match(workerSource, /status: 410/);
+  assert.match(workerSource, /Use GET \/api\/scenario_summary/);
+  assert.match(workerSource, /Use GET \/api\/sessions/);
 });
 
 test("Workerは詳細画面向けのID scope queryを維持する", () => {

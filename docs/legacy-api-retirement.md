@@ -9,11 +9,11 @@
 
 | エンドポイント / ビュー | 現状利用 | 推奨 |
 |-------------------------|----------|------|
-| `GET /api/scenario_summary` | Web / Flutter のシナリオ一覧の**正** | **維持** |
+| `GET /api/scenario_summary` | Web / Flutter シナリオ一覧の**正** | **維持** |
 | `GET /api/scenarios` | 詳細・単体取得 | 維持 |
-| `GET /api/sessions` | Web sessions/schedule、Flutter 一覧の**正** | **維持**（列限定） |
-| `GET /api/scenario_list` + view `scenario_list` | クライアント参照なし（2026-07-21 切替済） | **削除候補**（Worker・view は当面残置） |
-| `GET /api/session_list` + view `session_list` | Flutter のフォールバックのみ | **削除候補**（フォールバック除去後に DROP） |
+| `GET /api/sessions` | Web / Flutter 開催一覧の**正** | **維持** |
+| `GET /api/scenario_list` | **410 Gone**（2026-07-21） | DB view DROP は [`sql/drop-legacy-list-views-2026-07.sql.md`](./sql/drop-legacy-list-views-2026-07.sql.md) |
+| `GET /api/session_list` | **410 Gone**（2026-07-21） | 同上 |
 | `GET /api/character_details` + `v_character_details` | Flutter 詳細 | 属性・技能を分割 GET に寄せられたら削除候補 |
 | `GET /api/character_skill_list` 等 | 契約にレガシー記載 | 利用箇所調査後 |
 
@@ -32,9 +32,9 @@
 | `worker/worker.js` | **非デプロイ**。`wrangler.toml` の main は `index.js`。410 JSON を返す安全スタブとして残置 |
 | `public/` | ビルド成果物領域。ソース編集禁止（`.cursorrules`） |
 
-## 削除前チェックリスト
+## 削除前チェックリスト（一覧ビュー）
 
-1. `rg "scenario_list|session_list|character_details" js flutter` で参照ゼロ（またはフォールバック削除済み）  
-2. `tests/contracts.test.cjs` からパスを外す or 410 期待に変更  
-3. Supabase で view DROP はメンテ時間に（依存ビュー確認）  
+1. ~~クライアント参照ゼロ~~ → 完了（Web 一本化＋ Flutter フォールバック除去＋ Worker 410）  
+2. ~~契約テスト更新~~ → 完了  
+3. Supabase で view DROP（任意）: [`sql/drop-legacy-list-views-2026-07.sql.md`](./sql/drop-legacy-list-views-2026-07.sql.md)  
 4. パッチノートに improvement を記載  

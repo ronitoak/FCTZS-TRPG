@@ -205,13 +205,8 @@ class FctzsApiClient {
     return getList('/api/runs', query: query.isEmpty ? null : query);
   }
 
-  Future<List<dynamic>> fetchSessions() async {
-    try {
-      return await getList('/api/sessions');
-    } catch (_) {
-      return getList('/api/session_list');
-    }
-  }
+  Future<List<dynamic>> fetchSessions() =>
+      getList('/api/sessions');
 
   Future<List<dynamic>> fetchSessionsForRun(String runId) =>
       getList('/api/sessions/detail', query: {'run_id': runId});

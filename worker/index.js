@@ -141,7 +141,6 @@ const CHARACTER_LIST_SELECT = "id,name,job,player_id,system,state,image_url,play
 // runs に gm/players 列は存在しない。名称は gm_id / player_ids から Worker 側で解決する。
 const RUN_LIST_SELECT = "id,title,scenario_id,gm_id,player_ids,characters,status,image_url,updated_at";
 const SESSION_LIST_SELECT = "id,run_id,start,status,title";
-const SESSION_VIEW_LIST_SELECT = "id,run_id,start,status,title";
 const PLAYER_LIST_SELECT = "player_id,player_name,user_id,discord_id";
 const SCENARIO_LIST_SELECT = "id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate";
 const RECRUITMENT_LIST_SELECT = "id,owner_player_id,owner_player_name,scenario_id,scenario_title,scenario_image_url,recruit_role,target_count,memo,status,created_at,applicant_count";
@@ -651,9 +650,13 @@ const jsonHeaders = {
 // path・query・返却形式が完全に同じGETだけを宣言表へ寄せる。
 const FIXED_GET_PROXY_ROUTES = Object.freeze({
   "/api/character_last_session": `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`,
-  "/api/scenario_list": `/rest/v1/${SUPABASE_TABLES.scenarioListView}?select=${SCENARIO_LIST_SELECT}`,
-  "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`,
-  "/api/session_list": `/rest/v1/${SUPABASE_TABLES.sessionListView}?select=${SESSION_VIEW_LIST_SELECT}`
+  "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`
+});
+
+/** クライアント参照を外したレガシー一覧。410で明示退役。 */
+const RETIRED_GET_ROUTES = Object.freeze({
+  "/api/scenario_list": "Use GET /api/scenario_summary",
+  "/api/session_list": "Use GET /api/sessions"
 });
 
 /**
@@ -980,6 +983,14 @@ function appendSafeViewQuery(url, allowedFilters, allowedOrderColumns, defaultOr
 }
 
 async function handleGet(request, env, url) {
+    const retiredHint = RETIRED_GET_ROUTES[url.pathname];
+    if (retiredHint) {
+      return new Response(JSON.stringify({
+        error: "Gone",
+        detail: retiredHint
+      }), { status: 410, headers: jsonHeaders });
+    }
+
     const fixedProxyPath = FIXED_GET_PROXY_ROUTES[url.pathname];
     if (fixedProxyPath) {
       const { res, text } = await sbFetch(env, request, fixedProxyPath);

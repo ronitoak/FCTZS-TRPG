@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "旧シナリオ・セッション一覧APIを410で退役",
+    detail: "GET /api/scenario_list と /api/session_list は410 Goneになりました。一覧は scenario_summary / sessions を使ってください。DBビューのDROPは任意の手動SQLです。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
     title: "シナリオ・セッション一覧を軽量APIへ一本化",
     detail: "Webのシナリオ一覧を scenario_summary、セッション／スケジュールを sessions のみ参照するよう変更しました（旧 scenario_list / session_list はフォールバック廃止）。"
   },

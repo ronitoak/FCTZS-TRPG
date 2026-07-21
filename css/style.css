@@ -1915,6 +1915,36 @@ dialog.modal::backdrop {
   align-items: center;
 }
 
+.player-link-claim {
+  margin-top: 12px;
+}
+
+.player-link-claim label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.player-link-claim-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.player-link-claim-row .form-control {
+  flex: 1 1 180px;
+  min-width: 160px;
+  max-width: 320px;
+}
+
+#player-link-discord-id-value {
+  margin-top: 8px;
+  max-width: 320px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
 /* プレイヤー名簿カード */
 .player-card-wrapper {
   text-decoration: none;

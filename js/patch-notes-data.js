@@ -6,6 +6,18 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-07-22",
+    type: "feature",
+    title: "プレイヤー自己連携",
+    detail: "ホームの未連携案内から、自分のプレイヤー名を選んで Discord アカウントと名簿を紐付けできるようにしました。Discord IDのコピーも安定化し、プレイヤー一覧へ誘導するだけの導線はやめました。"
+  },
+  {
+    date: "2026-07-22",
+    type: "improvement",
+    title: "プレイヤー連携判定を安定化",
+    detail: "ホームの「プレイヤー連携が必要です」判定を Worker の /api/me（Discord自動連携込み）経由に切り替えました。名簿に Discord ID があるのにダッシュボードが出ないケースを改善します。"
+  },
+  {
     date: "2026-07-21",
     type: "feature",
     title: "キャラ作成で.txtインポート",

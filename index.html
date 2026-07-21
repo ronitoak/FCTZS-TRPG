@@ -19,12 +19,21 @@
       <div class="player-link-banner-body">
         <strong>プレイヤー連携が必要です</strong>
         <p id="player-link-banner-text">
-          Discordログインは成功していますが、部のプレイヤー名簿にまだ紐づいていません。
+          Discordログインは成功しています。名簿から自分の名前を選んで連携してください。
         </p>
+        <div class="player-link-claim" id="player-link-claim">
+          <label for="player-link-select" class="u-muted">自分のプレイヤー名</label>
+          <div class="player-link-claim-row">
+            <select id="player-link-select" class="form-control">
+              <option value="">-- 選択 --</option>
+            </select>
+            <button type="button" id="player-link-claim-btn" class="btn-primary">この名前で連携する</button>
+          </div>
+        </div>
         <p id="player-link-banner-id" class="u-muted" hidden></p>
+        <input type="text" id="player-link-discord-id-value" class="form-control" readonly hidden aria-label="Discord ID">
       </div>
       <div class="player-link-banner-actions">
-        <a href="./player/index.html" class="btn-primary">プレイヤー一覧を開く</a>
         <button type="button" id="player-link-copy-id-btn" class="btn-secondary" hidden>Discord IDをコピー</button>
       </div>
     </div>

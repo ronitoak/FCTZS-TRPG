@@ -432,6 +432,82 @@ function setupDashboardEvents() {
   document.getElementById("home-close-availability-btn")?.addEventListener("click", () => {
     document.getElementById("home-availability-modal")?.close();
   });
+
+  document.getElementById("player-link-copy-id-btn")?.addEventListener("click", async () => {
+    const input = document.getElementById("player-link-discord-id-value");
+    const value = (input?.value || "").trim();
+    if (!value) {
+      Utils.showToast("コピーできる Discord ID がありません", "error");
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        input.hidden = false;
+        input.select();
+        document.execCommand("copy");
+      }
+      Utils.showToast("Discord IDをコピーしました", "success");
+    } catch (err) {
+      console.error(err);
+      if (input) {
+        input.hidden = false;
+        input.focus();
+        input.select();
+      }
+      Utils.showToast("自動コピーに失敗しました。表示中のIDを手動で選択してください", "error");
+    }
+  });
+
+  document.getElementById("player-link-claim-btn")?.addEventListener("click", async () => {
+    const select = document.getElementById("player-link-select");
+    const playerId = select?.value || "";
+    if (!playerId) {
+      Utils.showToast("自分のプレイヤー名を選択してください", "error");
+      return;
+    }
+    const btn = document.getElementById("player-link-claim-btn");
+    if (btn) btn.disabled = true;
+    try {
+      await Utils.apiPost("me/link", { player_id: playerId });
+      Utils.showToast("プレイヤーと連携しました", "success");
+      location.reload();
+    } catch (err) {
+      console.error(err);
+      Utils.showToast("連携に失敗しました: " + (err.message || err), "error");
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
+function populatePlayerLinkClaimSelect(players, meDiscordId) {
+  const select = document.getElementById("player-link-select");
+  if (!select) return;
+  const list = Array.isArray(players) ? players : [];
+  const claimable = list
+    .filter(p => {
+      const userId = p.user_id ? String(p.user_id) : "";
+      const discordId = p.discord_id ? String(p.discord_id).trim() : "";
+      if (userId) return false;
+      if (discordId && meDiscordId && discordId !== String(meDiscordId)) return false;
+      return true;
+    })
+    .sort((a, b) => String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja"));
+
+  select.innerHTML = '<option value="">-- 自分の名前を選択 --</option>';
+  for (const p of claimable) {
+    const opt = document.createElement("option");
+    opt.value = p.player_id;
+    opt.textContent = p.player_name || p.player_id;
+    select.appendChild(opt);
+  }
+  if (claimable.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "連携可能な名簿がありません（管理者に追加を依頼）";
+    select.appendChild(opt);
+  }
 }
 
 async function main() {
@@ -449,11 +525,16 @@ async function main() {
 
   try {
     // ホームは専用巨大JSONではなく、一覧用の列限定APIを並列取得して画面側で組み立てる。
+    let playersLoadError = false;
     const [scenarios, runs, sessions, players] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
       Utils.apiGet("sessions"),
-      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id").catch(() => []),
+      Utils.apiGet("players?select=player_id,player_name,user_id,discord_id").catch((err) => {
+        console.warn("players 取得に失敗:", err);
+        playersLoadError = true;
+        return [];
+      }),
     ]);
 
     const playersById = new Map(
@@ -480,32 +561,62 @@ async function main() {
       sessionsByRunId.get(runId).push(s);
     }
 
-    const myPlayer = session
-      ? Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], session.user)
-      : null;
+    // 本人解決は Worker /api/me（Auth API + Discord 自動連携）を正とし、失敗時のみ名簿照合へフォールバック。
+    let myPlayer = null;
+    let meDiscordId = null;
+    let authUserForMatch = session?.user || null;
+    if (session && window.supabase?.auth?.getUser) {
+      try {
+        const { data } = await window.supabase.auth.getUser();
+        if (data?.user) authUserForMatch = data.user;
+      } catch (err) {
+        console.warn("auth.getUser に失敗:", err);
+      }
+    }
+    if (session) {
+      try {
+        const me = await Utils.apiGet("me");
+        meDiscordId = me?.discord_id || null;
+        if (me?.player?.player_id) {
+          myPlayer = me.player;
+        }
+      } catch (err) {
+        console.warn("/api/me の取得に失敗したため名簿照合へフォールバック:", err);
+      }
+      if (!myPlayer) {
+        myPlayer = Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], authUserForMatch);
+      }
+      if (!meDiscordId) {
+        meDiscordId = Utils.extractDiscordIdFromUser(authUserForMatch);
+      }
+    }
 
     const linkBanner = document.getElementById("player-link-banner");
     const linkBannerId = document.getElementById("player-link-banner-id");
     const copyIdBtn = document.getElementById("player-link-copy-id-btn");
+    const discordIdInput = document.getElementById("player-link-discord-id-value");
     if (linkBanner) {
       const needsLink = Boolean(session && !myPlayer);
       linkBanner.hidden = !needsLink;
       if (needsLink) {
-        const discordId = Utils.extractDiscordIdFromUser(session.user) || "";
-        if (linkBannerId && discordId) {
-          linkBannerId.hidden = false;
-          linkBannerId.textContent = `依頼用 Discord ID: ${discordId}`;
+        populatePlayerLinkClaimSelect(players, meDiscordId);
+        const discordId = meDiscordId || "";
+        if (discordIdInput) {
+          discordIdInput.value = discordId;
+          discordIdInput.hidden = !discordId;
         }
-        if (copyIdBtn && discordId) {
-          copyIdBtn.hidden = false;
-          copyIdBtn.onclick = async () => {
-            try {
-              await navigator.clipboard.writeText(String(discordId));
-              Utils.showToast("Discord IDをコピーしました", "success");
-            } catch (_) {
-              Utils.showToast("コピーに失敗しました", "error");
-            }
-          };
+        if (linkBannerId) {
+          if (discordId) {
+            linkBannerId.hidden = false;
+            linkBannerId.textContent = `検出された Discord ID: ${discordId}`;
+          } else {
+            linkBannerId.hidden = false;
+            linkBannerId.textContent =
+              "Discord ID を取得できませんでした。一度ログアウトし、Discord で再ログインしてから再度お試しください。";
+          }
+        }
+        if (copyIdBtn) {
+          copyIdBtn.hidden = !discordId;
         }
       }
     }
@@ -524,16 +635,17 @@ async function main() {
       if (session && !myPlayer) {
         if (titleEl) titleEl.textContent = "プレイヤー連携が必要です";
         if (leadEl) {
-          leadEl.textContent =
-            "Discordログインは成功していますが、部のプレイヤー名簿（players）にまだ紐づいていません。";
+          leadEl.textContent = playersLoadError
+            ? "プレイヤー名簿の取得に失敗したため、個人ダッシュボードを表示できません。"
+            : "Discordログインは成功していますが、部のプレイヤー名簿（players）にまだ紐づいていません。";
         }
         if (helpEl) {
           helpEl.hidden = false;
-          helpEl.innerHTML =
-            "個人機能を使うには管理者に連携を依頼してください。" +
-            ' 名簿の確認は <a href="./player/index.html">プレイヤー一覧</a> からできます。' +
-            "依頼時は上部バナーの Discord ID があるとスムーズです。" +
-            "公開の直近予定・進行中セッションは、このまま下で閲覧できます。";
+          helpEl.innerHTML = playersLoadError
+            ? "時間をおいて再読み込みするか、管理者に報告してください。"
+            : ("上部の案内で<strong>自分の名前を選んで「この名前で連携する」</strong>を押してください。" +
+              (meDiscordId ? ` （検出 Discord ID: <code>${Utils.escapeHtml(meDiscordId)}</code>）` : "") +
+              "名簿に自分の名前が無い場合は管理者に追加を依頼してください。");
         }
         if (loginButton) loginButton.hidden = true;
       } else {

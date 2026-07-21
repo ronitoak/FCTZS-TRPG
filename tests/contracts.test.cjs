@@ -40,6 +40,7 @@ test("Workerは既存APIルートを互換入口として維持する", () => {
     "/api/character_details",
     "/api/player_profiles",
     "/api/players",
+    "/api/me",
     "/api/player_availability",
     "/api/schedule_match",
     "/api/scenarios",
@@ -237,6 +238,16 @@ test("スケジュールカレンダーは卓タイトルを優先表示する",
   assert.match(source, /runTitle/);
   assert.match(source, /sessionTitle/);
   assert.match(source, /allRunsById/);
+});
+
+test("ログイン本人解決は /api/me で行う", () => {
+  assert.match(workerSource, /\/api\/me/);
+  assert.match(workerSource, /\/api\/me\/link/);
+  assert.match(workerSource, /resolveCallerPlayerId/);
+  const homeSource = readFileSync(join(root, "js", "home.js"), "utf8");
+  assert.match(homeSource, /apiGet\("me"\)/);
+  assert.match(homeSource, /apiPost\("me\/link"/);
+  assert.match(homeSource, /populatePlayerLinkClaimSelect/);
 });
 
 test("卓membershipと最終セッションはService Roleで読む", () => {

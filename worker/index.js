@@ -952,21 +952,26 @@ async function validateUserBearer(request, env) {
 function extractDiscordIdFromAuthUser(user) {
   if (!user) return null;
   const meta = user.user_metadata || {};
+  const appMeta = user.app_metadata || {};
   const candidates = [
     meta.provider_id,
     meta.sub,
+    meta.discord_id,
+    appMeta.provider_id,
     ...(Array.isArray(user.identities)
       ? user.identities.flatMap(identity => {
           if (identity?.provider !== "discord") return [];
           const data = identity.identity_data || {};
-          return [identity.id, data.provider_id, data.sub, data.id];
+          return [data.provider_id, data.sub, data.id, identity.id];
         })
       : [])
   ];
   for (const candidate of candidates) {
-    const value = String(candidate || "").trim();
-    // Discord snowflake は数値文字列。UUID 形式は除外する。
-    if (/^\d{17,20}$/.test(value)) return value;
+    const raw = String(candidate || "").trim();
+    if (!raw) continue;
+    // "discord:123..." や URL 末尾の snowflake も拾う
+    const matched = raw.match(/(\d{17,20})/);
+    if (matched) return matched[1];
   }
   return null;
 }
@@ -975,16 +980,16 @@ function extractDiscordIdFromAuthUser(user) {
  * JWT の本人を players.player_id へ解決する。
  * 1) players.user_id = auth.users.id（Auth UUID）
  * 2) 未連携時は players.discord_id = Discord snowflake で検索し、user_id を自動連携
- * Auth UUID と Discord ID を直接比較しない。
+ * Auth UUID と Discord snowflake を直接比較しない。
+ * 名簿照合は Service Role（公開 SELECT でも JWT 経路と揃える）。
  */
 async function resolveCallerPlayerId(request, env) {
   const user = await getAuthenticatedUser(request, env);
   if (!user?.id) return null;
   const authUserId = String(user.id);
 
-  const { res: byUserRes, text: byUserText } = await sbFetch(
+  const { res: byUserRes, text: byUserText } = await sbServiceFetch(
     env,
-    request,
     `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,user_id,discord_id&user_id=eq.${encodeURIComponent(authUserId)}&limit=1`
   );
   if (byUserRes.ok) {
@@ -997,9 +1002,8 @@ async function resolveCallerPlayerId(request, env) {
   const discordId = extractDiscordIdFromAuthUser(user);
   if (!discordId) return null;
 
-  const { res: byDiscordRes, text: byDiscordText } = await sbFetch(
+  const { res: byDiscordRes, text: byDiscordText } = await sbServiceFetch(
     env,
-    request,
     `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,user_id,discord_id&discord_id=eq.${encodeURIComponent(discordId)}&limit=1`
   );
   if (!byDiscordRes.ok) return null;
@@ -1126,6 +1130,39 @@ async function handleGet(request, env, url) {
         `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`
       );
       return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // ログイン本人のプレイヤー解決（Discord 自動連携込み）。ホーム等のクライアント照合の正本。
+    if (request.method === "GET" && url.pathname === "/api/me") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user?.id) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      }
+      const discordId = extractDiscordIdFromAuthUser(user);
+      const playerId = await resolveCallerPlayerId(request, env);
+      if (!playerId) {
+        return new Response(JSON.stringify({
+          linked: false,
+          player: null,
+          discord_id: discordId,
+          auth_user_id: String(user.id)
+        }), { status: 200, headers: jsonHeaders });
+      }
+      const { res, text } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,user_id,discord_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+      );
+      if (!res.ok) {
+        return new Response(text, { status: res.status, headers: jsonHeaders });
+      }
+      const rows = JSON.parse(text);
+      const player = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      return new Response(JSON.stringify({
+        linked: Boolean(player),
+        player,
+        discord_id: discordId || player?.discord_id || null,
+        auth_user_id: String(user.id)
+      }), { status: 200, headers: jsonHeaders });
     }
 
     // ---- Comments (既存保持) ----
@@ -1586,6 +1623,107 @@ async function handleGet(request, env, url) {
 
 async function handlePost(request, env, ctx, url) {
   try {
+    // ログイン本人が名簿の自分の行へ Discord / Auth を自己連携する
+    if (url.pathname === "/api/me/link") {
+      const user = await getAuthenticatedUser(request, env);
+      if (!user?.id) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      }
+      const authUserId = String(user.id);
+      const discordId = extractDiscordIdFromAuthUser(user);
+      if (!discordId) {
+        return new Response(JSON.stringify({
+          error: "Discord ID を取得できません。一度ログアウトしてから Discord で再ログインしてください。"
+        }), { status: 400, headers: jsonHeaders });
+      }
+
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: jsonHeaders });
+      }
+      const playerId = String(body?.player_id || "").trim();
+      if (!playerId) {
+        return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+      }
+
+      const alreadyLinked = await resolveCallerPlayerId(request, env);
+      if (alreadyLinked && alreadyLinked !== playerId) {
+        return new Response(JSON.stringify({
+          error: "すでに別のプレイヤーへ連携済みです",
+          player_id: alreadyLinked
+        }), { status: 409, headers: jsonHeaders });
+      }
+      if (alreadyLinked === playerId) {
+        const { res, text } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,user_id,discord_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+        );
+        const rows = res.ok ? JSON.parse(text) : [];
+        return new Response(JSON.stringify({
+          linked: true,
+          player: Array.isArray(rows) ? rows[0] || null : null
+        }), { status: 200, headers: jsonHeaders });
+      }
+
+      const { res: targetRes, text: targetText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,user_id,discord_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+      );
+      if (!targetRes.ok) {
+        return new Response(targetText, { status: targetRes.status, headers: jsonHeaders });
+      }
+      const targetRows = JSON.parse(targetText);
+      const target = Array.isArray(targetRows) ? targetRows[0] : null;
+      if (!target) {
+        return new Response(JSON.stringify({ error: "プレイヤーが見つかりません" }), { status: 404, headers: jsonHeaders });
+      }
+
+      const targetUserId = target.user_id ? String(target.user_id) : "";
+      const targetDiscordId = target.discord_id ? String(target.discord_id).trim() : "";
+      if (targetUserId && targetUserId !== authUserId) {
+        return new Response(JSON.stringify({ error: "このプレイヤーは別アカウントに連携済みです" }), { status: 403, headers: jsonHeaders });
+      }
+      if (targetDiscordId && targetDiscordId !== discordId) {
+        return new Response(JSON.stringify({ error: "このプレイヤーは別の Discord に紐づいています" }), { status: 403, headers: jsonHeaders });
+      }
+
+      const { res: discordConflictRes, text: discordConflictText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&discord_id=eq.${encodeURIComponent(discordId)}&limit=1`
+      );
+      const discordConflictRows = discordConflictRes.ok ? JSON.parse(discordConflictText) : [];
+      const discordConflictId = Array.isArray(discordConflictRows) && discordConflictRows[0]?.player_id
+        ? String(discordConflictRows[0].player_id)
+        : null;
+      if (discordConflictId && discordConflictId !== playerId) {
+        return new Response(JSON.stringify({
+          error: "この Discord は別のプレイヤーに既に登録されています",
+          player_id: discordConflictId
+        }), { status: 409, headers: jsonHeaders });
+      }
+
+      const { res: patchRes, text: patchText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${encodeURIComponent(playerId)}`,
+        {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: { user_id: authUserId, discord_id: discordId }
+        }
+      );
+      if (!patchRes.ok) {
+        return new Response(patchText || JSON.stringify({ error: "連携に失敗しました" }), {
+          status: patchRes.status,
+          headers: jsonHeaders
+        });
+      }
+      const patched = JSON.parse(patchText);
+      const player = Array.isArray(patched) ? patched[0] : patched;
+      return new Response(JSON.stringify({ linked: true, player }), { status: 200, headers: jsonHeaders });
+    }
+
     // Cloudflare R2 画像アップロード
     if (url.pathname === "/api/upload") {
       if (!env.R2_BUCKET) {

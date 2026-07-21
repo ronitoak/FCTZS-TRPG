@@ -7,7 +7,7 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
-    type: "fix",
+    type: "improvement",
     title: "おすすめシナリオから経験済みを除外",
     detail: "ホームのプレイスタイルおすすめから、PL通過済・GM経験済・部活外として登録したシナリオを除くようにしました。"
   },

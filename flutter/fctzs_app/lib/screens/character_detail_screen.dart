@@ -111,9 +111,8 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                CoverImage.character(
+                CoverImage.detailCharacter(
                   str(c['image_url'] ?? data.character?['image_url'], ''),
-                  height: 200,
                 ),
                 ListTile(
                   title: Text(str(c['name']), style: Theme.of(context).textTheme.headlineSmall),

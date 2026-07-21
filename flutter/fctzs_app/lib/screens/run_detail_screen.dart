@@ -138,7 +138,7 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                CoverImage(data.coverUrl, height: 180),
+                CoverImage.detail(data.coverUrl),
                 ListTile(
                   title: Text(str(r['title'], r['id']), style: Theme.of(context).textTheme.headlineSmall),
                   subtitle: Text(str(r['status'])),

@@ -228,6 +228,7 @@ class CoverImage extends StatelessWidget {
     this.height = 160,
     this.fit = BoxFit.cover,
     this.fallback = FctzsImages.scenarioDefault,
+    this.containInBounds = false,
   });
 
   /// キャラクター用（デフォルト画像が異なる）。
@@ -236,17 +237,38 @@ class CoverImage extends StatelessWidget {
     super.key,
     this.height = 160,
     this.fit = BoxFit.cover,
+    this.containInBounds = false,
   }) : fallback = FctzsImages.characterDefault;
+
+  /// 詳細画面向け: 全体が見えるよう contain、画面高の約1/3に収める。
+  const CoverImage.detail(
+    this.url, {
+    super.key,
+    this.height = 200,
+    this.fallback = FctzsImages.scenarioDefault,
+  })  : fit = BoxFit.contain,
+        containInBounds = true;
+
+  /// 詳細画面のキャラクター画像向け。
+  const CoverImage.detailCharacter(
+    this.url, {
+    super.key,
+    this.height = 220,
+  })  : fit = BoxFit.contain,
+        containInBounds = true,
+        fallback = FctzsImages.characterDefault;
 
   final String? url;
   /// null のときは親の制約いっぱいに広げる（グリッドカード向け）。
   final double? height;
   final BoxFit fit;
   final String fallback;
+  /// true のとき画面高で cap し、はみ出しを Clip する（詳細ヒーロー用）。
+  final bool containInBounds;
 
-  Widget _placeholder() {
+  Widget _placeholder(double? h) {
     return Container(
-      height: height,
+      height: h,
       width: double.infinity,
       color: FctzsColors.bg,
       alignment: Alignment.center,
@@ -258,27 +280,53 @@ class CoverImage extends StatelessWidget {
   /// Web では HTML 要素へフォールバックする（CORS / 一部コーデック差の回避）。
   static const _webStrategy = WebHtmlElementStrategy.fallback;
 
+  double? _effectiveHeight(BuildContext context) {
+    final requested = height;
+    if (!containInBounds) return requested;
+    final cap = MediaQuery.sizeOf(context).height * 0.32;
+    final base = requested ?? 200;
+    return base < cap ? base : cap;
+  }
+
+  Widget _networkImage(String src, double? h) {
+    return Image.network(
+      src,
+      height: h,
+      width: double.infinity,
+      fit: fit,
+      alignment: Alignment.center,
+      webHtmlElementStrategy: _webStrategy,
+      errorBuilder: (_, _, _) {
+        if (src == fallback) return _placeholder(h);
+        return Image.network(
+          fallback,
+          height: h,
+          width: double.infinity,
+          fit: fit,
+          alignment: Alignment.center,
+          webHtmlElementStrategy: _webStrategy,
+          errorBuilder: (_, _, _) => _placeholder(h),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Web と同様: DBのURLが404でも onerror 相当でデフォルト画像へ落とす。
     final primary = FctzsImages.absoluteUrl(url) ?? fallback;
-    return Image.network(
-      primary,
-      height: height,
-      width: double.infinity,
-      fit: fit,
-      webHtmlElementStrategy: _webStrategy,
-      errorBuilder: (_, _, _) {
-        if (primary == fallback) return _placeholder();
-        return Image.network(
-          fallback,
-          height: height,
+    final h = _effectiveHeight(context);
+    final image = _networkImage(primary, h);
+    if (!containInBounds) return image;
+    return ColoredBox(
+      color: FctzsColors.bg,
+      child: ClipRect(
+        child: SizedBox(
           width: double.infinity,
-          fit: fit,
-          webHtmlElementStrategy: _webStrategy,
-          errorBuilder: (_, _, _) => _placeholder(),
-        );
-      },
+          height: h,
+          child: image,
+        ),
+      ),
     );
   }
 }

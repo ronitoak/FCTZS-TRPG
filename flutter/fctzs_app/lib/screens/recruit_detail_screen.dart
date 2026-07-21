@@ -216,7 +216,7 @@ class _RecruitDetailScreenState extends State<RecruitDetailScreen> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                CoverImage(str(r['scenario_image_url'], ''), height: 180),
+                CoverImage.detail(str(r['scenario_image_url'], '')),
                 ListTile(
                   title: Text(
                     str(r['scenario_title'], 'シナリオ未設定'),

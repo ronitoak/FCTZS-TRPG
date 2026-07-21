@@ -127,7 +127,7 @@ class _ScenarioDetailScreenState extends State<ScenarioDetailScreen> {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(FctzsColors.radius),
                         ),
-                        child: CoverImage(str(s['image_url'], ''), height: 200),
+                        child: CoverImage.detail(str(s['image_url'], '')),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(16),

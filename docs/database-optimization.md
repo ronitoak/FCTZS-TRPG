@@ -8,6 +8,7 @@
 - 各トランザクションの直後に、そのPhaseの検証SQLを実行する。結果が想定外なら次へ進まない。
 - `runs.player_ids` と `runs.characters` は互換期間中も保持し、削除しない。
 - Phase Aでは配列を正、junctionを同期先とする。APIをjunction読み取りへ切り替えた後に、別変更で正を逆転させる。
+- **2026-07 時点**: Worker が junction 洗替＋配列ミラー。配列→junction トリガー無効化は [`sql/disable-array-to-junction-trigger-2026-07.sql.md`](./sql/disable-array-to-junction-trigger-2026-07.sql.md)。進捗は [`junction-read-progress.md`](./junction-read-progress.md)。
 - A-3より前に、通常書込みのBearer引継ぎ、R2 uploadのAuth API検証、認証済み履歴同期を含むWorker/フロント認証版をデプロイする。
 - Phase Cは、実装済みのBearer引継ぎとService Role内部処理をステージング確認するまで絶対に適用しない。
 - SQL Editorでの実行者は通常 `postgres` である。RLS検証は別途、匿名キー・ログインJWT・Service Roleの各API経路でも行う。
@@ -396,6 +397,8 @@ EXECUTE FUNCTION public.sync_run_arrays_to_junctions();
 
 COMMIT;
 ```
+
+**後続（2026-07）**: Worker dual-write 後はこのトリガーを DROP してよい。手順は [`sql/disable-array-to-junction-trigger-2026-07.sql.md`](./sql/disable-array-to-junction-trigger-2026-07.sql.md)。
 
 ### A-4. 既存孤児0確認後のFK追加
 
@@ -1803,4 +1806,4 @@ WHERE character_id = 'c-103'
 11. RLS状態・旧policy・rollback DDLを保存後、Phase C C-1 canonical policy → 関連所有権を含む4経路スモーク。
 12. 問題がないことを確認後、C-2で `dev_anon_access` と旧重複policyを削除。
 
-配列からjunctionへの同期は一方向である。移行期間中にjunctionを直接更新しても配列へは戻らないため、正の切替が完了するまでは通常APIからjunctionへ直接書き込まない。
+配列からjunctionへの同期は一方向である（A-3）。Worker が junction を明示洗替する現行では、A-3 トリガーは冗長であり [`sql/disable-array-to-junction-trigger-2026-07.sql.md`](./sql/disable-array-to-junction-trigger-2026-07.sql.md) で無効化できる。配列列へのミラーは Worker が担当する。

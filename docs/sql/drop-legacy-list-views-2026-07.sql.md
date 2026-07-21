@@ -1,6 +1,8 @@
 # レガシー一覧ビュー DROP（手動・任意）
 
 最終更新: 2026-07-21  
+**適用**: 完了（2026-07-21・ユーザー Dashboard 実行）
+
 前提: Worker が `/api/scenario_list` `/api/session_list` を **410** 返却済みで、Web/Flutter が参照していないこと。
 
 エージェントは実行しません。Supabase Dashboard → SQL Editor で実施してください。

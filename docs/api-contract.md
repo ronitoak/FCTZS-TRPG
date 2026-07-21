@@ -32,7 +32,7 @@
 | 1 | GET | `/api/players` | プレイヤー名簿 |
 | 2 | GET | `/api/scenario_summary` | シナリオ一覧（軽量）。正パス |
 | 3 | GET | `/api/recruitment_list` | 募集カード。失敗時は `/api/recruitments` |
-| 4 | GET | `/api/runs` | 卓一覧。membership は `run_players` / `run_characters` 優先で組み立て、応答は従来どおり `player_ids` / `characters` / `gm_name` / `player_names` |
+| 4 | GET | `/api/runs` | 卓一覧。membership は `run_players` / `run_characters` のみ。POST/PATCH は Worker が junction 洗替＋配列ミラー |
 | 5 | GET | `/api/sessions` | 開催予定（列限定） |
 | 6 | GET | `/api/characters` | キャラ一覧（列限定） |
 | 7 | GET | `/api/comments/recent/with_names` | 最近コメント。失敗時は `/api/comments/recent` |

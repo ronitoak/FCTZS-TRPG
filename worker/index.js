@@ -243,7 +243,7 @@ async function countScenarioInterests(env, scenarioId) {
 
 /**
  * run_players / run_characters から player_ids・characters を組み立て直す。
- * junction に行があるときはそれを正とし、空のときは配列列をフォールバックに残す。
+ * junction 取得に成功した側は配列列を使わず、junction の結果（空含む）を正とする。
  */
 async function hydrateRunsMembershipFromJunctions(env, request, runs) {
   if (!Array.isArray(runs) || runs.length === 0) return runs;
@@ -254,6 +254,8 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
   const encodedIds = runIds.map(encodeURIComponent).join(",");
   const playersByRun = new Map();
   const charactersByRun = new Map();
+  let playersHydrated = false;
+  let charactersHydrated = false;
 
   try {
     const [{ res: rpRes, text: rpText }, { res: rcRes, text: rcText }] = await Promise.all([
@@ -270,6 +272,7 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
     ]);
 
     if (rpRes.ok) {
+      playersHydrated = true;
       for (const row of JSON.parse(rpText) || []) {
         const runId = String(row.run_id);
         if (!playersByRun.has(runId)) playersByRun.set(runId, []);
@@ -277,6 +280,7 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
       }
     }
     if (rcRes.ok) {
+      charactersHydrated = true;
       for (const row of JSON.parse(rcText) || []) {
         const runId = String(row.run_id);
         if (!charactersByRun.has(runId)) charactersByRun.set(runId, []);
@@ -290,24 +294,113 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
 
   for (const run of runs) {
     const runId = String(run.id);
-    const junctionPlayers = playersByRun.get(runId);
-    const junctionCharacters = charactersByRun.get(runId);
-    const arrayPlayers = Array.isArray(run.player_ids)
-      ? run.player_ids.map(String).filter(Boolean)
-      : [];
-    const arrayCharacters = Array.isArray(run.characters)
-      ? run.characters.map(String).filter(v => v && String(v).trim() !== "")
-      : [];
-
-    run.player_ids = (junctionPlayers && junctionPlayers.length > 0)
-      ? junctionPlayers
-      : arrayPlayers;
-    run.characters = (junctionCharacters && junctionCharacters.length > 0)
-      ? junctionCharacters
-      : arrayCharacters;
+    if (playersHydrated) {
+      run.player_ids = playersByRun.get(runId) || [];
+    }
+    if (charactersHydrated) {
+      run.characters = charactersByRun.get(runId) || [];
+    }
   }
 
   return runs;
+}
+
+/**
+ * 配列の ID を順序維持で正規化（空文字除去・重複排除）。
+ * 配列でない入力は null（「キー未指定」扱い用）。
+ */
+function normalizeIdList(value) {
+  if (!Array.isArray(value)) return null;
+  const seen = new Set();
+  const out = [];
+  for (const raw of value) {
+    const id = String(raw ?? "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+/**
+ * junction を洗替する（書込みの正）。配列ミラーと併用する。
+ * Service Role 必須（RLS 回避）。
+ */
+async function replaceRunPlayers(env, runId, playerIds, userId) {
+  const { res: delRes, text: delText } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.runPlayers}?run_id=eq.${encodeURIComponent(runId)}`,
+    { method: "DELETE", headers: { Prefer: "return=minimal" } }
+  );
+  if (!delRes.ok) {
+    throw new Error(`run_players delete failed: ${delText}`);
+  }
+  if (!Array.isArray(playerIds) || playerIds.length === 0) return;
+  const rows = playerIds.map((player_id, index) => ({
+    run_id: runId,
+    player_id,
+    sort_order: index + 1,
+    user_id: userId || null
+  }));
+  const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runPlayers}`, {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: rows
+  });
+  if (!res.ok) {
+    throw new Error(`run_players insert failed: ${text}`);
+  }
+}
+
+async function replaceRunCharacters(env, runId, characterIds, userId) {
+  const { res: delRes, text: delText } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.runCharacters}?run_id=eq.${encodeURIComponent(runId)}`,
+    { method: "DELETE", headers: { Prefer: "return=minimal" } }
+  );
+  if (!delRes.ok) {
+    throw new Error(`run_characters delete failed: ${delText}`);
+  }
+  if (!Array.isArray(characterIds) || characterIds.length === 0) return;
+  const rows = characterIds.map((character_id, index) => ({
+    run_id: runId,
+    character_id,
+    sort_order: index + 1,
+    user_id: userId || null
+  }));
+  const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runCharacters}`, {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: rows
+  });
+  if (!res.ok) {
+    throw new Error(`run_characters insert failed: ${text}`);
+  }
+}
+
+/**
+ * リクエストに含まれる membership を正規化して payload へ載せる（配列ミラー）。
+ * キーが無い側は触らない。
+ */
+function applyNormalizedMembershipToPayload(body, payload) {
+  if (Object.prototype.hasOwnProperty.call(body, "player_ids")) {
+    payload.player_ids = normalizeIdList(body.player_ids) || [];
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "characters")) {
+    payload.characters = normalizeIdList(body.characters) || [];
+  }
+}
+
+/**
+ * junction を body の内容で洗替する（書込みの正）。配列ミラー更新後に呼ぶ。
+ */
+async function replaceMembershipFromBody(env, runId, body, userId) {
+  if (Object.prototype.hasOwnProperty.call(body, "player_ids")) {
+    await replaceRunPlayers(env, runId, normalizeIdList(body.player_ids) || [], userId);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "characters")) {
+    await replaceRunCharacters(env, runId, normalizeIdList(body.characters) || [], userId);
+  }
 }
 
 async function fetchRunIdsByPlayer(env, request, playerId) {
@@ -330,6 +423,43 @@ async function fetchRunIdsByCharacter(env, request, characterId) {
   if (!res.ok) return [];
   const rows = JSON.parse(text);
   return Array.isArray(rows) ? [...new Set(rows.map(row => String(row.run_id)).filter(Boolean))] : [];
+}
+
+/**
+ * 複数卓の参加プレイヤーを junction から取得（sort_order 順）。
+ * Service Role で読む（Cron / 権限判定でも同じ経路）。
+ */
+async function fetchPlayerIdsByRunIds(env, runIds) {
+  const map = new Map();
+  const ids = [...new Set((runIds || []).map(id => String(id)).filter(Boolean))];
+  if (ids.length === 0) return map;
+  const encoded = ids.map(encodeURIComponent).join(",");
+  try {
+    const { res, text } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.runPlayers}?select=run_id,player_id,sort_order&run_id=in.(${encoded})&order=sort_order.asc`
+    );
+    if (!res.ok) {
+      console.warn("run_players lookup failed:", text);
+      return map;
+    }
+    for (const row of JSON.parse(text) || []) {
+      const runId = String(row.run_id);
+      if (!map.has(runId)) map.set(runId, []);
+      if (row.player_id) map.get(runId).push(String(row.player_id));
+    }
+  } catch (err) {
+    console.error("fetchPlayerIdsByRunIds failed:", err);
+  }
+  return map;
+}
+
+/** junction のみ（配列フォールバックなし）。 */
+function resolveRunPlayerIds(run, playersByRun) {
+  if (!run) return [];
+  const runId = String(run.id || "");
+  const fromJunction = playersByRun?.get(runId);
+  return Array.isArray(fromJunction) ? fromJunction : [];
 }
 
 /**
@@ -512,7 +642,7 @@ async function notifyScheduledSessions(env) {
 
             if (runIds.length > 0) {
               const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,player_ids,characters&id=in.${runIdsParam}`);
+              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,player_ids&id=in.${runIdsParam}`);
 
               if (runsRes.ok) {
                 const runsData = JSON.parse(runsText);
@@ -522,11 +652,13 @@ async function notifyScheduledSessions(env) {
               }
             }
 
+            const playersByRun = await fetchPlayerIdsByRunIds(env, [...runsMap.keys()]);
+
             // --- 卓内で参照されるプレイヤーだけを一括取得 ---
             const requiredPlayerIds = [...new Set(
               [...runsMap.values()].flatMap(run => [
                 run.gm_id,
-                ...(Array.isArray(run.player_ids) ? run.player_ids : [])
+                ...resolveRunPlayerIds(run, playersByRun)
               ]).filter(Boolean).map(String)
             )];
             let allPlayers = [];
@@ -557,7 +689,7 @@ async function notifyScheduledSessions(env) {
 
               const displayPlayers = [];
               const playerDiscordIds = [];
-              const targetPlayers = Array.isArray(run.player_ids) ? run.player_ids : [];
+              const targetPlayers = resolveRunPlayerIds(run, playersByRun);
 
               targetPlayers.forEach(identifier => {
                 const pObj = playerMapById.get(String(identifier));
@@ -1293,7 +1425,7 @@ async function handleGet(request, env, url) {
       if (scenarioId) queryParams.push(`scenario_id=eq.${encodeURIComponent(scenarioId)}`);
       if (status) queryParams.push(`status=eq.${encodeURIComponent(status)}`);
 
-      // 参加者・参加キャラは junction から run_id を引く。未同期時は配列 contains へフォールバック。
+      // 参加者・参加キャラは junction から run_id を引く（配列 contains は使わない）。
       if (participantId) {
         const value = encodeURIComponent(participantId);
         const memberRunIds = await fetchRunIdsByPlayer(env, request, participantId);
@@ -1301,16 +1433,16 @@ async function handleGet(request, env, url) {
           const encodedMemberIds = memberRunIds.map(encodeURIComponent).join(",");
           queryParams.push(`or=(gm_id.eq.${value},id.in.(${encodedMemberIds}))`);
         } else {
-          queryParams.push(`or=(gm_id.eq.${value},player_ids.cs.%7B${value}%7D)`);
+          // junction に無い場合は GM のみ（配列フォールバックなし）
+          queryParams.push(`gm_id.eq.${value}`);
         }
       }
       if (characterId) {
         const characterRunIds = await fetchRunIdsByCharacter(env, request, characterId);
-        if (characterRunIds.length > 0) {
-          queryParams.push(`id=in.(${characterRunIds.map(encodeURIComponent).join(",")})`);
-        } else {
-          queryParams.push(`characters=cs.%7B${encodeURIComponent(characterId)}%7D`);
+        if (characterRunIds.length === 0) {
+          return new Response(JSON.stringify([]), { status: 200, headers: jsonHeaders });
         }
+        queryParams.push(`id=in.(${characterRunIds.map(encodeURIComponent).join(",")})`);
       }
 
       if (keyword) {
@@ -1550,8 +1682,9 @@ async function handlePost(request, env, ctx, url) {
         return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
       }
 
+      const playersByRun = await fetchPlayerIdsByRunIds(env, [runId]);
       const runPlayerIds = new Set(
-        [run.gm_id, ...(Array.isArray(run.player_ids) ? run.player_ids : [])]
+        [run.gm_id, ...resolveRunPlayerIds(run, playersByRun)]
           .filter(Boolean)
           .map(String)
       );
@@ -1860,13 +1993,15 @@ async function handlePost(request, env, ctx, url) {
     }
 
     if (url.pathname === "/api/runs") {
-      // junction同期トリガーは SECURITY INVOKER のため、利用者JWTだと run_players RLS で失敗する。
-      // Auth UUID を明示したうえで Service Role で INSERT し、トリガー側の RLS を回避する。
+      // junction は Worker が明示洗替（書込みの正）。配列は互換ミラー。
+      // トリガー sync_run_arrays_to_junctions も当面残し、二重でも同一内容になるよう正規化する。
+      // Service Role: junction RLS（INVOKER）を回避する。
       const user = await getAuthenticatedUser(request, env);
       if (!user?.id) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
       }
       const runPayload = { ...body, user_id: user.id };
+      applyNormalizedMembershipToPayload(body, runPayload);
       const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runs}`, {
         method: "POST",
         headers: { Prefer: "return=representation" },
@@ -1874,7 +2009,19 @@ async function handlePost(request, env, ctx, url) {
       });
       if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
       const insertedData = JSON.parse(text);
-      if (insertedData && insertedData[0]) ctx.waitUntil(syncCharacterScenarios(insertedData[0], env));
+      const created = insertedData && insertedData[0];
+      if (created?.id) {
+        try {
+          await replaceMembershipFromBody(env, created.id, body, user.id);
+        } catch (membershipError) {
+          console.error("run membership dual-write failed:", membershipError);
+          return new Response(JSON.stringify({
+            error: "Run membership sync failed",
+            detail: String(membershipError.message || membershipError)
+          }), { status: 500, headers: jsonHeaders });
+        }
+        ctx.waitUntil(syncCharacterScenarios(created, env));
+      }
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
@@ -2057,7 +2204,7 @@ async function handlePatch(request, env, ctx, url) {
       }
     }
 
-    // ② runs: player_ids/characters 更新で junction トリガーが走るため Service Role を使う。
+    // ② runs: membership は Worker が junction 洗替＋配列ミラー。Service Role で RLS を回避。
     // 編集可: Auth所有者 / GM / 参加PL。user_id 未設定の旧卓はメンバーが更新時に所有権を取得できる。
     if (url.pathname === "/api/runs") {
       try {
@@ -2069,6 +2216,7 @@ async function handlePatch(request, env, ctx, url) {
         const body = await request.json();
         const patchBody = { ...body };
         delete patchBody.user_id;
+        applyNormalizedMembershipToPayload(body, patchBody);
 
         const lookupPath = url.search.includes("select=")
           ? `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`
@@ -2082,11 +2230,16 @@ async function handlePatch(request, env, ctx, url) {
           return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
         }
 
+        const playersByRun = await fetchPlayerIdsByRunIds(
+          env,
+          ownedRows.map(row => row?.id).filter(Boolean)
+        );
+
         const canEditRun = (row) => {
           if (row?.user_id && String(row.user_id) === String(user.id)) return true;
           if (!callerPlayerId) return false;
           if (row?.gm_id && String(row.gm_id) === callerPlayerId) return true;
-          const memberIds = Array.isArray(row?.player_ids) ? row.player_ids.map(String) : [];
+          const memberIds = resolveRunPlayerIds(row, playersByRun);
           if (memberIds.includes(callerPlayerId)) return true;
           // 旧データで所有者未設定の卓は、ログイン済みメンバーなら更新を許可する。
           if (!row?.user_id) return true;
@@ -2112,7 +2265,20 @@ async function handlePatch(request, env, ctx, url) {
         });
         if (res.ok) {
           const updatedData = JSON.parse(text);
-          if (updatedData && updatedData[0]) ctx.waitUntil(syncCharacterScenarios(updatedData[0], env));
+          const rows = Array.isArray(updatedData) ? updatedData : [];
+          try {
+            for (const row of rows) {
+              if (!row?.id) continue;
+              await replaceMembershipFromBody(env, row.id, body, user.id);
+            }
+          } catch (membershipError) {
+            console.error("run membership dual-write failed:", membershipError);
+            return new Response(JSON.stringify({
+              error: "Run membership sync failed",
+              detail: String(membershipError.message || membershipError)
+            }), { status: 500, headers: jsonHeaders });
+          }
+          if (rows[0]) ctx.waitUntil(syncCharacterScenarios(rows[0], env));
           return new Response(text, { status: 200, headers: jsonHeaders });
         }
         return new Response(text, { status: res.status, headers: jsonHeaders });

@@ -8,6 +8,30 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "卓参加者の読取をjunctionのみに",
+    detail: "卓一覧・フィルタ・権限・通知で配列列へのフォールバックをやめ、run_players / run_characters だけを参照するようにしました。APIの応答形（player_ids / characters）は従来どおりです。Worker再デプロイ後に有効です。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "配列→junctionトリガー無効化手順を追加",
+    detail: "Workerが卓参加者をjunction明示書込みする前提で、旧DBトリガーをDROPする手動SQLをdocsに追加しました。適用はSupabase Dashboardから行ってください。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "卓メンバー判定をjunction優先に",
+    detail: "セッション通知・卓の編集権限・予定一日占有で、参加者判定を run_players 優先（配列はフォールバック）に切り替えました。Worker再デプロイ後に有効です。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "卓の参加者保存をjunction明示書込みへ",
+    detail: "卓の作成・更新時に run_players / run_characters をWorkerが直接洗い替えるようにしました（配列列は互換のため同時更新）。APIレスポンス形式は従来どおりです。Worker再デプロイ後に有効です。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
     title: "旧シナリオ・セッション一覧APIを410で退役",
     detail: "GET /api/scenario_list と /api/session_list は410 Goneになりました。一覧は scenario_summary / sessions を使ってください。DBビューのDROPは任意の手動SQLです。"
   },

@@ -191,6 +191,23 @@ test("GET /api/runs は junction から membership を組み立てる", () => {
   assert.match(workerSource, /fetchRunIdsByPlayer/);
   assert.match(workerSource, /fetchRunIdsByCharacter/);
   assert.match(workerSource, /hydrateRunsMembershipFromJunctions\(env, request, runs\)/);
+  assert.doesNotMatch(workerSource, /player_ids\.cs\./);
+  assert.doesNotMatch(workerSource, /characters=cs\./);
+});
+
+test("卓のPOST/PATCHはjunction明示洗替と配列ミラーを行う", () => {
+  assert.match(workerSource, /function normalizeIdList\(/);
+  assert.match(workerSource, /async function replaceRunPlayers\(/);
+  assert.match(workerSource, /async function replaceRunCharacters\(/);
+  assert.match(workerSource, /applyNormalizedMembershipToPayload/);
+  assert.match(workerSource, /replaceMembershipFromBody/);
+});
+
+test("卓メンバー判定はjunctionのみで行う", () => {
+  assert.match(workerSource, /async function fetchPlayerIdsByRunIds\(/);
+  assert.match(workerSource, /function resolveRunPlayerIds\(/);
+  assert.match(workerSource, /resolveRunPlayerIds\(run, playersByRun\)/);
+  assert.match(workerSource, /junction のみ（配列フォールバックなし）/);
 });
 
 test("作成画面のuploadは認証付き共通APIへ統一される", () => {

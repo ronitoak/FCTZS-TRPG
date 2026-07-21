@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "シナリオ・セッション一覧を軽量APIへ一本化",
+    detail: "Webのシナリオ一覧を scenario_summary、セッション／スケジュールを sessions のみ参照するよう変更しました（旧 scenario_list / session_list はフォールバック廃止）。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
     title: "スマホ版: 詳細画面の画像が見切れないよう調整",
     detail: "シナリオ・キャラ・卓・募集などの詳細で、カバー画像を画面内に収めて全体が見えるように表示するよう修正しました。"
   },

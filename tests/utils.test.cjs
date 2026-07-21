@@ -124,7 +124,7 @@ test("シナリオ傾向タグと相性表示は既存HTMLを維持する", () =
   assert.equal(Utils.calculateMatchScore(scenario, profile), 2);
   assert.equal(
     Utils.getTrendTagsHtml(scenario),
-    '<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;"><span class="trend-tag trend-story">物語重視</span><span class="trend-tag trend-avatar">RP・没入</span><span class="trend-tag trend-active">活躍推奨</span></div>'
+    '<div class="trend-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; margin-bottom: 8px;"><span class="trend-tag trend-story">物語重視</span><span class="trend-tag trend-avatar">RP・没入</span><span class="trend-tag trend-active">主体推奨</span></div>'
   );
   assert.deepEqual(Utils.getMatchPresentation(2), {
     cardClass: "match-medium",

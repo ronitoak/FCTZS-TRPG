@@ -28,7 +28,7 @@ async function main() {
       Utils.apiGet("players?select=player_id,player_name,user_id,discord_id").catch(() => [])
     ]);
 
-    // 開催記録は当該シナリオの卓IDだけに絞り、全session_listを載せずに次回予定を計算する。
+    // 開催記録は当該シナリオの卓IDだけに絞り、全sessionsを載せずに次回予定を計算する。
     const relatedRunIds = (Array.isArray(runs) ? runs : []).map(run => run.id).filter(Boolean);
     const sessions = relatedRunIds.length > 0
       ? await Utils.apiGet(`sessions/detail?run_ids=${encodeURIComponent(relatedRunIds.join(","))}`).catch(() => [])

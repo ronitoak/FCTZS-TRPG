@@ -9,10 +9,11 @@
 
 | エンドポイント / ビュー | 現状利用 | 推奨 |
 |-------------------------|----------|------|
-| `GET /api/scenario_summary` | Flutter 優先、Web も一部 | **正**として維持 |
-| `GET /api/scenarios` | 詳細・フォールバック | 維持（単体取得） |
-| `GET /api/scenario_list` + view `scenario_list` | Web `js/scenarios.js` がフォールバック利用 | Web を `scenario_summary` 一本化後に削除候補 |
-| `GET /api/session_list` + view `session_list` | Web sessions/schedule、Flutter フォールバック | `/api/sessions` または専用軽量へ寄せた後に削除候補 |
+| `GET /api/scenario_summary` | Web / Flutter のシナリオ一覧の**正** | **維持** |
+| `GET /api/scenarios` | 詳細・単体取得 | 維持 |
+| `GET /api/sessions` | Web sessions/schedule、Flutter 一覧の**正** | **維持**（列限定） |
+| `GET /api/scenario_list` + view `scenario_list` | クライアント参照なし（2026-07-21 切替済） | **削除候補**（Worker・view は当面残置） |
+| `GET /api/session_list` + view `session_list` | Flutter のフォールバックのみ | **削除候補**（フォールバック除去後に DROP） |
 | `GET /api/character_details` + `v_character_details` | Flutter 詳細 | 属性・技能を分割 GET に寄せられたら削除候補 |
 | `GET /api/character_skill_list` 等 | 契約にレガシー記載 | 利用箇所調査後 |
 
@@ -21,7 +22,7 @@
 | 経路 | 理由 |
 |------|------|
 | `GET /api/recruitment_list` | 募集カード用の結合ビューとして有用 |
-| `GET /api/runs`（配列付き） | junction 読取切替までは現行形を維持（[`junction-read-progress.md`](./junction-read-progress.md)） |
+| `GET /api/runs`（配列付き） | junction 読取は済。応答形は従来互換（[`junction-read-progress.md`](./junction-read-progress.md)） |
 | `GET /api/schedule_match` | Flutter / Web 照合の正 |
 
 ## コードスタブ

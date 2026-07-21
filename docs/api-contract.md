@@ -30,10 +30,10 @@
 | 順 | Method | Path | 用途 |
 |----|--------|------|------|
 | 1 | GET | `/api/players` | プレイヤー名簿 |
-| 2 | GET | `/api/scenario_summary` | シナリオ一覧（軽量）。失敗時は `/api/scenarios` または `/api/scenario_list` |
+| 2 | GET | `/api/scenario_summary` | シナリオ一覧（軽量）。正パス |
 | 3 | GET | `/api/recruitment_list` | 募集カード。失敗時は `/api/recruitments` |
 | 4 | GET | `/api/runs` | 卓一覧。membership は `run_players` / `run_characters` 優先で組み立て、応答は従来どおり `player_ids` / `characters` / `gm_name` / `player_names` |
-| 5 | GET | `/api/sessions` または `/api/session_list` | 開催予定 |
+| 5 | GET | `/api/sessions` | 開催予定（列限定）。失敗時のみ `/api/session_list` |
 | 6 | GET | `/api/characters` | キャラ一覧（列限定） |
 | 7 | GET | `/api/comments/recent/with_names` | 最近コメント。失敗時は `/api/comments/recent` |
 
@@ -68,7 +68,7 @@
 ## 互換のために残すレガシー入口
 
 `/api/scenario_list`, `/api/session_list`, `/api/character_details`, `/api/character_skill_list` など。  
-新規実装は軽量 API を優先し、レガシーはフォールバック用とする。
+Web 一覧は軽量 API へ寄せ済み（2026-07-21）。レガシーはフォールバック・契約互換用に Worker 上は当面残す。削除手順は [`legacy-api-retirement.md`](./legacy-api-retirement.md)。
 
 ---
 

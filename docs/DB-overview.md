@@ -197,9 +197,9 @@ posts     … なりきりチャット投稿
 | なりきりチャット | `posts` |
 | プレイヤー詳細 | `player_detail_summary` + `player_profiles`（推し/GM可能/部活外） |
 | キャラ一覧/詳細 | `characters` (+ attributes/skills)、`character_last_session` |
-| シナリオ一覧 | `scenario_summary`（fallback: `scenario_list`） |
+| シナリオ一覧 | `scenario_summary` |
 | シナリオ詳細（気になる） | `scenario_interests` + `player_profiles.gmable_scenario_ids` |
-| 卓・セッション | `runs`, `sessions` / `session_list` |
+| 卓・セッション | `runs`, `sessions` |
 | 募集一覧 | `recruitment_list` |
 | 予定合わせ | `player_availability`（年月スコープ） |
 

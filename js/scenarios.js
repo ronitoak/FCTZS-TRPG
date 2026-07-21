@@ -265,24 +265,7 @@ async function main() {
   setupExternalScenariosModal();
 
   try {
-    const result = await Utils.apiGetWithFallback(
-      "scenario_summary",
-      async () => {
-        const [scenarios, runs] = await Promise.all([
-          Utils.apiGet("scenario_list"),
-          Utils.apiGet("runs")
-        ]);
-        const counts = new Map();
-        for (const run of (Array.isArray(runs) ? runs : [])) {
-          if (!run?.scenario_id) continue;
-          counts.set(run.scenario_id, (counts.get(run.scenario_id) || 0) + 1);
-        }
-        return (Array.isArray(scenarios) ? scenarios : []).map(scenario => ({
-          ...scenario,
-          run_count: counts.get(scenario.id) || 0
-        }));
-      }
-    );
+    const result = await Utils.apiGet("scenario_summary");
 
     allScenarios = Array.isArray(result) ? result : [];
 
@@ -290,7 +273,7 @@ async function main() {
     const { profile } = await Utils.getCurrentUserPlayerContext().catch(() => ({ profile: null }));
     currentUserProfile = profile;
 
-    // 新ビューの集計値を表示用Mapへ移し、旧API fallback時も同じ描画契約に揃える。
+    // scenario_summary の run_count を表示用Mapへ移す。
     runCountByScenarioId.clear();
     for (const scenario of allScenarios) {
       runCountByScenarioId.set(scenario.id, Number(scenario.run_count) || 0);

@@ -20,7 +20,7 @@ const TIME_SLOT_LABELS = { afternoon: "昼", night: "夜"};
 // 取得完了後だけ描画し、通信中の古い状態をカレンダーへ混在させない。
 async function fetchScheduleData() {
   try {
-    const data = await Utils.apiGet("session_list");
+    const data = await Utils.apiGet("sessions");
     allSessions = Array.isArray(data) ? data : [];
     renderCalendar();
   } catch (err) {

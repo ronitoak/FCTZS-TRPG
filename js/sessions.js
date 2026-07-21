@@ -215,7 +215,7 @@ async function main() {
     const [scenarios, runs, sessions, players] = await Promise.all([
       Utils.apiGet("scenarios"),
       Utils.apiGet("runs"),
-      Utils.apiGet("session_list"),
+      Utils.apiGet("sessions"),
       Utils.apiGet("players").catch(() => [])
     ]);
 

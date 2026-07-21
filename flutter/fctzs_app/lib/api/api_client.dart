@@ -207,9 +207,9 @@ class FctzsApiClient {
 
   Future<List<dynamic>> fetchSessions() async {
     try {
-      return await getList('/api/session_list');
+      return await getList('/api/sessions');
     } catch (_) {
-      return getList('/api/sessions');
+      return getList('/api/session_list');
     }
   }
 

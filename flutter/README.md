@@ -59,8 +59,10 @@ GitHub Actions の **Deploy Flutter Web** からもデプロイできる。
 
 - パッケージ: `supabase_flutter`（Web と同じ Supabase プロジェクト）
 - ログイン: ホーム AppBar「ログイン」→ Discord OAuth
-- Redirect（既定）: `https://fctzs-flutter.daruji.workers.dev/`  
-  **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に追加が必要**
+- Redirect: Web では**いまのオリジン**（ローカル run でも公開 URL に飛ばない）
+- Supabase Redirect URLs に登録が必要:
+  - `https://fctzs-flutter.daruji.workers.dev/`
+  - ローカル例: `http://localhost:56123/`（`flutter run -d chrome --web-port=56123`）
 - 上書き: `--dart-define=AUTH_REDIRECT_URL=...` / `SUPABASE_URL` / `SUPABASE_ANON_KEY`
 - 気になる／募集応募は **players 連携**（`user_id` または `discord_id`）が必要
 

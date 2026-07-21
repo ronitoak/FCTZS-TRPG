@@ -43,11 +43,14 @@ URL 秘匿だけでは弱い。部員だけにしたい場合:
 ## 注意
 
 - Flutter はゲスト GET に加え、**Discord ログイン＋コメント／気になる／募集応募**に対応
-- OAuth 戻り先（既定 `https://fctzs-flutter.daruji.workers.dev/`）を Supabase Redirect URLs に登録すること（[`flutter-web-parity.md`](./flutter-web-parity.md)）
+- OAuth 戻り先は Web では**いま開いているオリジン**（ローカルなら localhost、公開なら `fctzs-flutter`）
+- Supabase Redirect URLs に次を登録すること:
+  - `https://fctzs-flutter.daruji.workers.dev/`
+  - ローカル検証時: `http://localhost:PORT/`（ポート固定推奨: `flutter run -d chrome --web-port=56123`）
 - API CORS は既に `*` のため別オリジンから叩ける
 - **R2 画像**: Flutter Web は `Image.network` が XHR になるため、バケット側 CORS が必要。設定ファイルは [`r2-cors.json`](./r2-cors.json)。適用例:
   ```bash
   npx wrangler r2 bucket cors set fctzs-trpg-assets --file docs/r2-cors.json --force
   ```
 - `build/web` は git 管理しない（`.gitignore`）
-- サブパス配信する場合は `flutter build web --base-href /app/` と Worker ルート構成の変更が必要（現在はルート `/`）
+- サブパス配信する場合は `flutter build web --base-href /app/` と Worker ディレクトリ構成の変更が必要（現在はルート `/`）

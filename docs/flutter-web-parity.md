@@ -41,9 +41,13 @@
 ## Discord ログイン（Flutter Web）セットアップ
 
 1. Supabase Dashboard → Authentication → URL Configuration  
-2. Redirect URLs に `https://fctzs-flutter.daruji.workers.dev/` を追加  
+2. Redirect URLs に以下を追加  
+   - `https://fctzs-flutter.daruji.workers.dev/`  
+   - ローカル: `http://localhost:56123/`（`flutter run -d chrome --web-port=56123` と揃える）  
 3. Flutter Web を再デプロイ（`docs/flutter-web-deploy.md`）  
 4. ホーム「ログイン」→ Discord → 気になる／応募／コメント投稿  
+
+※ ローカルでログインすると、戻り先は localhost のまま（古い公開版へ飛ばない）。
 
 ## 次に埋める候補
 

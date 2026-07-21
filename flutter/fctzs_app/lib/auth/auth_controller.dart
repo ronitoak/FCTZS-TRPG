@@ -56,7 +56,7 @@ class AuthController extends ChangeNotifier {
     }
     await Supabase.instance.client.auth.signInWithOAuth(
       OAuthProvider.discord,
-      redirectTo: AuthConfig.authRedirectUrl,
+      redirectTo: AuthConfig.resolveRedirectUrl(),
       authScreenLaunchMode: kIsWeb
           ? LaunchMode.platformDefault
           : LaunchMode.externalApplication,

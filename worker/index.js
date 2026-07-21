@@ -1005,6 +1005,7 @@ async function fetchAuthAdminUser(env, userId) {
       `${env.SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
       {
         method: "GET",
+        signal: AbortSignal.timeout(8000),
         headers: {
           apikey: env.SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
@@ -1058,6 +1059,7 @@ async function fetchDiscordIdWithProviderToken(providerToken) {
   try {
     const response = await fetch("https://discord.com/api/users/@me", {
       method: "GET",
+      signal: AbortSignal.timeout(8000),
       headers: { Authorization: `Bearer ${providerToken}` }
     });
     if (!response.ok) {

@@ -577,18 +577,29 @@ function populatePlayerLinkClaimSelect(players, meDiscordId) {
 
 /** 連携UI用に認証ヘッダ無しで名簿を取る（JWT付きGETが空になる環境対策） */
 async function fetchPlayersForLinkBanner() {
-  const base = (window.FCTZS_CONFIG && window.FCTZS_CONFIG.API_BASE) || "";
-  const url = `${base}/api/players?select=player_id,player_name,user_id,discord_id`;
-  const res = await fetch(url, {
-    method: "GET",
-    cache: "no-store",
-    headers: { Accept: "application/json" }
-  });
-  if (!res.ok) {
-    throw new Error(`players HTTP ${res.status}`);
+  const base = (window.FCTZS_CONFIG && window.FCTZS_CONFIG.API_BASE)
+    || "https://fctzs-trpg.daruji.workers.dev";
+  const url = `${String(base).replace(/\/$/, "")}/api/players?select=player_id,player_name,user_id,discord_id`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { Accept: "application/json" }
+    });
+    if (!res.ok) {
+      throw new Error(`players HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      throw new Error("players 応答が配列ではありません");
+    }
+    return data;
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
 }
 
 async function main() {
@@ -668,11 +679,16 @@ async function main() {
     if (session) {
       const providerToken = session.provider_token || null;
       try {
-        const me = await Utils.apiGet("me", "", {
-          headers: providerToken
-            ? { "X-Discord-Provider-Token": providerToken }
-            : {}
-        });
+        const me = await Promise.race([
+          Utils.apiGet("me", "", {
+            headers: providerToken
+              ? { "X-Discord-Provider-Token": providerToken }
+              : {}
+          }),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("me timeout")), 12000);
+          })
+        ]);
         meDiscordId = me?.discord_id || null;
         claimablePlayers = Array.isArray(me?.claimable_players) ? me.claimable_players : [];
         if (me?.player?.player_id) {
@@ -726,22 +742,9 @@ async function main() {
       const needsLink = Boolean(session && !myPlayer);
       linkBanner.hidden = !needsLink;
       if (needsLink) {
-        // バナー表示時点で名簿を再取得して確実に埋める
-        if (!Array.isArray(claimablePlayers) || claimablePlayers.length === 0) {
-          try {
-            claimablePlayers = await fetchPlayersForLinkBanner();
-            players = claimablePlayers;
-            playersLoadError = false;
-          } catch (err) {
-            console.warn("バナー用 players 再取得失敗:", err);
-            playersLoadError = true;
-          }
-        }
-        populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
         const discordId = meDiscordId || "";
         if (discordIdInput) {
           discordIdInput.value = discordId;
-          // IDが取れないときも欄を出して状況が分かるようにする
           discordIdInput.hidden = false;
           discordIdInput.placeholder = discordId ? "" : "Discord ID を取得できませんでした";
         }
@@ -756,6 +759,25 @@ async function main() {
         if (copyIdBtn) {
           copyIdBtn.hidden = false;
           copyIdBtn.disabled = false;
+        }
+
+        // 取得待ちで「読み込み中」のまま固まらないよう、先に描画してから名簿を埋める
+        populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
+        const statusEl = document.getElementById("player-link-claim-status");
+        if (!Array.isArray(claimablePlayers) || claimablePlayers.length === 0) {
+          if (statusEl) statusEl.textContent = "名簿を取得しています…";
+          try {
+            claimablePlayers = await fetchPlayersForLinkBanner();
+            players = claimablePlayers;
+            playersLoadError = false;
+            populatePlayerLinkClaimSelect(claimablePlayers, meDiscordId);
+          } catch (err) {
+            console.warn("バナー用 players 再取得失敗:", err);
+            playersLoadError = true;
+            if (statusEl) {
+              statusEl.textContent = `名簿取得に失敗しました: ${err.name === "AbortError" ? "タイムアウト" : (err.message || err)}`;
+            }
+          }
         }
       }
     }

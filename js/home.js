@@ -501,31 +501,37 @@ function populatePlayerLinkClaimSelect(players, meDiscordId) {
   const select = document.getElementById("player-link-select");
   if (!select) return;
   const list = Array.isArray(players) ? players : [];
+  // フィルタしすぎない。user_id 未設定なら候補に出す（最終判定は連携API）
   const claimable = list
-    .filter(p => {
-      const userId = p.user_id ? String(p.user_id) : "";
-      if (userId) return false;
-      const discordId = p.discord_id ? String(p.discord_id).trim() : "";
-      if (discordId && meDiscordId && discordId !== String(meDiscordId)) return false;
-      return true;
-    })
-    .sort((a, b) => String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja"));
+    .filter(p => !p.user_id)
+    .sort((a, b) => {
+      const aMatch = meDiscordId && String(a.discord_id || "").trim() === String(meDiscordId) ? 0 : 1;
+      const bMatch = meDiscordId && String(b.discord_id || "").trim() === String(meDiscordId) ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+      return String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja");
+    });
 
   select.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = claimable.length > 0
     ? "-- 自分の名前を選択 --"
-    : "-- 連携できる名簿がありません --";
+    : "-- 連携できる名簿がありません（管理者に追加を依頼） --";
   select.appendChild(placeholder);
 
   for (const p of claimable) {
     const opt = document.createElement("option");
     opt.value = p.player_id;
-    const hasDiscord = p.discord_id ? String(p.discord_id).trim() : "";
-    opt.textContent = hasDiscord
-      ? `${p.player_name || p.player_id}`
-      : `${p.player_name || p.player_id}（Discord未登録）`;
+    const rowDiscord = p.discord_id ? String(p.discord_id).trim() : "";
+    const isMatch = meDiscordId && rowDiscord && rowDiscord === String(meDiscordId);
+    if (isMatch) {
+      opt.textContent = `${p.player_name || p.player_id}（Discord一致・推奨）`;
+      opt.selected = true;
+    } else if (rowDiscord) {
+      opt.textContent = `${p.player_name || p.player_id}`;
+    } else {
+      opt.textContent = `${p.player_name || p.player_id}（Discord未登録）`;
+    }
     select.appendChild(opt);
   }
 }
@@ -610,14 +616,43 @@ async function main() {
       } catch (err) {
         console.warn("/api/me の取得に失敗したため名簿照合へフォールバック:", err);
       }
-      if (!myPlayer) {
-        myPlayer = Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], authUserForMatch);
-      }
+
+      // クライアントでも Discord ID を確定（コピーできた経路と同じ）
       if (!meDiscordId) {
         meDiscordId = await Utils.resolveDiscordIdForCurrentSession(session);
       }
-      if (claimablePlayers.length === 0) {
-        claimablePlayers = (Array.isArray(players) ? players : []).filter(p => !p.user_id);
+
+      if (!myPlayer) {
+        myPlayer = Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], authUserForMatch);
+      }
+
+      // Authメタデータ照合に失敗しても、確定した Discord ID で名簿を直接照合する
+      if (!myPlayer && meDiscordId) {
+        const matchedByDiscord = (Array.isArray(players) ? players : []).find(
+          p => String(p?.discord_id || "").trim() === String(meDiscordId)
+        );
+        if (matchedByDiscord?.player_id) {
+          try {
+            const linked = await Utils.apiPost("me/link", {
+              player_id: matchedByDiscord.player_id,
+              provider_token: providerToken
+            });
+            myPlayer = linked?.player || matchedByDiscord;
+            Utils.showToast(`${matchedByDiscord.player_name || "プレイヤー"} として自動連携しました`, "success");
+            location.reload();
+            return;
+          } catch (err) {
+            console.warn("Discord ID一致プレイヤーの自動連携に失敗:", err);
+            // 読み取り用には一致プレイヤーを仮採用（user_id 未書き込みの可能性あり）
+            myPlayer = matchedByDiscord;
+          }
+        }
+      }
+
+      // 選択ボックスは user_id 未設定の名簿をすべて出す
+      const unlinkedPlayers = (Array.isArray(players) ? players : []).filter(p => !p.user_id);
+      if (unlinkedPlayers.length > 0) {
+        claimablePlayers = unlinkedPlayers;
       }
     }
 

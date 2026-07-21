@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-22",
     type: "improvement",
+    title: "Discord ID一致時の自動連携と候補表示",
+    detail: "名簿に同じDiscord IDがあるのに未連携扱いになる問題を修正し、一致した場合は自動連携します。選択ボックスはuser_id未設定の名簿をすべて表示するようにしました。"
+  },
+  {
+    date: "2026-07-22",
+    type: "improvement",
     title: "Discord ID取得をOAuthトークン経由に補強",
     detail: "AuthメタデータにDiscord IDが無い場合でも、OAuthのprovider_tokenでDiscord APIからIDを取得できるようにしました。コピー・自己連携の両方が対象です。APIとフロントの再デプロイ後、一度再ログインしてください。"
   },

@@ -1084,21 +1084,31 @@ async function listClaimablePlayers(env, discordId) {
   }
   const rows = JSON.parse(text);
   const list = Array.isArray(rows) ? rows : [];
-  return list
-    .filter(p => {
-      const userId = p.user_id ? String(p.user_id) : "";
-      if (userId) return false;
-      const rowDiscord = p.discord_id ? String(p.discord_id).trim() : "";
-      // Discord ID 未検出時は user_id 未設定の名簿をすべて候補にする
-      if (!discordId) return true;
-      // 検出済みなら未登録 or 一致のみ
-      return !rowDiscord || rowDiscord === String(discordId);
-    })
+  // 選択UI用: user_id 未設定をすべて出す（紐づけ可否は POST /api/me/link 側で判定）
+  // 自分の Discord ID と一致する行は先頭に寄せる
+  const unlinked = list
+    .filter(p => !p.user_id)
     .map(p => ({
       player_id: p.player_id,
       player_name: p.player_name,
-      discord_id: p.discord_id ? String(p.discord_id).trim() : ""
+      discord_id: p.discord_id ? String(p.discord_id).trim() : "",
+      user_id: p.user_id || null
     }));
+  if (!discordId) {
+    return unlinked.sort((a, b) =>
+      String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja")
+    );
+  }
+  const matched = [];
+  const others = [];
+  for (const p of unlinked) {
+    if (p.discord_id && p.discord_id === String(discordId)) matched.push(p);
+    else others.push(p);
+  }
+  others.sort((a, b) =>
+    String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja")
+  );
+  return [...matched, ...others];
 }
 
 /**
@@ -1127,16 +1137,35 @@ async function resolveCallerPlayerId(request, env) {
   const discordId = await resolveDiscordIdForRequest(request, env, user);
   if (!discordId) return null;
 
+  let matchedRow = null;
   const { res: byDiscordRes, text: byDiscordText } = await sbServiceFetch(
     env,
     `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,user_id,discord_id&discord_id=eq.${encodeURIComponent(discordId)}&limit=1`
   );
-  if (!byDiscordRes.ok) return null;
-  const byDiscordRows = JSON.parse(byDiscordText);
-  if (!Array.isArray(byDiscordRows) || !byDiscordRows[0]?.player_id) return null;
+  if (byDiscordRes.ok) {
+    const byDiscordRows = JSON.parse(byDiscordText);
+    if (Array.isArray(byDiscordRows) && byDiscordRows[0]?.player_id) {
+      matchedRow = byDiscordRows[0];
+    }
+  }
 
-  const playerId = String(byDiscordRows[0].player_id);
-  const linkedUserId = byDiscordRows[0].user_id ? String(byDiscordRows[0].user_id) : "";
+  // eq 照合で漏れないよう、全件を trim 比較でも拾う（空白・型ゆれ対策）
+  if (!matchedRow) {
+    const { res: allRes, text: allText } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,user_id,discord_id`
+    );
+    if (allRes.ok) {
+      const allRows = JSON.parse(allText);
+      matchedRow = (Array.isArray(allRows) ? allRows : []).find(
+        p => String(p?.discord_id || "").trim() === String(discordId)
+      ) || null;
+    }
+  }
+  if (!matchedRow?.player_id) return null;
+
+  const playerId = String(matchedRow.player_id);
+  const linkedUserId = matchedRow.user_id ? String(matchedRow.user_id) : "";
 
   // RLS は players.user_id = auth.uid() を見るため、Discord 解決後に Auth UUID を書き戻す。
   if (linkedUserId !== authUserId) {

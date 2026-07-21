@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/comments_section.dart';
 import '../widgets/common.dart';
 import 'character_detail_screen.dart';
 import 'run_detail_screen.dart';
@@ -21,12 +22,14 @@ class _PlayerDetailBundle {
     required this.profile,
     required this.characters,
     required this.runs,
+    required this.comments,
   });
 
   final Map<String, dynamic>? summary;
   final Map<String, dynamic>? profile;
   final List<Map<String, dynamic>> characters;
   final List<Map<String, dynamic>> runs;
+  final List<Map<String, dynamic>> comments;
 }
 
 class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
@@ -47,11 +50,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final profile = await api.fetchPlayerProfile(widget.playerId);
     final characters = await api.fetchCharacters(playerId: widget.playerId);
     final runs = await api.fetchRuns(participantId: widget.playerId);
+    final comments = await api.fetchComments(
+      targetType: 'player',
+      targetId: widget.playerId,
+    );
     return _PlayerDetailBundle(
       summary: summary,
       profile: profile,
       characters: characters.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
       runs: runs.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+      comments: comments.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
     );
   }
 
@@ -153,6 +161,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         ),
                       )),
                 ],
+                CommentsSection(
+                  targetType: 'player',
+                  targetId: widget.playerId,
+                  comments: data.comments,
+                  onPosted: _refresh,
+                ),
                 const SizedBox(height: 24),
               ],
             ),

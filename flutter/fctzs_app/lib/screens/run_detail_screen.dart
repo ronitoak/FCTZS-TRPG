@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../media/image_urls.dart';
 import '../theme/app_theme.dart';
+import '../widgets/comments_section.dart';
 import '../widgets/common.dart';
 import 'character_detail_screen.dart';
 import 'player_detail_screen.dart';
@@ -24,6 +25,7 @@ class _RunDetailBundle {
     required this.characters,
     required this.scenarioTitle,
     required this.coverUrl,
+    required this.comments,
   });
 
   final Map<String, dynamic>? run;
@@ -31,6 +33,7 @@ class _RunDetailBundle {
   final List<Map<String, dynamic>> characters;
   final String scenarioTitle;
   final String coverUrl;
+  final List<Map<String, dynamic>> comments;
 }
 
 class _RunDetailScreenState extends State<RunDetailScreen> {
@@ -72,6 +75,11 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
       runImageUrl: run?['image_url'],
       scenarioImageUrl: scenarioImageUrl,
     );
+    // Web の sessions/detail と同様、卓コメントの target_type は session（target_id は run_id）
+    final comments = await api.fetchComments(
+      targetType: 'session',
+      targetId: widget.runId,
+    );
     return _RunDetailBundle(
       run: run,
       sessions: sessions.map((e) => Map<String, dynamic>.from(e as Map)).toList()
@@ -79,6 +87,7 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
       characters: characters,
       scenarioTitle: scenarioTitle,
       coverUrl: coverUrl,
+      comments: comments.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
     );
   }
 
@@ -209,6 +218,12 @@ class _RunDetailScreenState extends State<RunDetailScreen> {
                       },
                     );
                   }),
+                CommentsSection(
+                  targetType: 'session',
+                  targetId: widget.runId,
+                  comments: data.comments,
+                  onPosted: _refresh,
+                ),
                 const SizedBox(height: 24),
               ],
             ),

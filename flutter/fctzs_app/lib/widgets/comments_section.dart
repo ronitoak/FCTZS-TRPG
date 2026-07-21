@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_controller.dart';
 import 'common.dart';
 
-/// シナリオ詳細向けのコメント一覧＋投稿（ログイン時のみ投稿可）。
+/// 詳細画面向けのコメント一覧＋投稿（ログイン時のみ投稿可）。
 class CommentsSection extends StatefulWidget {
   const CommentsSection({
     super.key,

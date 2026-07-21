@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../auth/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/comments_section.dart';
 import '../widgets/common.dart';
+import '../widgets/interest_toggle.dart';
 import 'character_detail_screen.dart';
 import 'run_detail_screen.dart';
 
@@ -21,6 +23,8 @@ class _ScenarioDetailBundle {
     required this.runs,
     required this.characters,
     required this.interestCount,
+    required this.interested,
+    required this.canToggleInterest,
     required this.comments,
   });
 
@@ -28,6 +32,8 @@ class _ScenarioDetailBundle {
   final List<Map<String, dynamic>> runs;
   final List<Map<String, dynamic>> characters;
   final int interestCount;
+  final bool interested;
+  final bool canToggleInterest;
   final List<Map<String, dynamic>> comments;
 }
 
@@ -45,14 +51,24 @@ class _ScenarioDetailScreenState extends State<ScenarioDetailScreen> {
 
   Future<_ScenarioDetailBundle> _load() async {
     final api = ApiScope.of(context);
+    final auth = AuthScope.of(context);
     final scenario = await api.fetchScenario(widget.scenarioId);
     final runs = await api.fetchRuns(scenarioId: widget.scenarioId);
     final characters = await api.fetchCharacters(scenarioId: widget.scenarioId);
     var interestCount = 0;
+    var interested = false;
     try {
       final interests = await api.fetchScenarioInterests(widget.scenarioId);
       interestCount = (interests['count'] as num?)?.toInt() ?? 0;
+      interested = interests['interested'] == true;
     } catch (_) {}
+    var canToggleInterest = false;
+    if (auth.isSignedIn) {
+      try {
+        final me = await api.fetchMyPlayer(auth.user);
+        canToggleInterest = me != null;
+      } catch (_) {}
+    }
     final comments = await api.fetchComments(
       targetType: 'scenario',
       targetId: widget.scenarioId,
@@ -62,6 +78,8 @@ class _ScenarioDetailScreenState extends State<ScenarioDetailScreen> {
       runs: runs.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
       characters: characters.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
       interestCount: interestCount,
+      interested: interested,
+      canToggleInterest: canToggleInterest,
       comments: comments.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
     );
   }
@@ -126,7 +144,6 @@ class _ScenarioDetailScreenState extends State<ScenarioDetailScreen> {
                             KvTile('人数', '${str(s['min_players'], '?')}〜${str(s['max_players'], '?')}'),
                             KvTile('想定時間(分)', str(s['play_time_minutes'])),
                             KvTile('ロスト率', str(s['lost_rate'])),
-                            KvTile('気になる', '${data.interestCount}人'),
                             KvTile('傾向(物語-混沌)', str(s['trend_story_chaos'])),
                             KvTile('傾向(没入-攻略)', str(s['trend_avatar_clear'])),
                             KvTile('傾向(調和-主体)', str(s['trend_harmony_active'])),
@@ -135,6 +152,13 @@ class _ScenarioDetailScreenState extends State<ScenarioDetailScreen> {
                       ),
                     ],
                   ),
+                ),
+                InterestToggle(
+                  scenarioId: widget.scenarioId,
+                  interested: data.interested,
+                  count: data.interestCount,
+                  canToggle: data.canToggleInterest,
+                  onChanged: _refresh,
                 ),
                 const SectionTitle('紹介'),
                 DetailPanel(child: Text(str(s['description'], '（説明なし）'))),

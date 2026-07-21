@@ -7,9 +7,15 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
-    type: "improvement",
-    title: "Flutter: Discordログインとシナリオコメント投稿",
-    detail: "FlutterアプリでDiscord（Supabase Auth）ログインができるようになり、シナリオ詳細からコメントを投稿できるようになりました。"
+    type: "feature",
+    title: "スマホ版: コメント展開・気になる・募集応募",
+    detail: "スマホ版でシナリオ以外の詳細にもコメント投稿できるようにし、気になるトグルと募集の応募／取消にも対応しました。"
+  },
+  {
+    date: "2026-07-21",
+    type: "feature",
+    title: "スマホ版: Discordログインとシナリオコメント投稿",
+    detail: "スマホ版でDiscord（Supabase Auth）ログインができるようになり、シナリオ詳細からコメントを投稿できるようになりました。"
   },
   {
     date: "2026-07-21",
@@ -50,7 +56,7 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
-    title: "Flutterにスケジュール照合を追加",
+    title: "スマホ版にスケジュール照合を追加",
     detail: "ホーム画面から複数プレイヤーの空き予定を月単位で照合できるようにしました（ゲスト閲覧・書込みなし）。"
   },
   {
@@ -62,37 +68,37 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutterプレイヤー一覧をアイコン＋レーダー表示に変更",
+    title: "スマホ版プレイヤー一覧をアイコン＋レーダー表示に変更",
     detail: "プレイヤー一覧を名前・アイコン（icon_url のキャラ画像）・プレイスタイルのレーダーチャート表示にし、IDは出さないようにしました。"
   },
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutterセッション一覧を進行中／終了済タブに変更",
+    title: "スマホ版セッション一覧を進行中／終了済タブに変更",
     detail: "セッション一覧の上部タブを「進行中」「終了済」にし、完了（done）の卓は終了済、それ以外は進行中に表示するようにしました。"
   },
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter下部タブの並びをWebヘッダに合わせた",
+    title: "スマホ版下部タブの並びをWebヘッダに合わせた",
     detail: "下部ナビゲーションを「ホーム・キャラ・セッション・シナリオ・募集・PL」の順にし、特設サイトのヘッダと同じ並びにしました。"
   },
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter Webのfaviconを特設サイトと統一",
-    detail: "Flutter Web版のファビコンを、特設サイトと同じ画像に揃えました。"
+    title: "スマホ版 Webのfaviconを特設サイトと統一",
+    detail: "スマホ版のファビコンを、特設サイトと同じ画像に揃えました。"
   },
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter卓カバーをシナリオ画像へフォールバック",
+    title: "スマホ版卓カバーをシナリオ画像へフォールバック",
     detail: "卓（セッション）に専用画像がないとき、紐づくシナリオのカバーを表示し、それもなければデフォルト画像を使うようにしました。"
   },
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter一覧をカードグリッド表示に変更",
+    title: "スマホ版一覧をカードグリッド表示に変更",
     detail: "プレイヤー・シナリオ・セッション・募集・キャラクターの一覧を、画面幅に応じて1行に複数並ぶタイル表示にしました。"
   },
   {
@@ -122,7 +128,7 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter閲覧アプリの見た目を特設サイトに寄せた",
+    title: "スマホ版閲覧アプリの見た目を特設サイトに寄せた",
     detail: "配色・カード・ステータスバッジ・見出し下線など、css/style.css のトーンに合わせて一覧と詳細のUIを調整しました。"
   },
   {
@@ -140,13 +146,13 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter並列クライアントで特設サイトをゲスト閲覧できるようにした",
+    title: "スマホ版並列クライアントで特設サイトをゲスト閲覧できるようにした",
     detail: "ホーム・プレイヤー・シナリオ・セッション・募集・キャラクターの一覧/詳細と相互遷移を実装しました（書込み・ログインは未対応）。"
   },
   {
     date: "2026-07-19",
     type: "improvement",
-    title: "Flutter並列クライアントの最初のマイルストーンを開始",
+    title: "スマホ版並列クライアントの最初のマイルストーンを開始",
     detail: "flutter/fctzs_app を作成し、API Base表示・Players/Scenarios一覧・プルリフレッシュ（ゲストGET）まで実装しました。"
   },
   {

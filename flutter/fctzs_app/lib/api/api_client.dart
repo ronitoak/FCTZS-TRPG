@@ -1,7 +1,10 @@
-// Worker API クライアント（ゲスト GET + 認証付き POST）。
+// Worker API クライアント（ゲスト GET + 認証付き POST/DELETE）。
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../auth/player_lookup.dart';
 
 class FctzsApiClient {
   FctzsApiClient({
@@ -79,6 +82,29 @@ class FctzsApiClient {
     }
     if (response.body.isEmpty) return null;
     return jsonDecode(response.body);
+  }
+
+  Future<dynamic> deleteJson(
+    String path, {
+    Map<String, String>? query,
+    bool authRequired = true,
+  }) async {
+    final response = await _http.delete(
+      _uri(path, query),
+      headers: _headers(authRequired: authRequired),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('DELETE $path failed: ${response.statusCode} ${response.body}');
+    }
+    if (response.body.isEmpty) return null;
+    return jsonDecode(response.body);
+  }
+
+  /// ログイン中ユーザーに紐づく players 行（なければ null）。
+  Future<Map<String, dynamic>?> fetchMyPlayer(User? user) async {
+    if (user == null) return null;
+    final players = await fetchPlayers();
+    return findPlayerForAuthUser(players, user);
   }
 
   Future<List<dynamic>> fetchPlayers() => getList('/api/players');
@@ -238,5 +264,49 @@ class FctzsApiClient {
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     throw Exception('Expected object from /api/scenario_interests');
+  }
+
+  /// 気になる ON。レスポンス: `{ interested, count, notified }`
+  Future<Map<String, dynamic>> setScenarioInterest(String scenarioId) async {
+    final decoded = await postJson(
+      '/api/scenario_interests',
+      body: {'scenario_id': scenarioId},
+    );
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    throw Exception('Expected object from POST /api/scenario_interests');
+  }
+
+  /// 気になる OFF。
+  Future<Map<String, dynamic>> clearScenarioInterest(String scenarioId) async {
+    final decoded = await deleteJson(
+      '/api/scenario_interests',
+      query: {'scenario_id': scenarioId},
+    );
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    throw Exception('Expected object from DELETE /api/scenario_interests');
+  }
+
+  Future<void> applyRecruitment(String recruitmentId) async {
+    await postJson(
+      '/api/recruitment_applicants',
+      body: [
+        {'recruitment_id': recruitmentId},
+      ],
+    );
+  }
+
+  Future<void> cancelRecruitmentApplication({
+    required String recruitmentId,
+    required String playerId,
+  }) async {
+    await deleteJson(
+      '/api/recruitment_applicants',
+      query: {
+        'recruitment_id': 'eq.$recruitmentId',
+        'player_id': 'eq.$playerId',
+      },
+    );
   }
 }

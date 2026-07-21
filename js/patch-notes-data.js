@@ -7,19 +7,36 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
+    type: "feature",
+    title: "スマホ版: 大量更新",
+    detail: "スマホ版にいろんな機能を追加（web版の再現）"
+  },  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "スマホ版: 予定カレンダーと一括入力",
+    detail: "スマホ版ホーム（ログイン＋プレイヤー連携時）に予定カレンダーを追加し、昼/夜の空きを一括入力・保存できるようにしました。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
+    title: "スマホ版: ホームに個人ダッシュボード",
+    detail: "Discordログインかつプレイヤー連携があると、スマホ版ホームに自分の次回予定・自分の募集・プレイスタイルおすすめを表示します。"
+  },
+  {
+    date: "2026-07-21",
     type: "improvement",
     title: "スマホ版: ログイン後に古い画面へ飛ばないよう修正",
     detail: "Discordログインの戻り先を、公開URL固定ではなくいま開いている画面のオリジンに合わせるようにしました（ローカル検証時など）。"
   },
   {
     date: "2026-07-21",
-    type: "feature",
+    type: "improvement",
     title: "スマホ版: コメント展開・気になる・募集応募",
     detail: "スマホ版でシナリオ以外の詳細にもコメント投稿できるようにし、気になるトグルと募集の応募／取消にも対応しました。"
   },
   {
     date: "2026-07-21",
-    type: "feature",
+    type: "improvement",
     title: "スマホ版: Discordログインとシナリオコメント投稿",
     detail: "スマホ版でDiscord（Supabase Auth）ログインができるようになり、シナリオ詳細からコメントを投稿できるようになりました。"
   },

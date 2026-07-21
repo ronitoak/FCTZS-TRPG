@@ -28,6 +28,12 @@ class FctzsApiClient {
     return Uri.parse('$apiBase$normalized').replace(queryParameters: query);
   }
 
+  /// 同名クエリキー（例: target_date=gte と lte）が必要なときの生クエリ。
+  Uri _uriRaw(String path, String rawQuery) {
+    final normalized = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$apiBase$normalized?$rawQuery');
+  }
+
   Map<String, String> _headers({bool authRequired = false}) {
     final headers = <String, String>{
       'Accept': 'application/json',
@@ -41,9 +47,13 @@ class FctzsApiClient {
     return headers;
   }
 
-  Future<dynamic> getJson(String path, {Map<String, String>? query}) async {
+  Future<dynamic> getJson(
+    String path, {
+    Map<String, String>? query,
+    String? rawQuery,
+  }) async {
     final response = await _http.get(
-      _uri(path, query),
+      rawQuery != null ? _uriRaw(path, rawQuery) : _uri(path, query),
       headers: _headers(),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -52,8 +62,12 @@ class FctzsApiClient {
     return jsonDecode(response.body);
   }
 
-  Future<List<dynamic>> getList(String path, {Map<String, String>? query}) async {
-    final decoded = await getJson(path, query: query);
+  Future<List<dynamic>> getList(
+    String path, {
+    Map<String, String>? query,
+    String? rawQuery,
+  }) async {
+    final decoded = await getJson(path, query: query, rawQuery: rawQuery);
     if (decoded is List) return decoded;
     throw Exception('Expected JSON array from $path');
   }
@@ -308,5 +322,29 @@ class FctzsApiClient {
         'player_id': 'eq.$playerId',
       },
     );
+  }
+
+  /// 月範囲の予定。Web `fetchPlayerAvailabilities` 相当。
+  Future<List<Map<String, dynamic>>> fetchPlayerAvailabilities({
+    required String playerId,
+    required int year,
+    required int month,
+  }) async {
+    final start = DateTime(year, month, 1);
+    final end = DateTime(year, month + 1, 0);
+    String two(int n) => n.toString().padLeft(2, '0');
+    final startYmd = '${start.year}-${two(start.month)}-${two(start.day)}';
+    final endYmd = '${end.year}-${two(end.month)}-${two(end.day)}';
+    final raw =
+        'select=*&player_id=eq.${Uri.encodeComponent(playerId)}'
+        '&target_date=gte.$startYmd&target_date=lte.$endYmd';
+    final list = await getList('/api/player_availability', rawQuery: raw);
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  /// 予定 Upsert（変更分のみ）。要ログイン＋ players 連携。
+  Future<void> upsertPlayerAvailability(List<Map<String, dynamic>> rows) async {
+    if (rows.isEmpty) return;
+    await postJson('/api/player_availability', body: rows);
   }
 }

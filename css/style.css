@@ -1844,6 +1844,91 @@ dialog.modal::backdrop {
   overflow: hidden;
 }
 
+.dashboard-match-lead {
+  font-size: 0.8rem;
+  margin: 0 0 8px;
+}
+
+.dashboard-match-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-match-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  background: #fff;
+  position: relative;
+}
+
+.dashboard-match-item.match-high {
+  border-color: #ffd700;
+}
+
+.dashboard-match-item.match-medium {
+  border-color: #a0aec0;
+}
+
+.dashboard-match-item.match-low {
+  border-color: #cd7f32;
+}
+
+.dashboard-match-main {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-decoration: none;
+  color: inherit;
+}
+
+.dashboard-match-main img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex: 0 0 auto;
+  background: #edf2f7;
+}
+
+.dashboard-match-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dashboard-match-title {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.dashboard-match-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.dashboard-match-meta .match-badge {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.dashboard-match-recruit {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary-color, #3182ce);
+}
+
 /* メンバーHome下段: 部の活動 */
 .dashboard-club {
   display: grid;

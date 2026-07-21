@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
+    type: "feature",
+    title: "ホームにおすすめシナリオを表示",
+    detail: "ログイン後のダッシュボードに、自分のプレイスタイル傾向と合うシナリオ（最大5件）を表示するようにしました。募集中のものは「募集中」リンクも出ます。"
+  },
+  {
+    date: "2026-07-21",
     type: "improvement",
     title: "卓一覧APIの参加者をjunction優先で組み立て",
     detail: "GET /api/runs が run_players / run_characters から参加者と参加キャラを組み立てるようになりました（レスポンス形式は従来互換）。Worker再デプロイ後に有効です。"

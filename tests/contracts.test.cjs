@@ -220,7 +220,7 @@ test("募集削除は応募行を直接削除せずFK CASCADEへ任せる", () =
 
 test("主要画面のDOM描画先は維持される", () => {
   const contracts = {
-    "index.html": ["guest-dashboard", "member-dashboard", "home-calendar-grid"],
+    "index.html": ["guest-dashboard", "member-dashboard", "home-calendar-grid", "my-style-matches"],
     "character/detail.html": ["character-detail", "comments-root"],
     "scenarios/detail.html": ["scenario-detail", "comments-root"],
     "sessions/detail.html": ["session-detail", "comments-root"],

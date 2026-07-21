@@ -191,6 +191,94 @@ function renderMyRecruitments(container, recruitments, applicants, scenariosById
   }).join("")}</ul>`;
 }
 
+function isDefaultDesireProfile(profile) {
+  if (!profile) return true;
+  const keys = [
+    "desire_avatar", "desire_active", "desire_chaos",
+    "desire_story", "desire_harmony", "desire_clear"
+  ];
+  return keys.every(key => {
+    const raw = profile[key];
+    const value = raw == null ? 3 : Number(raw);
+    return !Number.isFinite(value) || value === 3;
+  });
+}
+
+/**
+ * 欲求4以上の軸とシナリオ傾向の一致数でおすすめを並べる。
+ */
+function renderStyleMatches(container, profile, scenarios, openRecruitments) {
+  if (!container) return;
+
+  if (isDefaultDesireProfile(profile)) {
+    container.innerHTML =
+      '<p class="u-muted">プレイスタイル傾向が未設定です。' +
+      '<a href="./player/detail.html?id=' +
+      encodeURIComponent(homeDashboardState.playerId || "") +
+      '">プロフィール</a>で欲求を調整すると、ここに相性の良いシナリオが出ます。</p>';
+    return;
+  }
+
+  const recruitingByScenario = new Map();
+  for (const recruitment of (Array.isArray(openRecruitments) ? openRecruitments : [])) {
+    if (!recruitment?.scenario_id) continue;
+    const status = String(recruitment.status || "").toLowerCase();
+    if (status && status !== "open" && status !== "recruiting") continue;
+    const sid = String(recruitment.scenario_id);
+    if (!recruitingByScenario.has(sid)) recruitingByScenario.set(sid, []);
+    recruitingByScenario.get(sid).push(recruitment);
+  }
+
+  const ranked = (Array.isArray(scenarios) ? scenarios : [])
+    .filter(s => s && s.id)
+    .map(scenario => ({
+      scenario,
+      score: Utils.calculateMatchScore(scenario, profile)
+    }))
+    .filter(item => item.score >= 1)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aRecruit = recruitingByScenario.has(String(a.scenario.id)) ? 1 : 0;
+      const bRecruit = recruitingByScenario.has(String(b.scenario.id)) ? 1 : 0;
+      if (bRecruit !== aRecruit) return bRecruit - aRecruit;
+      return String(a.scenario.title || "").localeCompare(String(b.scenario.title || ""), "ja");
+    })
+    .slice(0, 5);
+
+  if (ranked.length === 0) {
+    container.innerHTML = '<p class="u-muted">いま一致するシナリオ傾向はありません。</p>';
+    return;
+  }
+
+  container.innerHTML = `<ul class="dashboard-match-list">${ranked.map(({ scenario, score }) => {
+    const presentation = Utils.getMatchPresentation(Math.min(score, 3));
+    const sid = String(scenario.id);
+    const recruits = recruitingByScenario.get(sid) || [];
+    const recruitLink = recruits[0]
+      ? `<a class="dashboard-match-recruit" href="./recruit/detail.html?id=${encodeURIComponent(recruits[0].id)}">募集中</a>`
+      : "";
+    const cover = Utils.getScenarioCoverPath(scenario.id, scenario.image_url);
+    const title = Utils.escapeHtml(scenario.title || scenario.id);
+    const trends = Utils.getTrendTagsHtml(scenario) || "";
+    return `
+      <li class="dashboard-match-item ${Utils.escapeHtml(presentation.cardClass || "")}">
+        <a class="dashboard-match-main" href="./scenarios/detail.html?id=${encodeURIComponent(sid)}">
+          <img src="${Utils.escapeHtml(cover)}" alt="" loading="lazy"
+               onerror="this.onerror=null;this.src='${Utils.DEFAULT_SCENARIO_COVER}';">
+          <span class="dashboard-match-body">
+            <span class="dashboard-match-title">${title}</span>
+            ${trends}
+          </span>
+        </a>
+        <span class="dashboard-match-meta">
+          ${presentation.badgeHtml || ""}
+          ${recruitLink}
+        </span>
+      </li>
+    `;
+  }).join("")}</ul>`;
+}
+
 async function refreshHomeAvailability() {
   if (!homeDashboardState.playerId) return false;
   const year = homeDashboardState.currentDate.getFullYear();
@@ -425,6 +513,34 @@ async function main() {
       [],
       scenariosById
     );
+
+    let profile = null;
+    try {
+      const profiles = await Utils.apiGet(
+        `player_profiles?player_id=eq.${encodeURIComponent(myPlayer.player_id)}&select=*`
+      );
+      profile = Array.isArray(profiles) && profiles[0] ? profiles[0] : null;
+    } catch (err) {
+      console.warn("プロフィール取得に失敗:", err);
+    }
+
+    let openRecruitments = [];
+    try {
+      openRecruitments = await Utils.apiGetWithFallback(
+        "recruitment_list?status=eq.open&order=created_at.desc",
+        () => Utils.apiGet("recruitments?status=eq.open&order=created_at.desc").catch(() => [])
+      );
+    } catch (_) {
+      openRecruitments = [];
+    }
+
+    renderStyleMatches(
+      document.getElementById("my-style-matches"),
+      profile,
+      scenarios,
+      openRecruitments
+    );
+
     // 部全体の直近・進行中もログイン後に表示（観戦・状況把握用）
     if (clubNextEl) renderNextSession(clubNextEl, sessions, runsById, scenariosById);
     if (clubOngoingEl) renderOngoing(clubOngoingEl, runs, scenariosById, sessionsByRunId, playersById);

@@ -9,6 +9,7 @@ Utils.domReady(async () => {
     const dynamicContainer = document.getElementById("dynamic-fields-container");
     const btnImport = document.getElementById('btn-import');
     const importArea = document.getElementById('import-text');
+    const importFileInput = document.getElementById('import-file');
 
     if (!form || !systemSelect || !dynamicContainer) return;
 
@@ -225,93 +226,133 @@ Utils.domReady(async () => {
         }
     }
 
-    // --- 3. インポート実行イベント (完全版) ---
+    // --- 3. インポート実行（テキスト欄／.txtファイル共通） ---
+    async function applyImportText(text) {
+        const source = String(text || "").trim();
+        if (!source) {
+            Utils.showToast("テキストを貼り付けるか、.txtファイルを選択してください", "error");
+            return;
+        }
+
+        if (importArea) importArea.value = source;
+
+        const data = parseIachara(source);
+
+        // プロフィールとメモの反映
+        if (data.profile.name) form.name.value = data.profile.name;
+        if (data.profile.reading) form.reading.value = data.profile.reading;
+        if (data.profile.job) form.job.value = data.profile.job;
+        if (data.profile.age) form.age.value = data.profile.age;
+        if (data.profile.gender) form.gender.value = data.profile.gender;
+        if (data.profile.height) form.height.value = data.profile.height;
+        if (data.profile.weight) form.weight.value = data.profile.weight;
+        if (data.profile.origin) form.origin.value = data.profile.origin;
+        if (data.profile.memo) form.memo.value = data.profile.memo;
+
+        // システム切り替えと待機
+        if (data.profile.system) {
+            systemSelect.value = data.profile.system;
+            systemSelect.dispatchEvent(new Event('change'));
+            await new Promise(resolve => setTimeout(resolve, 800)); // 描画待ち
+        }
+
+        // 能力値反映
+        for (const [key, val] of Object.entries(data.attributes)) {
+            const lowerKey = key.toLowerCase();
+            // input か select のいずれか、name属性が一致するものを探す
+            const el = dynamicContainer.querySelector(`[name="attr_${lowerKey}"]`);
+            if (el) {
+                el.value = val;
+            }
+        }
+
+        // 技能反映 (部分一致)
+        for (const [sName, sVal] of Object.entries(data.skills)) {
+            let found = false;
+
+            // 1. 「技能名（詳細）」の形式か判定（全角・半角カッコ両対応）
+            const detailMatch = sName.match(/^(.+?)[（\(](.+?)[）\)]$/);
+
+            if (detailMatch) {
+                const baseName = detailMatch[1].trim();
+                const detailText = detailMatch[2].trim();
+
+                // ベース名が一致する label 入力枠を探す
+                const labelInputs = dynamicContainer.querySelectorAll(`input[name="skill_label"][data-base-name="${baseName}"]`);
+
+                for (const labelInput of labelInputs) {
+                    // 空枠、または既に同じ詳細が入力されている枠に割り当て
+                    if (labelInput.value === "" || labelInput.value === detailText) {
+                        labelInput.value = detailText;
+                        const valInput = labelInput.closest('.skill-input-container').querySelector('input[name="skill_val"]');
+                        if (valInput) valInput.value = sVal;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            // 2. 通常の技能、または詳細技能の枠が埋まっていた場合の処理
+            if (!found) {
+                const existingInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
+                for (const input of existingInputs) {
+                    const dataName = input.dataset.name || "";
+                    // 完全一致、または「技能名（）」という空枠フォーマットへの合致をチェック
+                    if (dataName === sName || dataName === `${sName}（）`) {
+                        input.value = sVal;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            // 3. 該当する枠が一切存在しない場合、オリジナル技能として追加
+            if (!found) {
+                addCustomSkillRow(sName, sVal);
+            }
+        }
+
+        Utils.showToast("インポート内容を反映しました", "success");
+    }
+
     if (btnImport && importArea) {
         btnImport.addEventListener('click', async () => {
-            const text = importArea.value;
-            if (!text) {
-                Utils.showToast("テキストを貼り付けてください", "error");
+            await applyImportText(importArea.value);
+        });
+    }
+
+    if (importFileInput) {
+        importFileInput.addEventListener('change', () => {
+            const file = importFileInput.files && importFileInput.files[0];
+            if (!file) return;
+
+            const name = String(file.name || "").toLowerCase();
+            const isText = name.endsWith(".txt")
+                || file.type === "text/plain"
+                || file.type === "";
+            if (!isText) {
+                Utils.showToast(".txtファイルを選択してください", "error");
+                importFileInput.value = "";
                 return;
             }
 
-            const data = parseIachara(text);
-
-            // プロフィールとメモの反映
-            if (data.profile.name) form.name.value = data.profile.name;
-            if (data.profile.reading) form.reading.value = data.profile.reading;
-            if (data.profile.job) form.job.value = data.profile.job;
-            if (data.profile.age) form.age.value = data.profile.age;
-            if (data.profile.gender) form.gender.value = data.profile.gender;
-            if (data.profile.height) form.height.value = data.profile.height;
-            if (data.profile.weight) form.weight.value = data.profile.weight;
-            if (data.profile.origin) form.origin.value = data.profile.origin;
-            if (data.profile.memo) form.memo.value = data.profile.memo;
-
-            // システム切り替えと待機
-            if (data.profile.system) {
-                systemSelect.value = data.profile.system;
-                systemSelect.dispatchEvent(new Event('change'));
-                await new Promise(resolve => setTimeout(resolve, 800)); // 描画待ち
-            }
-
-            // 能力値反映
-            for (const [key, val] of Object.entries(data.attributes)) {
-                const lowerKey = key.toLowerCase();
-                // input か select のいずれか、name属性が一致するものを探す
-                const el = dynamicContainer.querySelector(`[name="attr_${lowerKey}"]`);
-                if (el) {
-                    el.value = val;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const text = typeof reader.result === "string" ? reader.result : "";
+                    await applyImportText(text);
+                } catch (err) {
+                    console.error(err);
+                    Utils.showToast("ファイルの読み込みに失敗しました", "error");
+                } finally {
+                    importFileInput.value = "";
                 }
-            }
-
-            // 技能反映 (部分一致)
-            const existingInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
-            const matchedSkills = new Set();
-
-            for (const [sName, sVal] of Object.entries(data.skills)) {
-                let found = false;
-
-                // 1. 「技能名（詳細）」の形式か判定（全角・半角カッコ両対応）
-                const detailMatch = sName.match(/^(.+?)[（\(](.+?)[）\)]$/);
-
-                if (detailMatch) {
-                    const baseName = detailMatch[1].trim();
-                    const detailText = detailMatch[2].trim();
-
-                    // ベース名が一致する label 入力枠を探す
-                    const labelInputs = dynamicContainer.querySelectorAll(`input[name="skill_label"][data-base-name="${baseName}"]`);
-
-                    for (const labelInput of labelInputs) {
-                        // 空枠、または既に同じ詳細が入力されている枠に割り当て
-                        if (labelInput.value === "" || labelInput.value === detailText) {
-                            labelInput.value = detailText;
-                            const valInput = labelInput.closest('.skill-input-container').querySelector('input[name="skill_val"]');
-                            if (valInput) valInput.value = sVal;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-
-                // 2. 通常の技能、または詳細技能の枠が埋まっていた場合の処理
-                if (!found) {
-                    const existingInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
-                    for (const input of existingInputs) {
-                        const dataName = input.dataset.name || "";
-                        // 完全一致、または「技能名（）」という空枠フォーマットへの合致をチェック
-                        if (dataName === sName || dataName === `${sName}（）`) {
-                            input.value = sVal;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-
-                // 3. 該当する枠が一切存在しない場合、オリジナル技能として追加
-                if (!found) {
-                    addCustomSkillRow(sName, sVal);
-                }
-            }
+            };
+            reader.onerror = () => {
+                Utils.showToast("ファイルの読み込みに失敗しました", "error");
+                importFileInput.value = "";
+            };
+            reader.readAsText(file, "UTF-8");
         });
     }
 

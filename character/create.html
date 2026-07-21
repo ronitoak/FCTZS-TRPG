@@ -20,7 +20,14 @@
             <legend>外部データインポート（いあきゃらの場合はテキスト出力の内容、エモクロアの場合はCCFOLIA形式でコピーした内容）</legend>
             <div class="form-group">
                 <textarea id="import-text" class="form-control" rows="5" placeholder="コピーした内容をここに貼り付けてください"></textarea>
-                <button type="button" id="btn-import" class="btn-secondary" style="margin-top: 10px;">データを反映する</button>
+                <div class="character-import-actions">
+                    <label class="btn-secondary character-import-file-label">
+                        .txtファイルを選択
+                        <input type="file" id="import-file" accept=".txt,text/plain" hidden>
+                    </label>
+                    <button type="button" id="btn-import" class="btn-secondary">データを反映する</button>
+                </div>
+                <p class="u-muted" style="margin-top: 8px; font-size: 0.85rem;">テキストを貼り付けるか、.txtファイルを選んでから「データを反映する」を押してください。ファイル選択時は内容が自動でテキスト欄に入ります。</p>
             </div>
         </fieldset>
         <fieldset class="form-section">

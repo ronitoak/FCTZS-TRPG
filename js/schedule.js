@@ -75,7 +75,7 @@ function renderCalendar() {
         matchBadge.addEventListener("click", () => {
           const selectedRunId = document.getElementById("compare-run-select")?.value;
           if (!selectedRunId) {
-            alert("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。");
+            Utils.showToast("セッションを登録する「卓」を比較モーダルのプルダウンから選択してください。", "error");
             return;
           }
 
@@ -115,13 +115,16 @@ async function renderBulkInputGrid() {
 
 async function saveBulkAvailability() {
   const playerId = document.getElementById("modal-player-id")?.value;
-  if (!playerId) return alert("プレイヤーを選択してください");
+  if (!playerId) {
+    Utils.showToast("プレイヤーを選択してください", "error");
+    return;
+  }
 
   const container = document.getElementById("bulk-input-container");
   const payload = Utils.collectAvailabilityChanges(container, playerId);
 
   if (payload.length === 0) {
-     alert("変更された予定データがありません。");
+     Utils.showToast("変更された予定データがありません。", "info");
      closeModal('availability-modal');
      return;
   }
@@ -137,11 +140,11 @@ async function saveBulkAvailability() {
         await fetchScheduleData();
       }
 
-      alert("予定を保存しました");
+      Utils.showToast("予定を保存しました", "success");
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
-    alert("保存に失敗しました: " + err.message);
+    Utils.showToast("保存に失敗しました: " + err.message, "error");
   }
 }
 
@@ -174,7 +177,10 @@ async function initPlayerList() {
 // 照合処理をフロントエンド側で完全に処理するように改修
 async function runComparison() {
   const selectedIds = Array.from(document.querySelectorAll('input[name="compare-player"]:checked')).map(cb => cb.value);
-  if (selectedIds.length === 0) return alert("プレイヤーを選択してください");
+  if (selectedIds.length === 0) {
+    Utils.showToast("プレイヤーを選択してください", "error");
+    return;
+  }
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -202,7 +208,7 @@ async function runComparison() {
   } catch (err) {
     if (!comparisonRequestToken.isLatest(requestToken)) return false;
     console.error("比較エラー:", err);
-    alert("比較データの取得に失敗しました");
+    Utils.showToast("比較データの取得に失敗しました", "error");
     return false;
   }
 }
@@ -312,7 +318,10 @@ async function handleAddSessionSubmit(e) {
   const startStr = document.getElementById("add-session-start").value;
   const streamUrl = document.getElementById("add-session-stream")?.value || null;
 
-  if (!runId || !startStr) return alert("必須項目が入力されていません。");
+  if (!runId || !startStr) {
+    Utils.showToast("必須項目が入力されていません。", "error");
+    return;
+  }
 
   const isoStart = new Date(startStr).toISOString();
 
@@ -328,11 +337,11 @@ async function handleAddSessionSubmit(e) {
     };
 
     await Utils.apiPost("sessions", payload);
-    alert("セッション予定を追加しました！");
+    Utils.showToast("セッション予定を追加しました！", "success");
     window.location.href = `../sessions/detail.html?id=${encodeURIComponent(runId)}`;
   } catch (err) {
     console.error("セッション追加エラー:", err);
-    alert("セッションの追加に失敗しました: " + err.message);
+    Utils.showToast("セッションの追加に失敗しました: " + err.message, "error");
     e.target.querySelector('button[type="submit"]').disabled = false;
   }
 }
@@ -414,7 +423,8 @@ async function main() {
           const headerIndex = lines.findIndex(line => line.replace(/^"|"$/g, '').startsWith("日程"));
 
           if (headerIndex === -1) {
-              return alert("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。");
+              Utils.showToast("CSV内に「日程」の行が見つかりません。正しい調整さんのCSVか確認してください。", "error");
+              return;
           }
 
           const headers = lines[headerIndex].split(',').map(s => s.replace(/^"|"$/g, '').trim());
@@ -435,7 +445,10 @@ async function main() {
           if (sel.value) columnMap[sel.dataset.csvIndex] = sel.value;
       });
 
-      if (Object.keys(columnMap).length === 0) return alert("取り込むプレイヤーが選択されていません");
+      if (Object.keys(columnMap).length === 0) {
+          Utils.showToast("取り込むプレイヤーが選択されていません", "error");
+          return;
+      }
 
       const statusMap = { "○": "ok", "△": "maybe", "×": "ng", "◯": "ok" };
 
@@ -486,7 +499,7 @@ async function main() {
       }, new Map()).values()];
 
       if (dedupedPayload.length === 0) {
-          alert("取り込む予定データがありませんでした");
+          Utils.showToast("取り込む予定データがありませんでした", "error");
           return closeModal("csv-mapping-modal");
       }
 
@@ -498,13 +511,13 @@ async function main() {
           const res = await Utils.apiPost("player_availability", dedupedPayload);
           if (res) {
               closeModal("csv-mapping-modal");
-              alert(`${dedupedPayload.length}件の予定データをインポートしました！`);
+              Utils.showToast(`${dedupedPayload.length}件の予定データをインポートしました！`, "success");
               if (compareMode) await runComparison();
               else await fetchScheduleData();
           }
       } catch (err) {
           console.error("CSVインポートエラー:", err);
-          alert("インポートに失敗しました: " + err.message);
+          Utils.showToast("インポートに失敗しました: " + err.message, "error");
       } finally {
           const btn = document.getElementById("btn-execute-import");
           btn.disabled = false;

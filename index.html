@@ -14,7 +14,20 @@
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
     <h1>FCTZS TRPG部</h1>
-    <!--<p>Webデザインとかの練習も込みで記録用ページを作成中<br>あんまり設計とか技術面気にして見ないでね</p> -->
+    <!-- ログイン済みだが players 未連携のときの固定導線 -->
+    <div id="player-link-banner" class="player-link-banner" hidden>
+      <div class="player-link-banner-body">
+        <strong>プレイヤー連携が必要です</strong>
+        <p id="player-link-banner-text">
+          Discordログインは成功していますが、部のプレイヤー名簿にまだ紐づいていません。
+        </p>
+        <p id="player-link-banner-id" class="u-muted" hidden></p>
+      </div>
+      <div class="player-link-banner-actions">
+        <a href="./player/index.html" class="btn-primary">プレイヤー一覧を開く</a>
+        <button type="button" id="player-link-copy-id-btn" class="btn-secondary" hidden>Discord IDをコピー</button>
+      </div>
+    </div>
     <!-- 一時告知は更新後に古い情報が残りやすいため、恒常的な案内だけを本文へ配置する。 -->
     <div style="overflow: hidden; width: 100%; white-space: nowrap; border-radius: 4px; margin-bottom: 20px;">
       <div style="background: #e53e3e; color: white;  display: flex; width: max-content; animation: inline-loop-slide 25s linear infinite;">

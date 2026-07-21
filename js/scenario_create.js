@@ -78,7 +78,7 @@ Utils.domReady(async () => {
         try {
             const result = await Utils.apiPost("scenarios", payload);
             const row = Array.isArray(result) ? result[0] : result;
-            alert("シナリオを登録しました");
+            Utils.showToast("シナリオを登録しました", "success");
             if (row?.id) {
                 location.href = `detail.html?id=${encodeURIComponent(row.id)}`;
             } else {
@@ -86,7 +86,7 @@ Utils.domReady(async () => {
             }
         } catch (err) {
             console.error(err);
-            alert("登録失敗: " + err.message);
+            Utils.showToast("登録失敗: " + err.message, "error");
             submitBtn.disabled = false;
         }
     });

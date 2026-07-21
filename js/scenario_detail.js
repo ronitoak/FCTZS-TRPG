@@ -275,7 +275,7 @@ async function main() {
 
     interestBtn?.addEventListener("click", async () => {
       if (!canReact || !myPlayer) {
-        alert("気になるを登録するには Discord ログインが必要です。");
+        Utils.showToast("気になるを登録するには Discord ログインが必要です。", "error");
         return;
       }
       interestBtn.disabled = true;
@@ -304,7 +304,7 @@ async function main() {
         syncInterestButton(interestState);
       } catch (err) {
         console.error(err);
-        alert("気になるの更新に失敗しました: " + (err.message || err));
+        Utils.showToast("気になるの更新に失敗しました: " + (err.message || err), "error");
       } finally {
         interestBtn.disabled = false;
       }
@@ -312,7 +312,7 @@ async function main() {
 
     gmableBtn?.addEventListener("click", async () => {
       if (!canReact || !myPlayer) {
-        alert("GM可能の登録には Discord ログインが必要です。");
+        Utils.showToast("GM可能の登録には Discord ログインが必要です。", "error");
         return;
       }
       gmableBtn.disabled = true;
@@ -340,7 +340,7 @@ async function main() {
         Utils.showToast(isGmable ? "GM可能に登録しました" : "GM可能を解除しました");
       } catch (err) {
         console.error(err);
-        alert("GM可能の更新に失敗しました: " + (err.message || err));
+        Utils.showToast("GM可能の更新に失敗しました: " + (err.message || err), "error");
       } finally {
         gmableBtn.disabled = false;
       }
@@ -439,11 +439,11 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
 
     try {
         await Utils.apiPatch("scenarios", payload, `id=eq.${currentScenarioId}`);
-        alert("シナリオ情報を更新しました");
+        Utils.showToast("シナリオ情報を更新しました", "success");
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("更新に失敗しました: " + err.message);
+        Utils.showToast("更新に失敗しました: " + err.message, "error");
     }
 });
 

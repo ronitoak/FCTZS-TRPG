@@ -671,11 +671,11 @@ function appendAttrInput(container, def, value, inputType, inputName) {
 async function saveAttributes(payload) {
     try {
         await Utils.apiPost("character_attributes", payload);
-        alert("更新しました");
+        Utils.showToast("更新しました", "success");
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("更新に失敗しました: " + err.message);
+        Utils.showToast("更新に失敗しました: " + err.message, "error");
     }
 }
 
@@ -748,7 +748,7 @@ document.addEventListener('click', async (e) => {
                 }, 2000);
             } catch (err) {
                 console.error("クリップボードコピーに失敗:", err);
-                alert("コピーに失敗しました。ブラウザの権限を確認してください。");
+                Utils.showToast("コピーに失敗しました。ブラウザの権限を確認してください。", "error");
             }
         }
     }
@@ -758,7 +758,7 @@ document.addEventListener('click', async (e) => {
         const modal = document.getElementById('edit-character-modal');
         const form = document.getElementById('edit-character-form');
         if (!currentCharData || !form) {
-            alert("データの読み込みが完了していません。リロードしてください。");
+            Utils.showToast("データの読み込みが完了していません。リロードしてください。", "error");
             return;
         }
         form.name.value = currentCharData.name || "";
@@ -893,11 +893,11 @@ document.getElementById('edit-character-form')?.addEventListener('submit', async
     };
     try {
         await Utils.apiPatch("characters", payload, `id=eq.${currentCharData.id}`);
-        alert("キャラクター情報を更新しました");
+        Utils.showToast("キャラクター情報を更新しました", "success");
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("更新に失敗しました: " + err.message);
+        Utils.showToast("更新に失敗しました: " + err.message, "error");
     }
 });
 
@@ -918,11 +918,11 @@ document.getElementById('edit-skills-form')?.addEventListener('submit', async (e
         if (skillsPayload.length > 0) {
             await Utils.apiPost("character_skills", skillsPayload);
         }
-        alert("技能値を更新しました");
+        Utils.showToast("技能値を更新しました", "success");
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("更新に失敗しました: " + err.message);
+        Utils.showToast("更新に失敗しました: " + err.message, "error");
     }
 });
 

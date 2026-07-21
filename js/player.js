@@ -1,75 +1,113 @@
 "use strict";
 
-// プレイヤーとプロフィールを結合し、傾向が設定済みの利用者だけを選択・閲覧できる一覧導線を作る。
+// プレイヤー名簿（カード一覧＋検索）と詳細へのジャンプ導線を提供する。
 (() => {
 
-// プレイヤー本体と任意プロフィールを分離保存しているため、表示前にIDで結合する。
+let allRosterPlayers = [];
+
+function hasCustomPlayStyle(profile) {
+  if (!profile) return false;
+  const keys = [
+    "desire_avatar",
+    "desire_active",
+    "desire_chaos",
+    "desire_story",
+    "desire_harmony",
+    "desire_clear"
+  ];
+  return keys.some(k => profile[k] != null && profile[k] !== 3);
+}
+
+function styleSummary(profile) {
+  if (!hasCustomPlayStyle(profile)) return "プレイスタイル未設定";
+  const labels = [
+    ["desire_avatar", "没入"],
+    ["desire_active", "主体"],
+    ["desire_chaos", "混沌"],
+    ["desire_story", "物語"],
+    ["desire_harmony", "調和"],
+    ["desire_clear", "攻略"]
+  ];
+  const highs = labels
+    .filter(([key]) => Number(profile[key]) >= 4)
+    .map(([, label]) => label);
+  if (highs.length === 0) return "バランス型";
+  return `強み: ${highs.join("・")}`;
+}
+
 async function initPlayerOptions() {
   try {
-   // 2. プレイヤー名の抽出 (重複を排除してあいうえお順に)
-    const players = await Utils.apiGet("players");
-    const playerProfiles = await Utils.apiGet("player_profiles");
-    const characters = await Utils.apiGet("characters").catch(() => []);
+    const [players, playerProfiles, characters] = await Promise.all([
+      Utils.apiGet("players"),
+      Utils.apiGet("player_profiles"),
+      Utils.apiGet("characters").catch(() => [])
+    ]);
 
-    // 厳密な型比較(Map)を避けるため、キーをStringに統一
-    const charactersMap = new Map(characters.map(c => [String(c.id), c]));
+    const charactersMap = new Map(
+      (Array.isArray(characters) ? characters : []).map(c => [String(c.id), c])
+    );
+    const profilesById = new Map(
+      (Array.isArray(playerProfiles) ? playerProfiles : []).map(p => [String(p.player_id), p])
+    );
 
-    const joinedProfiles = playerProfiles
-      .filter(playerProfile => players.some(player => player.player_id === playerProfile.player_id))
-      .map(profile => {
-        const player = players.find(p => p.player_id === profile.player_id); // 対応するデータを取得
-        const charObj = profile.icon_url ? charactersMap.get(String(profile.icon_url)) : null;
-        return { 
-          ...profile, 
-          ...player,
-          icon_image_url: charObj ? charObj.image_url : null
-        }; // データを結合
+    const sortedPlayers = [...(Array.isArray(players) ? players : [])].sort((a, b) =>
+      String(a.player_name || "").localeCompare(String(b.player_name || ""), "ja")
+    );
+
+    allRosterPlayers = sortedPlayers.map(player => {
+      const profile = profilesById.get(String(player.player_id)) || {};
+      const charObj = profile.icon_url
+        ? charactersMap.get(String(profile.icon_url))
+        : null;
+      return {
+        ...profile,
+        ...player,
+        icon_image_url: charObj ? charObj.image_url : null,
+        _hasStyle: hasCustomPlayStyle(profile),
+        _styleSummary: styleSummary(profile)
+      };
     });
+
     const filterPlayer = document.getElementById("select-player");
     if (filterPlayer) {
-        players.forEach(p => {
-            const opt = document.createElement("option");
-            opt.value = p.player_id; 
-            opt.textContent = p.player_name;
-            filterPlayer.appendChild(opt);
-        });
+      filterPlayer.innerHTML = '<option value="">ジャンプ（一覧から選択）</option>';
+      allRosterPlayers.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.player_id;
+        opt.textContent = p.player_name;
+        filterPlayer.appendChild(opt);
+      });
     }
 
-    renderPlayers(joinedProfiles);
-
+    applyPlayerFilter();
   } catch (e) {
-    console.error("何かに失敗しました", e);
+    console.error("プレイヤー名簿の読み込みに失敗しました", e);
+    const root = document.getElementById("player-list");
+    if (root) root.innerHTML = "<p>プレイヤー一覧の読み込みに失敗しました。</p>";
   }
 }
 
-// クエリ引数(query)を削除し、純粋に「渡された配列を描画する」だけの関数にします
+function applyPlayerFilter() {
+  const keyword = (document.getElementById("filter-player-keyword")?.value || "")
+    .trim()
+    .toLowerCase();
+  const filtered = !keyword
+    ? allRosterPlayers
+    : allRosterPlayers.filter(p =>
+        String(p.player_name || "").toLowerCase().includes(keyword)
+      );
+  renderPlayers(filtered);
+}
+
 function renderPlayers(players) {
   const root = document.getElementById("player-list");
   if (!root) return;
 
-
   root.innerHTML = "";
-
   const list = Array.isArray(players) ? players : [];
 
-  // 初期値だけのプロフィールは比較情報として意味を持たないため、公開一覧から除外する。
-  const filteredList = list.filter(p => {
-    // それぞれのパラメーターが 3 (または undefined/null) であるかを判定
-    const isAllDefault = 
-      (p.desire_avatar == null || p.desire_avatar === 3) &&
-      (p.desire_active == null || p.desire_active === 3) &&
-      (p.desire_chaos == null || p.desire_chaos === 3) &&
-      (p.desire_story == null || p.desire_story === 3) &&
-      (p.desire_harmony == null || p.desire_harmony === 3) &&
-      (p.desire_clear == null || p.desire_clear === 3);
-    
-    // 全てデフォルトなら false (除外)、1つでも違う値があれば true (表示)
-    return !isAllDefault;
-  });
-
-  // 絞り込み後の利用者だけを描画し、未設定プロフィールを誤って公開しない。
-  if (filteredList.length === 0) {
-    root.innerHTML = "<p>何かに失敗しました</p>";
+  if (list.length === 0) {
+    root.innerHTML = "<p class=\"u-muted\">該当するプレイヤーがいません。</p>";
     return;
   }
 
@@ -77,73 +115,61 @@ function renderPlayers(players) {
   grid.className = "card-grid";
   root.appendChild(grid);
 
-  for (const c of filteredList) {
+  for (const c of list) {
     const name = Utils.escapeHtml(c.player_name ?? "");
+    const summary = Utils.escapeHtml(c._styleSummary || "プレイスタイル未設定");
     const imagePath = Utils.getCharacterImagePath(c.icon_url, c.icon_image_url);
-    const DEFAULT_IMAGE = Utils.DEFAULT_CHARACTER_IMAGE;
 
     const cardLink = document.createElement("a");
     cardLink.href = `./detail.html?id=${encodeURIComponent(c.player_id)}`;
     cardLink.className = "player-card-wrapper";
-    cardLink.style.textDecoration = "none";
-    cardLink.style.color = "inherit";
-    cardLink.style.display = "block";
 
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "card player-roster-card";
 
     const canvasId = `radar-${c.player_id}`;
-
     card.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; height: 100%;">
-        <img src="${imagePath}" 
-             onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" 
-             alt="${name}" 
-             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
-        
-        <h2 style="margin: 0; font-size: 1.2rem; border: none; padding: 0;">${name}</h2>
-        
-        <div style="width: 100%; max-width: 250px; margin-top: auto;">
-          <canvas id="${canvasId}"></canvas>
-        </div>
+      <div class="player-roster-card-inner">
+        <img src="${imagePath}"
+             onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';"
+             alt="${name}"
+             class="player-roster-avatar">
+        <h2 class="player-roster-name">${name}</h2>
+        <p class="player-roster-summary u-muted">${summary}</p>
+        ${c._hasStyle
+          ? `<div class="player-roster-radar"><canvas id="${canvasId}"></canvas></div>`
+          : `<p class="player-roster-placeholder u-muted">レーダー未設定</p>`}
       </div>
     `;
 
     cardLink.appendChild(card);
     grid.appendChild(cardLink);
 
-    Utils.renderRadarChart(c, canvasId);
+    if (c._hasStyle) {
+      Utils.renderRadarChart(c, canvasId);
+    }
   }
 }
 
-// 検索を実行する関数
 async function getPlayerPage() {
-    try {
-        const playerVal = document.getElementById("select-player")?.value || "";
-
-        if (!playerVal) {
-            alert("プレイヤーを選択してください");
-            return;
-        }
-
-        window.location.href = `./detail.html?id=${encodeURIComponent(playerVal)}`;
-    } catch (err) {
-        console.error(err);
+  try {
+    const playerVal = document.getElementById("select-player")?.value || "";
+    if (!playerVal) {
+      Utils.showToast("プレイヤーを選択してください", "error");
+      return;
     }
+    window.location.href = `./detail.html?id=${encodeURIComponent(playerVal)}`;
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function main() {
-
-  await Utils.initAuthAndHeader('common-nav', '../');
-  
-  // 選択イベントが空の候補を参照しないよう、先にプルダウンを構築する。
+  await Utils.initAuthAndHeader("common-nav", "../");
   await initPlayerOptions();
 
-  // イベントリスナーの登録
-  const searchBtn = document.getElementById("select-button");
-  if (searchBtn) {
-    searchBtn.addEventListener("click", getPlayerPage);
-  }
+  document.getElementById("select-button")?.addEventListener("click", getPlayerPage);
+  document.getElementById("filter-player-keyword")?.addEventListener("input", applyPlayerFilter);
 }
 
 main();

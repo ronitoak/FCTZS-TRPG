@@ -84,6 +84,14 @@ function renderDetail() {
         ${roleBadge}
       </header>
 
+      <div class="detail-next-actions" aria-label="次の操作">
+        <span class="detail-next-actions-label">次にやること</span>
+        ${currentRecruit.status === "open"
+          ? `<button type="button" class="btn-primary" onclick="document.getElementById('btn-apply')?.click()">応募する</button>`
+          : `<span class="u-muted">現在は応募を受け付けていません</span>`}
+        <a class="btn-secondary" href="#recruit-manage">募集を管理</a>
+      </div>
+
       <section class="scenario-detail-top">
         <div class="scenario-detail-imagewrap">
           <img class="scenario-detail-cover"
@@ -126,7 +134,7 @@ function renderDetail() {
         </div>
       </section>
 
-        <section class="scenario-detail-section" style="margin-top: 30px;">
+        <section id="recruit-manage" class="scenario-detail-section" style="margin-top: 30px;">
         <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
             <legend style="color: #c53030; font-weight: bold;">募集の管理（募集主用）</legend>
             <p style="font-size: 0.9em; margin-bottom: 10px; color: #666;">
@@ -165,10 +173,19 @@ async function setupActionForms() {
     }
 
     document.getElementById("btn-apply")?.addEventListener("click", async () => {
-        if (!me?.player_id) return alert("ログイン中のプレイヤーを解決できません。");
+        if (!me?.player_id) {
+          Utils.showToast("ログイン中のプレイヤーを解決できません。", "error");
+          return;
+        }
 
-        if (currentRecruit.status !== "open") return alert("この募集は現在受け付けていません。");
-        if (currentApplicants.some(a => a.player_id === me.player_id)) return alert("すでにこの募集に応募しています。");
+        if (currentRecruit.status !== "open") {
+          Utils.showToast("この募集は現在受け付けていません。", "error");
+          return;
+        }
+        if (currentApplicants.some(a => a.player_id === me.player_id)) {
+          Utils.showToast("すでにこの募集に応募しています。", "error");
+          return;
+        }
 
         const btn = document.getElementById("btn-apply");
         btn.disabled = true;
@@ -178,18 +195,24 @@ async function setupActionForms() {
             await Utils.apiPost("recruitment_applicants", [{
                 recruitment_id: currentRecruit.id
             }]);
-            alert("応募しました！");
+            Utils.showToast("応募しました！", "success");
             location.reload();
         } catch (err) {
             console.error(err);
-            alert("応募に失敗しました: " + (err.message || "特設サイト関連に報告してください。"));
+            Utils.showToast("応募に失敗しました: " + (err.message || "特設サイト関連に報告してください。"), "error");
             btn.disabled = false;
         }
     });
 
     document.getElementById("btn-cancel-apply")?.addEventListener("click", async () => {
-        if (!me?.player_id) return alert("ログイン中のプレイヤーを解決できません。");
-        if (!currentApplicants.some(a => a.player_id === me.player_id)) return alert("この募集には応募していません。");
+        if (!me?.player_id) {
+          Utils.showToast("ログイン中のプレイヤーを解決できません。", "error");
+          return;
+        }
+        if (!currentApplicants.some(a => a.player_id === me.player_id)) {
+          Utils.showToast("この募集には応募していません。", "info");
+          return;
+        }
         if (!confirm("本当に参加を取り消しますか？")) return;
 
         const btn = document.getElementById("btn-cancel-apply");
@@ -200,11 +223,11 @@ async function setupActionForms() {
               "recruitment_applicants",
               `recruitment_id=eq.${currentRecruit.id}&player_id=eq.${encodeURIComponent(me.player_id)}`
             );
-            alert("参加を取り消しました。");
+            Utils.showToast("参加を取り消しました。", "success");
             location.reload();
         } catch (err) {
             console.error(err);
-            alert("取り消しに失敗しました: " + (err.message || "特設サイト関連に報告してください。"));
+            Utils.showToast("取り消しに失敗しました: " + (err.message || "特設サイト関連に報告してください。"), "error");
             btn.disabled = false;
         }
     });
@@ -219,11 +242,11 @@ async function setupActionForms() {
         try {
             // 応募者は各本人所有のため直接削除せず、募集削除時のFK CASCADEへ任せる。
             await Utils.apiDelete("recruitments", `id=eq.${currentRecruit.id}`);
-            alert("募集を削除しました。");
+            Utils.showToast("募集を削除しました。", "success");
             location.href = "./index.html"; 
         } catch (err) {
             console.error(err);
-            alert("削除に失敗しました。特設サイト関連に報告してください。");
+            Utils.showToast("削除に失敗しました。特設サイト関連に報告してください。", "error");
             btn.disabled = false;
         }
     });
@@ -244,11 +267,11 @@ document.getElementById("btn-extend-recruit")?.addEventListener("click", async (
         // created_at を現在時刻で上書き（PATCH）
         await Utils.apiPatch("recruitments", { created_at: nowIso }, `id=eq.${currentRecruit.id}`);
         
-        alert("募集期間を延長しました！");
+        Utils.showToast("募集期間を延長しました！", "success");
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("延長に失敗しました。コンソールを確認してください。");
+        Utils.showToast("延長に失敗しました。コンソールを確認してください。", "error");
         btn.disabled = false;
     }
 });

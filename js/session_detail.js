@@ -50,7 +50,6 @@ async function main() {
 
     // 後から開く編集モーダルも同じ取得結果を使えるよう、現在の卓を共有状態へ保持する。
     currentRunData = run;
-    const editRunBtn = `<button id="btn-open-run-edit" class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;">📝</button>`;
     const scenarioId = run?.scenario_id;
     // 厳密な型比較(===)による不一致を防ぐため、文字列にキャストして比較
     const scenario = (Array.isArray(scenarios) ? scenarios : []).find(s => String(s.id) === String(run.scenario_id)) ?? null;
@@ -99,7 +98,7 @@ async function main() {
 
     root.innerHTML = `
       ${buildSessionHeaderHtml(run, statusClass, statusJa)}
-      ${buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars, editRunBtn)}
+      ${buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars)}
       ${buildSessionLogHtml(runSessions, currentUserDiscordId)}
     `;
 
@@ -149,11 +148,11 @@ function renderCompletionGuide(allSessions, run) {
             try {
                 // Workers経由でステータスのみ更新（PATCH）
                 await Utils.apiPatch("runs", { status: 'done' }, `id=eq.${run.id}`);
-                alert("物語が完結しました。お疲れ様でした。");
+                Utils.showToast("物語が完結しました。お疲れ様でした。", "success");
                 location.reload();
             } catch (e) {
                 console.error(e);
-                alert("更新に失敗しました: " + e.message);
+                Utils.showToast("更新に失敗しました: " + e.message, "error");
             }
         });
     }
@@ -307,7 +306,7 @@ function registerSessionDetailEvents() {
       const form = document.getElementById('edit-run-form');
 
       if (!currentRunData) {
-        alert("データの読み込みが完了していません。");
+        Utils.showToast("データの読み込みが完了していません。", "error");
         return;
       }
 
@@ -390,11 +389,11 @@ function registerSessionDetailEvents() {
 
       try {
           await Utils.apiPatch("runs", payload, `id=eq.${currentRunData.id}`);
-          alert("卓情報を更新しました");
+          Utils.showToast("卓情報を更新しました", "success");
           location.reload();
       } catch (err) {
           console.error(err);
-          alert("更新に失敗しました: " + err.message);
+          Utils.showToast("更新に失敗しました: " + err.message, "error");
           if (submitBtn) submitBtn.disabled = false;
       }
   });
@@ -414,11 +413,11 @@ function registerSessionDetailEvents() {
 
       try {
           await Utils.apiPatch("sessions", payload, `id=eq.${sessionId}`);
-          alert("セッション情報を更新しました");
+          Utils.showToast("セッション情報を更新しました", "success");
           location.reload();
       } catch (err) {
           console.error(err);
-          alert("更新に失敗しました: " + err.message);
+          Utils.showToast("更新に失敗しました: " + err.message, "error");
       }
   });
 
@@ -427,7 +426,7 @@ function registerSessionDetailEvents() {
 
       // currentRunData がセットされるまで待つためのチェック
       if (!currentRunData) {
-          alert("データの読み込みが完了していません。");
+          Utils.showToast("データの読み込みが完了していません。", "error");
           return;
       }
 
@@ -437,7 +436,7 @@ function registerSessionDetailEvents() {
 
 
       if (!startVal) {
-          alert("日時を選択してください。");
+          Utils.showToast("日時を選択してください。", "error");
           return;
       }
 
@@ -477,7 +476,7 @@ function registerSessionDetailEvents() {
           location.reload();
       } catch (err) {
           console.error(err);
-          alert("保存失敗: " + err.message);
+          Utils.showToast("保存失敗: " + err.message, "error");
           submitBtn.disabled = false;
       }
   });
@@ -517,14 +516,14 @@ function registerSessionDetailEvents() {
     try {
       const { data: { session } } = await window.supabase.auth.getSession();
       if (!session) {
-        alert("観戦希望するにはDiscordログインが必要です。");
+        Utils.showToast("観戦希望するにはDiscordログインが必要です。", "error");
         btn.disabled = false;
         return;
       }
 
       const discordId = session?.user?.user_metadata?.sub || session?.user?.user_metadata?.provider_id || (session?.user?.identities?.find(id => id.provider === 'discord')?.id);
       if (!discordId) {
-        alert("DiscordユーザーIDが取得できませんでした。");
+        Utils.showToast("DiscordユーザーIDが取得できませんでした。", "info");
         btn.disabled = false;
         return;
       }
@@ -533,7 +532,7 @@ function registerSessionDetailEvents() {
       const sessions = await Utils.apiGet(`sessions/detail?id=${encodeURIComponent(sessionId)}`);
       const sessionData = (Array.isArray(sessions) ? sessions : []).find(s => s.id === sessionId);
       if (!sessionData) {
-        alert("セッションが見つかりません。");
+        Utils.showToast("セッションが見つかりません。", "error");
         btn.disabled = false;
         return;
       }
@@ -581,7 +580,7 @@ function registerSessionDetailEvents() {
       location.reload();
     } catch (err) {
       console.error(err);
-      alert("処理に失敗しました: " + err.message);
+      Utils.showToast("処理に失敗しました: " + err.message, "error");
       btn.disabled = false;
     }
   });
@@ -599,17 +598,22 @@ function buildSessionHeaderHtml(run, statusClass, statusJa) {
       <h1 class="session-detail-title">${Utils.escapeHtml(run.title ?? run.id)}</h1>
       <span class="session-detail-badge ${statusClass}">${Utils.escapeHtml(statusJa)}</span>
     </header>
+    <div class="detail-next-actions" aria-label="次の操作">
+      <span class="detail-next-actions-label">次にやること</span>
+      <a class="btn-primary" href="#add-session-record">セッション記録を追加</a>
+      <button type="button" id="btn-open-run-edit" class="btn-secondary">卓情報を編集</button>
+    </div>
   `;
 }
 
-function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars, editRunBtn) {
+function buildSessionTopHtml(run, scenario, coverPath, fallback, gmName, plNames, upcoming, lastDone, runChars) {
   return `
     <section class="session-detail-top">
       <div class="session-detail-imagewrap">
         <img class="session-detail-cover" src="${coverPath}" onerror="this.onerror=null; this.src='${fallback}';" alt="${Utils.escapeHtml(scenario?.title ?? run.title ?? run.id)}" loading="lazy">
       </div>
       <div class="session-detail-profile">
-        <h2 class="session-detail-h2">卓情報${editRunBtn}</h2>
+        <h2 class="session-detail-h2">卓情報</h2>
         <table class="session-detail-table">
           <tbody>
             <tr><th>シナリオ</th><td>${scenario ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(scenario.id)}">${Utils.escapeHtml(scenario.title ?? scenario.id)}</a>` : "（不明）"}</td></tr>

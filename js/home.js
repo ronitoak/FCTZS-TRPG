@@ -386,7 +386,7 @@ async function openHomeAvailabilityModal(selectedDate) {
     });
   } catch (err) {
     console.error("予定入力データの取得に失敗しました:", err);
-    alert("予定データの取得に失敗しました。");
+    Utils.showToast("予定データの取得に失敗しました。", "error");
   }
 }
 
@@ -397,7 +397,7 @@ async function saveHomeAvailability() {
   const payload = Utils.collectAvailabilityChanges(container, homeDashboardState.playerId);
 
   if (payload.length === 0) {
-    alert("変更された予定データがありません。");
+    Utils.showToast("変更された予定データがありません。", "info");
     modal?.close();
     return;
   }
@@ -407,10 +407,10 @@ async function saveHomeAvailability() {
     await Utils.apiPost("player_availability", payload);
     await refreshHomeAvailability();
     modal?.close();
-    alert("予定を保存しました。");
+    Utils.showToast("予定を保存しました。", "success");
   } catch (err) {
     console.error("予定の保存に失敗しました:", err);
-    alert("予定の保存に失敗しました: " + err.message);
+    Utils.showToast("予定の保存に失敗しました: " + err.message, "error");
   } finally {
     if (saveButton) saveButton.disabled = false;
   }
@@ -484,6 +484,32 @@ async function main() {
       ? Utils.findPlayerForAuthUser(Array.isArray(players) ? players : [], session.user)
       : null;
 
+    const linkBanner = document.getElementById("player-link-banner");
+    const linkBannerId = document.getElementById("player-link-banner-id");
+    const copyIdBtn = document.getElementById("player-link-copy-id-btn");
+    if (linkBanner) {
+      const needsLink = Boolean(session && !myPlayer);
+      linkBanner.hidden = !needsLink;
+      if (needsLink) {
+        const discordId = Utils.extractDiscordIdFromUser(session.user) || "";
+        if (linkBannerId && discordId) {
+          linkBannerId.hidden = false;
+          linkBannerId.textContent = `依頼用 Discord ID: ${discordId}`;
+        }
+        if (copyIdBtn && discordId) {
+          copyIdBtn.hidden = false;
+          copyIdBtn.onclick = async () => {
+            try {
+              await navigator.clipboard.writeText(String(discordId));
+              Utils.showToast("Discord IDをコピーしました", "success");
+            } catch (_) {
+              Utils.showToast("コピーに失敗しました", "error");
+            }
+          };
+        }
+      }
+    }
+
     if (!session || !myPlayer) {
       guestDashboard.hidden = false;
       memberDashboard.hidden = true;
@@ -504,9 +530,9 @@ async function main() {
         if (helpEl) {
           helpEl.hidden = false;
           helpEl.innerHTML =
-            "ダッシュボード・予定入力・募集応募などの個人機能を使うには、管理者に " +
-            "<strong>players への追加（または discord_id / user_id の連携）</strong> を依頼してください。" +
-            "依頼時は Discord 表示名とユーザーIDが分かるとスムーズです。" +
+            "個人機能を使うには管理者に連携を依頼してください。" +
+            ' 名簿の確認は <a href="./player/index.html">プレイヤー一覧</a> からできます。' +
+            "依頼時は上部バナーの Discord ID があるとスムーズです。" +
             "公開の直近予定・進行中セッションは、このまま下で閲覧できます。";
         }
         if (loginButton) loginButton.hidden = true;

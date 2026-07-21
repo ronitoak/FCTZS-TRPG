@@ -121,7 +121,7 @@ Utils.domReady(async () => {
         const allPlayerIds = Array.from(new Set([...autoPlayerIds, ...extraPlayerIds]));
 
         if (charIds.length === 0 && allPlayerIds.length === 0) {
-            alert("キャラクターまたはプレイヤーを登録してください");
+            Utils.showToast("キャラクターまたはプレイヤーを登録してください", "error");
             return;
         }
 
@@ -163,7 +163,7 @@ Utils.domReady(async () => {
         try {
             const result = await Utils.apiPost("runs", payload);
             const row = Array.isArray(result) ? result[0] : result;
-            alert("セッションを登録しました");
+            Utils.showToast("セッションを登録しました", "success");
             if (row?.id) {
                 location.href = `detail.html?id=${encodeURIComponent(row.id)}`;
             } else {
@@ -171,7 +171,7 @@ Utils.domReady(async () => {
             }
         } catch (err) {
             console.error(err);
-            alert("登録失敗: " + err.message);
+            Utils.showToast("登録失敗: " + err.message, "error");
             submitBtn.disabled = false;
         }
     });

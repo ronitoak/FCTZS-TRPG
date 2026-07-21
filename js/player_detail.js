@@ -429,11 +429,11 @@ async function main() {
       const noteInput = externalForm.querySelector('[name="external_note"]');
       const title = (titleInput?.value || "").trim();
       if (!title) {
-        alert("シナリオ名を入力してください。");
+        Utils.showToast("シナリオ名を入力してください。", "error");
         return;
       }
       if (externalPassed.length >= 100) {
-        alert("部活外シナリオは最大100件までです。");
+        Utils.showToast("部活外シナリオは最大100件までです。", "info");
         return;
       }
       externalPassed = [
@@ -511,11 +511,11 @@ async function main() {
           } else {
             await Utils.apiPost("player_profiles", payload);
           }
-          alert("プロフィールを更新しました！");
+          Utils.showToast("プロフィールを更新しました！", "success");
           location.reload();
         } catch (err) {
           console.error(err);
-          alert("更新に失敗しました: " + err.message);
+          Utils.showToast("更新に失敗しました: " + err.message, "error");
           submitBtn.disabled = false;
         }
       });
@@ -838,7 +838,7 @@ async function saveBulkAvailability() {
   const modal = document.getElementById("availability-modal");
 
   if (payload.length === 0) {
-     alert("変更された予定データがありません。");
+     Utils.showToast("変更された予定データがありません。", "info");
      if (modal) modal.close();
      return;
   }
@@ -847,12 +847,12 @@ async function saveBulkAvailability() {
     const res = await Utils.apiPost("player_availability", payload);
     if (res) {
       if (modal) modal.close();
-      alert("予定を保存しました！");
+      Utils.showToast("予定を保存しました！", "success");
       location.reload();
     }
   } catch (err) {
     console.error("一括保存エラー:", err);
-    alert("保存に失敗しました: " + err.message);
+    Utils.showToast("保存に失敗しました: " + err.message, "error");
   }
 }
 

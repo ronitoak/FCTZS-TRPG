@@ -229,7 +229,10 @@ Utils.domReady(async () => {
     if (btnImport && importArea) {
         btnImport.addEventListener('click', async () => {
             const text = importArea.value;
-            if (!text) return alert("テキストを貼り付けてください");
+            if (!text) {
+                Utils.showToast("テキストを貼り付けてください", "error");
+                return;
+            }
 
             const data = parseIachara(text);
 
@@ -476,7 +479,7 @@ Utils.domReady(async () => {
             if (row?.id) location.href = `detail.html?id=${row.id}`;
         } catch (err) {
             console.error(err);
-            alert("作成失敗");
+            Utils.showToast("作成失敗", "error");
             submitBtn.disabled = false;
         }
     });

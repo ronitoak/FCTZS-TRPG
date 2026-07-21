@@ -12,17 +12,23 @@
     <!-- 共通ナビゲーション：utils.js が画面共通の導線を描画 -->
     <nav id="common-nav" class="top-nav"></nav>
     <hr />
-    <h1>セッションカレンダー</h1>
+      <h1>セッションカレンダー</h1>
       <p>予定管理用</p>
 
-      <!-- カレンダー操作群：schedule.js が予定入力・比較・CSV取込・開催追加を制御 -->
+      <!-- 主操作は前面、比較・CSV・開催追加は折りたたみ -->
       <div class="calendar-toolbar">
-        <button id="bulk-input-btn" class="primary-btn" style="margin-left: 20px;">予定を入力</button>
-        <button id="compare-btn" class="primary-btn">予定を比較</button>
-        
-        <button id="btn-import-csv" class="secondary-btn" style="margin-left: 10px; background-color: #2e7d32; color: white; border-color: #2e7d32;">調整さんCSVインポート</button>
-        <input type="file" id="csv-upload" accept=".csv" style="display: none;">
-        <button type="button" id="btn-add-session" class="primary-btn" style="margin-left: 10px;">＋ セッション予定を追加</button>
+        <div class="calendar-toolbar-primary">
+          <button id="bulk-input-btn" type="button" class="btn-primary">予定を入力</button>
+        </div>
+        <details class="calendar-toolbar-more">
+          <summary class="btn-secondary">その他の操作</summary>
+          <div class="calendar-toolbar-more-menu">
+            <button id="compare-btn" type="button" class="btn-secondary">予定を比較</button>
+            <button id="btn-import-csv" type="button" class="btn-secondary">調整さんCSVインポート</button>
+            <button type="button" id="btn-add-session" class="btn-secondary">＋ セッション予定を追加</button>
+          </div>
+        </details>
+        <input type="file" id="csv-upload" accept=".csv" hidden>
       </div>
 
       <!-- 予定比較モーダル：player-checkbox-list に比較対象を動的生成 -->
@@ -43,8 +49,8 @@
           </div>
           
           <div class="modal-actions">
-            <button id="run-compare-btn" class="primary-btn">比較実行</button>
-            <button onclick="closeModal('compare-modal')" class="secondary-btn">閉じる</button>
+            <button id="run-compare-btn" class="btn-primary">比較実行</button>
+            <button onclick="closeModal('compare-modal')" class="btn-secondary">閉じる</button>
           </div>
         </div>
       </dialog>
@@ -62,8 +68,8 @@
           </div>
 
           <div style="text-align: right;">
-              <button id="btn-execute-import" class="primary-btn">インポート実行</button>
-              <button class="secondary-btn" onclick="closeModal('csv-mapping-modal')">キャンセル</button>
+              <button id="btn-execute-import" class="btn-primary">インポート実行</button>
+              <button class="btn-secondary" onclick="closeModal('csv-mapping-modal')">キャンセル</button>
           </div>
         </div>
       </dialog>
@@ -105,8 +111,8 @@
           </div>
 
           <div class="modal-actions">
-            <button id="save-availability-btn" class="primary-btn">保存</button>
-            <button id="close-modal-btn" class="secondary-btn">キャンセル</button>
+            <button id="save-availability-btn" class="btn-primary">保存</button>
+            <button id="close-modal-btn" class="btn-secondary">キャンセル</button>
           </div>
         </div>
       </dialog>

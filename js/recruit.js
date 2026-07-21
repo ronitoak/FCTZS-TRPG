@@ -164,7 +164,10 @@ function renderRecruitments() {
             const select = e.target.previousElementSibling;
             const playerId = select.value;
 
-            if (!playerId) return alert("参加するプレイヤーを選択してください");
+            if (!playerId) {
+                Utils.showToast("参加するプレイヤーを選択してください", "error");
+                return;
+            }
 
             try {
                 e.target.disabled = true;
@@ -175,11 +178,11 @@ function renderRecruitments() {
                     recruitment_id: recruitId
                 }]);
                 // 満員更新は Worker（Service Role）側の checkAndNotifyIfFulfilled に任せる。
-                alert("参加しました！");
+                Utils.showToast("参加しました！", "success");
                 await loadRecruitments();
             } catch (err) {
                 console.error(err);
-                alert("参加処理に失敗しました。すでに参加している可能性があります: " + err.message);
+                Utils.showToast("参加処理に失敗しました。すでに参加している可能性があります: " + err.message, "error");
                 e.target.disabled = false;
                 e.target.textContent = "参加する";
             }
@@ -195,11 +198,11 @@ function renderRecruitments() {
             try {
                 // ステータスを 'closed' に更新（これにより filter から外れる）
                 await Utils.apiPatch("recruitments", { status: "closed" }, `id=eq.${recruitId}`);
-                alert("募集を終了しました。");
+                Utils.showToast("募集を終了しました。", "success");
                 await loadRecruitments();
             } catch (err) {
                 console.error(err);
-                alert("処理に失敗しました: " + err.message);
+                Utils.showToast("処理に失敗しました: " + err.message, "error");
             }
         });
     });
@@ -236,13 +239,13 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
         btn.disabled = true;
         btn.textContent = "送信中...";
         await Utils.apiPost("recruitments", [payload]);
-        alert("募集を作成しました！");
+        Utils.showToast("募集を作成しました！", "success");
         document.getElementById("recruit-modal")?.close();
         e.target.reset(); // フォームの中身を空にする
         await loadRecruitments();
     } catch (err) {
         console.error(err);
-        alert("募集の作成に失敗しました: " + err.message);
+        Utils.showToast("募集の作成に失敗しました: " + err.message, "error");
     } finally {
         btn.disabled = false;
         btn.textContent = "募集を開始する";

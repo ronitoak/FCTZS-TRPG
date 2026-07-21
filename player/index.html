@@ -14,19 +14,21 @@
     <hr />
     <header class="page-header">
       <h1>プレイヤー</h1>
+      <p class="u-muted">部員名簿。カードを開くとプロフィール・予定・通過シナリオを確認できます。</p>
     </header>
 
-    <!-- プレイヤー選択導線：player.js が選択肢を読み込み詳細画面へ遷移 -->
-    <select id="select-player">
-        <option value="">プレイヤー</option>
-    </select>
-    <button id="select-button">移動</button>
+    <!-- 検索・ジャンプ：player.js が名簿カードを絞り込み／詳細へ遷移 -->
+    <div class="filter-controls player-roster-controls">
+      <input type="text" id="filter-player-keyword" placeholder="名前で検索..." aria-label="プレイヤー名で検索">
+      <select id="select-player" aria-label="プレイヤーを選択してジャンプ">
+        <option value="">ジャンプ（一覧から選択）</option>
+      </select>
+      <button type="button" id="select-button">移動</button>
+    </div>
 
-    <!-- プレイヤー一覧領域：将来の一覧表示用に維持 -->
+    <!-- プレイヤー名簿カード：player.js が描画 -->
     <section id="player-list">
-      <p>このページは本当に必要だろうか？</p>
-      <!-- いや、いらない -->
-      <!-- 選択UIを主導線としつつ、既存スクリプトの描画先契約を保つため領域を残す -->
+      <p>読み込み中…</p>
     </section>
 
     <footer>

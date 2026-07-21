@@ -7,13 +7,12 @@
 
 | 項目 | 状態 |
 |------|------|
-| **書込みの正** | Worker が `run_players` / `run_characters` を明示洗替。`runs.player_ids` / `characters` は**互換ミラー**（同時更新） |
+| **書込みの正** | Worker が `run_players` / `run_characters` のみ洗替。`runs.player_ids` / `characters` へは**書かない** |
 | 配列→junction トリガー | **無効化済**（2026-07-21） |
 | **読取 `/api/runs`** | **junction のみ**（取得成功時。失敗時のみレスポンスの配列列を残す） |
-| フィルタ `participant_id` / `character_id` | **junction のみ**（配列 contains 撤去） |
-| Cron / Discord 通知 | **junction のみ** |
-| PATCH 権限 `canEditRun` | **junction のみ** |
-| `session_block` メンバー判定 | **junction のみ** |
+| POST/PATCH 応答 | junction で `player_ids` / `characters` を組み立てて返す（クライアント形は維持） |
+| フィルタ / Cron / 権限 / session_block | **junction のみ** |
+| DB 上の配列列 | 残置・非推奨（過去ミラー。新規更新では古くなる可能性あり） |
 
 ## 次フェーズ
 
@@ -22,8 +21,9 @@
 3. ~~Worker dual-write~~ → 完了  
 4. ~~Cron / canEditRun / session_block~~ → 完了  
 5. ~~配列→junction トリガー無効化~~ → 完了  
-6. ~~読取の配列フォールバック撤去~~ → **完了**（要 Worker 再デプロイ）  
-7. 配列ミラー書込みの縮小・列非推奨は任意（クライアント応答形 `player_ids`/`characters` は当面維持）  
+6. ~~読取の配列フォールバック撤去~~ → 完了  
+7. ~~配列ミラー書込み停止~~ → **完了**（要 Worker 再デプロイ）  
+8. 配列列 DROP は全クライアント・手作業参照が junction のみになってから（任意・別リリース）  
 
 ## ブロッカー
 

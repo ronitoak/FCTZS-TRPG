@@ -8,7 +8,7 @@
 - 各トランザクションの直後に、そのPhaseの検証SQLを実行する。結果が想定外なら次へ進まない。
 - `runs.player_ids` と `runs.characters` は互換期間中も保持し、削除しない。
 - Phase Aでは配列を正、junctionを同期先とする。APIをjunction読み取りへ切り替えた後に、別変更で正を逆転させる。
-- **2026-07 時点**: Worker が junction 洗替＋配列ミラー。配列→junction トリガー無効化は [`sql/disable-array-to-junction-trigger-2026-07.sql.md`](./sql/disable-array-to-junction-trigger-2026-07.sql.md)。進捗は [`junction-read-progress.md`](./junction-read-progress.md)。
+- **2026-07 時点**: Worker は junction のみ洗替（配列列へは書かない）。配列→junction トリガーは無効化済。進捗は [`junction-read-progress.md`](./junction-read-progress.md)。
 - A-3より前に、通常書込みのBearer引継ぎ、R2 uploadのAuth API検証、認証済み履歴同期を含むWorker/フロント認証版をデプロイする。
 - Phase Cは、実装済みのBearer引継ぎとService Role内部処理をステージング確認するまで絶対に適用しない。
 - SQL Editorでの実行者は通常 `postgres` である。RLS検証は別途、匿名キー・ログインJWT・Service Roleの各API経路でも行う。

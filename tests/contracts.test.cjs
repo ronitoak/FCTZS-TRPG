@@ -195,12 +195,13 @@ test("GET /api/runs は junction から membership を組み立てる", () => {
   assert.doesNotMatch(workerSource, /characters=cs\./);
 });
 
-test("卓のPOST/PATCHはjunction明示洗替と配列ミラーを行う", () => {
+test("卓のPOST/PATCHはjunction明示洗替のみ行い配列列へは書かない", () => {
   assert.match(workerSource, /function normalizeIdList\(/);
   assert.match(workerSource, /async function replaceRunPlayers\(/);
   assert.match(workerSource, /async function replaceRunCharacters\(/);
-  assert.match(workerSource, /applyNormalizedMembershipToPayload/);
+  assert.match(workerSource, /stripMembershipFromRunPayload/);
   assert.match(workerSource, /replaceMembershipFromBody/);
+  assert.doesNotMatch(workerSource, /applyNormalizedMembershipToPayload/);
 });
 
 test("卓メンバー判定はjunctionのみで行う", () => {

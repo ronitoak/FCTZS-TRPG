@@ -55,8 +55,8 @@ posts     … なりきりチャット投稿
 | プレイヤー → キャラクター | 1人が複数キャラを所持（`characters.player_id`）。`user_id` は作成者（編集権限） |
 | シナリオ → 卓 | 1シナリオに複数卓（`runs.scenario_id`） |
 | 卓 → セッション | 1卓に複数回の開催予定/実績（`sessions.run_id`） |
-| 卓 ↔ プレイヤー | **書込み**: Worker が `run_players` 洗替＋`runs.player_ids` ミラー。**読取**: junction のみ |
-| 卓 ↔ キャラクター | **書込み**: Worker が `run_characters` 洗替＋`runs.characters` ミラー。**読取**: junction のみ |
+| 卓 ↔ プレイヤー | **書込み**: Worker が `run_players` のみ洗替。**読取**: junction のみ（応答キー `player_ids` は互換） |
+| 卓 ↔ キャラクター | **書込み**: Worker が `run_characters` のみ洗替。**読取**: junction のみ（応答キー `characters` は互換） |
 | キャラ ↔ シナリオ | プレイ履歴・紐付け（`character_scenarios`） |
 | プレイヤー ↔ シナリオ（気になる） | `scenario_interests`。初回ON時に GM可能登録者へ DM |
 | 募集 | GM/PL募集。応募は `recruitment_applicants` |
@@ -120,18 +120,19 @@ posts     … なりきりチャット投稿
 ```text
 書き込み経路（現行）:
   アプリ → Worker
-           ├─ runs.player_ids / characters を互換ミラー更新
            └─ run_players / run_characters を明示洗替（正）
+              ※ runs.player_ids / characters 列には書かない
 
 読み取り経路:
   一覧・結合・権限・Cron・フィルタ → run_players / run_characters のみ
+  API 応答の player_ids / characters キー → junction から組み立て（互換）
 ```
 
 | 項目 | 内容 |
 |------|------|
 | 正（書込み） | `run_players`, `run_characters`（Worker 明示洗替） |
-| 互換ミラー | `runs.player_ids`, `runs.characters`（書込み時のみ同期。読取フォールバックはしない） |
-| 順序 | `sort_order`（配列の ordinality。同一IDは先頭のみ） |
+| 配列列 | 残置・非推奨（Worker は更新しない。手作業参照は junction を見る） |
+| 順序 | `sort_order`（同一IDは先頭のみ） |
 | 所有者列 | junction の `user_id` は親runの `user_id` をコピー |
 
 配列列は互換期間中は削除しません。詳細は [`junction-read-progress.md`](./junction-read-progress.md)。

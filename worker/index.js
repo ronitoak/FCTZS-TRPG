@@ -323,7 +323,7 @@ function normalizeIdList(value) {
 }
 
 /**
- * junction を洗替する（書込みの正）。配列ミラーと併用する。
+ * junction を洗替する（書込みの正）。
  * Service Role 必須（RLS 回避）。
  */
 async function replaceRunPlayers(env, runId, playerIds, userId) {
@@ -379,20 +379,18 @@ async function replaceRunCharacters(env, runId, characterIds, userId) {
 }
 
 /**
- * リクエストに含まれる membership を正規化して payload へ載せる（配列ミラー）。
- * キーが無い側は触らない。
+ * runs 行の payload から membership キーを除く（配列列へは書かない）。
+ * 参加者の正は junction 洗替のみ。
  */
-function applyNormalizedMembershipToPayload(body, payload) {
-  if (Object.prototype.hasOwnProperty.call(body, "player_ids")) {
-    payload.player_ids = normalizeIdList(body.player_ids) || [];
-  }
-  if (Object.prototype.hasOwnProperty.call(body, "characters")) {
-    payload.characters = normalizeIdList(body.characters) || [];
-  }
+function stripMembershipFromRunPayload(payload) {
+  if (!payload || typeof payload !== "object") return;
+  delete payload.player_ids;
+  delete payload.characters;
+  delete payload.players;
 }
 
 /**
- * junction を body の内容で洗替する（書込みの正）。配列ミラー更新後に呼ぶ。
+ * junction を body の内容で洗替する（書込みの正）。
  */
 async function replaceMembershipFromBody(env, runId, body, userId) {
   if (Object.prototype.hasOwnProperty.call(body, "player_ids")) {
@@ -1993,15 +1991,14 @@ async function handlePost(request, env, ctx, url) {
     }
 
     if (url.pathname === "/api/runs") {
-      // junction は Worker が明示洗替（書込みの正）。配列は互換ミラー。
-      // トリガー sync_run_arrays_to_junctions も当面残し、二重でも同一内容になるよう正規化する。
+      // junction 明示洗替が正。配列列（player_ids / characters）へは書かない。
       // Service Role: junction RLS（INVOKER）を回避する。
       const user = await getAuthenticatedUser(request, env);
       if (!user?.id) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
       }
       const runPayload = { ...body, user_id: user.id };
-      applyNormalizedMembershipToPayload(body, runPayload);
+      stripMembershipFromRunPayload(runPayload);
       const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runs}`, {
         method: "POST",
         headers: { Prefer: "return=representation" },
@@ -2014,13 +2011,16 @@ async function handlePost(request, env, ctx, url) {
         try {
           await replaceMembershipFromBody(env, created.id, body, user.id);
         } catch (membershipError) {
-          console.error("run membership dual-write failed:", membershipError);
+          console.error("run membership write failed:", membershipError);
           return new Response(JSON.stringify({
             error: "Run membership sync failed",
             detail: String(membershipError.message || membershipError)
           }), { status: 500, headers: jsonHeaders });
         }
-        ctx.waitUntil(syncCharacterScenarios(created, env));
+        const hydrated = await hydrateRunsMembershipFromJunctions(env, request, [created]);
+        const out = hydrated[0] || created;
+        ctx.waitUntil(syncCharacterScenarios(out, env));
+        return new Response(JSON.stringify([out]), { status: 201, headers: jsonHeaders });
       }
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
@@ -2204,7 +2204,7 @@ async function handlePatch(request, env, ctx, url) {
       }
     }
 
-    // ② runs: membership は Worker が junction 洗替＋配列ミラー。Service Role で RLS を回避。
+    // ② runs: membership は junction 洗替のみ。配列列には書かない。Service Role で RLS を回避。
     // 編集可: Auth所有者 / GM / 参加PL。user_id 未設定の旧卓はメンバーが更新時に所有権を取得できる。
     if (url.pathname === "/api/runs") {
       try {
@@ -2216,7 +2216,7 @@ async function handlePatch(request, env, ctx, url) {
         const body = await request.json();
         const patchBody = { ...body };
         delete patchBody.user_id;
-        applyNormalizedMembershipToPayload(body, patchBody);
+        stripMembershipFromRunPayload(patchBody);
 
         const lookupPath = url.search.includes("select=")
           ? `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`
@@ -2272,14 +2272,15 @@ async function handlePatch(request, env, ctx, url) {
               await replaceMembershipFromBody(env, row.id, body, user.id);
             }
           } catch (membershipError) {
-            console.error("run membership dual-write failed:", membershipError);
+            console.error("run membership write failed:", membershipError);
             return new Response(JSON.stringify({
               error: "Run membership sync failed",
               detail: String(membershipError.message || membershipError)
             }), { status: 500, headers: jsonHeaders });
           }
-          if (rows[0]) ctx.waitUntil(syncCharacterScenarios(rows[0], env));
-          return new Response(text, { status: 200, headers: jsonHeaders });
+          const hydrated = await hydrateRunsMembershipFromJunctions(env, request, rows);
+          if (hydrated[0]) ctx.waitUntil(syncCharacterScenarios(hydrated[0], env));
+          return new Response(JSON.stringify(hydrated), { status: 200, headers: jsonHeaders });
         }
         return new Response(text, { status: res.status, headers: jsonHeaders });
       } catch (e) {

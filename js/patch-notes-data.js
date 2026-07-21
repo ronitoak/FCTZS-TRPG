@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "卓参加者の保存をjunctionのみに",
+    detail: "卓の作成・更新で runs の参加者配列列へは書かず、run_players / run_characters だけを更新するようにしました。API応答の player_ids / characters は従来どおり junction から組み立てます。Worker再デプロイ後に有効です。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
     title: "卓参加者の読取をjunctionのみに",
     detail: "卓一覧・フィルタ・権限・通知で配列列へのフォールバックをやめ、run_players / run_characters だけを参照するようにしました。APIの応答形（player_ids / characters）は従来どおりです。Worker再デプロイ後に有効です。"
   },

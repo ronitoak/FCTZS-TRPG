@@ -82,5 +82,5 @@ WHERE event_object_schema = 'public'
 ## やらないこと（この SQL）
 
 - `runs.player_ids` / `characters` 列の削除  
-- junction→配列の逆転トリガー追加（Worker が配列ミラーを維持する間は不要。配列書込みをやめる別リリースで検討）  
+- junction→配列の逆転トリガー追加（配列書込みは Worker 側で停止済み。列 DROP は別リリース）
 - Phase C（RLS 締め）

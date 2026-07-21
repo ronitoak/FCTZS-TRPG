@@ -10,7 +10,7 @@ API メモ: [`API_STARTER.md`](./API_STARTER.md)
 
 - Flutter SDK 3.x（本環境例: `%USERPROFILE%\flutter`）
 - API Base: `https://fctzs-trpg.daruji.workers.dev`（変更時は `--dart-define=API_BASE=...`）
-- 認証: 当面は **GET のみ（ゲスト閲覧）**。書込み・Discord ログインは未移植
+- 認証: **Discord（Supabase Auth）ログイン対応**。ゲストでも GET 閲覧可。書込みはシナリオコメントから段階追加
 
 ## プロジェクト
 
@@ -45,9 +45,9 @@ GitHub Actions の **Deploy Flutter Web** からもデプロイできる。
 
 | タブ | 内容 |
 |------|------|
-| ホーム | 直近開催・進行中卓（`active`）・最近コメント。AppBar からスケジュール照合へ |
+| ホーム | 直近開催・進行中卓（`active`）・最近コメント。AppBar からスケジュール照合・**Discordログイン** |
 | PL | プレイヤー一覧 / 詳細（プロフィール・キャラ・参加卓） |
-| シナリオ | 一覧検索 / 詳細（紹介・関連卓・通過キャラ・気になる人数・コメント） |
+| シナリオ | 一覧検索 / 詳細（紹介・関連卓・通過キャラ・気になる人数・**コメント閲覧＋ログイン時投稿**） |
 | セッション | 進行中／終了済の卓 / 卓詳細（GM・PL・キャラ・開催URL） |
 | 募集 | 一覧検索 / 詳細（応募者） |
 | キャラ | 一覧検索 / 詳細（能力・技能・通過シナリオ） |
@@ -55,10 +55,19 @@ GitHub Actions の **Deploy Flutter Web** からもデプロイできる。
 一覧はプルリフレッシュ対応。詳細間はタップで相互遷移する。  
 パリティ表: [`docs/flutter-web-parity.md`](../docs/flutter-web-parity.md)
 
+### 認証（コメント投稿）
+
+- パッケージ: `supabase_flutter`（Web と同じ Supabase プロジェクト）
+- ログイン: ホーム AppBar「ログイン」→ Discord OAuth
+- Redirect（既定）: `https://fctzs-flutter.daruji.workers.dev/`  
+  **Supabase Dashboard → Authentication → URL Configuration → Redirect URLs に追加が必要**
+- 上書き: `--dart-define=AUTH_REDIRECT_URL=...` / `SUPABASE_URL` / `SUPABASE_ANON_KEY`
+
 ### 次のマイルストーン案
 
 - ~~スケジュール照合（`/api/schedule_match`）~~ → 実装済み（ゲスト）
-- Discord ログインと書込み（コメント / 気になる / 応募）を1機能だけ移植
+- ~~Discord ログイン + コメント投稿~~ → シナリオ詳細で実装済み
+- 他画面へのコメント UI 展開、または「気になる」／募集応募を1本追加
 
 ## 移行 vs 並列の再判断
 

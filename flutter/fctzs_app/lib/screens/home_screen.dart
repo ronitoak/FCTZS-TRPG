@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../media/image_urls.dart';
+import '../auth/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'player_detail_screen.dart';
@@ -87,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final api = ApiScope.of(context);
+    final auth = AuthScope.of(context);
     return Scaffold(
       backgroundColor: FctzsColors.bg,
       appBar: AppBar(
@@ -99,6 +101,40 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const ScheduleMatchScreen()),
             ),
           ),
+          if (auth.isSignedIn)
+            PopupMenuButton<String>(
+              tooltip: auth.displayName,
+              onSelected: (value) async {
+                if (value == 'logout') await auth.signOut();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'logout', child: Text('ログアウト')),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Center(
+                  child: Text(
+                    auth.displayName,
+                    style: const TextStyle(fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: () async {
+                try {
+                  await auth.signInWithDiscord();
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('ログイン開始に失敗しました: $e')),
+                  );
+                }
+              },
+              child: const Text('ログイン'),
+            ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(28),

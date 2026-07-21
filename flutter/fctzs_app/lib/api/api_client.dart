@@ -1,4 +1,4 @@
-// Worker API クライアント（ゲスト GET 閲覧用）。
+// Worker API クライアント（ゲスト GET + 認証付き POST）。
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -7,6 +7,7 @@ class FctzsApiClient {
   FctzsApiClient({
     String? apiBase,
     http.Client? httpClient,
+    this.accessTokenProvider,
   })  : apiBase = (apiBase ??
                 const String.fromEnvironment(
                   'API_BASE',
@@ -17,16 +18,30 @@ class FctzsApiClient {
 
   final String apiBase;
   final http.Client _http;
+  String? Function()? accessTokenProvider;
 
   Uri _uri(String path, [Map<String, String>? query]) {
     final normalized = path.startsWith('/') ? path : '/$path';
     return Uri.parse('$apiBase$normalized').replace(queryParameters: query);
   }
 
+  Map<String, String> _headers({bool authRequired = false}) {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+    };
+    final token = accessTokenProvider?.call();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    } else if (authRequired) {
+      throw Exception('この操作にはDiscordログインが必要です');
+    }
+    return headers;
+  }
+
   Future<dynamic> getJson(String path, {Map<String, String>? query}) async {
     final response = await _http.get(
       _uri(path, query),
-      headers: const {'Accept': 'application/json'},
+      headers: _headers(),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('GET $path failed: ${response.statusCode} ${response.body}');
@@ -44,6 +59,26 @@ class FctzsApiClient {
     final list = await getList(path, query: query);
     if (list.isEmpty) return null;
     return Map<String, dynamic>.from(list.first as Map);
+  }
+
+  Future<dynamic> postJson(
+    String path, {
+    required Object body,
+    bool authRequired = true,
+  }) async {
+    final response = await _http.post(
+      _uri(path),
+      headers: {
+        ..._headers(authRequired: authRequired),
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('POST $path failed: ${response.statusCode} ${response.body}');
+    }
+    if (response.body.isEmpty) return null;
+    return jsonDecode(response.body);
   }
 
   Future<List<dynamic>> fetchPlayers() => getList('/api/players');
@@ -174,6 +209,26 @@ class FctzsApiClient {
         'target_type': targetType,
         'target_id': targetId,
       });
+
+  /// Web `Utils.apiPost('comments', …)` 相当。author は Worker 側で上書きされうる。
+  Future<void> postComment({
+    required String targetType,
+    required String targetId,
+    required String author,
+    required String body,
+    String? userId,
+  }) async {
+    final payload = <String, dynamic>{
+      'target_type': targetType,
+      'target_id': targetId,
+      'author': author,
+      'body': body,
+    };
+    if (userId != null && userId.isNotEmpty) {
+      payload['user_id'] = userId;
+    }
+    await postJson('/api/comments', body: payload);
+  }
 
   Future<Map<String, dynamic>> fetchScenarioInterests(String scenarioId) async {
     final decoded = await getJson(

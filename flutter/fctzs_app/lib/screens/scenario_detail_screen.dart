@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/comments_section.dart';
 import '../widgets/common.dart';
 import 'character_detail_screen.dart';
 import 'run_detail_screen.dart';
@@ -182,21 +183,12 @@ class _ScenarioDetailScreenState extends State<ScenarioDetailScreen> {
                           ),
                         ),
                       )),
-                const SectionTitle('コメント'),
-                if (data.comments.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: MutedText('なし'),
-                  )
-                else
-                  ...data.comments.map((c) => Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                        child: EntityCard(
-                          title: str(c['body']),
-                          subtitle: '${str(c['author'])} / ${formatDateTime(c['created_at'])}',
-                          onTap: null,
-                        ),
-                      )),
+                CommentsSection(
+                  targetType: 'scenario',
+                  targetId: widget.scenarioId,
+                  comments: data.comments,
+                  onPosted: _refresh,
+                ),
               ],
             ),
           );

@@ -42,7 +42,9 @@ URL 秘匿だけでは弱い。部員だけにしたい場合:
 
 ## 注意
 
-- Flutter 側はゲスト GET のみ。API CORS は既に `*` のため別オリジンから叩ける
+- Flutter はゲスト GET に加え、**Discord ログイン＋シナリオコメント投稿**に対応
+- OAuth 戻り先（既定 `https://fctzs-flutter.daruji.workers.dev/`）を Supabase Redirect URLs に登録すること（[`flutter-web-parity.md`](./flutter-web-parity.md)）
+- API CORS は既に `*` のため別オリジンから叩ける
 - **R2 画像**: Flutter Web は `Image.network` が XHR になるため、バケット側 CORS が必要。設定ファイルは [`r2-cors.json`](./r2-cors.json)。適用例:
   ```bash
   npx wrangler r2 bucket cors set fctzs-trpg-assets --file docs/r2-cors.json --force

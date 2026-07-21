@@ -24,22 +24,27 @@
 | 募集一覧・詳細（閲覧） | ○ | ○ | |
 | 募集作成・応募 | ○ | × | |
 | コメント閲覧 | ○ | ○ | 詳細画面 |
-| コメント投稿 | ○ | × | 次の書込み候補 |
+| コメント投稿 | ○ | △ | Flutter はシナリオ詳細＋Discordログイン |
 | なりチャ（BBS） | ○ | × | |
-| Discord ログイン | ○ | × | 次マイルストーン |
+| Discord ログイン | ○ | ○ | Flutter Web は `fctzs-flutter` の Redirect URL 登録が必要 |
 | R2 画像アップロード | ○ | × | |
 | favicon / 用語（没入・主体） | ○ | ○ | [`play-style-glossary.md`](./play-style-glossary.md) |
 
 ## 意図的な差分（バグではない）
 
-1. Flutter は当面ゲスト GET 中心（スケジュール照合も GET）  
+1. Flutter の書込みはコメント（シナリオ）から段階追加。他の POST は未移植  
 2. Web ヘッダの Schedule / なりチャは Flutter 下部タブに載せない（ホームから照合へ）  
-3. 部活外シナリオのログインなし編集は Web のみの方針を維持
+3. 部活外シナリオのログインなし編集は Web のみの方針を維持  
+
+## Discord ログイン（Flutter Web）セットアップ
+
+1. Supabase Dashboard → Authentication → URL Configuration  
+2. Redirect URLs に `https://fctzs-flutter.daruji.workers.dev/` を追加  
+3. Flutter Web を再デプロイ（`docs/flutter-web-deploy.md`）  
+4. ホーム「ログイン」→ Discord → シナリオ詳細でコメント投稿  
 
 ## 次に埋める候補（1本だけ）
 
-1. Discord ログイン + コメント投稿  
-2. または募集応募  
-3. または「気になる」トグル  
-
-書込みを入れるときは API 契約（Bearer JWT）とエラー形式を [`api-contract.md`](./api-contract.md) に従う。
+1. 他詳細画面へのコメント UI 展開  
+2. 「気になる」トグル  
+3. 募集応募  

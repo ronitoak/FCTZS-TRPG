@@ -1,6 +1,6 @@
 # プラットフォーム方針
 
-最終更新: 2026-07-19（Flutter Web 限定公開経路を追加）
+最終更新: 2026-07-21（Flutter Discord ログイン／シナリオコメント）
 
 ## 確定方針
 
@@ -35,7 +35,7 @@ Flutter Web 公開: [`flutter-web-deploy.md`](./flutter-web-deploy.md)
 |-------|------|------|------|
 | 1 | フロント移行（GitHub Pages → Workers `fctzs`） | **完了**（2026-07-17） | [`cloudflare-pages.md`](./cloudflare-pages.md) |
 | 2 | API 契約固定 | **完了** | [`api-contract.md`](./api-contract.md) |
-| 3 | Flutter 並列 | **進行中**（ゲスト閲覧＋スケジュール照合。パリティ: [`flutter-web-parity.md`](./flutter-web-parity.md)） | [`flutter/README.md`](../flutter/README.md) |
+| 3 | Flutter 並列 | **進行中**（ゲスト閲覧＋スケジュール照合＋Discordログイン／シナリオコメント。パリティ: [`flutter-web-parity.md`](./flutter-web-parity.md)） | [`flutter/README.md`](../flutter/README.md) |
 | 4 | 学習トラック | **未着手**（本番 API を置き換えない） | 下記 |
 
 DB の junction 正規化（[`database-optimization.md`](./database-optimization.md)）は本 Phase とは独立トラック。  
@@ -45,7 +45,7 @@ DB の junction 正規化（[`database-optimization.md`](./database-optimization
 
 1. **フロント移行** — コード・CI 完了。運用締め（Redirect / 旧 Pages 停止等）は [`cloudflare-pages.md`](./cloudflare-pages.md) §8.2
 2. **API 契約固定** — [`docs/api-contract.md`](./api-contract.md)
-3. **Flutter 並列** — [`flutter/fctzs_app`](../flutter/fctzs_app/)（現行 Web は本番のまま。次はスケジュール照合・ログイン/書込み）
+3. **Flutter 並列** — [`flutter/fctzs_app`](../flutter/fctzs_app/)（現行 Web は本番のまま。次は他詳細のコメント／「気になる」／募集応募など書込み1本）
 4. **学習トラック** — 下記
 
 ## 学習トラック（本番と分離）

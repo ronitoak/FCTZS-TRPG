@@ -109,7 +109,7 @@ posts     … なりきりチャット投稿
 |--------|------|
 | **scenario_list** / **session_list** | **DROP 済**（2026-07-21）。API は 410。再作成が必要なら `database-optimization.md` |
 | **character_skill_list** / **character_skill_basecalc** | スキル表示用 |
-| **v_character_details** / **v_character_list** | キャラ集約（巨大JSONを含む） |
+| **v_character_details** / **v_character_list** | 巨大集約ビュー。**DROP 済**（2026-07-21）。手順メモ: [`sql/drop-character-detail-views-2026-07.sql.md`](./sql/drop-character-detail-views-2026-07.sql.md) |
 
 新規画面は軽量ビュー優先。
 

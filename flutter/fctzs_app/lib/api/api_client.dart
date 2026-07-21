@@ -225,8 +225,68 @@ class FctzsApiClient {
     return getList('/api/characters', query: query.isEmpty ? null : query);
   }
 
-  Future<Map<String, dynamic>?> fetchCharacterDetails(String id) =>
-      getFirst('/api/character_details', query: {'id': id});
+  /// キャラ詳細用。巨大ビュー `character_details` は使わず分割 GET で組み立てる。
+  Future<Map<String, dynamic>?> fetchCharacterDetailBundle(String id) async {
+    final character = await getFirst('/api/characters', query: {'id': id});
+    if (character == null) return null;
+
+    List<dynamic> attrRows = const [];
+    List<dynamic> skillRows = const [];
+    List<dynamic> scenarioLinks = const [];
+    try {
+      attrRows = await getList(
+        '/api/character_attributes',
+        query: {'character_id': id},
+      );
+    } catch (_) {}
+    try {
+      skillRows = await getList(
+        '/api/character_skill_list',
+        query: {'character_id': id},
+      );
+    } catch (_) {}
+    try {
+      scenarioLinks = await getList(
+        '/api/character_scenarios',
+        query: {'character_id': id},
+      );
+    } catch (_) {}
+
+    final attributes = <String, dynamic>{};
+    for (final row in attrRows) {
+      if (row is! Map) continue;
+      final key = row['key']?.toString();
+      if (key == null || key.isEmpty) continue;
+      attributes[key] = row['value_int'] ?? row['value_emotion'];
+    }
+
+    final scenarioIds = <String>{};
+    for (final row in scenarioLinks) {
+      if (row is! Map) continue;
+      final sid = row['scenario_id']?.toString();
+      if (sid != null && sid.isNotEmpty) scenarioIds.add(sid);
+    }
+
+    var scenarios = <dynamic>[];
+    if (scenarioIds.isNotEmpty) {
+      try {
+        scenarios = await getList(
+          '/api/scenarios',
+          query: {'ids': scenarioIds.join(',')},
+        );
+      } catch (_) {}
+    }
+
+    final out = Map<String, dynamic>.from(character);
+    out['attributes'] = attributes;
+    out['skills'] = skillRows;
+    out['scenarios'] = scenarios;
+    final nestedPlayers = character['players'];
+    if (nestedPlayers is Map && nestedPlayers['player_name'] != null) {
+      out['player_name'] = nestedPlayers['player_name'];
+    }
+    return out;
+  }
 
   Future<List<dynamic>> fetchRecentComments() async {
     try {

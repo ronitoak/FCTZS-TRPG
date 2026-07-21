@@ -81,9 +81,11 @@ test("Workerは退役した一覧APIを410で明示する", () => {
   assert.match(workerSource, /RETIRED_GET_ROUTES/);
   assert.match(workerSource, /\/api\/scenario_list/);
   assert.match(workerSource, /\/api\/session_list/);
+  assert.match(workerSource, /\/api\/character_details/);
   assert.match(workerSource, /status: 410/);
   assert.match(workerSource, /Use GET \/api\/scenario_summary/);
   assert.match(workerSource, /Use GET \/api\/sessions/);
+  assert.match(workerSource, /character_attributes/);
 });
 
 test("Workerは詳細画面向けのID scope queryを維持する", () => {

@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "キャラ詳細の巨大ビューAPIを410で退役",
+    detail: "GET /api/character_details は410 Goneになりました。詳細は characters / character_attributes / character_skill_list / character_scenarios の分割取得を使います。Flutterも同様に切り替え済みです。Worker・Flutter再デプロイ後に有効です。"
+  },
+  {
+    date: "2026-07-21",
+    type: "fix",
     title: "壊れた画像URLをクリア",
     detail: "R2上に存在しない404画像URL（キャラ22件・シナリオ3件）をNULLにし、デフォルト画像へフォールバックするようにしました。"
   },

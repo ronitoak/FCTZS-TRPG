@@ -67,8 +67,10 @@
 
 ## 互換のために残すレガシー入口
 
-`/api/character_details`, `/api/character_skill_list` など。  
-`/api/scenario_list` と `/api/session_list` は **410 Gone**（代替: `scenario_summary` / `sessions`）。DB ビュー DROP は [`sql/drop-legacy-list-views-2026-07.sql.md`](./sql/drop-legacy-list-views-2026-07.sql.md)。
+`/api/character_skill_list`（Web キャラ詳細）、`/api/character_full`（作成）など。  
+`/api/scenario_list`・`/api/session_list`・`/api/character_details` は **410 Gone**。  
+一覧ビュー DROP: [`sql/drop-legacy-list-views-2026-07.sql.md`](./sql/drop-legacy-list-views-2026-07.sql.md)。  
+キャラ詳細ビュー DROP: [`sql/drop-character-detail-views-2026-07.sql.md`](./sql/drop-character-detail-views-2026-07.sql.md)。
 
 ---
 

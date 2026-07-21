@@ -5,36 +5,35 @@
 
 削除は「クライアントがフォールバック含め使わなくなった」ことを確認してから行う。
 
-## 優先して軽量へ寄せる経路
+## 退役済み
 
-| エンドポイント / ビュー | 現状利用 | 推奨 |
-|-------------------------|----------|------|
-| `GET /api/scenario_summary` | Web / Flutter シナリオ一覧の**正** | **維持** |
-| `GET /api/scenarios` | 詳細・単体取得 | 維持 |
-| `GET /api/sessions` | Web / Flutter 開催一覧の**正** | **維持** |
-| `GET /api/scenario_list` | **410 Gone**。DB view DROP **適用済**（2026-07-21） | — |
-| `GET /api/session_list` | **410 Gone**。DB view DROP **適用済**（2026-07-21） | — |
-| `GET /api/character_details` + `v_character_details` | Flutter 詳細 | 属性・技能を分割 GET に寄せられたら削除候補 |
-| `GET /api/character_skill_list` 等 | 契約にレガシー記載 | 利用箇所調査後 |
+| エンドポイント / ビュー | 状態 |
+|-------------------------|------|
+| `GET /api/scenario_list` | **410**。DB view DROP **適用済** |
+| `GET /api/session_list` | **410**。DB view DROP **適用済** |
+| `GET /api/character_details` | **410**。Flutter は分割 GET。ビュー DROP **適用済**（2026-07-21） |
 
-## 維持（当面）
+## 維持（正パス）
 
-| 経路 | 理由 |
-|------|------|
-| `GET /api/recruitment_list` | 募集カード用の結合ビューとして有用 |
-| `GET /api/runs`（配列付き応答） | membership は junction のみ。応答キー `player_ids`/`characters` は互換維持（[`junction-read-progress.md`](./junction-read-progress.md)） |
-| `GET /api/schedule_match` | Flutter / Web 照合の正 |
+| エンドポイント / ビュー | 用途 |
+|-------------------------|------|
+| `GET /api/scenario_summary` | シナリオ一覧 |
+| `GET /api/scenarios` | シナリオ詳細・単体 |
+| `GET /api/sessions` | 開催一覧 |
+| `GET /api/characters` + attributes / skill_list / scenarios | キャラ詳細（分割） |
+| `GET /api/character_skill_list` | Web キャラ詳細の技能表示 |
+| `POST /api/character_full` | Web キャラ作成 |
+| `GET /api/recruitment_list` | 募集カード |
+| `GET /api/runs` | 卓（membership は junction） |
+| `GET /api/schedule_match` | 予定照合 |
 
 ## コードスタブ
 
 | ファイル | 扱い |
 |----------|------|
-| `worker/worker.js` | **非デプロイ**。`wrangler.toml` の main は `index.js`。410 JSON を返す安全スタブとして残置 |
-| `public/` | ビルド成果物領域。ソース編集禁止（`.cursorrules`） |
+| `worker/worker.js` | **非デプロイ**。`wrangler.toml` の main は `index.js` |
+| `public/` | ビルド成果物。ソース編集禁止 |
 
-## 削除前チェックリスト（一覧ビュー）
+## 配列列
 
-1. ~~クライアント参照ゼロ~~ → 完了（Web 一本化＋ Flutter フォールバック除去＋ Worker 410）  
-2. ~~契約テスト更新~~ → 完了  
-3. Supabase で view DROP（任意）: [`sql/drop-legacy-list-views-2026-07.sql.md`](./sql/drop-legacy-list-views-2026-07.sql.md)  
-4. パッチノートに improvement を記載  
+`runs.player_ids` / `characters` の DROP は将来: [`sql/drop-runs-array-columns-future.sql.md`](./sql/drop-runs-array-columns-future.sql.md)

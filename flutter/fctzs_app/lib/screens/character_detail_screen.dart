@@ -19,13 +19,11 @@ class CharacterDetailScreen extends StatefulWidget {
 class _CharacterDetailBundle {
   _CharacterDetailBundle({
     required this.character,
-    required this.details,
     required this.runs,
     required this.comments,
   });
 
   final Map<String, dynamic>? character;
-  final Map<String, dynamic>? details;
   final List<Map<String, dynamic>> runs;
   final List<Map<String, dynamic>> comments;
 }
@@ -44,11 +42,7 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
 
   Future<_CharacterDetailBundle> _load() async {
     final api = ApiScope.of(context);
-    final character = await api.getFirst('/api/characters', query: {'id': widget.characterId});
-    Map<String, dynamic>? details;
-    try {
-      details = await api.fetchCharacterDetails(widget.characterId);
-    } catch (_) {}
+    final character = await api.fetchCharacterDetailBundle(widget.characterId);
     final runs = await api.fetchRuns(characterId: widget.characterId);
     final comments = await api.fetchComments(
       targetType: 'character',
@@ -56,7 +50,6 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
     );
     return _CharacterDetailBundle(
       character: character,
-      details: details,
       runs: runs.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
       comments: comments.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
     );
@@ -85,7 +78,7 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
         future: _future,
         onRefresh: _refresh,
         builder: (context, data) {
-          final c = data.details ?? data.character;
+          final c = data.character;
           if (c == null) {
             return RefreshIndicator(
               onRefresh: _refresh,
@@ -112,7 +105,7 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 CoverImage.detailCharacter(
-                  str(c['image_url'] ?? data.character?['image_url'], ''),
+                  str(c['image_url'], ''),
                 ),
                 ListTile(
                   title: Text(str(c['name']), style: Theme.of(context).textTheme.headlineSmall),

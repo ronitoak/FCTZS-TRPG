@@ -27,21 +27,18 @@ const SUPABASE_TABLES = Object.freeze({
   characterAttributes: "character_attributes",
   characterSkills: "character_skills",
   characterLastSession: "character_last_session",
-  characterDetailsView: "v_character_details",
   characterSkillList: "character_skill_list",
   players: "players",
   playerProfiles: "player_profiles",
   playerAvailability: "player_availability",
   playerDetailSummary: "player_detail_summary",
   scenarios: "scenarios",
-  scenarioListView: "scenario_list",
   scenarioSummary: "scenario_summary",
   scenarioInterests: "scenario_interests",
   runs: "runs",
   runPlayers: "run_players",
   runCharacters: "run_characters",
   sessions: "sessions",
-  sessionListView: "session_list",
   recruitments: "recruitments",
   recruitmentList: "recruitment_list",
   recruitmentApplicants: "recruitment_applicants",
@@ -640,7 +637,7 @@ async function notifyScheduledSessions(env) {
 
             if (runIds.length > 0) {
               const runIdsParam = encodeURIComponent(`(${runIds.join(',')})`);
-              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,player_ids&id=in.${runIdsParam}`);
+              const { res: runsRes, text: runsText } = await sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id&id=in.${runIdsParam}`);
 
               if (runsRes.ok) {
                 const runsData = JSON.parse(runsText);
@@ -783,10 +780,11 @@ const FIXED_GET_PROXY_ROUTES = Object.freeze({
   "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`
 });
 
-/** クライアント参照を外したレガシー一覧。410で明示退役。 */
+/** クライアント参照を外したレガシーGET。410で明示退役。 */
 const RETIRED_GET_ROUTES = Object.freeze({
   "/api/scenario_list": "Use GET /api/scenario_summary",
-  "/api/session_list": "Use GET /api/sessions"
+  "/api/session_list": "Use GET /api/sessions",
+  "/api/character_details": "Use GET /api/characters + /api/character_attributes + /api/character_skill_list + /api/character_scenarios"
 });
 
 /**
@@ -1207,12 +1205,6 @@ async function handleGet(request, env, url) {
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.characters}?${queryParams.join("&")}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/character_details") {
-      const id = url.searchParams.get("id");
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.characterDetailsView}?id=eq.${encodeURIComponent(id)}`);
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 
@@ -1669,7 +1661,7 @@ async function handlePost(request, env, ctx, url) {
       const { res: runRes, text: runText } = await sbFetch(
         env,
         request,
-        `/rest/v1/${SUPABASE_TABLES.runs}?select=id,gm_id,player_ids,user_id&id=eq.${encodeURIComponent(runId)}&limit=1`
+        `/rest/v1/${SUPABASE_TABLES.runs}?select=id,gm_id,user_id&id=eq.${encodeURIComponent(runId)}&limit=1`
       );
       if (!runRes.ok) {
         return new Response(JSON.stringify({ error: "Run lookup failed", detail: runText }), { status: runRes.status, headers: jsonHeaders });
@@ -2220,7 +2212,7 @@ async function handlePatch(request, env, ctx, url) {
 
         const lookupPath = url.search.includes("select=")
           ? `/rest/v1/${SUPABASE_TABLES.runs}${url.search}`
-          : `/rest/v1/${SUPABASE_TABLES.runs}${url.search}${url.search ? "&" : "?"}select=id,user_id,gm_id,player_ids`;
+          : `/rest/v1/${SUPABASE_TABLES.runs}${url.search}${url.search ? "&" : "?"}select=id,user_id,gm_id`;
         const { res: ownedRes, text: ownedText } = await sbServiceFetch(env, lookupPath, { method: "GET" });
         if (!ownedRes.ok) {
           return new Response(JSON.stringify({ error: "Run lookup failed", detail: ownedText }), { status: ownedRes.status, headers: jsonHeaders });

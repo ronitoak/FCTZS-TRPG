@@ -61,6 +61,24 @@ class FctzsApiClient {
         },
       );
 
+  Future<Map<String, dynamic>> fetchScheduleMatch({
+    required List<String> playerIds,
+    required String startDate,
+    required String endDate,
+  }) async {
+    if (playerIds.isEmpty) {
+      throw Exception('player_ids required');
+    }
+    final decoded = await getJson('/api/schedule_match', query: {
+      'player_ids': playerIds.join(','),
+      'start_date': startDate,
+      'end_date': endDate,
+    });
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    throw Exception('Expected object from /api/schedule_match');
+  }
+
   Future<List<dynamic>> fetchScenarios() async {
     try {
       return await getList('/api/scenario_summary');

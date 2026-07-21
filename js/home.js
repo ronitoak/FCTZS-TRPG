@@ -351,10 +351,37 @@ async function main() {
       renderNextSession(nextEl, sessions, runsById, scenariosById);
       renderOngoing(ongoingEl, runs, scenariosById, sessionsByRunId, playersById);
 
+      const titleEl = document.getElementById("guest-dashboard-title");
+      const leadEl = document.getElementById("guest-dashboard-lead");
+      const helpEl = document.getElementById("guest-dashboard-help");
+      const loginButton = document.getElementById("home-login-btn");
+
       if (session && !myPlayer) {
-        document.getElementById("guest-dashboard-title").textContent = "プレイヤー連携が必要です";
-        const loginButton = document.getElementById("home-login-btn");
+        if (titleEl) titleEl.textContent = "プレイヤー連携が必要です";
+        if (leadEl) {
+          leadEl.textContent =
+            "Discordログインは成功していますが、部のプレイヤー名簿（players）にまだ紐づいていません。";
+        }
+        if (helpEl) {
+          helpEl.hidden = false;
+          helpEl.innerHTML =
+            "ダッシュボード・予定入力・募集応募などの個人機能を使うには、管理者に " +
+            "<strong>players への追加（または discord_id / user_id の連携）</strong> を依頼してください。" +
+            "依頼時は Discord 表示名とユーザーIDが分かるとスムーズです。" +
+            "公開の直近予定・進行中セッションは、このまま下で閲覧できます。";
+        }
         if (loginButton) loginButton.hidden = true;
+      } else {
+        if (titleEl) titleEl.textContent = "TRPG部の活動状況";
+        if (leadEl) {
+          leadEl.textContent =
+            "Discordでログインすると、自分の次回予定・募集状況・予定入力カレンダーを確認できます。";
+        }
+        if (helpEl) {
+          helpEl.hidden = true;
+          helpEl.textContent = "";
+        }
+        if (loginButton) loginButton.hidden = false;
       }
       return;
     }

@@ -867,7 +867,9 @@ document.getElementById('edit-character-form')?.addEventListener('submit', async
             formData.append("file", compressedBlob, fileName);
             formData.append("type", "character");
 
-            const uploadResult = await Utils.apiUpload(formData);
+            const uploadResult = await Utils.apiUpload(formData, {
+              replaceUrl: currentCharData.image_url || null
+            });
             imageUrl = uploadResult.url;
         } catch (err) {
             console.error("画像アップロードエラー:", err);

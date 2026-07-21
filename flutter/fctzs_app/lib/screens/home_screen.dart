@@ -6,6 +6,7 @@ import '../widgets/common.dart';
 import 'player_detail_screen.dart';
 import 'run_detail_screen.dart';
 import 'scenario_detail_screen.dart';
+import 'schedule_match_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -90,6 +91,15 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: FctzsColors.bg,
       appBar: AppBar(
         title: const Text('FCTZS TRPG部'),
+        actions: [
+          IconButton(
+            tooltip: 'スケジュール照合',
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ScheduleMatchScreen()),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(28),
           child: Padding(

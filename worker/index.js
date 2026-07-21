@@ -60,6 +60,45 @@ const R2_ALLOWED_MIME_TYPES = Object.freeze([
 const R2_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const PUBLIC_EXTERNAL_PASSED_PATH = "/api/player_profiles/external_passed";
 
+/**
+ * 自バケットの公開URLだけを R2 オブジェクトキーへ変換する。
+ * `_default/` や外部URLは削除対象外。
+ */
+function r2ObjectKeyFromPublicUrl(publicUrl, baseUrlRaw) {
+  const text = publicUrl != null ? String(publicUrl).trim() : "";
+  const baseRaw = baseUrlRaw != null ? String(baseUrlRaw).trim() : "";
+  if (!text || !baseRaw) return null;
+  const base = baseRaw.endsWith("/") ? baseRaw : `${baseRaw}/`;
+  if (!text.startsWith(base)) return null;
+  let key = text.slice(base.length).split("?")[0].split("#")[0];
+  try {
+    key = decodeURIComponent(key);
+  } catch (_) {
+    // 壊れた percent-encoding はそのまま扱う
+  }
+  if (!key || key.includes("..") || key.startsWith("_default/")) return null;
+  const prefix = key.split("/")[0];
+  if (!R2_ALLOWED_TYPES.includes(prefix)) return null;
+  return key;
+}
+
+/**
+ * 差し替えアップロード時に旧オブジェクトを消す。失敗してもアップロード自体は成功扱い。
+ */
+async function deleteReplacedR2Object(env, replaceUrl) {
+  const key = r2ObjectKeyFromPublicUrl(replaceUrl, env.R2_PUBLIC_URL);
+  if (!key || !env.R2_BUCKET) {
+    return { deleted: false, key: null };
+  }
+  try {
+    await env.R2_BUCKET.delete(key);
+    return { deleted: true, key };
+  } catch (err) {
+    console.error("R2 replace delete failed:", key, err);
+    return { deleted: false, key };
+  }
+}
+
 const PATCH_ALLOWED_RESOURCES = Object.freeze([
   SUPABASE_TABLES.sessions,
   SUPABASE_TABLES.characters,
@@ -1362,7 +1401,16 @@ async function handlePost(request, env, ctx, url) {
       const baseUrl = env.R2_PUBLIC_URL || "";
       const imageUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}${key}`;
 
-      return new Response(JSON.stringify({ url: imageUrl }), { status: 201, headers: jsonHeaders });
+      // 画面からの差し替え時: 旧URLが自バケットなら削除（デフォルト画像は触らない）
+      const replaceUrlRaw = formData.get("replace_url");
+      const replaceUrl = replaceUrlRaw != null ? String(replaceUrlRaw).trim() : "";
+      let replaced = false;
+      if (replaceUrl && replaceUrl !== imageUrl) {
+        const del = await deleteReplacedR2Object(env, replaceUrl);
+        replaced = del.deleted;
+      }
+
+      return new Response(JSON.stringify({ url: imageUrl, replaced }), { status: 201, headers: jsonHeaders });
     }
 
     // 卓GMが参加者予定を一日NGにする専用経路（他者行更新のためService Roleを使う）。

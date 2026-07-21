@@ -43,7 +43,7 @@ created_at,timestamptz,YES,作成日時
 player_profiles テーブル（詳細・傾向データ）
 カラム名,データ型,Nullable,説明
 player_id,text,NO,プレイヤーID（外部キー）
-icon_url,text,YES,アイコンに使うキャラクターID等
+icon_url,text,YES,アイコンキャラのキャラクターID（列名は歴史的にicon_url）
 profile_text,text,YES,自己紹介テキスト
 tier_list_first / second / third,text,YES,ティアリスト用テキスト
 desire_story,integer,YES,物語欲（0〜5）

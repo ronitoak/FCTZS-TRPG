@@ -123,4 +123,8 @@ ORDER BY tablename;
 | 所有者フィールドのサーバー解決 | 募集 / 応募 / 予定 / プロフィール / キャラ作成 |
 | R2 MIME・拡張子・5MB・type 制限 | `/api/upload` |
 | Discord テストWebhook切替 | `DISCORD_USE_TEST_WEBHOOK` + `DISCORD_TEST_WEBHOOK_URL` |
-| legacy `worker/worker.js` | 非デプロイスタブ（`wrangler.toml` は `index.js`） |
+| legacy `worker/worker.js` | 非デプロイスタブ（`wrangler.toml` は `index.js`）。詳細は [`legacy-api-retirement.md`](./legacy-api-retirement.md) |
+
+## 7. 四半期煙テスト
+
+実施手順は上記 §1–3。結果の記録先: [`security-smoke-log.md`](./security-smoke-log.md)

@@ -50,7 +50,7 @@
 | POST | `/api/recruitment_applicants` | `player_id` はサーバー解決 |
 | POST | `/api/player_availability` | 自分の `player_id` のみ |
 | POST | `/api/player_availability/session_block` | 卓メンバー検証後に参加者予定を NG |
-| POST | `/api/upload` | multipart。画像 MIME / 5MB / type 制限 |
+| POST | `/api/upload` | multipart。画像 MIME / 5MB / type 制限。任意の `replace_url`（自バケットの旧公開URL）があれば put 成功後に旧オブジェクトを削除（`_default/` は除外）。応答 `{ url, replaced }` |
 | PATCH | `/api/player_profiles/external_passed` | 認証不要。対象プレイヤーの部活外通過履歴を追加・削除する共同編集用 |
 | GET | `/api/scenario_interests?scenario_id=` | `{ interested, count }`。interested はログイン本人のみ |
 | POST | `/api/scenario_interests` | `{ scenario_id }`。新規ON時のみ GM可能者へ Discord DM |

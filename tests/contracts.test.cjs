@@ -164,6 +164,19 @@ test("R2 uploadはSupabase Auth検証後だけ書き込む", () => {
   assert.ok(authCheckIndex >= 0 && authCheckIndex < r2PutIndex, "Auth検証はR2 putより前である必要があります");
 });
 
+test("R2 uploadは差し替え時にreplace_urlから旧オブジェクトを削除する", () => {
+  assert.match(workerSource, /function r2ObjectKeyFromPublicUrl/);
+  assert.match(workerSource, /async function deleteReplacedR2Object/);
+  assert.match(workerSource, /formData\.get\("replace_url"\)/);
+  assert.match(workerSource, /await env\.R2_BUCKET\.delete\(key\)/);
+  assert.match(workerSource, /_default\//);
+
+  const detailChar = readFileSync(join(root, "js", "character_detail.js"), "utf8");
+  const detailScen = readFileSync(join(root, "js", "scenario_detail.js"), "utf8");
+  assert.match(detailChar, /replaceUrl:\s*currentCharData\.image_url/);
+  assert.match(detailScen, /replaceUrl:\s*currentScenarioImageUrl/);
+});
+
 test("作成画面のuploadは認証付き共通APIへ統一される", () => {
   ["character_create.js", "scenario_create.js", "session_create.js"].forEach(file => {
     const source = readFileSync(join(root, "js", file), "utf8");

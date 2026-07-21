@@ -4,6 +4,7 @@
 (() => {
 
 let currentScenarioId = null;
+let currentScenarioImageUrl = null;
 
 async function main() {
   const root = document.getElementById("scenario-detail");
@@ -52,6 +53,7 @@ async function main() {
     }
 
     currentScenarioId = scenario.id;
+    currentScenarioImageUrl = scenario.image_url || null;
 
     const coverPath = Utils.getScenarioCoverPath(scenario.id, scenario.image_url);
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
@@ -423,8 +425,11 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
             formData.append("file", compressedBlob, fileName);
             formData.append("type", "scenario");
 
-            const uploadResult = await Utils.apiUpload(formData);
+            const uploadResult = await Utils.apiUpload(formData, {
+              replaceUrl: currentScenarioImageUrl || null
+            });
             payload.image_url = uploadResult.url;
+            currentScenarioImageUrl = uploadResult.url;
         } catch (err) {
             console.error("画像アップロードエラー:", err);
         }

@@ -35,10 +35,11 @@ Flutter Web 公開: [`flutter-web-deploy.md`](./flutter-web-deploy.md)
 |-------|------|------|------|
 | 1 | フロント移行（GitHub Pages → Workers `fctzs`） | **完了**（2026-07-17） | [`cloudflare-pages.md`](./cloudflare-pages.md) |
 | 2 | API 契約固定 | **完了** | [`api-contract.md`](./api-contract.md) |
-| 3 | Flutter 並列 | **進行中**（`flutter/fctzs_app` でゲスト閲覧: ホーム/PL/シナリオ/セッション/募集/キャラ＋詳細） | [`flutter/README.md`](../flutter/README.md) |
+| 3 | Flutter 並列 | **進行中**（ゲスト閲覧＋スケジュール照合。パリティ: [`flutter-web-parity.md`](./flutter-web-parity.md)） | [`flutter/README.md`](../flutter/README.md) |
 | 4 | 学習トラック | **未着手**（本番 API を置き換えない） | 下記 |
 
-DB の junction 正規化（[`database-optimization.md`](./database-optimization.md)）は本 Phase とは独立トラック。
+DB の junction 正規化（[`database-optimization.md`](./database-optimization.md)）は本 Phase とは独立トラック。  
+改善メモ: 用語 [`play-style-glossary.md`](./play-style-glossary.md) / パリティ [`flutter-web-parity.md`](./flutter-web-parity.md) / レガシー API [`legacy-api-retirement.md`](./legacy-api-retirement.md)
 
 ## Phase 順（詳細）
 

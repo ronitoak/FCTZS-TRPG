@@ -205,9 +205,54 @@ function isDefaultDesireProfile(profile) {
 }
 
 /**
- * 欲求4以上の軸とシナリオ傾向の一致数でおすすめを並べる。
+ * おすすめ対象から外すシナリオID（PL通過済 / GM経験 / 部活外履歴のID）。
  */
-function renderStyleMatches(container, profile, scenarios, openRecruitments) {
+function collectExperiencedScenarioIds(playerId, runs, profile) {
+  const excluded = new Set();
+  const pid = String(playerId || "");
+
+  for (const run of (Array.isArray(runs) ? runs : [])) {
+    if (!run?.scenario_id) continue;
+    const sid = String(run.scenario_id);
+    if (String(run.gm_id) === pid) {
+      excluded.add(sid);
+      continue;
+    }
+    if (String(run.status || "").toLowerCase() !== "done") continue;
+    let isPl = false;
+    if (Array.isArray(run.player_ids)) {
+      isPl = run.player_ids.some(id => String(id) === pid);
+    } else if (typeof run.player_ids === "string") {
+      isPl = run.player_ids.includes(pid);
+    }
+    if (isPl) excluded.add(sid);
+  }
+
+  let external = profile?.external_passed_scenarios;
+  if (typeof external === "string") {
+    try {
+      external = JSON.parse(external);
+    } catch {
+      external = [];
+    }
+  }
+  if (Array.isArray(external)) {
+    for (const item of external) {
+      if (!item || typeof item !== "object") continue;
+      if (item.id) excluded.add(String(item.id));
+      const title = String(item.title || "").trim().toLowerCase();
+      if (title) excluded.add(`title:${title}`);
+    }
+  }
+
+  return excluded;
+}
+
+/**
+ * 欲求4以上の軸とシナリオ傾向の一致数でおすすめを並べる。
+ * 通過済・GM経験・部活外は除外する。
+ */
+function renderStyleMatches(container, profile, scenarios, openRecruitments, runs, playerId) {
   if (!container) return;
 
   if (isDefaultDesireProfile(profile)) {
@@ -218,6 +263,8 @@ function renderStyleMatches(container, profile, scenarios, openRecruitments) {
       '">プロフィール</a>で欲求を調整すると、ここに相性の良いシナリオが出ます。</p>';
     return;
   }
+
+  const excluded = collectExperiencedScenarioIds(playerId, runs, profile);
 
   const recruitingByScenario = new Map();
   for (const recruitment of (Array.isArray(openRecruitments) ? openRecruitments : [])) {
@@ -231,6 +278,13 @@ function renderStyleMatches(container, profile, scenarios, openRecruitments) {
 
   const ranked = (Array.isArray(scenarios) ? scenarios : [])
     .filter(s => s && s.id)
+    .filter(s => {
+      const sid = String(s.id);
+      if (excluded.has(sid)) return false;
+      const titleKey = `title:${String(s.title || "").trim().toLowerCase()}`;
+      if (titleKey !== "title:" && excluded.has(titleKey)) return false;
+      return true;
+    })
     .map(scenario => ({
       scenario,
       score: Utils.calculateMatchScore(scenario, profile)
@@ -246,7 +300,7 @@ function renderStyleMatches(container, profile, scenarios, openRecruitments) {
     .slice(0, 5);
 
   if (ranked.length === 0) {
-    container.innerHTML = '<p class="u-muted">いま一致するシナリオ傾向はありません。</p>';
+    container.innerHTML = '<p class="u-muted">いま一致する未経験のシナリオはありません。</p>';
     return;
   }
 
@@ -538,7 +592,9 @@ async function main() {
       document.getElementById("my-style-matches"),
       profile,
       scenarios,
-      openRecruitments
+      openRecruitments,
+      runs,
+      myPlayer.player_id
     );
 
     // 部全体の直近・進行中もログイン後に表示（観戦・状況把握用）

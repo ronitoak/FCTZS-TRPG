@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-21",
     type: "improvement",
+    title: "卓一覧APIの参加者をjunction優先で組み立て",
+    detail: "GET /api/runs が run_players / run_characters から参加者と参加キャラを組み立てるようになりました（レスポンス形式は従来互換）。Worker再デプロイ後に有効です。"
+  },
+  {
+    date: "2026-07-21",
+    type: "improvement",
     title: "画像差し替え時に旧R2ファイルを削除",
     detail: "キャラ・シナリオ編集で新しい画像をアップロードしたとき、差し替え前のR2オブジェクトを自動削除するようにしました（デフォルト画像は対象外）。"
   },

@@ -177,6 +177,15 @@ test("R2 uploadは差し替え時にreplace_urlから旧オブジェクトを削
   assert.match(detailScen, /replaceUrl:\s*currentScenarioImageUrl/);
 });
 
+test("GET /api/runs は junction から membership を組み立てる", () => {
+  assert.match(workerSource, /async function hydrateRunsMembershipFromJunctions/);
+  assert.match(workerSource, /SUPABASE_TABLES\.runPlayers/);
+  assert.match(workerSource, /SUPABASE_TABLES\.runCharacters/);
+  assert.match(workerSource, /fetchRunIdsByPlayer/);
+  assert.match(workerSource, /fetchRunIdsByCharacter/);
+  assert.match(workerSource, /hydrateRunsMembershipFromJunctions\(env, request, runs\)/);
+});
+
 test("作成画面のuploadは認証付き共通APIへ統一される", () => {
   ["character_create.js", "scenario_create.js", "session_create.js"].forEach(file => {
     const source = readFileSync(join(root, "js", file), "utf8");

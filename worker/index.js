@@ -38,6 +38,8 @@ const SUPABASE_TABLES = Object.freeze({
   scenarioSummary: "scenario_summary",
   scenarioInterests: "scenario_interests",
   runs: "runs",
+  runPlayers: "run_players",
+  runCharacters: "run_characters",
   sessions: "sessions",
   sessionListView: "session_list",
   recruitments: "recruitments",
@@ -238,6 +240,97 @@ async function countScenarioInterests(env, scenarioId) {
   }
   const rows = JSON.parse(text);
   return Array.isArray(rows) ? rows.length : 0;
+}
+
+/**
+ * run_players / run_characters から player_ids・characters を組み立て直す。
+ * junction に行があるときはそれを正とし、空のときは配列列をフォールバックに残す。
+ */
+async function hydrateRunsMembershipFromJunctions(env, request, runs) {
+  if (!Array.isArray(runs) || runs.length === 0) return runs;
+
+  const runIds = [...new Set(runs.map(run => run?.id).filter(Boolean).map(String))];
+  if (runIds.length === 0) return runs;
+
+  const encodedIds = runIds.map(encodeURIComponent).join(",");
+  const playersByRun = new Map();
+  const charactersByRun = new Map();
+
+  try {
+    const [{ res: rpRes, text: rpText }, { res: rcRes, text: rcText }] = await Promise.all([
+      sbFetch(
+        env,
+        request,
+        `/rest/v1/${SUPABASE_TABLES.runPlayers}?select=run_id,player_id,sort_order&run_id=in.(${encodedIds})&order=sort_order.asc`
+      ),
+      sbFetch(
+        env,
+        request,
+        `/rest/v1/${SUPABASE_TABLES.runCharacters}?select=run_id,character_id,sort_order&run_id=in.(${encodedIds})&order=sort_order.asc`
+      )
+    ]);
+
+    if (rpRes.ok) {
+      for (const row of JSON.parse(rpText) || []) {
+        const runId = String(row.run_id);
+        if (!playersByRun.has(runId)) playersByRun.set(runId, []);
+        if (row.player_id) playersByRun.get(runId).push(String(row.player_id));
+      }
+    }
+    if (rcRes.ok) {
+      for (const row of JSON.parse(rcText) || []) {
+        const runId = String(row.run_id);
+        if (!charactersByRun.has(runId)) charactersByRun.set(runId, []);
+        if (row.character_id) charactersByRun.get(runId).push(String(row.character_id));
+      }
+    }
+  } catch (err) {
+    console.error("junction membership hydrate failed:", err);
+    return runs;
+  }
+
+  for (const run of runs) {
+    const runId = String(run.id);
+    const junctionPlayers = playersByRun.get(runId);
+    const junctionCharacters = charactersByRun.get(runId);
+    const arrayPlayers = Array.isArray(run.player_ids)
+      ? run.player_ids.map(String).filter(Boolean)
+      : [];
+    const arrayCharacters = Array.isArray(run.characters)
+      ? run.characters.map(String).filter(v => v && String(v).trim() !== "")
+      : [];
+
+    run.player_ids = (junctionPlayers && junctionPlayers.length > 0)
+      ? junctionPlayers
+      : arrayPlayers;
+    run.characters = (junctionCharacters && junctionCharacters.length > 0)
+      ? junctionCharacters
+      : arrayCharacters;
+  }
+
+  return runs;
+}
+
+async function fetchRunIdsByPlayer(env, request, playerId) {
+  const { res, text } = await sbFetch(
+    env,
+    request,
+    `/rest/v1/${SUPABASE_TABLES.runPlayers}?select=run_id&player_id=eq.${encodeURIComponent(playerId)}`
+  );
+  if (!res.ok) return [];
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) ? [...new Set(rows.map(row => String(row.run_id)).filter(Boolean))] : [];
+}
+
+async function fetchRunIdsByCharacter(env, request, characterId) {
+  const { res, text } = await sbFetch(
+    env,
+    request,
+    `/rest/v1/${SUPABASE_TABLES.runCharacters}?select=run_id&character_id=eq.${encodeURIComponent(characterId)}`
+  );
+  if (!res.ok) return [];
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) ? [...new Set(rows.map(row => String(row.run_id)).filter(Boolean))] : [];
 }
 
 /**
@@ -1188,13 +1281,25 @@ async function handleGet(request, env, url) {
       if (gmId) queryParams.push(`gm_id=eq.${encodeURIComponent(gmId)}`);
       if (scenarioId) queryParams.push(`scenario_id=eq.${encodeURIComponent(scenarioId)}`);
       if (status) queryParams.push(`status=eq.${encodeURIComponent(status)}`);
+
+      // 参加者・参加キャラは junction から run_id を引く。未同期時は配列 contains へフォールバック。
       if (participantId) {
         const value = encodeURIComponent(participantId);
-        queryParams.push(`or=(gm_id.eq.${value},player_ids.cs.%7B${value}%7D)`);
+        const memberRunIds = await fetchRunIdsByPlayer(env, request, participantId);
+        if (memberRunIds.length > 0) {
+          const encodedMemberIds = memberRunIds.map(encodeURIComponent).join(",");
+          queryParams.push(`or=(gm_id.eq.${value},id.in.(${encodedMemberIds}))`);
+        } else {
+          queryParams.push(`or=(gm_id.eq.${value},player_ids.cs.%7B${value}%7D)`);
+        }
       }
-      // 通過履歴が未同期でも、配列に残る参加キャラクターから卓を復元できるようにする。
       if (characterId) {
-        queryParams.push(`characters=cs.%7B${encodeURIComponent(characterId)}%7D`);
+        const characterRunIds = await fetchRunIdsByCharacter(env, request, characterId);
+        if (characterRunIds.length > 0) {
+          queryParams.push(`id=in.(${characterRunIds.map(encodeURIComponent).join(",")})`);
+        } else {
+          queryParams.push(`characters=cs.%7B${encodeURIComponent(characterId)}%7D`);
+        }
       }
 
       if (keyword) {
@@ -1207,20 +1312,17 @@ async function handleGet(request, env, url) {
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.runs}?${queryParams.join("&")}`;
 
-      // 1. 従来通りruns（セッションデータ）をSupabaseから取得
-      const { res, text } = await sbFetch(env, request,apiUrl);
+      const { res, text } = await sbFetch(env, request, apiUrl);
 
-      // もし通信エラーなどの場合はそのまま返す
       if (!res.ok) {
         return new Response(text, { status: res.status, headers: jsonHeaders });
       }
 
-      // データを編集できるように一度JSONオブジェクト（配列）に変換
       let runs = JSON.parse(text);
+      runs = await hydrateRunsMembershipFromJunctions(env, request, runs);
 
       if (Array.isArray(runs) && runs.length > 0) {
         try {
-          // 2. プレイヤーの名前マスタ（IDと名前のセット）を紐づけ用に一括取得
           const requiredPlayerIds = [...new Set(runs.flatMap(run => [
             run.gm_id,
             ...(Array.isArray(run.player_ids) ? run.player_ids : [])
@@ -1232,34 +1334,26 @@ async function handleGet(request, env, url) {
             if (playersRes.ok) {
               players = JSON.parse(playersText);
             } else {
-              // 移行中の型差などでIN句が使えない場合だけ、従来の全件取得へ戻す。
               const fallback = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name`);
               players = fallback.res.ok ? JSON.parse(fallback.text) : [];
             }
           }
 
           if (Array.isArray(players)) {
-            // IDから名前をすぐに引ける「辞書（Map）」を作る
             const playerMap = new Map(players.map(p => [p.player_id, p.player_name]));
 
-            // 3. 取得したセッションデータ1件ずつに、名前を合体させていく
             runs.forEach(run => {
-              // gm_id から GM名を解決する（DBに gm 列はない）。
               run.gm_name = playerMap.get(run.gm_id) || "未設定";
-
-              // 通知・画面表示向けに player_ids を表示名配列へ解決する。
               run.player_names = Array.isArray(run.player_ids)
-                ? run.player_ids.map(id => playerMap.get(id) || id)
+                ? run.player_ids.map(pid => playerMap.get(pid) || pid)
                 : [];
             });
           }
         } catch (err) {
-          // 万が一名前の合体処理でエラーが起きても画面が真っ白にならないよう、ログだけ吐いて処理は続行
           console.error("プレイヤー名結合エラー:", err);
         }
       }
 
-      // 4. 名前情報が合体した新しいデータを文字列に戻してフロントエンドへ返却
       return new Response(JSON.stringify(runs), { status: 200, headers: jsonHeaders });
     }
 

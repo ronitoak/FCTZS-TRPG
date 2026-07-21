@@ -55,8 +55,8 @@ posts     … なりきりチャット投稿
 | プレイヤー → キャラクター | 1人が複数キャラを所持（`characters.player_id`）。`user_id` は作成者（編集権限） |
 | シナリオ → 卓 | 1シナリオに複数卓（`runs.scenario_id`） |
 | 卓 → セッション | 1卓に複数回の開催予定/実績（`sessions.run_id`） |
-| 卓 ↔ プレイヤー | 移行中は `runs.player_ids[]` が正。`run_players` に順序付きで同期 |
-| 卓 ↔ キャラクター | 移行中は `runs.characters[]` が正。`run_characters` に同期 |
+| 卓 ↔ プレイヤー | 書込みは `runs.player_ids[]` が正。**読取 `/api/runs` は `run_players` 優先**（空なら配列フォールバック） |
+| 卓 ↔ キャラクター | 書込みは `runs.characters[]` が正。**読取 `/api/runs` は `run_characters` 優先** |
 | キャラ ↔ シナリオ | プレイ履歴・紐付け（`character_scenarios`） |
 | プレイヤー ↔ シナリオ（気になる） | `scenario_interests`。初回ON時に GM可能登録者へ DM |
 | 募集 | GM/PL募集。応募は `recruitment_applicants` |

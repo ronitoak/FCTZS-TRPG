@@ -49,10 +49,14 @@ function renderCalendar() {
 
   Utils.renderCalendar(grid, year, month, {
     events: allSessions,
-    // ホームと同じく卓タイトルを優先（セッション個別タイトルはフォールバック）
     getEventTitle: session => {
       const run = allRunsById.get(String(session.run_id));
-      return run?.title || session.title || "名称未設定";
+      const runTitle = (run?.title && String(run.title).trim()) || "";
+      const sessionTitle = (session?.title && String(session.title).trim()) || "";
+      if (runTitle && sessionTitle && sessionTitle !== runTitle) {
+        return `${runTitle} / ${sessionTitle}`;
+      }
+      return runTitle || sessionTitle || "名称未設定";
     },
     getEventHref: session => `../sessions/detail.html?id=${encodeURIComponent(session.run_id || session.id)}`,
     onCellRender: (cell, context) => {

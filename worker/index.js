@@ -240,7 +240,7 @@ async function countScenarioInterests(env, scenarioId) {
 
 /**
  * run_players / run_characters から player_ids・characters を組み立て直す。
- * DB の配列列には依存しない（常に junction。取得失敗時は空配列）。
+ * 公開 SELECT の RLS で junction が空に見えることがあるため Service Role で読む。
  */
 async function hydrateRunsMembershipFromJunctions(env, request, runs) {
   if (!Array.isArray(runs) || runs.length === 0) return runs;
@@ -256,14 +256,12 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
 
   try {
     const [{ res: rpRes, text: rpText }, { res: rcRes, text: rcText }] = await Promise.all([
-      sbFetch(
+      sbServiceFetch(
         env,
-        request,
         `/rest/v1/${SUPABASE_TABLES.runPlayers}?select=run_id,player_id,sort_order&run_id=in.(${encodedIds})&order=sort_order.asc`
       ),
-      sbFetch(
+      sbServiceFetch(
         env,
-        request,
         `/rest/v1/${SUPABASE_TABLES.runCharacters}?select=run_id,character_id,sort_order&run_id=in.(${encodedIds})&order=sort_order.asc`
       )
     ]);
@@ -275,6 +273,8 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
         if (!playersByRun.has(runId)) playersByRun.set(runId, []);
         if (row.player_id) playersByRun.get(runId).push(String(row.player_id));
       }
+    } else {
+      console.warn("run_players hydrate failed:", rpText);
     }
     if (rcRes.ok) {
       charactersHydrated = true;
@@ -283,6 +283,8 @@ async function hydrateRunsMembershipFromJunctions(env, request, runs) {
         if (!charactersByRun.has(runId)) charactersByRun.set(runId, []);
         if (row.character_id) charactersByRun.get(runId).push(String(row.character_id));
       }
+    } else {
+      console.warn("run_characters hydrate failed:", rcText);
     }
   } catch (err) {
     console.error("junction membership hydrate failed:", err);
@@ -394,9 +396,8 @@ async function replaceMembershipFromBody(env, runId, body, userId) {
 }
 
 async function fetchRunIdsByPlayer(env, request, playerId) {
-  const { res, text } = await sbFetch(
+  const { res, text } = await sbServiceFetch(
     env,
-    request,
     `/rest/v1/${SUPABASE_TABLES.runPlayers}?select=run_id&player_id=eq.${encodeURIComponent(playerId)}`
   );
   if (!res.ok) return [];
@@ -405,9 +406,8 @@ async function fetchRunIdsByPlayer(env, request, playerId) {
 }
 
 async function fetchRunIdsByCharacter(env, request, characterId) {
-  const { res, text } = await sbFetch(
+  const { res, text } = await sbServiceFetch(
     env,
-    request,
     `/rest/v1/${SUPABASE_TABLES.runCharacters}?select=run_id&character_id=eq.${encodeURIComponent(characterId)}`
   );
   if (!res.ok) return [];
@@ -771,7 +771,6 @@ const jsonHeaders = {
 
 // path・query・返却形式が完全に同じGETだけを宣言表へ寄せる。
 const FIXED_GET_PROXY_ROUTES = Object.freeze({
-  "/api/character_last_session": `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`,
   "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`
 });
 
@@ -1117,6 +1116,15 @@ async function handleGet(request, env, url) {
     const fixedProxyPath = FIXED_GET_PROXY_ROUTES[url.pathname];
     if (fixedProxyPath) {
       const { res, text } = await sbFetch(env, request, fixedProxyPath);
+      return new Response(text, { status: res.status, headers: jsonHeaders });
+    }
+
+    // ビューは security_invoker のため、anon RLS だと空になる。Service Role で読む。
+    if (request.method === "GET" && url.pathname === "/api/character_last_session") {
+      const { res, text } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`
+      );
       return new Response(text, { status: res.status, headers: jsonHeaders });
     }
 

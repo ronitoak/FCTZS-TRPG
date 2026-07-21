@@ -234,8 +234,17 @@ test("作成画面のuploadは認証付き共通APIへ統一される", () => {
 test("スケジュールカレンダーは卓タイトルを優先表示する", () => {
   const source = readFileSync(join(root, "js", "schedule.js"), "utf8");
   assert.match(source, /getEventTitle:\s*session\s*=>/);
-  assert.match(source, /run\?\.title\s*\|\|\s*session\.title/);
+  assert.match(source, /runTitle/);
+  assert.match(source, /sessionTitle/);
   assert.match(source, /allRunsById/);
+});
+
+test("卓membershipと最終セッションはService Roleで読む", () => {
+  assert.match(workerSource, /hydrateRunsMembershipFromJunctions/);
+  assert.match(workerSource, /公開 SELECT の RLS で junction が空に見えることがあるため Service Role で読む/);
+  assert.match(workerSource, /\/api\/character_last_session/);
+  assert.match(workerSource, /SUPABASE_TABLES\.characterLastSession/);
+  assert.match(workerSource, /select=character_id,last_session_start/);
 });
 
 test("キャラ一覧の最終セッションはビューと卓参加の両方をマージする", () => {

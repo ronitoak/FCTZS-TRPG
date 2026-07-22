@@ -1,195 +1,235 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FCTZS TRPG部 特設サイト - システム説明書</title>
-    <style>
-        body {
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-            line-height: 1.6;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 30px;
-            color: #333;
-        }
-        h1 {
-            border-bottom: 3px solid #2c3e50;
-            padding-bottom: 10px;
-            color: #2c3e50;
-            margin-bottom: 30px;
-        }
-        h2 {
-            background-color: #f8f9fa;
-            padding: 12px 15px;
-            border-left: 6px solid #3498db;
-            margin-top: 50px;
-            border-radius: 0 4px 4px 0;
-        }
-        h3 {
-            border-bottom: 1px dashed #ced4da;
-            color: #2980b9;
-            padding-bottom: 5px;
-            margin-top: 30px;
-        }
-        p, li {
-            font-size: 1.05em;
-        }
-        .note {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffeeba;
-            padding: 12px 15px;
-            margin: 15px 0;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.95em;
-        }
-        a { color: #2980b9; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>使い方ガイド | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
 
-    <h1>FCTZS TRPG部 特設サイト - システム説明書</h1>
+    <main class="user-guide">
+      <header class="page-header">
+        <h1>使い方ガイド</h1>
+        <p class="u-muted">FCTZS TRPG部の特設サイトの使い方です。募集・キャラ・卓・予定調整などを Web で一元管理できます。</p>
+      </header>
 
-    <p>本システムは、FCTZS TRPG部の思い出を蓄積するための特設サイトです。募集の立ち上げから、キャラクターの管理、セッションのスケジュール調整までをWeb上で一元管理できます。</p>
-    <p>開発者向けのスキーマ・API説明は <a href="./docs/DB-overview.md">docs/DB-overview.md</a> および <a href="./docs/api-contract.md">docs/api-contract.md</a> を参照してください。</p>
+      <section class="user-guide-intro">
+        <p><strong>このサイトでできること:</strong> Discord ログイン、プレイヤー名簿との連携、キャラクター／シナリオ／卓の管理、予定入力と照合、募集、コメント・なりきりチャット。</p>
+      </section>
 
-    <h2>1. はじめに</h2>
-    <h3>1-1. サイトへのアクセス</h3>
-    <p>URL（<a href="https://fctzs.daruji.workers.dev/" target="_blank" rel="noopener">https://fctzs.daruji.workers.dev/</a>）にアクセスして利用します。</p>
-    <div class="note">
-        <strong>※公開URL:</strong> 本番フロントは <code>https://fctzs.daruji.workers.dev/</code>（Cloudflare Workers 静的配信）です。ブックマークや案内はこの URL を使ってください。
-    </div>
+      <nav class="user-guide-toc" aria-label="目次">
+        <h2>目次</h2>
+        <ol>
+          <li><a href="#intro">はじめに</a></li>
+          <li><a href="#first-login">はじめてのログインとプレイヤー連携</a></li>
+          <li><a href="#home">ホーム（ダッシュボード）</a></li>
+          <li><a href="#characters">キャラクター</a></li>
+          <li><a href="#scenarios">シナリオ</a></li>
+          <li><a href="#sessions">セッション（卓）</a></li>
+          <li><a href="#schedule">スケジュール</a></li>
+          <li><a href="#recruit">募集</a></li>
+          <li><a href="#players">プレイヤー詳細</a></li>
+          <li><a href="#comments">コメント・なりきりチャット</a></li>
+          <li><a href="#faq">よくあること</a></li>
+          <li><a href="#dev">開発者向け</a></li>
+        </ol>
+      </nav>
 
-    <h3>1-2. Discordとの連携について</h3>
-    <p>本システムはFCTZSボドゲ部Discordサーバーと連携しています。</p>
-    <ul>
-        <li><strong>ログイン:</strong> Discord OAuth でサイトにログインします。名簿（players）への紐づけは次項のとおりです。</li>
-        <li><strong>通知機能:</strong> 募集の作成・満員時、セッション当日のリマインドなどが Discord に届きます。</li>
-        <li><strong>気になる通知:</strong> シナリオ詳細で「気になる」を初めてONにしたとき、そのシナリオを「GM可能」に登録しているプレイヤーへ Bot の DM が届きます（テスト設定時は実DMせずテスト用Webhookへプレビュー）。</li>
-        <li><strong>ボタン操作:</strong> 募集案内の「参加希望」ボタンから、Webを開かずに応募できます。</li>
-    </ul>
+      <section id="intro">
+        <h2>1. はじめに</h2>
+        <p>サイト URL: <a href="https://fctzs.daruji.workers.dev/" target="_blank" rel="noopener">https://fctzs.daruji.workers.dev/</a></p>
+        <div class="note">
+          <strong>公開URL:</strong> 本番フロントは上記（Cloudflare Workers 静的配信）です。ブックマークや案内はこの URL を使ってください。
+        </div>
+        <p>本システムは FCTZS ボドゲ部 Discord サーバーと連携しています。</p>
+        <ul>
+          <li><strong>通知:</strong> 募集の作成・満員時、セッション当日のリマインドなどが Discord に届きます。</li>
+          <li><strong>気になる通知:</strong> シナリオ詳細で「気になる」を初めて ON にしたとき、そのシナリオを「GM可能」に登録しているプレイヤーへ Bot の DM が届きます。</li>
+          <li><strong>ボタン操作:</strong> 募集案内の「参加希望」ボタンから、Web を開かずに応募できます。</li>
+        </ul>
+      </section>
 
-    <h2>2. ホーム（ダッシュボード）</h2>
-    <p>ログイン状態によって表示が切り替わります。</p>
-    <ul>
-        <li><strong>未ログイン:</strong> 部の直近予定・進行中セッションの概要と、Discordログインへの誘導。</li>
-        <li><strong>ログイン済み・未連携:</strong> 上部に「プレイヤー連携が必要です」バナーが出ます。名簿から自分の名前を選び「この名前で連携する」を押してください。名簿に同じ Discord ID がある場合は自動連携されます。Discord ID のコピーもバナーから行えます（取得できないときは一度ログアウトして再ログイン）。</li>
-        <li><strong>ログイン済み・連携済:</strong> 左に「自分の次回予定」「自分の募集」、右に予定カレンダー。下段に部全体の直近予定と進行中セッション（観戦・状況把握用）。</li>
-    </ul>
-    <div class="note">
-        予定カレンダーで赤く表示された日は予定未入力です。日付を選ぶと一括入力できます。名簿に自分の名前が無い場合は管理者に追加を依頼してください。
-    </div>
+      <section id="first-login">
+        <h2>2. はじめてのログインとプレイヤー連携</h2>
+        <ol>
+          <li>画面右上（またはホーム）の <strong>Discord Login</strong> を押します。</li>
+          <li>Discord で認証するとサイトに戻ります。</li>
+          <li>部のプレイヤー名簿（players）にまだ紐づいていない場合、ホーム上部に <strong>「プレイヤー連携が必要です」</strong> バナーが出ます。</li>
+        </ol>
+        <h3>連携のしかた</h3>
+        <ul>
+          <li>名簿に自分の Discord ID が既に登録されている場合は、<strong>自動連携</strong>されることがあります。</li>
+          <li>自動連携されない場合は、バナーの一覧から<strong>自分の名前を選び</strong>「この名前で連携する」を押します。</li>
+          <li>Discord ID はバナーからコピーできます。取得できないときは一度 Logout → Discord Login し直してください。</li>
+          <li>名簿に自分の名前が無い場合は、<strong>管理者に追加を依頼</strong>してください。</li>
+        </ul>
+        <div class="note">
+          連携が完了すると個人ダッシュボード（次回予定・自分の募集・予定カレンダー）が表示されます。
+        </div>
+      </section>
 
-    <h2>3. キャラクター管理</h2>
-    <p>自身（または代理で他プレイヤー）のキャラクター情報を登録・管理する機能です。</p>
+      <section id="home">
+        <h2>3. ホーム（ダッシュボード）</h2>
+        <ul>
+          <li><strong>未ログイン:</strong> 部の直近予定・進行中セッションの概要と、Discord ログインへの誘導。</li>
+          <li><strong>ログイン済み・未連携:</strong> 上記バナーで名簿と連携。</li>
+          <li><strong>ログイン済み・連携済:</strong> 左に「自分の次回予定」「自分の募集」、右に予定カレンダー。下段に部全体の直近予定と進行中セッション。</li>
+        </ul>
+        <div class="note">
+          予定カレンダーで赤く表示された日は予定未入力です。日付を選ぶと昼／夜をまとめて入力できます。
+        </div>
+      </section>
 
-    <h3>3-1. キャラクターの新規登録</h3>
-    <ol>
-        <li>メニューから「キャラクター一覧」を開き、「新規登録」ボタンを押します。</li>
-        <li>「プレイヤー」欄で所有者を選びます。代理作成では別メンバーを選べます（編集権限は作成したログインユーザーに紐づきます）。</li>
-        <li>（任意）「クトゥルフ神話TRPG」「新クトゥルフ神話TRPG」はいあきゃら出力、「エモクロアTRPG」「ガイアケアTRPG」はココフォリア形式チャパレをインポートできます。</li>
-        <li>対象システムを選択し、プロフィール、能力値、技能、メモを入力して保存します。</li>
-    </ol>
+      <section id="characters">
+        <h2>4. キャラクター</h2>
+        <p>自分（または代理で他プレイヤー）のキャラクターを登録・管理します。</p>
+        <h3>新規登録</h3>
+        <ol>
+          <li>メニュー「Characters」→「新規登録」。</li>
+          <li>「プレイヤー」欄で所有者を選びます（代理作成では別メンバーを選べます。編集権限は作成したログインユーザーに紐づきます）。</li>
+          <li>（任意）外部データをインポートできます。
+            <ul>
+              <li>クトゥルフ神話TRPG／新クトゥルフ神話TRPG: いあきゃら出力</li>
+              <li>エモクロアTRPG／ガイアケアTRPG: ココフォリア形式チャパレ</li>
+              <li>テキストの貼り付けに加え、<strong>.txt ファイルのアップロード</strong>からも反映できます</li>
+            </ul>
+          </li>
+          <li>システムを選び、プロフィール・能力値・技能・メモを入力して保存します。</li>
+        </ol>
+        <h3>編集</h3>
+        <ul>
+          <li>詳細の編集から画像や基本情報を更新できます。</li>
+          <li>能力値・技能は上書き保存でき、成長後もここから最新値に更新できます。</li>
+          <li>ココフォリア出力でチャットパレットをコピーできます。</li>
+        </ul>
+        <div class="note">
+          <strong>画像:</strong> Web から直接アップロードできます（Cloudflare R2）。
+        </div>
+      </section>
 
-    <h3>3-2. プロフィール・能力値・技能の編集</h3>
-    <ol>
-        <li>キャラクター詳細の編集から、画像や基本情報を更新できます。</li>
-        <li>能力値・技能は上書き保存でき、成長後もここから最新値に更新できます。</li>
-        <li>ココフォリア出力でチャットパレットをコピーできます。</li>
-    </ol>
-    <div class="note">
-        <strong>【画像アップロード】</strong> Cloudflare R2 連携により、Webから直接画像をアップロードできます。
-    </div>
+      <section id="scenarios">
+        <h2>5. シナリオ</h2>
+        <p>部内で遊ぶ（または遊んだ）シナリオ情報を蓄積します。</p>
+        <h3>登録と検索</h3>
+        <ol>
+          <li>「Scenarios」→「新規登録」で基本情報・詳細・傾向などを登録します。</li>
+          <li>一覧ではキーワード（タイトル・作者）、システム、人数、時間、ロスト率、傾向などで絞り込めます。</li>
+          <li>詳細からカバー画像や説明を編集できます。</li>
+        </ol>
+        <h3>気になる / GM可能</h3>
+        <ul>
+          <li><strong>気になる:</strong> ログイン後、シナリオ詳細で ON/OFF。興味人数も表示されます。OFF→ON（新規登録）時だけ、GM可能登録者へ Discord DM が送られます。</li>
+          <li><strong>GM可能:</strong> 「このシナリオをGMできます」で自分のリストに追加。プレイヤー詳細の「GM可能シナリオ」からもまとめて登録できます。</li>
+        </ul>
+        <div class="note">
+          <strong>お願い:</strong> ネタバレを含むメモなどは、未通過のプレイヤーが見てしまわないよう記載しないでください。
+        </div>
+      </section>
 
-    <h2>4. シナリオ管理</h2>
-    <p>部内で遊ぶ（または遊んだ）シナリオの情報を蓄積する機能です。</p>
+      <section id="sessions">
+        <h2>6. セッション（卓）</h2>
+        <p>遊ぶシナリオと参加メンバーを紐付けた「卓」と、開催履歴を管理します。</p>
+        <h3>新しい卓</h3>
+        <ol>
+          <li>「Sessions」→「新規卓作成」。</li>
+          <li>シナリオ、GM、参加 PL を選んで保存します。</li>
+        </ol>
+        <p>一覧ではキーワード（タイトル・シナリオ・GM・PL）、ステータス、システムで絞り込めます。</p>
+        <h3>卓情報・セッション履歴</h3>
+        <ul>
+          <li>卓詳細から参加キャラクター、カバー画像、配信／アーカイブ URL を登録できます。</li>
+          <li>セッション履歴に開催予定を追加できます。完了後はステータスが更新されます。</li>
+          <li>観戦希望はセッション詳細からログインして登録できます（当日リマインドに反映されます）。</li>
+        </ul>
+      </section>
 
-    <h3>4-1. シナリオの登録と検索</h3>
-    <ol>
-        <li>メニューの「シナリオ一覧」から「新規登録」で基本情報・詳細・傾向などを登録します。</li>
-        <li>一覧ではキーワード（タイトル・作者）、システム、人数、時間、ロスト率、傾向などで絞り込めます。</li>
-        <li>詳細画面からカバー画像や説明を編集できます。</li>
-    </ol>
+      <section id="schedule">
+        <h2>7. スケジュール</h2>
+        <ul>
+          <li>メニュー「Schedule」で直近予定や空き状況の照合ができます。</li>
+          <li>ホームの予定カレンダー、またはプレイヤー詳細からも予定を入力できます。</li>
+        </ul>
+        <div class="note">
+          <strong>自動通知:</strong> セッション開始日の昼頃に、Discord へリマインドが送られます（GM・参加 PL・観戦希望者へのメンション）。
+        </div>
+      </section>
 
-    <h3>4-2. 気になる / GM可能</h3>
-    <ul>
-        <li><strong>気になる:</strong> ログイン後、シナリオ詳細のボタンでON/OFFできます。興味人数も表示されます。OFF→ON（新規登録）時だけ、GM可能登録者へ Discord DM が送られます。</li>
-        <li><strong>GM可能:</strong> 「このシナリオをGMできます」で自分のGM可能リストに追加できます。プレイヤー詳細の「GM可能シナリオ」からもまとめて登録できます。</li>
-    </ul>
-    <div class="note">
-        <strong>※お願い：</strong> ネタバレを含むメモなどは、未通過のプレイヤーが見てしまわないよう記載しないでください。
-    </div>
+      <section id="recruit">
+        <h2>8. 募集</h2>
+        <h3>新規募集（GM向け）</h3>
+        <ol>
+          <li>「Recruit」→「新規募集」でシナリオ・役割・目標人数・メモを設定して公開します。</li>
+          <li>公開すると Discord の募集チャンネルに案内が投稿されます。</li>
+        </ol>
+        <h3>参加とキャンセル（PL向け）</h3>
+        <ul>
+          <li><strong>Discord:</strong> 募集メッセージの「参加希望」ボタン。</li>
+          <li><strong>Web:</strong> 募集詳細でログイン中の自分として応募／取消。</li>
+        </ul>
+        <p>目標人数に達すると募集は「満員」になり、募集主へ Discord 通知が送られます。</p>
+      </section>
 
-    <h2>5. セッション（卓）の管理</h2>
-    <p>遊ぶシナリオと参加メンバーを紐付けた「卓」を管理し、実際のプレイ履歴を記録します。</p>
+      <section id="players">
+        <h2>9. プレイヤー詳細</h2>
+        <ul>
+          <li>プロフィール編集、プレイスタイルレーダー、推しキャラ／最強シナリオ。</li>
+          <li>PL通過済（部内卓＋部活外の個人履歴）／GM経験済シナリオ。</li>
+          <li>GM可能シナリオの登録（「気になる」通知の宛先）。</li>
+          <li>所持キャラクター一覧とスケジュール。</li>
+        </ul>
+        <div class="note">
+          部活外シナリオは Discord ログインなしで「部活外を追加」モーダルから登録でき、ほかのプレイヤーの履歴も追加・削除できます。シナリオ一覧には表示されません。
+        </div>
+      </section>
 
-    <h3>5-1. 新しい卓の立て方</h3>
-    <ol>
-        <li>メニューの「セッション（卓）一覧」から「新規卓作成」を押します。</li>
-        <li>遊ぶ「シナリオ」、担当「GM」、参加「PL」を選択して保存します。</li>
-    </ol>
-    <p>一覧ではキーワード（タイトル・シナリオ・GM・PL）、ステータス、システムで絞り込めます。</p>
+      <section id="comments">
+        <h2>10. コメント・なりきりチャット</h2>
+        <ul>
+          <li><strong>コメント:</strong> 各詳細画面や HOME の新着コメントで感想・やり取りを残せます。</li>
+          <li><strong>なりきりチャット:</strong> 自分のキャラクター名義で掲示板に投稿できます（他人のキャラでは投稿不可）。</li>
+        </ul>
+      </section>
 
-    <h3>5-2. 卓情報・セッション履歴</h3>
-    <ol>
-        <li>卓詳細から参加キャラクターやカバー画像、配信/アーカイブURLを登録できます。</li>
-        <li>セッション履歴に開催予定を追加できます。完了後はステータスが更新されます。</li>
-        <li>観戦希望はセッション詳細からログインして登録できます（当日リマインドに反映されます）。</li>
-    </ol>
+      <section id="faq">
+        <h2>11. よくあること</h2>
+        <ul>
+          <li><strong>ログインしたが個人画面が出ない:</strong> 名簿未連携です。ホーム上部のバナーから自分の名前で連携してください。</li>
+          <li><strong>名簿に自分の名前が無い:</strong> 管理者にプレイヤー追加を依頼してください。</li>
+          <li><strong>Discord ID がコピーできない／取れない:</strong> Logout → Discord Login をやり直してください。</li>
+          <li><strong>予定カレンダーが赤い:</strong> その日の予定が未入力です。日付を選んで昼／夜を入力してください。</li>
+          <li><strong>気になるを押しても DM が来ない:</strong> すでに ON だった場合や、そのシナリオに GM可能登録者がいない場合は通知されません（新規 ON 時のみ）。</li>
+        </ul>
+      </section>
 
-    <h2>6. スケジュール機能</h2>
-    <p>登録されたセッションの予定をカレンダー形式で確認し、空き日程を入力できます。</p>
-    <ul>
-        <li>メニューの「スケジュール」で直近予定や空き状況の照合ができます。</li>
-        <li>ホームの予定カレンダー、またはプレイヤー詳細からも予定を入力できます。</li>
-    </ul>
-    <div class="note">
-        <strong>【自動通知】</strong> セッション開始日の昼頃に、Discord へリマインドが送られます（GM・参加PL・観戦希望者へのメンション）。
-    </div>
+      <section id="dev">
+        <h2>12. 開発者向け</h2>
+        <p>スキーマ・API・運用手順は次を参照してください。</p>
+        <ul>
+          <li><a href="./docs/DB-overview.md">DB概要</a> / <a href="./docs/DB_info.txt">列一覧（DB_info）</a></li>
+          <li><a href="./docs/api-contract.md">API契約</a></li>
+          <li><a href="./docs/プレイヤー管理.txt">プレイヤー管理</a> / <a href="./docs/シナリオ・卓管理.txt">シナリオ・卓管理</a> / <a href="./docs/キャラクター管理.txt">キャラクター管理</a></li>
+          <li><a href="./docs/FCTZS%20TRPG%E9%83%A8%20%E7%89%B9%E8%A8%AD%E3%82%B5%E3%82%A4%E3%83%88%20%E6%A6%82%E8%A6%81.txt">サイト概要</a></li>
+        </ul>
+      </section>
+    </main>
 
-    <h2>7. 募集機能</h2>
-    <p>新しく卓を立てる際、参加者を募るための機能です。</p>
+    <footer>
+      <hr />
+      <small><a href="./index.html">Back to Home</a></small>
+    </footer>
+  </div>
 
-    <h3>7-1. 新規募集（GM向け）</h3>
-    <ol>
-        <li>「募集一覧」から「新規募集」を開き、シナリオ・役割・目標人数・メモを設定して公開します。</li>
-        <li>公開すると Discord の募集チャンネルに案内が投稿されます。</li>
-    </ol>
-
-    <h3>7-2. 参加とキャンセル（PL向け）</h3>
-    <ul>
-        <li><strong>Discordから:</strong> 募集メッセージの「参加希望」ボタン。</li>
-        <li><strong>Webから:</strong> 募集詳細でログイン中の自分として応募／取消。</li>
-    </ul>
-
-    <h3>7-3. 満員時</h3>
-    <p>目標人数に達すると募集は「満員」になり、募集主へ Discord 通知が送られます。</p>
-
-    <h2>8. プレイヤー詳細機能</h2>
-    <p>各プレイヤーの活動状況を可視化・確認できる機能です。</p>
-    <ul>
-        <li>プロフィール編集、プレイスタイルレーダー、推しキャラ／最強シナリオ。</li>
-        <li>PL通過済（部内卓＋部活外の個人履歴） / GM経験済シナリオ。</li>
-        <li>GM可能シナリオの登録（「気になる」通知の宛先）。</li>
-        <li>所持キャラクター一覧とスケジュール。</li>
-    </ul>
-    <div class="note">
-        部活外シナリオはDiscordログインなしで「部活外を追加」モーダルから登録でき、ほかのプレイヤーの履歴も追加・削除できます。シナリオ一覧には表示されません。
-    </div>
-
-    <h2>9. コメント・なりきりチャット</h2>
-    <ul>
-        <li><strong>コメント:</strong> 各詳細画面や HOME の新着コメントで感想・やり取りを残せます。</li>
-        <li><strong>なりきりチャット:</strong> 自分のキャラクター名義で掲示板に投稿できます（他人のキャラでは投稿不可）。</li>
-    </ul>
-
-    <h2>10. 関連ドキュメント（開発者向け）</h2>
-    <ul>
-        <li><a href="./docs/FCTZS%20TRPG%E9%83%A8%20%E7%89%B9%E8%A8%AD%E3%82%B5%E3%82%A4%E3%83%88%20%E6%A6%82%E8%A6%81.txt">サイト概要</a></li>
-        <li><a href="./docs/DB-overview.md">DB概要</a> / <a href="./docs/DB_info.txt">列一覧（DB_info）</a></li>
-        <li><a href="./docs/api-contract.md">API契約</a></li>
-        <li><a href="./docs/プレイヤー管理.txt">プレイヤー管理</a> / <a href="./docs/シナリオ・卓管理.txt">シナリオ・卓管理</a> / <a href="./docs/キャラクター管理.txt">キャラクター管理</a></li>
-    </ul>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/init-supabase.js"></script>
+  <script src="js/site-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "./");
+  </script>
 </body>
 </html>

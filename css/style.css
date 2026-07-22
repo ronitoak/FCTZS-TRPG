@@ -2298,3 +2298,57 @@ dialog.modal::backdrop {
     display: none;
   }
 }
+
+/* ---------- 使い方ガイド（docs.html） ---------- */
+.user-guide {
+  max-width: 52rem;
+}
+
+.user-guide .page-header h1 {
+  margin-bottom: 0.35rem;
+}
+
+.user-guide-intro {
+  margin: 1rem 0 1.5rem;
+}
+
+.user-guide-toc {
+  margin: 0 0 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface, #f8f9fa);
+  border-radius: 6px;
+}
+
+.user-guide-toc h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.user-guide-toc ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.user-guide section {
+  margin-bottom: 2.5rem;
+}
+
+.user-guide h2 {
+  margin-top: 0;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--border, #dee2e6);
+}
+
+.user-guide h3 {
+  margin-top: 1.25rem;
+  font-size: 1.05rem;
+}
+
+.user-guide .note {
+  background: #fff8e6;
+  border-left: 4px solid #e6c35c;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.95rem;
+}

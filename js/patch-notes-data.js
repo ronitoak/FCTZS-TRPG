@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-22",
+    type: "feature",
+    title: "使い方ガイドを整備",
+    detail: "部員向けの使い方ガイド（docs.html）を目次・初回連携・FAQ付きで再構成し、ナビから開けるようにしました。Discord貼付用の Markdown（docs/使い方ガイド.md）も同内容で追加しています。"
+  },
+  {
+    date: "2026-07-22",
     type: "improvement",
     title: "ドキュメントを自己連携・配列列DROPに同期",
     detail: "api-contract・利用者向けdocs・プレイヤー／卓管理・DB_info・roadmap等を、GET/POST /api/me と runs 配列列DROP完了の実装状態に合わせて更新しました。"

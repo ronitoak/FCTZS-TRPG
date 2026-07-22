@@ -36,7 +36,7 @@ Flutter Web 公開: [`flutter-web-deploy.md`](./flutter-web-deploy.md)
 |-------|------|------|------|
 | 1 | フロント移行（GitHub Pages → Workers `fctzs`） | **完了**（2026-07-17） | [`cloudflare-pages.md`](./cloudflare-pages.md) |
 | 2 | API 契約固定 | **完了** | [`api-contract.md`](./api-contract.md) |
-| 2b | DB / Worker / Web 正規化・軽量化 | **本線**（コード完了。配列列 DROP は Worker 再デプロイ後の手動 SQL。Phase C は後回し） | [`junction-read-progress.md`](./junction-read-progress.md)、[`legacy-api-retirement.md`](./legacy-api-retirement.md) |
+| 2b | DB / Worker / Web 正規化・軽量化 | **本線**（コード完了。配列列 DROP **適用済 2026-07-21**。残りは Phase C RLS など慎重枠） | [`junction-read-progress.md`](./junction-read-progress.md)、[`legacy-api-retirement.md`](./legacy-api-retirement.md) |
 | 3 | Flutter 並列 | **後回し**（閲覧＋ログイン書込みまでは実装済。追加パリティは 2b 完了後） | [`flutter-web-parity.md`](./flutter-web-parity.md) |
 | 4 | 学習トラック | **未着手**（本番 API を置き換えない） | 下記 |
 
@@ -46,7 +46,7 @@ Flutter Web 公開: [`flutter-web-deploy.md`](./flutter-web-deploy.md)
 
 1. **フロント移行** — コード・CI 完了。運用締めは [`cloudflare-pages.md`](./cloudflare-pages.md) §8.2  
 2. **API 契約固定** — [`docs/api-contract.md`](./api-contract.md)  
-3. **DB / Worker / Web** — junction・レガシー一覧退役・画像掃除まで完了。残りは慎重枠（配列列 DROP、Phase C RLS）  
+3. **DB / Worker / Web** — junction・レガシー一覧退役・画像掃除・配列列 DROP まで完了。残りは慎重枠（Phase C RLS 等）  
 4. **Flutter 並列の再開** — 上記が片付いてから。候補は [`flutter-web-parity.md`](./flutter-web-parity.md)（プロフィール編集など）  
 5. **学習トラック** — 下記  
 

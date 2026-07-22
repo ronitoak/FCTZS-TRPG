@@ -1,6 +1,6 @@
 # Worker API 契約（Web / Flutter 共通正本）
 
-最終更新: 2026-07-21  
+最終更新: 2026-07-22  
 実装: [`worker/index.js`](../worker/index.js)  
 静的契約テスト: [`tests/contracts.test.cjs`](../tests/contracts.test.cjs)
 
@@ -10,8 +10,8 @@
 |------|------|
 | Base URL | `https://fctzs-trpg.daruji.workers.dev`（`FCTZS_API_BASE` で変更可） |
 | 形式 | JSON |
-| CORS | `Access-Control-Allow-Origin: *` |
-| GET | 認証任意（付けると利用者 JWT が PostgREST へ転送される） |
+| CORS | `Access-Control-Allow-Origin: *`。許可ヘッダに `Authorization` / `Content-Type` / `X-Discord-Provider-Token` |
+| GET | 認証任意（付けると利用者 JWT が PostgREST へ転送される）。`GET /api/me` は例外で Bearer 必須 |
 | POST / PATCH / DELETE | 原則として**有効な Bearer JWT 必須**（Auth API で実検証） |
 | Discord Interaction | `/api/interactions` のみ Ed25519。Bearer 不要 |
 
@@ -55,6 +55,8 @@
 | GET | `/api/scenario_interests?scenario_id=` | `{ interested, count }`。interested はログイン本人のみ |
 | POST | `/api/scenario_interests` | `{ scenario_id }`。新規ON時のみ GM可能者へ Discord DM |
 | DELETE | `/api/scenario_interests?scenario_id=` | 本人の気になる解除（通知なし） |
+| GET | `/api/me` | ログイン本人の連携状態（下記「プレイヤー自己連携」） |
+| POST | `/api/me/link` | 名簿の自分の行へ自己連携（下記） |
 
 本人解決は次の順で行う（Auth UUID と Discord snowflake を直接比較しない）:
 
@@ -62,6 +64,69 @@
 2. 未連携なら `players.discord_id = Discord snowflake` で検索し、見つかれば `user_id` を自動連携
 
 どちらでも解決できない JWT は、所有者必須の API で 403 になる。
+
+---
+
+## プレイヤー自己連携
+
+ホームの未連携バナーなど、ログイン後に名簿へ紐づけるための正本 API。  
+Web 実装: [`js/home.js`](../js/home.js) の `resolvePlayerLinkBanner`。
+
+### Discord ID の解決順（Worker）
+
+`resolveDiscordIdForRequest` は次の順で Discord snowflake を求める:
+
+1. Auth ユーザーメタデータ（`user_metadata` / identities）
+2. Bearer JWT ペイロード内のメタデータ
+3. Supabase Auth Admin API（Service Role）
+4. リクエストの `X-Discord-Provider-Token` ヘッダ、または `POST /api/me/link` ボディの `provider_token` で Discord `GET /users/@me`
+
+フロントは OAuth 直後の `session.provider_token` をヘッダ／ボディに渡せる。
+
+### `GET /api/me`
+
+| 項目 | 内容 |
+|------|------|
+| 認証 | Bearer JWT **必須**（未ログインは 401） |
+| 任意ヘッダ | `X-Discord-Provider-Token`（Discord ID 補完用） |
+
+成功レスポンス（200）の例:
+
+```json
+{
+  "linked": false,
+  "player": null,
+  "discord_id": "123456789012345678",
+  "auth_user_id": "<auth.users.id>",
+  "claimable_players": [
+    { "player_id": "...", "player_name": "...", "discord_id": "", "user_id": null }
+  ]
+}
+```
+
+- `linked: true` のとき `player` は名簿行、`claimable_players` は空配列
+- `linked: false` のとき `claimable_players` は `user_id` 未設定の名簿（Discord 一致行を先頭）
+- サーバー側で Discord 一致が見つかれば `resolveCallerPlayerId` により自動で `user_id` 連携しうる
+
+### `POST /api/me/link`
+
+| 項目 | 内容 |
+|------|------|
+| 認証 | Bearer JWT **必須** |
+| ボディ | `{ "player_id": "<必須>", "provider_token": "<任意>" }` |
+| 任意ヘッダ | `X-Discord-Provider-Token`（ボディの token と同等） |
+
+成功（200）: `{ "linked": true, "player": { ... } }`
+
+主なエラー:
+
+| HTTP | 条件 |
+|------|------|
+| 400 | JSON 不正 / `player_id` 欠落 / Discord ID 取得失敗 |
+| 401 | 未認証 |
+| 403 | 対象行が別 Auth / 別 Discord に既に紐づいている |
+| 404 | 対象 `player_id` が存在しない |
+| 409 | 自分が別プレイヤーへ既連携、または自分の Discord が別行に登録済み |
 
 ---
 

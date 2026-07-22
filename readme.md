@@ -28,8 +28,8 @@
 | `players` / `player_profiles` | 部員マスタとプロフィール（欲求・アイコンキャラ ID） |
 | `characters` (+ attrs/skills/scenarios) | PC |
 | `scenarios` / `scenario_interests` | シナリオと「気になる」 |
-| `runs` / `sessions` | 卓と開催（互換期間中は `player_ids`/`characters` 配列が正） |
-| `run_players` / `run_characters` | junction（同期先 → 将来の正） |
+| `runs` / `sessions` | 卓と開催（membership は `run_players` / `run_characters` が正。API 応答の `player_ids`/`characters` は junction 組み立て） |
+| `run_players` / `run_characters` | junction（参加プレイヤー／キャラの正本） |
 | `recruitments` / `recruitment_applicants` | 募集（旧称 `recruits` は使わない） |
 | `comments` / `posts` | コメント・なりチャ |
 

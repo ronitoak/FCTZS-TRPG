@@ -57,12 +57,15 @@ id,text,NO,卓ID（主キー）
 scenario_id,text,YES,プレイするシナリオID（外部キー）
 title,text,YES,卓独自のタイトル（例: 〇〇陣、A班など）
 gm_id,text,YES,ゲームマスターを務めるプレイヤーID
-player_ids,text[] (ARRAY),YES,参加するプレイヤーIDの配列
-characters,text[] (ARRAY),YES,参加するキャラクターIDの配列
 status,USER-DEFINED,NO,進行状況（planning / active / done）
 image_url,text,YES,卓カバー画像URL
 user_id,uuid,YES,所有者 Auth UUID
 updated_at,timestamptz,NO,更新日時
+
+参加プレイヤー／参加キャラクターは runs 上の配列ではなく junction が正本:
+- run_players（run_id, player_id, sort_order, …）
+- run_characters（run_id, character_id, sort_order, …）
+API の GET /api/runs 応答に含まれる player_ids / characters は junction から組み立てた互換キー（DB列ではない。配列列は 2026-07-21 に DROP 済）。
 
 sessions テーブル（同一の卓内で実施される「全何回」の1回毎のセッション日程）
 カラム名,データ型,Nullable,説明

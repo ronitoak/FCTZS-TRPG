@@ -8,6 +8,12 @@ window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-22",
     type: "improvement",
+    title: "ドキュメントを自己連携・配列列DROPに同期",
+    detail: "api-contract・利用者向けdocs・プレイヤー／卓管理・DB_info・roadmap等を、GET/POST /api/me と runs 配列列DROP完了の実装状態に合わせて更新しました。"
+  },
+  {
+    date: "2026-07-22",
+    type: "improvement",
     title: "プレイヤー名簿の読み込み固まりを修正",
     detail: "未連携バナーが「名簿を読み込み中…」のまま進まない問題を修正しました。連携UIをダッシュボード用API（scenarios/runs等）より先に独立実行し、名簿取得・Discord ID解決にタイムアウトを入れています。"
   },

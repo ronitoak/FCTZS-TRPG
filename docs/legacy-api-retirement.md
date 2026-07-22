@@ -1,6 +1,6 @@
 # レガシー API / ビュー削除候補
 
-最終更新: 2026-07-21  
+最終更新: 2026-07-22  
 契約正本: [`api-contract.md`](./api-contract.md)
 
 削除は「クライアントがフォールバック含め使わなくなった」ことを確認してから行う。
@@ -25,6 +25,7 @@
 | `POST /api/character_full` | Web キャラ作成 |
 | `GET /api/recruitment_list` | 募集カード |
 | `GET /api/runs` | 卓（membership は junction） |
+| `GET /api/me` / `POST /api/me/link` | ログイン本人の連携状態・自己連携 |
 | `GET /api/schedule_match` | 予定照合 |
 
 ## コードスタブ
@@ -36,4 +37,4 @@
 
 ## 配列列
 
-`runs.player_ids` / `characters` の DROP: [`sql/drop-runs-array-columns-future.sql.md`](./sql/drop-runs-array-columns-future.sql.md)（Worker 再デプロイ後・手動。画面 UX は不変）
+`runs.player_ids` / `runs.characters` の DROP: **適用済（2026-07-21）**。手順メモ: [`sql/drop-runs-array-columns-future.sql.md`](./sql/drop-runs-array-columns-future.sql.md)。membership の正本は `run_players` / `run_characters`。API 応答の `player_ids`/`characters` は junction 組み立て（画面 UX は不変）。

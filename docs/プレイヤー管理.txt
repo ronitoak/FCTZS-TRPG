@@ -5,11 +5,19 @@
 
 主な処理:
 
-Discord OAuthを介したソーシャルログインと紐づいたプレイヤー情報の識別。
+Discord OAuthを介したソーシャルログインと、部のプレイヤー名簿（players）への紐づけ。
 
 各種欲求パラメータからプレイスタイルをレーダーチャートで可視化。
 
 メンバー間のカレンダー連動による日程の照合（AND計算による空き予定の抽出）。
+
+1.1.1. プレイヤー自己連携（ホーム）
+ログイン直後に players.user_id が未設定の場合、ホーム上部に未連携バナーを表示する。
+
+- 名簿に同じ Discord snowflake（players.discord_id）がある場合はサーバー側で自動連携しうる。
+- 無い／自動連携できない場合は、user_id 未設定の名簿から自分の名前を選び POST /api/me/link で自己連携する。
+- Discord ID はバナーからコピーできる（Auth メタに無い場合は OAuth の provider_token で Discord @me から取得）。
+- 開発者向け契約: docs/api-contract.md「プレイヤー自己連携」（GET /api/me・POST /api/me/link）。
 
 1.2. 画面イメージ（UI構成要素）
 プロフィール＆プレイスタイル画面:

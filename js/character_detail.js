@@ -853,27 +853,11 @@ document.getElementById('edit-character-form')?.addEventListener('submit', async
     const fileInput = e.target.querySelector('input[name="image_file"]');
     let imageUrl = currentCharData.image_url || null;
 
-    if (fileInput && fileInput.files[0]) {
-        try {
-            const originalFile = fileInput.files[0];
-            const compressedBlob = await Utils.compressAndResizeImage(originalFile);
-
-            const formData = new FormData();
-            const fileBaseName = originalFile.name.includes('.')
-                ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.'))
-                : originalFile.name;
-            const fileName = `${fileBaseName}.webp`;
-
-            formData.append("file", compressedBlob, fileName);
-            formData.append("type", "character");
-
-            const uploadResult = await Utils.apiUpload(formData, {
-              replaceUrl: currentCharData.image_url || null
-            });
-            imageUrl = uploadResult.url;
-        } catch (err) {
-            console.error("画像アップロードエラー:", err);
-        }
+    if (fileInput?.files[0]) {
+        const uploadedUrl = await Utils.uploadImageAsWebp(fileInput.files[0], "character", {
+            replaceUrl: currentCharData.image_url || null
+        });
+        if (uploadedUrl) imageUrl = uploadedUrl;
     }
 
     const payload = {

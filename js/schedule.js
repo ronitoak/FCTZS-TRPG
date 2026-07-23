@@ -96,21 +96,13 @@ async function renderBulkInputGrid() {
   const playerId = document.getElementById("modal-player-id")?.value;
   if (!playerId) return;
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const monthLabel = document.getElementById("bulk-month-label");
-  if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
-
-  let existingData = [];
-  try {
-    existingData = await Utils.fetchPlayerAvailabilities(playerId, year, month);
-  } catch (e) {
-    console.error("既存予定の取得に失敗:", e);
-  }
-
-  const container = document.getElementById("bulk-input-container");
-  Utils.renderAvailabilityGrid(container, year, month, existingData);
+  await Utils.loadAndRenderAvailabilityGrid(
+    document.getElementById("bulk-input-container"),
+    playerId,
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    { monthLabel: document.getElementById("bulk-month-label") }
+  );
 }
 
 async function saveBulkAvailability() {
@@ -120,27 +112,21 @@ async function saveBulkAvailability() {
     return;
   }
 
-  const container = document.getElementById("bulk-input-container");
-  const payload = Utils.collectAvailabilityChanges(container, playerId);
-
-  if (payload.length === 0) {
-     Utils.showToast("変更された予定データがありません。", "info");
-     closeModal('availability-modal');
-     return;
-  }
-
   try {
-    const res = await Utils.apiPost("player_availability", payload);
-    if (res) {
-      closeModal('availability-modal');
-
-      if (compareMode) {
-        await runComparison();
-      } else {
-        await fetchScheduleData();
-      }
-
-      Utils.showToast("予定を保存しました", "success");
+    const saved = await Utils.saveAvailabilityFromGrid(
+      document.getElementById("bulk-input-container"),
+      playerId,
+      { successMessage: "予定を保存しました" }
+    );
+    if (!saved) {
+      closeModal("availability-modal");
+      return;
+    }
+    closeModal("availability-modal");
+    if (compareMode) {
+      await runComparison();
+    } else {
+      await fetchScheduleData();
     }
   } catch (err) {
     console.error("一括保存エラー:", err);

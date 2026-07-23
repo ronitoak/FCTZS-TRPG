@@ -7,30 +7,6 @@ let allScenarios = [];
 let runCountByScenarioId = new Map();
 let currentUserProfile = null;
 
-function normalizeExternalScenarios(raw) {
-  let rows = raw;
-  if (typeof rows === "string") {
-    try {
-      rows = JSON.parse(rows);
-    } catch {
-      return [];
-    }
-  }
-  if (!Array.isArray(rows)) return [];
-  return rows
-    .map(item => {
-      if (!item || typeof item !== "object") return null;
-      const title = String(item.title || "").trim();
-      if (!title) return null;
-      return {
-        title,
-        system: String(item.system || "").trim(),
-        note: String(item.note || "").trim()
-      };
-    })
-    .filter(Boolean);
-}
-
 function buildExternalScenariosHtml(profiles, players) {
   const playerNameById = new Map(
     (Array.isArray(players) ? players : []).map(player => [
@@ -41,7 +17,7 @@ function buildExternalScenariosHtml(profiles, players) {
   const rows = (Array.isArray(profiles) ? profiles : []).flatMap(profile => {
     const playerId = String(profile.player_id || "");
     const playerName = playerNameById.get(playerId) || playerId || "名前不明";
-    return normalizeExternalScenarios(profile.external_passed_scenarios).map(scenario => ({
+    return Utils.normalizeExternalPassedScenarios(profile.external_passed_scenarios).map(scenario => ({
       ...scenario,
       playerName
     }));

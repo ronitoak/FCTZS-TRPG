@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-07-24",
+    type: "improvement",
+    title: "内部リファクタで重複コードを削減",
+    detail: "フロントの画像アップロード・部活外正規化・卓参加者解決・予定入力などを utils に集約し、player_detail のインラインスタイルを CSS へ移しました。Worker のレスポンス生成・Supabase通信・junction 書込みの重複も共通化しています。画面機能と外部APIの挙動は変更していません。"
+  },
+  {
     date: "2026-07-22",
     type: "feature",
     title: "使い方ガイドを整備",

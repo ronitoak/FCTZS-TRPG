@@ -156,7 +156,7 @@ async function main() {
     let gmableScenarios = Array.isArray(player.gmable_scenario_ids)
       ? player.gmable_scenario_ids.map(String)
       : [];
-    let externalPassed = normalizeExternalPassedScenarios(player.external_passed_scenarios);
+    let externalPassed = Utils.normalizeExternalPassedScenarios(player.external_passed_scenarios, { withId: true, max: 100 });
 
     const { player: viewerPlayer } = await Utils.getCurrentUserPlayerContext({
       loadProfile: false
@@ -176,21 +176,21 @@ async function main() {
     }
 
     root.innerHTML = `
-      <div class="player-detail-grid" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
-        <div style="flex: 1 1 300px; max-width: 450px;">
+      <div class="player-detail-grid player-detail-grid--flex">
+        <div class="player-detail-sidebar">
           ${buildPlayerProfileHtml(player)}
         </div>
-        <div id="schedule-wrapper" style="flex: 2 1 500px;">
+        <div id="schedule-wrapper" class="player-detail-schedule-col">
         </div>
       </div>
 
       ${buildCustomAreaHtml(player, characters, scenarios)}
 
-      <div style="margin-top: 20px;">
+      <div class="player-detail-block-spaced">
         ${buildMyCharactersHtml(myCharacters, favChars)}
       </div>
 
-      <div class="player-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+      <div class="player-detail-grid player-detail-grid--columns">
         ${buildPassedScenariosHtml(passedScenarios, externalPassed, favScenarios, {
           gmableIds: gmableScenarios,
           showGmableToggle: isOwner,
@@ -202,7 +202,7 @@ async function main() {
         })}
       </div>
 
-      <div style="margin-top: 20px;">
+      <div class="player-detail-block-spaced">
         ${buildGmableScenariosHtml(gmableScenarioRows, gmableCandidates, isOwner)}
       </div>
     `;
@@ -262,15 +262,15 @@ async function main() {
       if (countEl) countEl.textContent = String(rows.length);
       if (!gmableList) return;
       gmableList.innerHTML = rows.length
-        ? `<ul style="margin: 0; padding: 0; list-style: none;">${rows.map(s => `
-            <li style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+        ? `<ul class="player-list-plain">${rows.map(s => `
+            <li class="player-list-row">
               ${isOwner
                 ? `<button type="button" class="btn-gmable-scenario is-active" data-id="${Utils.escapeHtml(String(s.id))}">GM可✓</button>`
                 : `<span class="gmable-badge">GM可</span>`}
               <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}">${Utils.escapeHtml(s.title || s.id)}</a>
             </li>
           `).join("")}</ul>`
-        : `<p class="u-muted" style="text-align: center;">まだ GM可能シナリオがありません。「登録」ボタンまたはシナリオ詳細から追加できます。</p>`;
+        : `<p class="u-muted player-empty-muted--center">まだ GM可能シナリオがありません。「登録」ボタンまたはシナリオ詳細から追加できます。</p>`;
     }
 
     function refreshGmableModalCandidates() {
@@ -278,11 +278,11 @@ async function main() {
       if (!container) return;
       const unregistered = gmableCandidates.filter(s => !gmableScenarios.includes(String(s.id)));
       container.innerHTML = unregistered.length
-        ? `<ul style="margin: 0; padding: 0; list-style: none;">${unregistered.map(s => `
-            <li style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #edf2f7;">
+        ? `<ul class="player-list-plain">${unregistered.map(s => `
+            <li class="player-list-row player-list-row--bordered">
               <button type="button" class="btn-gmable-scenario" data-id="${Utils.escapeHtml(String(s.id))}">GM可</button>
-              <span style="font-weight: bold;">${Utils.escapeHtml(s.title || s.id)}</span>
-              ${s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(s.system)}</span>` : ""}
+              <span class="player-scenario-link-title">${Utils.escapeHtml(s.title || s.id)}</span>
+              ${s.system ? `<span class="player-system-tag">${Utils.escapeHtml(s.system)}</span>` : ""}
             </li>
           `).join("")}</ul>`
         : `<p class="u-muted">追加候補はありません。通過済・GM経験があるか、シナリオ詳細で登録してください。</p>`;
@@ -314,10 +314,10 @@ async function main() {
         const id = favCharBtn.getAttribute("data-id");
         if (favChars.includes(id)) {
           favChars = favChars.filter(x => x !== id);
-          favCharBtn.style.color = "#e2e8f0";
+          favCharBtn.classList.remove("is-fav");
         } else {
           favChars.push(id);
-          favCharBtn.style.color = "#ecc94b";
+          favCharBtn.classList.add("is-fav");
         }
         updateFavoritesSilent("favorite_character_ids", favChars);
       }
@@ -328,10 +328,10 @@ async function main() {
         const id = favScenarioBtn.getAttribute("data-id");
         if (favScenarios.includes(id)) {
           favScenarios = favScenarios.filter(x => x !== id);
-          favScenarioBtn.style.color = "#e2e8f0";
+          favScenarioBtn.classList.remove("is-fav");
         } else {
           favScenarios.push(id);
-          favScenarioBtn.style.color = "#ecc94b";
+          favScenarioBtn.classList.add("is-fav");
         }
         updateFavoritesSilent("favorite_scenario_ids", favScenarios);
       }
@@ -439,7 +439,7 @@ async function main() {
       externalPassed = [
         ...externalPassed,
         {
-          id: createExternalPassedId(),
+          id: Utils.createExternalPassedId(),
           title,
           system: (systemInput?.value || "").trim(),
           note: (noteInput?.value || "").trim()
@@ -540,20 +540,20 @@ function buildPlayerProfileHtml(player) {
   const profileImage = player.icon_url  ? Utils.getCharacterImagePath(player.icon_url, player.icon_image_url) : Utils.DEFAULT_CHARACTER_IMAGE;
 
   return `
-    <section class="player-profile" style="position: relative; display: flex; flex-direction: column; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 550px; ">
-      <div style="display: flex; align-items: center; gap: 20px;">
-        <img src="${profileImage}" alt="アイコン" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+    <section class="player-profile player-section-card">
+      <div class="player-profile-header">
+        <img src="${profileImage}" alt="アイコン" class="player-profile-avatar">
         <div>
-          <h1 style="margin: 0; font-size: 1.8rem; color: #2d3748;">${Utils.escapeHtml(player.player_name)}</h1>
-          <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.9rem;">ID: ${Utils.escapeHtml(player.player_id)}</p>
+          <h1 class="player-profile-name">${Utils.escapeHtml(player.player_name)}</h1>
+          <p class="player-profile-id">ID: ${Utils.escapeHtml(player.player_id)}</p>
         </div>
       </div>
 
-      <div style="margin-top: 20px; width: 100%; max-width: 320px; align-self: center;">
+      <div class="player-profile-chart-wrap">
         <canvas id="desire-radar-chart"></canvas>
       </div>
 
-      <button id="btn-edit-profile" style="position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: #4a5568; color: #fff; border: none; border-radius: 4px; cursor: pointer;">📝</button>
+      <button id="btn-edit-profile" class="btn-edit-profile-floating">📝</button>
     </section>
   `;
 }
@@ -567,9 +567,9 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
 
   if (favChars.length === 0 && favScens.length === 0) {
     return `
-      <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
-        <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">最強キャラランキング</h2>
-        <p style="color: #a0aec0; margin-top: 20px; font-weight: bold;">まだ最強キャラが登録されていません。</p>
+      <section class="player-custom-area player-section-card player-section-card--center player-detail-block-spaced">
+        <h2 class="player-section-title">最強キャラランキング</h2>
+        <p class="player-empty-muted player-empty-muted--bold">まだ最強キャラが登録されていません。</p>
       </section>
     `;
   }
@@ -577,12 +577,12 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
   let charsHtml = "";
   if (favChars.length > 0) {
     charsHtml = `
-      <h3 style="margin: 15px 0 10px; font-size: 1.1rem; color: #2d3748; padding-left: 8px;">最強キャラ</h3>
-      <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+      <h3 class="player-subsection-title">最強キャラ</h3>
+      <div class="player-fav-chars-grid">
         ${favChars.map(c => `
-          <a href="../character/detail.html?id=${c.id}" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; width: 90px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-            <img src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <span style="font-size: 0.85rem; font-weight: bold; text-align: center; margin-top: 8px; word-break: break-all; line-height: 1.2;">${Utils.escapeHtml(c.name)}</span>
+          <a href="../character/detail.html?id=${c.id}" class="player-fav-char-link">
+            <img src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" class="player-fav-char-img">
+            <span class="player-fav-char-name">${Utils.escapeHtml(c.name)}</span>
           </a>
         `).join("")}
       </div>
@@ -592,10 +592,10 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
   let scensHtml = "";
   if (favScens.length > 0) {
     scensHtml = `
-      <h3 style="margin: 25px 0 10px; font-size: 1.1rem; color: #2d3748; padding-left: 8px;">最強シナリオ</h3>
-      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+      <h3 class="player-subsection-title player-subsection-title--scenarios">最強シナリオ</h3>
+      <div class="player-fav-scenarios-grid">
         ${favScens.map(s => `
-          <a href="../scenario/detail.html?id=${s.id}" style="font-size: 0.9rem; background: #daebf0; border: 1px solid #5c97ff; color: #2d3748; padding: 6px 12px; border-radius: 20px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <a href="../scenario/detail.html?id=${s.id}" class="player-fav-scenario-tag">
             ★ ${Utils.escapeHtml(s.title)}
           </a>
         `).join("")}
@@ -604,8 +604,8 @@ function buildCustomAreaHtml(player, allCharacters, allScenarios) {
   }
 
   return `
-    <section class="player-custom-area" style="margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">最強キャラランキング</h2>
+    <section class="player-custom-area player-section-card player-detail-block-spaced">
+      <h2 class="player-section-title">最強キャラランキング</h2>
       ${charsHtml}
       ${scensHtml}
     </section>
@@ -616,24 +616,23 @@ function buildMyCharactersHtml(characters, favoriteIds = []) {
   const charsList = characters.length > 0
     ? characters.map(c => {
         const isFav = favoriteIds.includes(String(c.id));
-        const starColor = isFav ? "#ecc94b" : "#e2e8f0";
         return `
-        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; transition: background 0.2s;">
-          <button class="btn-fav-char" data-id="${c.id}" style="background: none; border: none; cursor: pointer; font-size: 1.5rem; color: ${starColor}; padding: 0; outline: none; transition: transform 0.1s;">★</button>
-          <a href="../character/detail.html?id=${c.id}" style="display: flex; align-items: center; gap: 10px; flex-grow: 1; text-decoration: none; color: inherit;">
-            <img src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
-            <span style="font-weight: bold;">${Utils.escapeHtml(c.name)}</span>
-            <span style="font-size: 0.9rem; color: #718096;">${Utils.escapeHtml(c.job || '')}</span>
-            <span style="font-size: 0.8rem; background: #edf2f7; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(c.system || '')}</span>
+        <div class="player-char-row">
+          <button class="btn-fav-char${isFav ? " is-fav" : ""}" data-id="${c.id}">★</button>
+          <a href="../character/detail.html?id=${c.id}" class="player-char-link-row">
+            <img src="${Utils.getCharacterImagePath(c.id, c.image_url)}" onerror="this.onerror=null; this.src='${Utils.DEFAULT_CHARACTER_IMAGE}';" class="player-char-thumb">
+            <span class="player-char-name">${Utils.escapeHtml(c.name)}</span>
+            <span class="player-char-job">${Utils.escapeHtml(c.job || '')}</span>
+            <span class="player-char-system-tag">${Utils.escapeHtml(c.system || '')}</span>
           </a>
         </div>
       `}).join("")
-    : "<p style='color: #a0aec0;'>作成したキャラクターはまだありません。</p>";
+    : "<p class='player-empty-muted'>作成したキャラクターはまだありません。</p>";
 
   return `
-    <section class="player-characters" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">作成キャラクター</h2>
-      <div style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+    <section class="player-characters player-section-card">
+      <h2 class="player-section-title">作成キャラクター</h2>
+      <div class="player-char-list">
         ${charsList}
       </div>
     </section>
@@ -657,56 +656,23 @@ function buildScheduleShellHtml(year, month) {
   `;
 }
 
-function createExternalPassedId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `ext-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function normalizeExternalPassedScenarios(raw) {
-  let rows = raw;
-  if (typeof rows === "string") {
-    try {
-      rows = JSON.parse(rows);
-    } catch {
-      return [];
-    }
-  }
-  if (!Array.isArray(rows)) return [];
-  return rows
-    .map(item => {
-      if (!item || typeof item !== "object") return null;
-      const title = String(item.title || "").trim();
-      if (!title) return null;
-      return {
-        id: String(item.id || createExternalPassedId()),
-        title,
-        system: String(item.system || "").trim(),
-        note: String(item.note || "").trim()
-      };
-    })
-    .filter(Boolean)
-    .slice(0, 100);
-}
-
 function buildExternalPassedListHtml(externalList, canEdit) {
   const items = Array.isArray(externalList) ? externalList : [];
   if (items.length === 0) {
-    return `<p class="u-muted" style="margin: 0; font-size: 0.85rem;">部活外の登録はまだありません。</p>`;
+    return `<p class="u-muted player-empty-muted--note">部活外の登録はまだありません。</p>`;
   }
-  return `<ul style="margin: 0; padding: 0; list-style: none;">${items.map(item => {
+  return `<ul class="player-list-plain">${items.map(item => {
     const systemTag = item.system
-      ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(item.system)}</span>`
+      ? `<span class="player-system-tag">${Utils.escapeHtml(item.system)}</span>`
       : "";
     const noteHtml = item.note
-      ? `<small class="u-muted" style="display: block; margin-left: 0;">${Utils.escapeHtml(item.note)}</small>`
+      ? `<small class="u-muted player-external-passed-note">${Utils.escapeHtml(item.note)}</small>`
       : "";
     const removeBtn = canEdit
-      ? `<button type="button" class="btn-remove-external-passed" data-id="${Utils.escapeHtml(item.id)}" title="削除" style="margin-left: auto; background: none; border: none; color: #c53030; cursor: pointer; font-size: 0.85rem;">削除</button>`
+      ? `<button type="button" class="btn-remove-external-passed" data-id="${Utils.escapeHtml(item.id)}" title="削除">削除</button>`
       : "";
     return `
-      <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 4px 0; border-bottom: 1px solid #edf2f7;">
+      <li class="player-list-row player-list-row--wrap">
         <span class="external-passed-badge">部活外</span>
         <strong>${Utils.escapeHtml(item.title)}</strong>
         ${systemTag}
@@ -729,23 +695,27 @@ function buildPassedScenariosHtml(siteScenarios, externalList, favoriteIds = [],
   });
 
   const emptySite = siteList.length === 0
-    ? `<p style="text-align: center; color: #a0aec0; margin: 0 0 8px;">部内卓の通過履歴はまだありません。</p>`
+    ? `<p class="player-empty-muted player-empty-muted--site-gap">部内卓の通過履歴はまだありません。</p>`
     : "";
 
   const addBtn = canEditExternalPassed
-    ? `<button type="button" id="btn-open-external-passed-modal" class="btn-secondary" style="font-size: 0.8rem; padding: 4px 10px;">部活外を追加</button>`
+    ? `<button type="button" id="btn-open-external-passed-modal" class="btn-secondary btn-compact-secondary">部活外を追加</button>`
     : "";
 
+  const dividerClass = siteList.length
+    ? "player-external-passed-divider"
+    : "player-external-passed-divider player-external-passed-divider--first";
+
   return `
-    <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+    <section class="player-scenarios player-section-card player-section-card--column">
+      <h2 class="player-section-title player-section-title--split">
         <span>PL通過済シナリオ (<span id="passed-scenarios-count">${total}</span>)本</span>
         ${addBtn}
       </h2>
-      <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 320px;">
+      <div class="player-scenarios-scroll player-scenarios-scroll--md">
         ${emptySite}
         ${siteHtml}
-        <div style="margin-top: ${siteList.length ? "12px" : "0"}; padding-top: ${siteList.length ? "10px" : "0"}; border-top: ${siteList.length ? "1px dashed #e2e8f0" : "none"};">
+        <div class="${dividerClass}">
           <div id="external-passed-list">${buildExternalPassedListHtml(external, canEditExternalPassed)}</div>
         </div>
       </div>
@@ -760,34 +730,33 @@ function buildScenariosHtml(title, scenariosList, favoriteIds = [], fallbackText
   let contentHtml = "";
 
   if (scenariosList && scenariosList.length > 0) {
-    contentHtml = `<ul style="margin: 0; padding-left: 0; list-style-type: none; color: #4a5568; line-height: 1.8;">`;
+    contentHtml = `<ul class="player-list-plain player-list-plain--indented">`;
     scenariosList.forEach(s => {
       const isFav = favoriteIds.includes(String(s.id));
-      const starColor = isFav ? "#ecc94b" : "#e2e8f0";
       const isGmable = gmableIds.includes(String(s.id));
-      const systemTag = s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">${Utils.escapeHtml(s.system)}</span>` : "";
+      const systemTag = s.system ? `<span class="player-system-tag player-system-tag--spaced">${Utils.escapeHtml(s.system)}</span>` : "";
       const gmableBtn = showGmableToggle
         ? `<button type="button" class="btn-gmable-scenario ${isGmable ? "is-active" : ""}" data-id="${Utils.escapeHtml(String(s.id))}" title="このシナリオをGM可能にする">${isGmable ? "GM可✓" : "GM可"}</button>`
         : (isGmable ? `<span class="gmable-badge">GM可</span>` : "");
 
       contentHtml += `
-        <li style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
-          <button class="btn-fav-scenario" data-id="${s.id}" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; color: ${starColor}; padding: 0; outline: none;">★</button>
+        <li class="player-list-row player-list-row--compact">
+          <button class="btn-fav-scenario${isFav ? " is-fav" : ""}" data-id="${s.id}">★</button>
           ${gmableBtn}
-          <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}" style="font-weight: bold; color: inherit; text-decoration: none;">${Utils.escapeHtml(s.title)}</a>${systemTag}
+          <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}" class="player-scenario-link">${Utils.escapeHtml(s.title)}</a>${systemTag}
         </li>`;
     });
     contentHtml += `</ul>`;
   } else if (!bareContent) {
-    contentHtml = `<p style="text-align: center; color: #a0aec0;">${Utils.escapeHtml(fallbackText)}</p>`;
+    contentHtml = `<p class="player-empty-muted player-empty-muted--center">${Utils.escapeHtml(fallbackText)}</p>`;
   }
 
   if (bareContent) return contentHtml;
 
   return `
-    <section class="player-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column;">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">${Utils.escapeHtml(title)} ${scenariosList ? `(${scenariosList.length})本` : ''}</h2>
-      <div style="padding: 10px 0; overflow-y: auto; flex-grow: 1; max-height: 250px;">
+    <section class="player-scenarios player-section-card player-section-card--column">
+      <h2 class="player-section-title">${Utils.escapeHtml(title)} ${scenariosList ? `(${scenariosList.length})本` : ''}</h2>
+      <div class="player-scenarios-scroll player-scenarios-scroll--sm">
         ${contentHtml}
       </div>
     </section>
@@ -799,30 +768,30 @@ function buildGmableScenariosHtml(registeredRows, candidateRows, isOwner) {
 
   let listHtml = "";
   if (registered.length > 0) {
-    listHtml = `<div id="gmable-scenarios-list"><ul style="margin: 0; padding: 0; list-style: none;">${registered.map(s => `
-      <li style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+    listHtml = `<div id="gmable-scenarios-list"><ul class="player-list-plain">${registered.map(s => `
+      <li class="player-list-row">
         ${isOwner
           ? `<button type="button" class="btn-gmable-scenario is-active" data-id="${Utils.escapeHtml(String(s.id))}">GM可✓</button>`
           : `<span class="gmable-badge">GM可</span>`}
         <a href="../scenarios/detail.html?id=${encodeURIComponent(s.id)}">${Utils.escapeHtml(s.title || s.id)}</a>
-        ${s.system ? `<span style="font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${Utils.escapeHtml(s.system)}</span>` : ""}
+        ${s.system ? `<span class="player-system-tag">${Utils.escapeHtml(s.system)}</span>` : ""}
       </li>
     `).join("")}</ul></div>`;
   } else {
-    listHtml = `<div id="gmable-scenarios-list"><p class="u-muted" style="text-align: center;">まだ GM可能シナリオがありません。「登録」ボタンまたはシナリオ詳細から追加できます。</p></div>`;
+    listHtml = `<div id="gmable-scenarios-list"><p class="u-muted player-empty-muted--center">まだ GM可能シナリオがありません。「登録」ボタンまたはシナリオ詳細から追加できます。</p></div>`;
   }
 
   const registerBtn = isOwner
-    ? `<button type="button" id="btn-open-gmable-modal" class="btn-secondary" style="font-size: 0.8rem; padding: 4px 10px;">登録</button>`
+    ? `<button type="button" id="btn-open-gmable-modal" class="btn-secondary btn-compact-secondary">登録</button>`
     : "";
 
   return `
-    <section class="player-gmable-scenarios" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <h2 style="margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+    <section class="player-gmable-scenarios player-section-card">
+      <h2 class="player-section-title player-section-title--split">
         <span>GM可能シナリオ (<span id="gmable-scenarios-count">${registered.length}</span>)</span>
         ${registerBtn}
       </h2>
-      <p class="u-muted" style="font-size: 0.85rem; margin-top: 0;">ここに登録したシナリオで、他プレイヤーが「気になる」を押すと Discord DM で通知されます。</p>
+      <p class="u-muted player-gmable-hint">ここに登録したシナリオで、他プレイヤーが「気になる」を押すと Discord DM で通知されます。</p>
       ${listHtml}
     </section>
   `;
@@ -832,24 +801,19 @@ async function saveBulkAvailability() {
   const playerId = Utils.getQueryParam("id");
   if (!playerId) return;
 
-  const container = document.getElementById("bulk-input-container");
-  const payload = Utils.collectAvailabilityChanges(container, playerId);
-
   const modal = document.getElementById("availability-modal");
-
-  if (payload.length === 0) {
-     Utils.showToast("変更された予定データがありません。", "info");
-     if (modal) modal.close();
-     return;
-  }
-
   try {
-    const res = await Utils.apiPost("player_availability", payload);
-    if (res) {
-      if (modal) modal.close();
-      Utils.showToast("予定を保存しました！", "success");
-      location.reload();
+    const saved = await Utils.saveAvailabilityFromGrid(
+      document.getElementById("bulk-input-container"),
+      playerId,
+      { successMessage: "予定を保存しました！" }
+    );
+    if (!saved) {
+      modal?.close();
+      return;
     }
+    modal?.close();
+    location.reload();
   } catch (err) {
     console.error("一括保存エラー:", err);
     Utils.showToast("保存に失敗しました: " + err.message, "error");
@@ -857,18 +821,13 @@ async function saveBulkAvailability() {
 }
 
 async function renderBulkInputGrid(playerId, year, month) {
-  const monthLabel = document.getElementById("bulk-month-label");
-  if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
-
-  let existingData = [];
-  try {
-    existingData = await Utils.fetchPlayerAvailabilities(playerId, year, month);
-  } catch (e) {
-    console.error("既存予定の取得に失敗:", e);
-  }
-
-  const container = document.getElementById("bulk-input-container");
-  Utils.renderAvailabilityGrid(container, year, month, existingData);
+  await Utils.loadAndRenderAvailabilityGrid(
+    document.getElementById("bulk-input-container"),
+    playerId,
+    year,
+    month,
+    { monthLabel: document.getElementById("bulk-month-label") }
+  );
 }
 
 Utils.domReady(main);

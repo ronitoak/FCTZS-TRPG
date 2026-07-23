@@ -75,6 +75,8 @@ function renderNextSession(container, sessions, runsById, scenariosById) {
  */
 function renderOngoing(container, runs, scenariosById, sessionsByRunId, playersById) {
   const now = new Date();
+  const allSessions = Array.from(sessionsByRunId?.values() ?? []).flat();
+  const { nextByRunId } = Utils.buildNextAndLastByRunId(allSessions, now);
 
   const activeRuns = (Array.isArray(runs) ? runs : [])
     .filter(r => r && r.status !== "done");
@@ -101,12 +103,7 @@ function renderOngoing(container, runs, scenariosById, sessionsByRunId, playersB
     }
 
     // このrunに紐づくsession一覧から「次回」を取る
-    const runSessions = sessionsByRunId?.get(String(r.id)) ?? [];
-    const next = runSessions
-      .filter(s => s && s.status === "scheduled")
-      .map(s => ({ ...s, _start: toValidDate(s.start) }))
-      .filter(s => s._start && s._start > now)
-      .sort((a, b) => a._start - b._start)[0];
+    const next = nextByRunId.get(r.id) ?? nextByRunId.get(String(r.id));
 
     let nextText = "未定";
     if (next && next._start) {
@@ -373,41 +370,44 @@ async function openHomeAvailabilityModal(selectedDate) {
 
   const year = homeDashboardState.currentDate.getFullYear();
   const month = homeDashboardState.currentDate.getMonth();
-  if (monthLabel) monthLabel.textContent = `${year}年 ${month + 1}月`;
+  const data = await Utils.loadAndRenderAvailabilityGrid(
+    container,
+    homeDashboardState.playerId,
+    year,
+    month,
+    {
+      monthLabel,
+      onFetchError: err => {
+        console.error("予定入力データの取得に失敗しました:", err);
+        Utils.showToast("予定データの取得に失敗しました。", "error");
+      }
+    }
+  );
+  if (data === null) return;
 
-  try {
-    const monthlyData = await Utils.fetchPlayerAvailabilities(homeDashboardState.playerId, year, month);
-    Utils.renderAvailabilityGrid(container, year, month, monthlyData);
-    modal.showModal();
-
-    requestAnimationFrame(() => {
-      const selectedToggle = container.querySelector(`[data-date="${selectedDate}"]`);
-      selectedToggle?.closest(".bulk-row")?.scrollIntoView({ block: "center" });
-    });
-  } catch (err) {
-    console.error("予定入力データの取得に失敗しました:", err);
-    Utils.showToast("予定データの取得に失敗しました。", "error");
-  }
+  modal.showModal();
+  requestAnimationFrame(() => {
+    const selectedToggle = container.querySelector(`[data-date="${selectedDate}"]`);
+    selectedToggle?.closest(".bulk-row")?.scrollIntoView({ block: "center" });
+  });
 }
 
 async function saveHomeAvailability() {
   const modal = document.getElementById("home-availability-modal");
   const container = document.getElementById("home-bulk-input-container");
   const saveButton = document.getElementById("home-save-availability-btn");
-  const payload = Utils.collectAvailabilityChanges(container, homeDashboardState.playerId);
-
-  if (payload.length === 0) {
-    Utils.showToast("変更された予定データがありません。", "info");
-    modal?.close();
-    return;
-  }
 
   try {
     if (saveButton) saveButton.disabled = true;
-    await Utils.apiPost("player_availability", payload);
+    const saved = await Utils.saveAvailabilityFromGrid(container, homeDashboardState.playerId, {
+      successMessage: "予定を保存しました。"
+    });
+    if (!saved) {
+      modal?.close();
+      return;
+    }
     await refreshHomeAvailability();
     modal?.close();
-    Utils.showToast("予定を保存しました。", "success");
   } catch (err) {
     console.error("予定の保存に失敗しました:", err);
     Utils.showToast("予定の保存に失敗しました: " + err.message, "error");

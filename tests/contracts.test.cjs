@@ -225,9 +225,12 @@ test("卓メンバー判定はjunctionのみで行う", () => {
 });
 
 test("作成画面のuploadは認証付き共通APIへ統一される", () => {
+  const utilsSource = readFileSync(join(root, "js", "utils.js"), "utf8");
+  assert.match(utilsSource, /async function uploadImageAsWebp\(/);
+  assert.match(utilsSource, /apiUpload\(/);
   ["character_create.js", "scenario_create.js", "session_create.js"].forEach(file => {
     const source = readFileSync(join(root, "js", file), "utf8");
-    assert.match(source, /Utils\.apiUpload\(formData\)/, `${file} がUtils.apiUploadを使用していません`);
+    assert.match(source, /Utils\.uploadImageAsWebp\(/, `${file} がUtils.uploadImageAsWebpを使用していません`);
     assert.doesNotMatch(source, /fetch\(`\$\{API_BASE\}\/api\/upload`/, `${file} にraw upload fetchが残っています`);
   });
 });
@@ -246,15 +249,16 @@ test("ログイン本人解決は /api/me で行う", () => {
   assert.match(workerSource, /resolveCallerPlayerId/);
   assert.match(workerSource, /resolveDiscordIdForRequest/);
   assert.match(workerSource, /listClaimablePlayers/);
+  assert.match(workerSource, /claimable_players/);
   assert.match(workerSource, /fetchAuthAdminUser/);
   assert.match(workerSource, /fetchDiscordIdWithProviderToken/);
   assert.match(workerSource, /X-Discord-Provider-Token/);
   const homeSource = readFileSync(join(root, "js", "home.js"), "utf8");
   assert.match(homeSource, /apiGet\("me"/);
   assert.match(homeSource, /apiPost\("me\/link"/);
-  assert.match(homeSource, /claimable_players/);
   assert.match(homeSource, /resolveDiscordIdForCurrentSession/);
   assert.match(homeSource, /provider_token/);
+  assert.match(homeSource, /populatePlayerLinkClaimSelect/);
 });
 
 test("卓membershipと最終セッションはService Roleで読む", () => {

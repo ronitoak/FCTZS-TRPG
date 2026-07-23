@@ -74,16 +74,7 @@ async function main() {
     const doneRuns = relatedRuns.filter(r => r?.status === "done");
 
     const now = new Date();
-    const nextByRunId = new Map();
-    for (const s of (Array.isArray(sessions) ? sessions : [])) {
-      if (!s?.run_id) continue;
-      if (s.status !== "scheduled") continue;
-      const d = Utils.toDate(s.start);
-      if (!d || d <= now) continue;
-
-      const cur = nextByRunId.get(s.run_id);
-      if (!cur || d < cur._start) nextByRunId.set(s.run_id, { ...s, _start: d });
-    }
+    const { nextByRunId } = Utils.buildNextAndLastByRunId(sessions, now);
 
     activeRuns.sort((a, b) => {
       const an = nextByRunId.get(a.id)?._start?.getTime() ?? Infinity;
@@ -411,27 +402,13 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
     };
 
     const fileInput = e.target.querySelector('input[name="image_file"]');
-    if (fileInput && fileInput.files[0]) {
-        try {
-            const originalFile = fileInput.files[0];
-            const compressedBlob = await Utils.compressAndResizeImage(originalFile);
-
-            const formData = new FormData();
-            const fileBaseName = originalFile.name.includes('.')
-                ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.'))
-                : originalFile.name;
-            const fileName = `${fileBaseName}.webp`;
-
-            formData.append("file", compressedBlob, fileName);
-            formData.append("type", "scenario");
-
-            const uploadResult = await Utils.apiUpload(formData, {
-              replaceUrl: currentScenarioImageUrl || null
-            });
-            payload.image_url = uploadResult.url;
-            currentScenarioImageUrl = uploadResult.url;
-        } catch (err) {
-            console.error("画像アップロードエラー:", err);
+    if (fileInput?.files[0]) {
+        const uploadedUrl = await Utils.uploadImageAsWebp(fileInput.files[0], "scenario", {
+            replaceUrl: currentScenarioImageUrl || null
+        });
+        if (uploadedUrl) {
+            payload.image_url = uploadedUrl;
+            currentScenarioImageUrl = uploadedUrl;
         }
     }
 
@@ -451,18 +428,9 @@ document.getElementById('edit-scenario-form')?.addEventListener('submit', async 
 function renderRunCard(r, statusLabel, statusClass, nextByRunId, playerMapById, playerMapByName) {
   const title = Utils.escapeHtml(r.title ?? r.id);
 
-  // 新形式のgm_idを優先し、旧形式の文字列gmも表示互換として残す。
-  const gmObj = r.gm_id ? playerMapById.get(r.gm_id) : null;
-  const gmName = r.gm_name || (gmObj ? gmObj.player_name : '—');
-  const gm = Utils.escapeHtml(gmName);
-
-  // 参加者は player_ids（junction 由来）を名前解決して表示する。
-  const targetPlayers = Array.isArray(r.player_ids) ? r.player_ids : [];
-  const resolvedPlayers = targetPlayers.map(identifier => {
-      const pObj = playerMapById.get(identifier) || playerMapByName.get(identifier);
-      return pObj ? pObj.player_name : identifier;
-  });
-  const players = Utils.escapeHtml(resolvedPlayers.length > 0 ? resolvedPlayers.join(" / ") : "—");
+  const { gmName: resolvedGmName, plNames } = Utils.resolveRunParticipants(r, playerMapById, playerMapByName);
+  const gm = Utils.escapeHtml(resolvedGmName || "—");
+  const players = Utils.escapeHtml(plNames.length > 0 ? plNames.join(" / ") : "—");
 
   const next = nextByRunId.get(r.id);
   const nextText = next?._start

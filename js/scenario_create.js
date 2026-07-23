@@ -13,22 +13,7 @@ Utils.domReady(async () => {
     const imagePreviewContainer = document.getElementById("image-preview-container");
     const imagePreview = document.getElementById("image-preview");
 
-    if (imageFileInput && imagePreviewContainer && imagePreview) {
-        imageFileInput.addEventListener("change", () => {
-            const file = imageFileInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
-                    imagePreviewContainer.style.display = "block";
-                };
-                reader.readAsDataURL(file);
-            } else {
-                imagePreview.src = "";
-                imagePreviewContainer.style.display = "none";
-            }
-        });
-    }
+    Utils.setupImagePreview(imageFileInput, imagePreview, imagePreviewContainer);
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -38,25 +23,8 @@ Utils.domReady(async () => {
         const fd = new FormData(form);
 
         let imageUrl = null;
-        if (imageFileInput && imageFileInput.files[0]) {
-            try {
-                const originalFile = imageFileInput.files[0];
-                const compressedBlob = await Utils.compressAndResizeImage(originalFile);
-
-                const formData = new FormData();
-                const fileBaseName = originalFile.name.includes('.') 
-                    ? originalFile.name.substring(0, originalFile.name.lastIndexOf('.')) 
-                    : originalFile.name;
-                const fileName = `${fileBaseName}.webp`;
-
-                formData.append("file", compressedBlob, fileName);
-                formData.append("type", "scenario");
-
-                const uploadResult = await Utils.apiUpload(formData);
-                imageUrl = uploadResult?.url || null;
-            } catch (err) {
-                console.error("画像アップロードエラー:", err);
-            }
+        if (imageFileInput?.files[0]) {
+            imageUrl = await Utils.uploadImageAsWebp(imageFileInput.files[0], "scenario");
         }
 
         const payload = {

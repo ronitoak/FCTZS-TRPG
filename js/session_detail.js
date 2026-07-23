@@ -76,21 +76,15 @@ async function main() {
     const runChars = runCharIds.map(id => charsById.get(id)).filter(Boolean);
 
     const playersById = new Map(allPlayers.map(p => [p.player_id, p]));
-    let gmName = run.gm_name ?? "—";
-    if ((!gmName || gmName === "—") && run.gm_id && playersById.has(run.gm_id)) {
-        gmName = playersById.get(run.gm_id).player_name;
-    }
-    let plNames = Array.isArray(run.player_names) ? run.player_names : [];
-    if (plNames.length === 0 && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
-        plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
-    }
+    const { gmName: resolvedGmName, plNames } = Utils.resolveRunParticipants(run, playersById);
+    const gmName = resolvedGmName || "—";
 
     // ログインユーザーのDiscord IDを取得
     let currentUserDiscordId = null;
     try {
       const { data: { session: authSession } } = await window.supabase.auth.getSession();
       if (authSession) {
-        currentUserDiscordId = authSession?.user?.user_metadata?.sub || authSession?.user?.user_metadata?.provider_id || (authSession?.user?.identities?.find(id => id.provider === 'discord')?.id);
+        currentUserDiscordId = Utils.extractDiscordIdFromUser(authSession.user);
       }
     } catch (e) {
       console.error("ログイン情報の取得に失敗しました", e);
@@ -521,7 +515,10 @@ function registerSessionDetailEvents() {
         return;
       }
 
-      const discordId = session?.user?.user_metadata?.sub || session?.user?.user_metadata?.provider_id || (session?.user?.identities?.find(id => id.provider === 'discord')?.id);
+      let discordId = Utils.extractDiscordIdFromUser(session?.user);
+      if (!discordId) {
+        discordId = await Utils.resolveDiscordIdForCurrentSession(session);
+      }
       if (!discordId) {
         Utils.showToast("DiscordユーザーIDが取得できませんでした。", "info");
         btn.disabled = false;

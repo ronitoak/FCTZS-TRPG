@@ -317,59 +317,41 @@ function normalizeIdList(value) {
 }
 
 /**
- * junction を洗替する（書込みの正）。
+ * junction テーブルを洗替する（書込みの正）。親IDに紐づく既存行を削除し、渡された子ID配列で並び順を再構築する。
  * Service Role 必須（RLS 回避）。
  */
-async function replaceRunPlayers(env, runId, playerIds, userId) {
+async function replaceJunctionRows(env, table, parentCol, parentId, childCol, childIds, userId) {
   const { res: delRes, text: delText } = await sbServiceFetch(
     env,
-    `/rest/v1/${SUPABASE_TABLES.runPlayers}?run_id=eq.${encodeURIComponent(runId)}`,
+    `/rest/v1/${table}?${parentCol}=eq.${encodeURIComponent(parentId)}`,
     { method: "DELETE", headers: { Prefer: "return=minimal" } }
   );
   if (!delRes.ok) {
-    throw new Error(`run_players delete failed: ${delText}`);
+    throw new Error(`${table} delete failed: ${delText}`);
   }
-  if (!Array.isArray(playerIds) || playerIds.length === 0) return;
-  const rows = playerIds.map((player_id, index) => ({
-    run_id: runId,
-    player_id,
+  if (!Array.isArray(childIds) || childIds.length === 0) return;
+  const rows = childIds.map((childId, index) => ({
+    [parentCol]: parentId,
+    [childCol]: childId,
     sort_order: index + 1,
     user_id: userId || null
   }));
-  const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runPlayers}`, {
+  const { res, text } = await sbServiceFetch(env, `/rest/v1/${table}`, {
     method: "POST",
     headers: { Prefer: "return=minimal" },
     body: rows
   });
   if (!res.ok) {
-    throw new Error(`run_players insert failed: ${text}`);
+    throw new Error(`${table} insert failed: ${text}`);
   }
 }
 
+async function replaceRunPlayers(env, runId, playerIds, userId) {
+  return replaceJunctionRows(env, SUPABASE_TABLES.runPlayers, "run_id", runId, "player_id", playerIds, userId);
+}
+
 async function replaceRunCharacters(env, runId, characterIds, userId) {
-  const { res: delRes, text: delText } = await sbServiceFetch(
-    env,
-    `/rest/v1/${SUPABASE_TABLES.runCharacters}?run_id=eq.${encodeURIComponent(runId)}`,
-    { method: "DELETE", headers: { Prefer: "return=minimal" } }
-  );
-  if (!delRes.ok) {
-    throw new Error(`run_characters delete failed: ${delText}`);
-  }
-  if (!Array.isArray(characterIds) || characterIds.length === 0) return;
-  const rows = characterIds.map((character_id, index) => ({
-    run_id: runId,
-    character_id,
-    sort_order: index + 1,
-    user_id: userId || null
-  }));
-  const { res, text } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.runCharacters}`, {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: rows
-  });
-  if (!res.ok) {
-    throw new Error(`run_characters insert failed: ${text}`);
-  }
+  return replaceJunctionRows(env, SUPABASE_TABLES.runCharacters, "run_id", runId, "character_id", characterIds, userId);
 }
 
 /**
@@ -395,24 +377,23 @@ async function replaceMembershipFromBody(env, runId, body, userId) {
   }
 }
 
-async function fetchRunIdsByPlayer(env, request, playerId) {
+/** junction から run_id を引く共通処理。 */
+async function fetchRunIdsFromJunction(env, table, column, value) {
   const { res, text } = await sbServiceFetch(
     env,
-    `/rest/v1/${SUPABASE_TABLES.runPlayers}?select=run_id&player_id=eq.${encodeURIComponent(playerId)}`
+    `/rest/v1/${table}?select=run_id&${column}=eq.${encodeURIComponent(value)}`
   );
   if (!res.ok) return [];
   const rows = JSON.parse(text);
   return Array.isArray(rows) ? [...new Set(rows.map(row => String(row.run_id)).filter(Boolean))] : [];
 }
 
+async function fetchRunIdsByPlayer(env, request, playerId) {
+  return fetchRunIdsFromJunction(env, SUPABASE_TABLES.runPlayers, "player_id", playerId);
+}
+
 async function fetchRunIdsByCharacter(env, request, characterId) {
-  const { res, text } = await sbServiceFetch(
-    env,
-    `/rest/v1/${SUPABASE_TABLES.runCharacters}?select=run_id&character_id=eq.${encodeURIComponent(characterId)}`
-  );
-  if (!res.ok) return [];
-  const rows = JSON.parse(text);
-  return Array.isArray(rows) ? [...new Set(rows.map(row => String(row.run_id)).filter(Boolean))] : [];
+  return fetchRunIdsFromJunction(env, SUPABASE_TABLES.runCharacters, "character_id", characterId);
 }
 
 /**
@@ -769,9 +750,30 @@ const jsonHeaders = {
   "Access-Control-Allow-Origin": "*"
 };
 
+/** Supabaseレスポンスをそのまま中継する（status・bodyは変更しない）。 */
+function proxyJson(res, text) {
+  return new Response(text, { status: res.status, headers: jsonHeaders });
+}
+/** 成功系JSONレスポンスの共通生成。 */
+function jsonOk(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
+}
+/** エラー系JSONレスポンスの共通生成。detail等の追加フィールドはextraで渡す。 */
+function jsonErr(message, status, extra = null) {
+  const body = extra && typeof extra === "object"
+    ? { error: message, ...extra }
+    : { error: message };
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
 // path・query・返却形式が完全に同じGETだけを宣言表へ寄せる。
 const FIXED_GET_PROXY_ROUTES = Object.freeze({
   "/api/sessions": `/rest/v1/${SUPABASE_TABLES.sessions}?select=${SESSION_LIST_SELECT}`
+});
+
+// url.search をそのまま中継するだけの完全パススルーGET（デフォルト値・独自selectの補完なし）。
+const SEARCH_PASSTHROUGH_GET_ROUTES = Object.freeze({
+  "/api/player_availability": `/rest/v1/${SUPABASE_TABLES.playerAvailability}`
 });
 
 /** クライアント参照を外したレガシーGET。410で明示退役。 */
@@ -803,7 +805,7 @@ async function handleFetch(request, env, ctx) {
   try {
     return await routeApiRequest(request, env, ctx, url);
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    return jsonErr(e.message, 500);
   }
 }
 
@@ -821,7 +823,7 @@ async function routeApiRequest(request, env, ctx, url) {
     && !(request.method === "PATCH" && url.pathname === PUBLIC_EXTERNAL_PASSED_PATH)
   ) {
     if (!await validateUserBearer(request, env)) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+      return jsonErr("Unauthorized", 401);
     }
   }
 
@@ -891,33 +893,42 @@ function handleOptions() {
 }
 
 /**
- * SupabaseへのAPI通信を共通化・正規化するラッパー関数
+ * SupabaseへのAPI通信を共通化・正規化する内部関数。
+ * options.serviceRole=true でService Role鍵、falseで利用者Bearer（未指定時は匿名鍵）を使う。
  */
-async function sbFetch(env, request, pathAndQuery, options = {}) {
-  const url = `${env.SUPABASE_URL}${pathAndQuery}`;
+async function supabaseRest(env, pathAndQuery, options = {}) {
+  const { request = null, serviceRole = false, method, headers = {}, body } = options;
 
+  if (serviceRole && !env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("内部処理エラー: SUPABASE_SERVICE_ROLE_KEY が設定されていません");
+    throw new Error("Service Role is not configured");
+  }
+
+  const apiKey = serviceRole ? env.SUPABASE_SERVICE_ROLE_KEY : env.SUPABASE_ANON_KEY;
   // 利用者認証を引き継ぐ経路だけBearerを採用し、内部処理は匿名キーへ明示的にフォールバックする。
   const authHeader = request?.headers?.get("Authorization");
 
-  const headers = {
-    "apikey": env.SUPABASE_ANON_KEY,
-    "Authorization": authHeader || `Bearer ${env.SUPABASE_ANON_KEY}`,
-    "Content-Type": "application/json",
-    ...(options.headers || {})
-  };
-
   const fetchOptions = {
-    method: options.method || "GET",
-    headers: headers,
+    method: method || "GET",
+    headers: {
+      "apikey": apiKey,
+      "Authorization": serviceRole ? `Bearer ${apiKey}` : (authHeader || `Bearer ${apiKey}`),
+      "Content-Type": "application/json",
+      ...headers
+    }
   };
-
-  if (options.body) {
-    fetchOptions.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+  if (body) {
+    fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
   }
 
-  const res = await fetch(url, fetchOptions);
+  const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, fetchOptions);
   const text = await res.text();
   return { res, text };
+}
+
+/** 利用者認証を引き継ぐ通常経路。 */
+async function sbFetch(env, request, pathAndQuery, options = {}) {
+  return supabaseRest(env, pathAndQuery, { ...options, request });
 }
 
 /**
@@ -1209,25 +1220,7 @@ async function resolveCallerPlayerId(request, env) {
  * 通常HTTPルーターへrequestを受け取る形では公開せず、Secretをログやレスポンスへ含めない。
  */
 async function sbServiceFetch(env, pathAndQuery, options = {}) {
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("内部処理エラー: SUPABASE_SERVICE_ROLE_KEY が設定されていません");
-    throw new Error("Service Role is not configured");
-  }
-
-  const headers = {
-    "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
-    "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-    "Content-Type": "application/json",
-    ...(options.headers || {})
-  };
-  const fetchOptions = { method: options.method || "GET", headers };
-  if (options.body) {
-    fetchOptions.body = typeof options.body === "string" ? options.body : JSON.stringify(options.body);
-  }
-
-  const res = await fetch(`${env.SUPABASE_URL}${pathAndQuery}`, fetchOptions);
-  const text = await res.text();
-  return { res, text };
+  return supabaseRest(env, pathAndQuery, { ...options, serviceRole: true });
 }
 
 function appendSafeViewQuery(url, allowedFilters, allowedOrderColumns, defaultOrder, selectColumns) {
@@ -1267,16 +1260,19 @@ function appendSafeViewQuery(url, allowedFilters, allowedOrderColumns, defaultOr
 async function handleGet(request, env, url) {
     const retiredHint = RETIRED_GET_ROUTES[url.pathname];
     if (retiredHint) {
-      return new Response(JSON.stringify({
-        error: "Gone",
-        detail: retiredHint
-      }), { status: 410, headers: jsonHeaders });
+      return new Response(JSON.stringify({ error: "Gone", detail: retiredHint }), { status: 410, headers: jsonHeaders });
     }
 
     const fixedProxyPath = FIXED_GET_PROXY_ROUTES[url.pathname];
     if (fixedProxyPath) {
       const { res, text } = await sbFetch(env, request, fixedProxyPath);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
+    }
+
+    const searchProxyBase = SEARCH_PASSTHROUGH_GET_ROUTES[url.pathname];
+    if (searchProxyBase) {
+      const { res, text } = await sbFetch(env, request, `${searchProxyBase}${url.search}`);
+      return proxyJson(res, text);
     }
 
     // ビューは security_invoker のため、anon RLS だと空になる。Service Role で読む。
@@ -1285,14 +1281,14 @@ async function handleGet(request, env, url) {
         env,
         `/rest/v1/${SUPABASE_TABLES.characterLastSession}?select=character_id,last_session_start`
       );
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // ログイン本人のプレイヤー解決（Discord 自動連携込み）。ホーム等のクライアント照合の正本。
     if (request.method === "GET" && url.pathname === "/api/me") {
       const user = await getAuthenticatedUser(request, env);
       if (!user?.id) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+        return jsonErr("Unauthorized", 401);
       }
       const discordId = await resolveDiscordIdForRequest(request, env, user);
       const claimablePlayers = await listClaimablePlayers(env, discordId);
@@ -1311,7 +1307,7 @@ async function handleGet(request, env, url) {
         `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,user_id,discord_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
       );
       if (!res.ok) {
-        return new Response(text, { status: res.status, headers: jsonHeaders });
+        return proxyJson(res, text);
       }
       const rows = JSON.parse(text);
       const player = Array.isArray(rows) && rows[0] ? rows[0] : null;
@@ -1330,14 +1326,14 @@ async function handleGet(request, env, url) {
       const target_id = url.searchParams.get("target_id");
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.comments}?select=*&target_type=eq.${target_type}&target_id=eq.${target_id}&order=created_at.asc`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/comments/recent") {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.comments}?select=id,created_at,target_type,target_id,author,body&order=created_at.desc&limit=${limit}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (
@@ -1347,7 +1343,7 @@ async function handleGet(request, env, url) {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 1), 100);
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.recentCommentsWithNames}?select=id,created_at,target_type,target_id,author,body,target_name&order=created_at.desc&limit=${limit}`;
       const { res, text } = await sbFetch(env, request, apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
 
@@ -1404,7 +1400,7 @@ async function handleGet(request, env, url) {
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.characters}?${queryParams.join("&")}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // ---- Schedule & Players ----
@@ -1412,7 +1408,7 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/player_profiles") {
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.playerProfiles}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // プレイヤー一覧の取得
@@ -1420,26 +1416,20 @@ async function handleGet(request, env, url) {
       // 明示selectがない一覧呼び出しは名簿表示に必要な列だけ返す。
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.players}${url.search || `?select=${PLAYER_LIST_SELECT}`}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/player_detail_summary") {
       const playerId = url.searchParams.get("player_id");
       if (!playerId) {
-        return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("player_id required", 400);
       }
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.playerDetailSummary}?select=${PLAYER_DETAIL_SUMMARY_SELECT}&player_id=eq.${encodeURIComponent(playerId)}`;
       const { res, text } = await sbFetch(env, request, apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
-    // プレイヤーの予定を取得
-    if (request.method === "GET" && url.pathname === "/api/player_availability") {
-      // フロントから送られたクエリパラメータ（?select=...&player_id=...）をそのままSupabaseに渡す
-      const apiUrl = `/rest/v1/${SUPABASE_TABLES.playerAvailability}${url.search}`;
-      const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
-    }
+    // プレイヤーの予定を取得（?select=...&player_id=... はSEARCH_PASSTHROUGH_GET_ROUTESでそのまま中継）
 
     // 複数プレイヤーの予定を照合 (AND計算)
     if (request.method === "GET" && url.pathname === "/api/schedule_match") {
@@ -1447,23 +1437,23 @@ async function handleGet(request, env, url) {
       const startDate = url.searchParams.get("start_date");
       const endDate = url.searchParams.get("end_date");
 
-      if (!playerIdsStr) return new Response(JSON.stringify({ error: "player_ids required" }), { status: 400, headers: jsonHeaders });
+      if (!playerIdsStr) return jsonErr("player_ids required", 400);
       if (
         !/^\d{4}-\d{2}-\d{2}$/.test(startDate || "")
         || !/^\d{4}-\d{2}-\d{2}$/.test(endDate || "")
       ) {
-        return new Response(JSON.stringify({ error: "valid start_date and end_date required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("valid start_date and end_date required", 400);
       }
 
       const playerIds = playerIdsStr.split(",").map(value => value.trim()).filter(Boolean);
       if (playerIds.length === 0 || playerIds.length > 100) {
-        return new Response(JSON.stringify({ error: "player_ids must contain 1 to 100 values" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("player_ids must contain 1 to 100 values", 400);
       }
       const encodedIds = playerIds.map(id => encodeURIComponent(id)).join(",");
 
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.playerAvailability}?select=*,players(player_name)&player_id=in.(${encodedIds})&target_date=gte.${startDate}&target_date=lte.${endDate}`);
 
-      if (!res.ok) return new Response(text, { status: res.status, headers: jsonHeaders });
+      if (!res.ok) return proxyJson(res, text);
 
       const raw = JSON.parse(text);
       const grouped = {};
@@ -1512,7 +1502,7 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/scenario_interests") {
       const scenarioId = url.searchParams.get("scenario_id");
       if (!scenarioId) {
-        return new Response(JSON.stringify({ error: "scenario_id required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("scenario_id required", 400);
       }
       const count = await countScenarioInterests(env, scenarioId);
       let interested = false;
@@ -1527,10 +1517,7 @@ async function handleGet(request, env, url) {
           interested = Array.isArray(rows) && rows.length > 0;
         }
       }
-      return new Response(JSON.stringify({ scenario_id: scenarioId, interested, count }), {
-        status: 200,
-        headers: jsonHeaders
-      });
+      return jsonOk({ scenario_id: scenarioId, interested, count });
     }
 
     if (request.method === "GET" && url.pathname === "/api/scenarios") {
@@ -1560,7 +1547,7 @@ async function handleGet(request, env, url) {
 
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.scenarios}?${queryParams.join("&")}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/scenario_summary") {
@@ -1572,7 +1559,7 @@ async function handleGet(request, env, url) {
         SCENARIO_SUMMARY_SELECT
       );
       const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.scenarioSummary}?${query}`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_scenarios") {
@@ -1593,7 +1580,7 @@ async function handleGet(request, env, url) {
       }
 
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // ---- Runs & Sessions (既存保持) ----
@@ -1646,9 +1633,7 @@ async function handleGet(request, env, url) {
 
       const { res, text } = await sbFetch(env, request, apiUrl);
 
-      if (!res.ok) {
-        return new Response(text, { status: res.status, headers: jsonHeaders });
-      }
+      if (!res.ok) return proxyJson(res, text);
 
       let runs = JSON.parse(text);
       runs = await hydrateRunsMembershipFromJunctions(env, request, runs);
@@ -1694,7 +1679,7 @@ async function handleGet(request, env, url) {
     if (request.method === "GET" && url.pathname === "/api/recruitments") {
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.recruitments}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/recruitment_list") {
@@ -1706,14 +1691,14 @@ async function handleGet(request, env, url) {
         RECRUITMENT_LIST_SELECT
       );
       const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitmentList}?${query}`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
         // 応募者一覧の取得
     if (request.method === "GET" && url.pathname === "/api/recruitment_applicants") {
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}${url.search || "?select=*"}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/sessions/detail") {
@@ -1729,10 +1714,10 @@ async function handleGet(request, env, url) {
         if (encodedIds.length > 0) filters.push(`run_id=in.(${encodedIds.join(",")})`);
       }
       if (!id && !runId && !runIds) {
-        return new Response(JSON.stringify({ error: "id, run_id or run_ids required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("id, run_id or run_ids required", 400);
       }
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.sessions}?${filters.join("&")}`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
         // ---- Master Data & Helpers (既存保持) ----
@@ -1740,33 +1725,33 @@ async function handleGet(request, env, url) {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.systemAttributes}${query}`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/system_skill_bases") {
       const system = url.searchParams.get("system");
       const query = system ? `?system=eq.${encodeURIComponent(system)}&order=sort_order.asc` : "?order=sort_order.asc";
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.systemSkillBases}${query}`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_skill_list") {
       const charId = url.searchParams.get("character_id");
       const { res, text } = await sbFetch(env, request,`/rest/v1/${SUPABASE_TABLES.characterSkillList}?character_id=eq.${charId}`);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (request.method === "GET" && url.pathname === "/api/character_attributes") {
       const charId = url.searchParams.get("character_id");
       if (!charId) {
-        return new Response(JSON.stringify({ error: "character_id required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("character_id required", 400);
       }
       const { res, text } = await sbFetch(
         env,
         request,
         `/rest/v1/${SUPABASE_TABLES.characterAttributes}?character_id=eq.${encodeURIComponent(charId)}`
       );
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // ---- Posts (なりきりチャット) ----
@@ -1775,7 +1760,7 @@ async function handleGet(request, env, url) {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 100);
       const apiUrl = `/rest/v1/${SUPABASE_TABLES.posts}?select=*&order=created_at.desc&limit=${limit}`;
       const { res, text } = await sbFetch(env, request,apiUrl);
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
 }
@@ -1786,7 +1771,7 @@ async function handlePost(request, env, ctx, url) {
     if (url.pathname === "/api/me/link") {
       const user = await getAuthenticatedUser(request, env);
       if (!user?.id) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+        return jsonErr("Unauthorized", 401);
       }
       const authUserId = String(user.id);
 
@@ -1794,12 +1779,12 @@ async function handlePost(request, env, ctx, url) {
       try {
         body = await request.json();
       } catch {
-        return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("Invalid JSON", 400);
       }
       const playerId = String(body?.player_id || "").trim();
       const providerToken = String(body?.provider_token || "").trim();
       if (!playerId) {
-        return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("player_id required", 400);
       }
 
       const discordId = await resolveDiscordIdForRequest(request, env, user, providerToken || null);
@@ -1833,21 +1818,21 @@ async function handlePost(request, env, ctx, url) {
         `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,user_id,discord_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
       );
       if (!targetRes.ok) {
-        return new Response(targetText, { status: targetRes.status, headers: jsonHeaders });
+        return proxyJson(targetRes, targetText);
       }
       const targetRows = JSON.parse(targetText);
       const target = Array.isArray(targetRows) ? targetRows[0] : null;
       if (!target) {
-        return new Response(JSON.stringify({ error: "プレイヤーが見つかりません" }), { status: 404, headers: jsonHeaders });
+        return jsonErr("プレイヤーが見つかりません", 404);
       }
 
       const targetUserId = target.user_id ? String(target.user_id) : "";
       const targetDiscordId = target.discord_id ? String(target.discord_id).trim() : "";
       if (targetUserId && targetUserId !== authUserId) {
-        return new Response(JSON.stringify({ error: "このプレイヤーは別アカウントに連携済みです" }), { status: 403, headers: jsonHeaders });
+        return jsonErr("このプレイヤーは別アカウントに連携済みです", 403);
       }
       if (targetDiscordId && targetDiscordId !== discordId) {
-        return new Response(JSON.stringify({ error: "このプレイヤーは別の Discord に紐づいています" }), { status: 403, headers: jsonHeaders });
+        return jsonErr("このプレイヤーは別の Discord に紐づいています", 403);
       }
 
       const { res: discordConflictRes, text: discordConflictText } = await sbServiceFetch(
@@ -1888,7 +1873,7 @@ async function handlePost(request, env, ctx, url) {
     // Cloudflare R2 画像アップロード
     if (url.pathname === "/api/upload") {
       if (!env.R2_BUCKET) {
-        return new Response(JSON.stringify({ error: "R2_BUCKET is not bound" }), { status: 500, headers: jsonHeaders });
+        return jsonErr("R2_BUCKET is not bound", 500);
       }
 
       const formData = await request.formData();
@@ -1897,27 +1882,27 @@ async function handlePost(request, env, ctx, url) {
       const type = R2_ALLOWED_TYPES.includes(typeRaw) ? typeRaw : null;
 
       if (!file) {
-        return new Response(JSON.stringify({ error: "No file uploaded" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("No file uploaded", 400);
       }
       if (!type) {
-        return new Response(JSON.stringify({ error: "Invalid upload type" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("Invalid upload type", 400);
       }
 
       const fileSize = Number(file.size);
       if (Number.isFinite(fileSize) && fileSize > R2_MAX_UPLOAD_BYTES) {
-        return new Response(JSON.stringify({ error: "File too large" }), { status: 413, headers: jsonHeaders });
+        return jsonErr("File too large", 413);
       }
 
       const originalName = file.name || "image.png";
       const extMatch = originalName.match(/\.[^.]+$/);
       const ext = extMatch ? extMatch[0].toLowerCase() : "";
       if (!R2_ALLOWED_EXTENSIONS.includes(ext)) {
-        return new Response(JSON.stringify({ error: "Unsupported file extension" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("Unsupported file extension", 400);
       }
 
       const mimeType = String(file.type || "").toLowerCase();
       if (mimeType && !R2_ALLOWED_MIME_TYPES.includes(mimeType)) {
-        return new Response(JSON.stringify({ error: "Unsupported content type" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("Unsupported content type", 400);
       }
 
       const key = `${type}/${crypto.randomUUID()}${ext}`;
@@ -1952,12 +1937,12 @@ async function handlePost(request, env, ctx, url) {
         : [];
 
       if (!runId || !sessionDate || requestedIds.length === 0) {
-        return new Response(JSON.stringify({ error: "run_id, session_date, player_ids required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("run_id, session_date, player_ids required", 400);
       }
 
       const callerPlayerId = await resolveCallerPlayerId(request, env);
       if (!callerPlayerId) {
-        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        return jsonErr("Player mapping required", 403);
       }
 
       const { res: runRes, text: runText } = await sbFetch(
@@ -1965,13 +1950,11 @@ async function handlePost(request, env, ctx, url) {
         request,
         `/rest/v1/${SUPABASE_TABLES.runs}?select=id,gm_id,user_id&id=eq.${encodeURIComponent(runId)}&limit=1`
       );
-      if (!runRes.ok) {
-        return new Response(JSON.stringify({ error: "Run lookup failed", detail: runText }), { status: runRes.status, headers: jsonHeaders });
-      }
+      if (!runRes.ok) return jsonErr("Run lookup failed", runRes.status, { detail: runText });
       const runRows = JSON.parse(runText);
       const run = Array.isArray(runRows) ? runRows[0] : null;
       if (!run) {
-        return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
+        return jsonErr("Run not found", 404);
       }
 
       const playersByRun = await fetchPlayerIdsByRunIds(env, [runId]);
@@ -1982,17 +1965,17 @@ async function handlePost(request, env, ctx, url) {
       );
       const isRunMember = runPlayerIds.has(callerPlayerId);
       if (!isRunMember) {
-        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: jsonHeaders });
+        return jsonErr("Forbidden", 403);
       }
 
       const invalidTargets = requestedIds.filter(id => !runPlayerIds.has(id));
       if (invalidTargets.length > 0) {
-        return new Response(JSON.stringify({ error: "player_ids must belong to the run" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("player_ids must belong to the run", 400);
       }
 
       const targetDate = new Date(sessionDate);
       if (Number.isNaN(targetDate.getTime())) {
-        return new Response(JSON.stringify({ error: "Invalid session_date" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("Invalid session_date", 400);
       }
       const ymd = targetDate.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
       const updates = [];
@@ -2017,10 +2000,8 @@ async function handlePost(request, env, ctx, url) {
           body: updates
         }
       );
-      if (!res.ok) {
-        return new Response(JSON.stringify({ error: "Availability sync failed", detail: text }), { status: res.status, headers: jsonHeaders });
-      }
-      return new Response(JSON.stringify({ ok: true, count: updates.length }), { status: 200, headers: jsonHeaders });
+      if (!res.ok) return jsonErr("Availability sync failed", res.status, { detail: text });
+      return jsonOk({ ok: true, count: updates.length });
     }
 
     const body = await request.json();
@@ -2029,42 +2010,33 @@ async function handlePost(request, env, ctx, url) {
     // ---- 気になる ON（新規INSERT時のみ GM可能者へDM） ----
     if (url.pathname === "/api/scenario_interests") {
       if (!callerPlayerId) {
-        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        return jsonErr("Player mapping required", 403);
       }
       const scenarioId = body?.scenario_id != null ? String(body.scenario_id).trim() : "";
       if (!scenarioId) {
-        return new Response(JSON.stringify({ error: "scenario_id required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("scenario_id required", 400);
       }
 
       const { res: scenarioRes, text: scenarioText } = await sbServiceFetch(
         env,
         `/rest/v1/${SUPABASE_TABLES.scenarios}?select=id,title&id=eq.${encodeURIComponent(scenarioId)}&limit=1`
       );
-      if (!scenarioRes.ok) {
-        return new Response(JSON.stringify({ error: "Scenario lookup failed", detail: scenarioText }), { status: scenarioRes.status, headers: jsonHeaders });
-      }
+      if (!scenarioRes.ok) return jsonErr("Scenario lookup failed", scenarioRes.status, { detail: scenarioText });
       const scenarioRows = JSON.parse(scenarioText);
       const scenario = Array.isArray(scenarioRows) ? scenarioRows[0] : null;
       if (!scenario) {
-        return new Response(JSON.stringify({ error: "Scenario not found" }), { status: 404, headers: jsonHeaders });
+        return jsonErr("Scenario not found", 404);
       }
 
       const { res: existingRes, text: existingText } = await sbServiceFetch(
         env,
         `/rest/v1/${SUPABASE_TABLES.scenarioInterests}?select=player_id&scenario_id=eq.${encodeURIComponent(scenarioId)}&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
       );
-      if (!existingRes.ok) {
-        return new Response(JSON.stringify({ error: "Interest lookup failed", detail: existingText }), { status: existingRes.status, headers: jsonHeaders });
-      }
+      if (!existingRes.ok) return jsonErr("Interest lookup failed", existingRes.status, { detail: existingText });
       const existingRows = JSON.parse(existingText);
       if (Array.isArray(existingRows) && existingRows.length > 0) {
         const count = await countScenarioInterests(env, scenarioId);
-        return new Response(JSON.stringify({
-          scenario_id: scenarioId,
-          interested: true,
-          count,
-          notified: false
-        }), { status: 200, headers: jsonHeaders });
+        return jsonOk({ scenario_id: scenarioId, interested: true, count, notified: false });
       }
 
       const { res: insertRes, text: insertText } = await sbServiceFetch(
@@ -2076,9 +2048,7 @@ async function handlePost(request, env, ctx, url) {
           body: [{ player_id: callerPlayerId, scenario_id: scenarioId }]
         }
       );
-      if (!insertRes.ok) {
-        return new Response(JSON.stringify({ error: "Interest insert failed", detail: insertText }), { status: insertRes.status, headers: jsonHeaders });
-      }
+      if (!insertRes.ok) return jsonErr("Interest insert failed", insertRes.status, { detail: insertText });
 
       const { res: playerRes, text: playerText } = await sbServiceFetch(
         env,
@@ -2097,12 +2067,7 @@ async function handlePost(request, env, ctx, url) {
       }));
 
       const count = await countScenarioInterests(env, scenarioId);
-      return new Response(JSON.stringify({
-        scenario_id: scenarioId,
-        interested: true,
-        count,
-        notified: true
-      }), { status: 201, headers: jsonHeaders });
+      return jsonOk({ scenario_id: scenarioId, interested: true, count, notified: true }, 201);
     }
 
     // ---- Comments ----
@@ -2123,7 +2088,7 @@ async function handlePost(request, env, ctx, url) {
         }
       }
       const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [commentBody] });
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // ---- Characters (一括作成) ----
@@ -2131,24 +2096,22 @@ async function handlePost(request, env, ctx, url) {
     if (url.pathname === "/api/character_full") {
       const authUser = await getAuthenticatedUser(request, env);
       if (!authUser?.id || !callerPlayerId) {
-        return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+        return jsonErr("Player mapping required", 403);
       }
       const { character, attributes, skills } = body;
       const ownerPlayerId = character?.player_id != null ? String(character.player_id).trim() : "";
       if (!ownerPlayerId) {
-        return new Response(JSON.stringify({ error: "player_id required" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("player_id required", 400);
       }
 
       const { res: ownerRes, text: ownerText } = await sbServiceFetch(
         env,
         `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&player_id=eq.${encodeURIComponent(ownerPlayerId)}&limit=1`
       );
-      if (!ownerRes.ok) {
-        return new Response(JSON.stringify({ error: "Player lookup failed", detail: ownerText }), { status: ownerRes.status, headers: jsonHeaders });
-      }
+      if (!ownerRes.ok) return jsonErr("Player lookup failed", ownerRes.status, { detail: ownerText });
       const ownerRows = JSON.parse(ownerText);
       if (!Array.isArray(ownerRows) || ownerRows.length === 0) {
-        return new Response(JSON.stringify({ error: "player_id not found" }), { status: 400, headers: jsonHeaders });
+        return jsonErr("player_id not found", 400);
       }
 
       const { user_id: _ignoredUserId, ...characterFields } = character || {};
@@ -2162,9 +2125,7 @@ async function handlePost(request, env, ctx, url) {
         `/rest/v1/${SUPABASE_TABLES.characters}`,
         { method: "POST", headers: { Prefer: "return=representation" }, body: [ownedCharacter] }
       );
-      if (!charRes.ok) {
-        return new Response(JSON.stringify({ error: "Character creation failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
-      }
+      if (!charRes.ok) return jsonErr("Character creation failed", charRes.status, { detail: charText });
 
       const newCharId = JSON.parse(charText)[0].id;
 
@@ -2196,7 +2157,7 @@ async function handlePost(request, env, ctx, url) {
           console.warn("キャラクター技能の保存に失敗:", skillText);
         }
       }
-      return new Response(JSON.stringify({ id: newCharId }), { status: 201, headers: jsonHeaders });
+      return jsonOk({ id: newCharId }, 201);
     }
 
     // 複合キーの重複を通常更新として扱う資源だけ、宣言済み経路でUpsertする。
@@ -2206,10 +2167,9 @@ async function handlePost(request, env, ctx, url) {
 
       if (url.pathname === "/api/player_availability") {
         if (!callerPlayerId) {
-          return new Response(JSON.stringify({
-            error: "Player mapping required",
+          return jsonErr("Player mapping required", 403, {
             detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
-          }), { status: 403, headers: jsonHeaders });
+          });
         }
 
         const rows = (Array.isArray(body) ? body : [body])
@@ -2255,7 +2215,7 @@ async function handlePost(request, env, ctx, url) {
             headers: { Prefer: "resolution=merge-duplicates" },
             body: upsertBody
           });
-      if (!res.ok) return new Response(JSON.stringify({ error: "Upsert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      if (!res.ok) return jsonErr("Upsert Failed", res.status, { detail: text });
       return new Response(text || JSON.stringify({ ok: true, count: Array.isArray(upsertBody) ? upsertBody.length : 1 }), {
         status: 201,
         headers: jsonHeaders
@@ -2280,7 +2240,7 @@ async function handlePost(request, env, ctx, url) {
         lost_rate: body.lost_rate || 'low'
       };
       const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.scenarios}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
-      if (!res.ok) return new Response(JSON.stringify({ error: "Scenario Insert Failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      if (!res.ok) return jsonErr("Scenario Insert Failed", res.status, { detail: text });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
@@ -2289,7 +2249,7 @@ async function handlePost(request, env, ctx, url) {
       // Service Role: junction RLS（INVOKER）を回避する。
       const user = await getAuthenticatedUser(request, env);
       if (!user?.id) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+        return jsonErr("Unauthorized", 401);
       }
       const runPayload = { ...body, user_id: user.id };
       stripMembershipFromRunPayload(runPayload);
@@ -2298,7 +2258,7 @@ async function handlePost(request, env, ctx, url) {
         headers: { Prefer: "return=representation" },
         body: [runPayload]
       });
-      if (!res.ok) return new Response(JSON.stringify({ error: "Run creation failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      if (!res.ok) return jsonErr("Run creation failed", res.status, { detail: text });
       const insertedData = JSON.parse(text);
       const created = insertedData && insertedData[0];
       if (created?.id) {
@@ -2322,10 +2282,9 @@ async function handlePost(request, env, ctx, url) {
     // 募集保存の応答を先に確定し、Discord通知はwaitUntilで非同期に継続する。
     if (url.pathname === "/api/recruitments") {
       if (!callerPlayerId) {
-        return new Response(JSON.stringify({
-          error: "Player mapping required",
+        return jsonErr("Player mapping required", 403, {
           detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
-        }), { status: 403, headers: jsonHeaders });
+        });
       }
       const recruitPayload = Array.isArray(body)
         ? body.map(row => ({ ...row, owner_player_id: callerPlayerId }))
@@ -2336,15 +2295,14 @@ async function handlePost(request, env, ctx, url) {
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
         ctx.waitUntil(recruited({ ...record, ...(Array.isArray(body) ? body[0] : body), owner_player_id: callerPlayerId }, env));
       }
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     if (url.pathname === "/api/recruitment_applicants") {
       if (!callerPlayerId) {
-        return new Response(JSON.stringify({
-          error: "Player mapping required",
+        return jsonErr("Player mapping required", 403, {
           detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
-        }), { status: 403, headers: jsonHeaders });
+        });
       }
       const applicantPayload = Array.isArray(body)
         ? body.map(row => ({ ...row, player_id: callerPlayerId }))
@@ -2356,7 +2314,7 @@ async function handlePost(request, env, ctx, url) {
           ctx.waitUntil(checkAndNotifyIfFulfilled(payload.recruitment_id || payload.recruit_id, env));
         }
       }
-      return new Response(text, { status: res.status, headers: jsonHeaders });
+      return proxyJson(res, text);
     }
 
     // ---- シンプルなInsert系 ----
@@ -2366,12 +2324,12 @@ async function handlePost(request, env, ctx, url) {
 
       if (url.pathname === "/api/player_profiles") {
         if (!callerPlayerId) {
-          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+          return jsonErr("Player mapping required", 403);
         }
         requestBody = { ...body, player_id: callerPlayerId };
       } else if (url.pathname === "/api/posts") {
         if (!callerPlayerId) {
-          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+          return jsonErr("Player mapping required", 403);
         }
         if (body?.character_id) {
           const { res: charRes, text: charText } = await sbFetch(
@@ -2379,12 +2337,10 @@ async function handlePost(request, env, ctx, url) {
             request,
             `/rest/v1/${SUPABASE_TABLES.characters}?select=id&id=eq.${encodeURIComponent(body.character_id)}&player_id=eq.${encodeURIComponent(callerPlayerId)}&limit=1`
           );
-          if (!charRes.ok) {
-            return new Response(JSON.stringify({ error: "Character ownership check failed", detail: charText }), { status: charRes.status, headers: jsonHeaders });
-          }
+          if (!charRes.ok) return jsonErr("Character ownership check failed", charRes.status, { detail: charText });
           const owned = JSON.parse(charText);
           if (!Array.isArray(owned) || owned.length === 0) {
-            return new Response(JSON.stringify({ error: "character_id is not owned by caller" }), { status: 403, headers: jsonHeaders });
+            return jsonErr("character_id is not owned by caller", 403);
           }
         }
         requestBody = [body];
@@ -2393,14 +2349,14 @@ async function handlePost(request, env, ctx, url) {
       }
 
       const { res, text } = await sbFetch(env, request, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
-      if (!res.ok) return new Response(JSON.stringify({ error: "Insert failed", detail: text }), { status: res.status, headers: jsonHeaders });
+      if (!res.ok) return jsonErr("Insert failed", res.status, { detail: text });
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
     return new Response("Not found", { status: 404, headers: jsonHeaders });
 
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+    return jsonErr(e.message, 500);
   }
 }
 
@@ -2414,14 +2370,10 @@ async function handlePatch(request, env, ctx, url) {
         const playerId = body?.player_id != null ? String(body.player_id).trim() : "";
         const sourceRows = body?.external_passed_scenarios;
         if (!playerId || !Array.isArray(sourceRows)) {
-          return new Response(JSON.stringify({
-            error: "player_id and external_passed_scenarios are required"
-          }), { status: 400, headers: jsonHeaders });
+          return jsonErr("player_id and external_passed_scenarios are required", 400);
         }
         if (sourceRows.length > 100) {
-          return new Response(JSON.stringify({
-            error: "external_passed_scenarios must contain at most 100 items"
-          }), { status: 400, headers: jsonHeaders });
+          return jsonErr("external_passed_scenarios must contain at most 100 items", 400);
         }
 
         const normalizedRows = [];
@@ -2432,14 +2384,10 @@ async function handlePatch(request, env, ctx, url) {
           const system = row?.system != null ? String(row.system).trim() : "";
           const note = row?.note != null ? String(row.note).trim() : "";
           if (!id || !title || id.length > 100 || title.length > 200 || system.length > 100 || note.length > 200) {
-            return new Response(JSON.stringify({
-              error: "Invalid external passed scenario"
-            }), { status: 400, headers: jsonHeaders });
+            return jsonErr("Invalid external passed scenario", 400);
           }
           if (knownIds.has(id)) {
-            return new Response(JSON.stringify({
-              error: "Duplicate external passed scenario id"
-            }), { status: 400, headers: jsonHeaders });
+            return jsonErr("Duplicate external passed scenario id", 400);
           }
           knownIds.add(id);
           normalizedRows.push({ id, title, system, note });
@@ -2449,15 +2397,10 @@ async function handlePatch(request, env, ctx, url) {
           env,
           `/rest/v1/${SUPABASE_TABLES.players}?select=player_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
         );
-        if (!playerRes.ok) {
-          return new Response(JSON.stringify({ error: "Player lookup failed", detail: playerText }), {
-            status: playerRes.status,
-            headers: jsonHeaders
-          });
-        }
+        if (!playerRes.ok) return jsonErr("Player lookup failed", playerRes.status, { detail: playerText });
         const players = JSON.parse(playerText);
         if (!Array.isArray(players) || players.length === 0) {
-          return new Response(JSON.stringify({ error: "Player not found" }), { status: 404, headers: jsonHeaders });
+          return jsonErr("Player not found", 404);
         }
 
         const { res, text } = await sbServiceFetch(
@@ -2469,15 +2412,10 @@ async function handlePatch(request, env, ctx, url) {
             body: [{ player_id: playerId, external_passed_scenarios: normalizedRows }]
           }
         );
-        if (!res.ok) {
-          return new Response(JSON.stringify({ error: "External passed scenarios update failed", detail: text }), {
-            status: res.status,
-            headers: jsonHeaders
-          });
-        }
+        if (!res.ok) return jsonErr("External passed scenarios update failed", res.status, { detail: text });
         return new Response(text, { status: 200, headers: jsonHeaders });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        return jsonErr(e.message, 500);
       }
     }
 
@@ -2491,10 +2429,10 @@ async function handlePatch(request, env, ctx, url) {
           headers: { "Prefer": "return=representation" },
           body: body
         });
-        if (!res.ok) return new Response(JSON.stringify({ error: `${resource} update failed`, detail: text }), { status: res.status, headers: jsonHeaders });
+        if (!res.ok) return jsonErr(`${resource} update failed`, res.status, { detail: text });
         return new Response(text, { status: 200, headers: jsonHeaders });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        return jsonErr(e.message, 500);
       }
     }
 
@@ -2504,7 +2442,7 @@ async function handlePatch(request, env, ctx, url) {
       try {
         const user = await getAuthenticatedUser(request, env);
         if (!user?.id) {
-          return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: jsonHeaders });
+          return jsonErr("Unauthorized", 401);
         }
         const callerPlayerId = await resolveCallerPlayerId(request, env);
         const body = await request.json();
@@ -2517,11 +2455,11 @@ async function handlePatch(request, env, ctx, url) {
           : `/rest/v1/${SUPABASE_TABLES.runs}${url.search}${url.search ? "&" : "?"}select=id,user_id,gm_id`;
         const { res: ownedRes, text: ownedText } = await sbServiceFetch(env, lookupPath, { method: "GET" });
         if (!ownedRes.ok) {
-          return new Response(JSON.stringify({ error: "Run lookup failed", detail: ownedText }), { status: ownedRes.status, headers: jsonHeaders });
+          return jsonErr("Run lookup failed", ownedRes.status, { detail: ownedText });
         }
         const ownedRows = JSON.parse(ownedText);
         if (!Array.isArray(ownedRows) || ownedRows.length === 0) {
-          return new Response(JSON.stringify({ error: "Run not found" }), { status: 404, headers: jsonHeaders });
+          return jsonErr("Run not found", 404);
         }
 
         const playersByRun = await fetchPlayerIdsByRunIds(
@@ -2576,9 +2514,9 @@ async function handlePatch(request, env, ctx, url) {
           if (hydrated[0]) ctx.waitUntil(syncCharacterScenarios(hydrated[0], env));
           return new Response(JSON.stringify(hydrated), { status: 200, headers: jsonHeaders });
         }
-        return new Response(text, { status: res.status, headers: jsonHeaders });
+        return proxyJson(res, text);
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        return jsonErr(e.message, 500);
       }
     }
   }
@@ -2591,29 +2529,22 @@ async function handleDelete(request, env, url) {
       try {
         const callerPlayerId = await resolveCallerPlayerId(request, env);
         if (!callerPlayerId) {
-          return new Response(JSON.stringify({ error: "Player mapping required" }), { status: 403, headers: jsonHeaders });
+          return jsonErr("Player mapping required", 403);
         }
         const scenarioId = url.searchParams.get("scenario_id");
         if (!scenarioId) {
-          return new Response(JSON.stringify({ error: "scenario_id required" }), { status: 400, headers: jsonHeaders });
+          return jsonErr("scenario_id required", 400);
         }
         const { res, text } = await sbServiceFetch(
           env,
           `/rest/v1/${SUPABASE_TABLES.scenarioInterests}?scenario_id=eq.${encodeURIComponent(scenarioId)}&player_id=eq.${encodeURIComponent(callerPlayerId)}`,
           { method: "DELETE", headers: { Prefer: "return=minimal" } }
         );
-        if (!res.ok) {
-          return new Response(JSON.stringify({ error: "Interest delete failed", detail: text }), { status: res.status, headers: jsonHeaders });
-        }
+        if (!res.ok) return jsonErr("Interest delete failed", res.status, { detail: text });
         const count = await countScenarioInterests(env, scenarioId);
-        return new Response(JSON.stringify({
-          scenario_id: scenarioId,
-          interested: false,
-          count,
-          notified: false
-        }), { status: 200, headers: jsonHeaders });
+        return jsonOk({ scenario_id: scenarioId, interested: false, count, notified: false });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        return jsonErr(e.message, 500);
       }
     }
 
@@ -2621,10 +2552,10 @@ async function handleDelete(request, env, url) {
     if (DELETE_ALLOWED_RESOURCES.includes(resource)) {
       try {
         const { res, text } = await sbFetch(env, request, `/rest/v1/${resource}${url.search}`, { method: "DELETE" });
-        if (!res.ok) return new Response(JSON.stringify({ error: `${resource} delete failed`, detail: text }), { status: res.status, headers: jsonHeaders });
+        if (!res.ok) return jsonErr(`${resource} delete failed`, res.status, { detail: text });
         return new Response(text, { status: 200, headers: jsonHeaders });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: jsonHeaders });
+        return jsonErr(e.message, 500);
       }
     }
   }

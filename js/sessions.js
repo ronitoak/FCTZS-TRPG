@@ -9,22 +9,6 @@ let scenariosById = new Map();
 let sessionsByRunId = new Map();
 let playersById = new Map();
 
-function resolveGmName(run) {
-  let gmName = run.gm_name ?? "";
-  if (!gmName && run.gm_id && playersById.has(run.gm_id)) {
-    gmName = playersById.get(run.gm_id).player_name;
-  }
-  return gmName || "";
-}
-
-function resolvePlNames(run) {
-  let plNames = Array.isArray(run.player_names) ? run.player_names : [];
-  if (plNames.length === 0 && Array.isArray(run.player_ids) && run.player_ids.length > 0) {
-    plNames = run.player_ids.map(id => playersById.get(id)?.player_name || id);
-  }
-  return plNames;
-}
-
 function createRunCard(run, now) {
   const scenario = scenariosById.get(run.scenario_id);
 
@@ -47,8 +31,7 @@ function createRunCard(run, now) {
   const badgeClass = run.status === "active" ? "active" : run.status === "planning" ? "planning" : "done";
   const badgeText = Utils.statusMap[run.status] || "不明";
 
-  const gmName = resolveGmName(run);
-  const plNames = resolvePlNames(run);
+  const { gmName, plNames } = Utils.resolveRunParticipants(run, playersById);
 
   const card = document.createElement("article");
   card.className = "sessions-card";
@@ -189,13 +172,14 @@ function applyFilters() {
     if (keyword) {
       const title = (run.title ?? "").toLowerCase();
       const scenarioTitle = (scenario?.title ?? "").toLowerCase();
-      const gmName = resolveGmName(run).toLowerCase();
-      const plNames = resolvePlNames(run).map(n => String(n).toLowerCase());
+      const { gmName, plNames } = Utils.resolveRunParticipants(run, playersById);
+      const gmNameLower = gmName.toLowerCase();
+      const plNamesLower = plNames.map(n => String(n).toLowerCase());
       const hit =
         title.includes(keyword) ||
         scenarioTitle.includes(keyword) ||
-        gmName.includes(keyword) ||
-        plNames.some(n => n.includes(keyword));
+        gmNameLower.includes(keyword) ||
+        plNamesLower.some(n => n.includes(keyword));
       if (!hit) return false;
     }
 
@@ -223,14 +207,8 @@ async function main() {
     const runsSafe = Array.isArray(runs) ? runs : [];
     const sessionsSafe = Array.isArray(sessions) ? sessions : [];
     playersById = new Map((Array.isArray(players) ? players : []).map(p => [p.player_id, p]));
-    scenariosById = new Map(scenariosSafe.map(s => [s.id, s]));
-    sessionsByRunId = new Map();
-
-    for (const s of sessionsSafe) {
-      if (!s?.run_id) continue;
-      if (!sessionsByRunId.has(s.run_id)) sessionsByRunId.set(s.run_id, []);
-      sessionsByRunId.get(s.run_id).push(s);
-    }
+    scenariosById = Utils.indexById(scenariosSafe);
+    sessionsByRunId = Utils.groupBy(sessionsSafe, s => s?.run_id);
 
     allRuns = runsSafe.filter(r => r?.id);
 

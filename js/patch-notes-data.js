@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-07-24",
+    type: "announcement",
+    title: "スプラトゥーン レイダース発売",
+    detail: "スプラトゥーン レイダースが発売されました。しばらくは夢中になってます。"
+  },
+  {
+    date: "2026-07-24",
     type: "improvement",
     title: "内部リファクタで重複コードを削減",
     detail: "フロントの画像アップロード・部活外正規化・卓参加者解決・予定入力などを utils に集約し、player_detail のインラインスタイルを CSS へ移しました。Worker のレスポンス生成・Supabase通信・junction 書込みの重複も共通化しています。画面機能と外部APIの挙動は変更していません。"

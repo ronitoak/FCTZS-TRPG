@@ -6,7 +6,7 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
-    date: "2026-07-24",
+    date: "2026-07-23",
     type: "announcement",
     title: "スプラトゥーン レイダース発売",
     detail: "スプラトゥーン レイダースが発売されました。しばらくは夢中になってます。"

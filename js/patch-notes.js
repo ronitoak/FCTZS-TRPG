@@ -6,11 +6,12 @@
     release: { label: "リリース", className: "release" },
     feature: { label: "機能追加", className: "feature" },
     improvement: { label: "改善", className: "improvement" },
-    fix: { label: "不具合修正", className: "fix" }
+    fix: { label: "不具合修正", className: "fix" },
+    announcement: { label: "お知らせ", className: "announcement" }
   };
 
   // トップは利用者向けのみ。インフラ・内部改善（improvement）は詳細ページ専用。
-  const SUMMARY_TYPES = new Set(["release", "feature", "fix"]);
+  const SUMMARY_TYPES = new Set(["release", "feature", "fix", "announcement"]);
 
   function getNotes() {
     return Array.isArray(window.PATCH_NOTES) ? window.PATCH_NOTES : [];

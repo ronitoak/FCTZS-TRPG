@@ -149,16 +149,16 @@ Utils.domReady(async () => {
             || /(?:^|\n)\s*STR\s+\d+/i.test(trimmedText);
         if (looksLikeIachara) {
             const profileFields = {
-                job: /職業:\s*([^/\n]+)/,
-                age: /年齢:\s*([^/\n]+)/,
-                gender: /性別:\s*([^/\n]+)/,
-                height: /身長:\s*([^/\n]+)/,
-                weight: /体重:\s*([^/\n]+)/,
-                origin: /出身:\s*([^/\n]+)/
+                job: /職業:[ \t]*([^/\n]*)/,
+                age: /年齢:[ \t]*([^/\n]*)/,
+                gender: /性別:[ \t]*([^/\n]*)/,
+                height: /身長:[ \t]*([^/\n]*)/,
+                weight: /体重:[ \t]*([^/\n]*)/,
+                origin: /出身:[ \t]*([^/\n]*)/
             };
 
             // 名前: 本名 (よみがな) 形式に対応
-            const nameLine = trimmedText.match(/名前:\s*([^\n]+)/);
+            const nameLine = trimmedText.match(/名前:[ \t]*([^\n]+)/);
             if (nameLine) {
                 const rawName = nameLine[1].trim();
                 const withReading = rawName.match(/^(.+?)\s*[（(]([^）)]+)[）)]\s*$/);
@@ -169,7 +169,7 @@ Utils.domReady(async () => {
                     result.profile.name = rawName;
                 }
             }
-            const readingField = trimmedText.match(/読み仮名:\s*([^/\n]+)/);
+            const readingField = trimmedText.match(/読み仮名:[ \t]*([^/\n]*)/);
             if (readingField && readingField[1].trim()) {
                 result.profile.reading = readingField[1].trim();
             }
@@ -177,8 +177,9 @@ Utils.domReady(async () => {
             for (const [key, regex] of Object.entries(profileFields)) {
                 const m = trimmedText.match(regex);
                 if (!m) continue;
+                // 空欄や「髪の色:」のような次項目ラベルを値として拾わない
                 const val = m[1].trim();
-                if (!val) continue;
+                if (!val || /[:：]$/.test(val) || /^(髪の色|瞳の色|肌の色|タグ)/.test(val)) continue;
                 result.profile[key] = (['job', 'gender', 'origin'].includes(key))
                     ? val
                     : (parseInt(val, 10) || null);

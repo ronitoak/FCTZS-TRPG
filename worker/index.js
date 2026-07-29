@@ -225,6 +225,90 @@ async function sendDiscordDirectMessage(discordUserId, content, env) {
   return { ok: true };
 }
 
+/** players 1件の簡潔な参照（通知用）。Service Role。 */
+async function fetchPlayerBrief(env, playerId) {
+  if (!playerId) return null;
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_id,player_name,discord_id&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+  );
+  if (!res.ok) {
+    console.warn("プレイヤー参照に失敗:", text);
+    return null;
+  }
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+
+/**
+ * 主要リソースの新規作成を管理者（既定: p-001）へ通知する。
+ * DISCORD_USE_TEST_WEBHOOK 有効時はテスト用 Webhook のみ（本番 DM しない）。
+ */
+async function notifyAdminOfCreate(env, {
+  kindLabel,
+  title,
+  actorPlayerId = null,
+  actorName = null,
+  extraLine = null,
+  detailUrl = null
+} = {}) {
+  const adminPlayerId = String(env.CREATE_NOTIFY_PLAYER_ID || "p-001").trim();
+  if (env.CREATE_NOTIFY_ENABLED === "false" || env.CREATE_NOTIFY_ENABLED === "0") {
+    return;
+  }
+
+  const actorLabel = actorName || actorPlayerId || "不明";
+  const nameText = String(title || "").trim() || "（名称なし）";
+  const lines = [
+    `【新規作成】${kindLabel}`,
+    `名前: ${nameText}`,
+    `追加者: ${actorLabel}${actorPlayerId ? `（${actorPlayerId}）` : ""}`
+  ];
+  if (extraLine) lines.push(String(extraLine));
+  if (detailUrl) lines.push(String(detailUrl));
+  const content = lines.join("\n");
+
+  const useTest = env.DISCORD_USE_TEST_WEBHOOK === "true" || env.DISCORD_USE_TEST_WEBHOOK === "1";
+  if (useTest) {
+    await sendDiscordNotification(
+      `[TEST] 作成通知（実DMは送信しません）\n宛先プレイヤー: ${adminPlayerId}\n\n${content}`,
+      {
+        title: `作成通知（テスト）: ${kindLabel}`,
+        description: content,
+        color: DISCORD_COLORS.sessionNotice
+      },
+      env,
+      env.DISCORD_TEST_WEBHOOK_URL || null
+    );
+    return;
+  }
+
+  const admin = await fetchPlayerBrief(env, adminPlayerId);
+  if (!admin?.discord_id) {
+    console.warn("作成通知先の Discord ID がありません:", adminPlayerId);
+    return;
+  }
+  await sendDiscordDirectMessage(admin.discord_id, content, env);
+}
+
+function scheduleCreateNotify(ctx, env, payload) {
+  const task = notifyAdminOfCreate(env, payload).catch(err => {
+    console.warn("作成通知に失敗:", err);
+  });
+  if (ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(task);
+  }
+}
+
+async function resolveActorForNotify(env, callerPlayerId) {
+  if (!callerPlayerId) return { actorPlayerId: null, actorName: "不明" };
+  const player = await fetchPlayerBrief(env, callerPlayerId);
+  return {
+    actorPlayerId: String(callerPlayerId),
+    actorName: player?.player_name || String(callerPlayerId)
+  };
+}
+
 async function countScenarioInterests(env, scenarioId) {
   const { res, text } = await sbServiceFetch(
     env,
@@ -2157,6 +2241,21 @@ async function handlePost(request, env, ctx, url) {
           console.warn("キャラクター技能の保存に失敗:", skillText);
         }
       }
+
+      const actor = await resolveActorForNotify(env, callerPlayerId);
+      const ownerName = ownerPlayerId === callerPlayerId
+        ? null
+        : ((await fetchPlayerBrief(env, ownerPlayerId))?.player_name || ownerPlayerId);
+      const siteUrl = resolveSiteUrl(env);
+      scheduleCreateNotify(ctx, env, {
+        kindLabel: "キャラクター",
+        title: ownedCharacter.name || newCharId,
+        actorPlayerId: actor.actorPlayerId,
+        actorName: actor.actorName,
+        extraLine: ownerName ? `所有者: ${ownerName}（${ownerPlayerId}）` : null,
+        detailUrl: `${siteUrl}/character/detail.html?id=${encodeURIComponent(newCharId)}`
+      });
+
       return jsonOk({ id: newCharId }, 201);
     }
 
@@ -2241,6 +2340,23 @@ async function handlePost(request, env, ctx, url) {
       };
       const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.scenarios}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [scenarioData] });
       if (!res.ok) return jsonErr("Scenario Insert Failed", res.status, { detail: text });
+      try {
+        const inserted = JSON.parse(text);
+        const row = Array.isArray(inserted) ? inserted[0] : inserted;
+        if (row?.id) {
+          const actor = await resolveActorForNotify(env, callerPlayerId);
+          const siteUrl = resolveSiteUrl(env);
+          scheduleCreateNotify(ctx, env, {
+            kindLabel: "シナリオ",
+            title: row.title || scenarioData.title || row.id,
+            actorPlayerId: actor.actorPlayerId,
+            actorName: actor.actorName,
+            detailUrl: `${siteUrl}/scenarios/detail.html?id=${encodeURIComponent(row.id)}`
+          });
+        }
+      } catch (err) {
+        console.warn("シナリオ作成通知の準備に失敗:", err);
+      }
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 
@@ -2274,6 +2390,15 @@ async function handlePost(request, env, ctx, url) {
         const hydrated = await hydrateRunsMembershipFromJunctions(env, request, [created]);
         const out = hydrated[0] || created;
         ctx.waitUntil(syncCharacterScenarios(out, env));
+        const actor = await resolveActorForNotify(env, callerPlayerId);
+        const siteUrl = resolveSiteUrl(env);
+        scheduleCreateNotify(ctx, env, {
+          kindLabel: "卓",
+          title: out.title || out.id,
+          actorPlayerId: actor.actorPlayerId,
+          actorName: actor.actorName,
+          detailUrl: `${siteUrl}/sessions/detail.html?id=${encodeURIComponent(out.id)}`
+        });
         return new Response(JSON.stringify([out]), { status: 201, headers: jsonHeaders });
       }
       return new Response(text, { status: 201, headers: jsonHeaders });
@@ -2294,6 +2419,17 @@ async function handlePost(request, env, ctx, url) {
         const insertedData = JSON.parse(text);
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
         ctx.waitUntil(recruited({ ...record, ...(Array.isArray(body) ? body[0] : body), owner_player_id: callerPlayerId }, env));
+        const actor = await resolveActorForNotify(env, callerPlayerId);
+        const siteUrl = resolveSiteUrl(env);
+        scheduleCreateNotify(ctx, env, {
+          kindLabel: "募集",
+          title: record?.scenario_title || body?.scenario_title || record?.scenario_id || "（シナリオ未設定）",
+          actorPlayerId: actor.actorPlayerId,
+          actorName: actor.actorName,
+          detailUrl: record?.id
+            ? `${siteUrl}/recruit/detail.html?id=${encodeURIComponent(record.id)}`
+            : null
+        });
       }
       return proxyJson(res, text);
     }
@@ -2350,6 +2486,45 @@ async function handlePost(request, env, ctx, url) {
 
       const { res, text } = await sbFetch(env, request, targetUrl, { method: "POST", headers: { "Prefer": "return=representation" }, body: requestBody });
       if (!res.ok) return jsonErr("Insert failed", res.status, { detail: text });
+
+      if (url.pathname === "/api/sessions" || url.pathname === "/api/posts") {
+        try {
+          const inserted = JSON.parse(text);
+          const row = Array.isArray(inserted) ? inserted[0] : inserted;
+          const actor = await resolveActorForNotify(env, callerPlayerId);
+          const siteUrl = resolveSiteUrl(env);
+          if (url.pathname === "/api/sessions" && row) {
+            const sessionTitle = row.title
+              || (row.start ? String(row.start) : null)
+              || row.id
+              || "（無題）";
+            scheduleCreateNotify(ctx, env, {
+              kindLabel: "セッション",
+              title: sessionTitle,
+              actorPlayerId: actor.actorPlayerId,
+              actorName: actor.actorName,
+              extraLine: row.run_id ? `卓ID: ${row.run_id}` : null,
+              detailUrl: row.run_id
+                ? `${siteUrl}/sessions/detail.html?id=${encodeURIComponent(row.run_id)}`
+                : null
+            });
+          } else if (url.pathname === "/api/posts" && row) {
+            const bodyPreview = String(row.body || body?.body || "").trim().replace(/\s+/g, " ");
+            const shortBody = bodyPreview.length > 80 ? `${bodyPreview.slice(0, 80)}…` : bodyPreview;
+            scheduleCreateNotify(ctx, env, {
+              kindLabel: "なりきりチャット",
+              title: row.author || body?.author || "（キャラ名不明）",
+              actorPlayerId: actor.actorPlayerId,
+              actorName: actor.actorName,
+              extraLine: shortBody ? `本文: ${shortBody}` : null,
+              detailUrl: `${siteUrl}/bbs/index.html`
+            });
+          }
+        } catch (err) {
+          console.warn("作成通知の準備に失敗:", err);
+        }
+      }
+
       return new Response(text, { status: 201, headers: jsonHeaders });
     }
 

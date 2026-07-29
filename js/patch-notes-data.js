@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-07-29",
+    type: "improvement",
+    title: "監視機能の追加",
+    detail: "キャラクター・シナリオ・卓・セッション・募集・なりきりチャットの新規作成成功時に、管理者（既定: p-001）へ Bot の DM で種別・名前・追加者を通知します。テスト用Webhook有効時は実DMせずプレビューのみ送ります。"
+  },
+  {
     date: "2026-07-23",
     type: "announcement",
     title: "スプラトゥーン レイダース発売",

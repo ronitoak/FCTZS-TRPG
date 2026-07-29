@@ -261,6 +261,19 @@ test("ログイン本人解決は /api/me で行う", () => {
   assert.match(homeSource, /populatePlayerLinkClaimSelect/);
 });
 
+test("主要作成の成功時に管理者向けDiscord通知を送る", () => {
+  assert.match(workerSource, /async function notifyAdminOfCreate\(/);
+  assert.match(workerSource, /function scheduleCreateNotify\(/);
+  assert.match(workerSource, /CREATE_NOTIFY_PLAYER_ID/);
+  assert.match(workerSource, /kindLabel: "キャラクター"/);
+  assert.match(workerSource, /kindLabel: "シナリオ"/);
+  assert.match(workerSource, /kindLabel: "卓"/);
+  assert.match(workerSource, /kindLabel: "セッション"/);
+  assert.match(workerSource, /kindLabel: "募集"/);
+  assert.match(workerSource, /kindLabel: "なりきりチャット"/);
+  assert.match(workerSource, /DISCORD_USE_TEST_WEBHOOK/);
+});
+
 test("卓membershipと最終セッションはService Roleで読む", () => {
   assert.match(workerSource, /hydrateRunsMembershipFromJunctions/);
   assert.match(workerSource, /公開 SELECT の RLS で junction が空に見えることがあるため Service Role で読む/);

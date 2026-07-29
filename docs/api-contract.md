@@ -1,6 +1,6 @@
 # Worker API 契約（Web / Flutter 共通正本）
 
-最終更新: 2026-07-22  
+最終更新: 2026-07-29  
 実装: [`worker/index.js`](../worker/index.js)  
 静的契約テスト: [`tests/contracts.test.cjs`](../tests/contracts.test.cjs)
 
@@ -127,6 +127,32 @@ Web 実装: [`js/home.js`](../js/home.js) の `resolvePlayerLinkBanner`。
 | 403 | 対象行が別 Auth / 別 Discord に既に紐づいている |
 | 404 | 対象 `player_id` が存在しない |
 | 409 | 自分が別プレイヤーへ既連携、または自分の Discord が別行に登録済み |
+
+---
+
+## 作成通知（管理者向け Discord）
+
+主要リソースの **POST（新規作成）成功時**に、管理者へ Discord 通知する（応答本体は従来どおり。通知は `waitUntil` で非同期）。
+
+| 対象 | 経路 |
+|------|------|
+| キャラクター | `POST /api/character_full` |
+| シナリオ | `POST /api/scenarios` |
+| 卓 | `POST /api/runs` |
+| セッション | `POST /api/sessions` |
+| 募集 | `POST /api/recruitments` |
+| なりきりチャット | `POST /api/posts` |
+
+メッセージ内容: 種別・名前（タイトル）・追加者（プレイヤー名と ID）・詳細 URL（ある場合）。
+
+環境変数:
+
+| キー | 内容 |
+|------|------|
+| `CREATE_NOTIFY_PLAYER_ID` | 通知先 players.player_id（省略時 `p-001`） |
+| `CREATE_NOTIFY_ENABLED` | `"false"` / `"0"` で無効化 |
+| `DISCORD_USE_TEST_WEBHOOK` | `"true"` のとき実 DM せず `DISCORD_TEST_WEBHOOK_URL` へプレビュー |
+| `DISCORD_BOT_TOKEN` | 本番 DM に必要（宛先の `discord_id` は名簿から取得） |
 
 ---
 

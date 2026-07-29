@@ -32,9 +32,10 @@ Utils.domReady(async () => {
         playerSelect.appendChild(opt);
     });
 
-    // --- 1. システム選択時の動的生成 (既存ロジック) ---
-    systemSelect.addEventListener("change", async () => {
-        const system = systemSelect.value;
+    // --- 1. システム選択時の動的生成 ---
+    let systemFieldsReady = Promise.resolve();
+
+    async function loadSystemFields(system) {
         const isGaia = (system === "ガイアケアTRPG");
         document.querySelectorAll(".gaia-specific-field").forEach(el => {
             el.style.display = isGaia ? "" : "none";
@@ -46,49 +47,54 @@ Utils.domReady(async () => {
             return;
         }
 
-        // システムが選択されたらボタンを表示
-        if (customSkillActions) customSkillActions.style.display = "block"; // 表示
-
+        if (customSkillActions) customSkillActions.style.display = "block";
         dynamicContainer.innerHTML = "<p>読み込み中...</p>";
 
-        try {
-            const [attrDefs, skillBases] = await Promise.all([
-                Utils.apiGet(`system_attributes?system=${encodeURIComponent(system)}`),
-                Utils.apiGet(`system_skill_bases?system=${encodeURIComponent(system)}`)
-            ]);
-            renderDynamicFields(attrDefs, skillBases);
-        } catch (err) {
+        const [attrDefs, skillBases] = await Promise.all([
+            Utils.apiGet(`system_attributes?system=${encodeURIComponent(system)}`),
+            Utils.apiGet(`system_skill_bases?system=${encodeURIComponent(system)}`)
+        ]);
+        renderDynamicFields(attrDefs, skillBases);
+    }
+
+    systemSelect.addEventListener("change", () => {
+        const system = systemSelect.value;
+        systemFieldsReady = loadSystemFields(system).catch(err => {
             console.error(err);
             dynamicContainer.innerHTML = "<p>データの取得に失敗しました</p>";
-        }
+        });
     });
 
-// --- 2. いあきゃらテキスト解析関数 (精度向上・ガイアケア対応版) ---
+// --- 2. いあきゃら／CCFOLIA テキスト解析 ---
     function parseIachara(text) {
         const result = { profile: {}, attributes: {}, skills: {} };
-        const trimmedText = text.trim();
+        const trimmedText = String(text || "").replace(/^\uFEFF/, "").trim();
+        if (!trimmedText) return null;
 
-        // --- JSON形式（エモクロア・ガイアケア等）の判定と解析 ---
-        if (trimmedText.startsWith('{')) {
+        // --- JSON形式（エモクロア・ガイアケア等） ---
+        if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
             try {
-                const json = JSON.parse(trimmedText);
-                const data = json.data || {};
+                let json = JSON.parse(trimmedText);
+                // CCFOLIA は配列で来る場合がある
+                if (Array.isArray(json)) json = json[0] || {};
+                const data = json.data || json;
+                if (!data || typeof data !== "object") {
+                    throw new Error("JSONにキャラクターデータがありません");
+                }
 
-                // ガイアケアは一般的な能力値キーを持たないため、固有フィールドの存在で判定する。
                 let isGaia = false;
-                // params内に「真価」があるかチェック
                 if (Array.isArray(data.params) && data.params.some(p => p.label === "真価")) {
                     isGaia = true;
                 }
-                // commands（チャットパレット）に「〈オリジン〉」技能があるかチェック
-                if (data.commands && data.commands.includes("〈オリジン〉")) {
+                const commandsText = typeof data.commands === "string"
+                    ? data.commands
+                    : (Array.isArray(data.commands) ? data.commands.join("\n") : "");
+                if (commandsText.includes("〈オリジン〉")) {
                     isGaia = true;
                 }
 
-                // A. プロフィール
                 result.profile.name = data.name || "";
                 result.profile.memo = data.memo || "";
-                // 判定結果に基づいてシステムをセット
                 result.profile.system = isGaia ? "ガイアケアTRPG" : "エモクロアTRPG";
 
                 const emotionFields = {
@@ -105,10 +111,9 @@ Utils.domReady(async () => {
                     }
                 }
 
-                // B. 能力値 (params配列から抽出)
                 const emoAttrMap = {
                     "精神":"power","五感":"senses","身体":"strength","社会":"social",
-                    "運勢":"luck", "真価":"luck", // 旧データの「真価」も同じ列へ保存し、既存テーブルとの互換性を保つ。
+                    "運勢":"luck", "真価":"luck",
                     "知力":"intellect","器用":"dexterity","魅力":"appearance",
                     "共鳴感情・表":"emotion_front","共鳴感情・裏":"emotion_back","共鳴感情・ルーツ":"emotion_root"
                 };
@@ -116,44 +121,35 @@ Utils.domReady(async () => {
                 if (Array.isArray(data.params)) {
                     data.params.forEach(p => {
                         const key = emoAttrMap[p.label] || p.label;
-                        result.attributes[key.toLowerCase()] = p.value;
+                        result.attributes[String(key).toLowerCase()] = p.value;
                     });
                 }
 
-                // C. 技能の抽出 (xDM または xDA から始まる記法に対応)
-                if (data.commands) {
+                if (commandsText) {
                     const skillRegex = /(\d+)D[MA].*?〈(.+?)〉/g;
                     let match;
-                    while ((match = skillRegex.exec(data.commands)) !== null) {
-                        const diceNum = match[1]; 
+                    while ((match = skillRegex.exec(commandsText)) !== null) {
+                        const diceNum = match[1];
                         const rawSkillName = match[2];
-                        
-                        // 「＊」始まりは技能値ではなく分類見出しのため、技能レコードとして取り込まない。
-                        if (rawSkillName.startsWith('＊')) {
-                            continue;
-                        }
-                        
-                        // （※「∞共鳴」などはそもそも正規表現の \d+ にマッチしないため自動で弾かれていますが、
-                        // 万が一「1DA{共鳴} 〈∞共鳴〉」のように数字で出力された場合に備えて弾いておくとより安全です）
-                        if (rawSkillName.startsWith('∞')) {
-                            continue;
-                        }
-                        
+                        if (rawSkillName.startsWith('＊') || rawSkillName.startsWith('∞')) continue;
                         result.skills[rawSkillName] = diceNum;
                     }
                 }
 
                 return result;
             } catch (e) {
-                console.error("JSON解析失敗、テキストとして続行します", e);
+                console.error("JSON解析失敗、テキスト形式として続行します", e);
+                // 下のテキスト解析へフォールバック
             }
-        } else if (trimmedText.startsWith('いあきゃら')) {
+        }
 
-            // A. プロフィール抽出
+        // --- いあきゃらテキスト出力 ---
+        const looksLikeIachara = trimmedText.startsWith('いあきゃら')
+            || /名前:\s*/.test(trimmedText)
+            || /(?:^|\n)\s*STR\s+\d+/i.test(trimmedText);
+        if (looksLikeIachara) {
             const profileFields = {
-                name: /名前:\s*([^/(\n]+)/,
-                reading: /読み仮名:\s*([^/(\n]+)/,
-                job: /職業:\s*([^/(\n]+)/,
+                job: /職業:\s*([^/\n]+)/,
                 age: /年齢:\s*([^/\n]+)/,
                 gender: /性別:\s*([^/\n]+)/,
                 height: /身長:\s*([^/\n]+)/,
@@ -161,59 +157,86 @@ Utils.domReady(async () => {
                 origin: /出身:\s*([^/\n]+)/
             };
 
-            for (const [key, regex] of Object.entries(profileFields)) {
-                const m = text.match(regex);
-                if (m) {
-                    const val = m[1].trim();
-                    result.profile[key] = (['name', 'reading', 'job', 'gender', 'origin'].includes(key)) 
-                        ? val : (parseInt(val) || null);
+            // 名前: 本名 (よみがな) 形式に対応
+            const nameLine = trimmedText.match(/名前:\s*([^\n]+)/);
+            if (nameLine) {
+                const rawName = nameLine[1].trim();
+                const withReading = rawName.match(/^(.+?)\s*[（(]([^）)]+)[）)]\s*$/);
+                if (withReading) {
+                    result.profile.name = withReading[1].trim();
+                    result.profile.reading = withReading[2].trim();
+                } else {
+                    result.profile.name = rawName;
                 }
             }
+            const readingField = trimmedText.match(/読み仮名:\s*([^/\n]+)/);
+            if (readingField && readingField[1].trim()) {
+                result.profile.reading = readingField[1].trim();
+            }
 
-            // JSONとテキストの双方で同じ入力欄を生成できるよう、内容からシステムを推定する。
-            if (text.includes("6版 v2.0.1")) result.profile.system = "CoC6"; 
-            else if (text.includes("7版 v2.0.1")) result.profile.system = "CoC7";
-            else if (text.includes("ガイアケアTRPG") || text.includes("真価") || text.includes("〈オリジン〉")) result.profile.system = "ガイアケアTRPG";
-            else if (text.includes("エモクロアTRPG")) result.profile.system = "エモクロアTRPG";
+            for (const [key, regex] of Object.entries(profileFields)) {
+                const m = trimmedText.match(regex);
+                if (!m) continue;
+                const val = m[1].trim();
+                if (!val) continue;
+                result.profile[key] = (['job', 'gender', 'origin'].includes(key))
+                    ? val
+                    : (parseInt(val, 10) || null);
+            }
 
-            // C. 能力値の抽出
+            if (trimmedText.includes("6版 v2.0.1") || /いあきゃらテキスト\s*6版/.test(trimmedText) || /\b6版\b/.test(trimmedText)) {
+                result.profile.system = "CoC6";
+            } else if (trimmedText.includes("7版 v2.0.1") || /いあきゃらテキスト\s*7版/.test(trimmedText) || /\b7版\b/.test(trimmedText)) {
+                result.profile.system = "CoC7";
+            } else if (trimmedText.includes("ガイアケアTRPG") || trimmedText.includes("真価") || trimmedText.includes("〈オリジン〉")) {
+                result.profile.system = "ガイアケアTRPG";
+            } else if (trimmedText.includes("エモクロアTRPG")) {
+                result.profile.system = "エモクロアTRPG";
+            }
+
+            // 能力値表: 「STR  現在値  能力値 ...」の先頭数値（現在値）を採用
             const attrNames = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
             attrNames.forEach(attr => {
-                const reg = new RegExp(`${attr}\\s+([0-9]+)`, 'i'); 
-                const m = text.match(reg);
+                const reg = new RegExp(`(?:^|\\n)\\s*${attr}\\s+([0-9]+)`, "i");
+                const m = trimmedText.match(reg);
                 if (m) result.attributes[attr.toLowerCase()] = m[1];
             });
 
-            // D. 技能の抽出
-            // 技能として取り込まない基本パラメータの除外リストを作成
-            const excludeParams = [
-                "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", "IDE", 
-                "HP", "MP", "SAN", "現在SAN", "最大SAN", "アイデア", "幸運", "知識", 
-                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント" , "正気度"
-            ];
+            const excludeParams = new Set([
+                "STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU", "IDE",
+                "HP", "MP", "SAN", "現在SAN", "最大SAN", "アイデア", "幸運", "知識",
+                "耐久力", "DB", "ビルド", "MOV", "マジック・ポイント", "正気度", "技能名"
+            ]);
 
-            text.split('\n').forEach(line => {
-                const skillMatch = line.match(/^([^\s\d]{2,})\s+(\d+)\s+\d+/);
-                if (skillMatch) {
-                    const skillName = skillMatch[1];
-                    // 除外リストに含まれていない場合のみ技能として追加する
-                    if (!excludeParams.includes(skillName.toUpperCase())) {
-                        result.skills[skillName] = skillMatch[2];
-                    }
-                }
+            // 【技能値】〜次の【〜】までに限定（表ヘッダやポイント行を除外）
+            const skillSectionMatch = trimmedText.match(/【技能値】([\s\S]*?)(?=\n【[^技]|$)/);
+            const skillText = skillSectionMatch ? skillSectionMatch[1] : trimmedText;
+            skillText.split("\n").forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+                if (trimmed.startsWith("『") || trimmed.startsWith("技能名")) return;
+                if (trimmed.includes("ポイント:")) return;
+
+                // 技能名 + 空白 + 合計 + 初期値 ...
+                const skillMatch = trimmed.match(/^(\S+)\s+(\d+)\s+\d+/);
+                if (!skillMatch) return;
+                const skillName = skillMatch[1].trim();
+                if (!skillName || excludeParams.has(skillName) || excludeParams.has(skillName.toUpperCase())) return;
+                result.skills[skillName] = skillMatch[2];
             });
 
-            // E. メモ欄の抽出
-            const memoMatch = text.match(/【メモ】\s*([\s\S]*)/);
+            const memoMatch = trimmedText.match(/【メモ】\s*([\s\S]*)/);
             if (memoMatch) result.profile.memo = memoMatch[1].trim();
 
             return result;
         }
+
+        return null;
     }
 
     // --- 3. インポート実行（テキスト欄／.txtファイル共通） ---
     async function applyImportText(text) {
-        const source = String(text || "").trim();
+        const source = String(text || "").replace(/^\uFEFF/, "").trim();
         if (!source) {
             Utils.showToast("テキストを貼り付けるか、.txtファイルを選択してください", "error");
             return;
@@ -222,8 +245,11 @@ Utils.domReady(async () => {
         if (importArea) importArea.value = source;
 
         const data = parseIachara(source);
+        if (!data) {
+            Utils.showToast("取り込める形式ではありません。いあきゃら出力またはCCFOLIA形式のJSONを確認してください", "error");
+            return;
+        }
 
-        // プロフィールとメモの反映
         if (data.profile.name) form.name.value = data.profile.name;
         if (data.profile.reading) form.reading.value = data.profile.reading;
         if (data.profile.job) form.job.value = data.profile.job;
@@ -234,42 +260,32 @@ Utils.domReady(async () => {
         if (data.profile.origin) form.origin.value = data.profile.origin;
         if (data.profile.memo) form.memo.value = data.profile.memo;
 
-        // システム切り替えと待機
+        // システム切替の描画完了を待ってから能力値・技能を入れる
         if (data.profile.system) {
             systemSelect.value = data.profile.system;
             systemSelect.dispatchEvent(new Event('change'));
-            await new Promise(resolve => setTimeout(resolve, 800)); // 描画待ち
+            await systemFieldsReady;
         }
 
-        // 能力値反映
-        for (const [key, val] of Object.entries(data.attributes)) {
-            const lowerKey = key.toLowerCase();
-            // input か select のいずれか、name属性が一致するものを探す
+        for (const [key, val] of Object.entries(data.attributes || {})) {
+            const lowerKey = String(key).toLowerCase();
             const el = dynamicContainer.querySelector(`[name="attr_${lowerKey}"]`);
-            if (el) {
-                el.value = val;
-            }
+            if (el) el.value = val;
         }
 
-        // 技能反映 (部分一致)
-        for (const [sName, sVal] of Object.entries(data.skills)) {
+        for (const [sName, sVal] of Object.entries(data.skills || {})) {
             let found = false;
-
-            // 1. 「技能名（詳細）」の形式か判定（全角・半角カッコ両対応）
             const detailMatch = sName.match(/^(.+?)[（\(](.+?)[）\)]$/);
 
             if (detailMatch) {
                 const baseName = detailMatch[1].trim();
                 const detailText = detailMatch[2].trim();
-
-                // ベース名が一致する label 入力枠を探す
                 const labelInputs = dynamicContainer.querySelectorAll(`input[name="skill_label"][data-base-name="${baseName}"]`);
 
                 for (const labelInput of labelInputs) {
-                    // 空枠、または既に同じ詳細が入力されている枠に割り当て
                     if (labelInput.value === "" || labelInput.value === detailText) {
                         labelInput.value = detailText;
-                        const valInput = labelInput.closest('.skill-input-container').querySelector('input[name="skill_val"]');
+                        const valInput = labelInput.closest('.skill-input-container')?.querySelector('input[name="skill_val"]');
                         if (valInput) valInput.value = sVal;
                         found = true;
                         break;
@@ -277,12 +293,10 @@ Utils.domReady(async () => {
                 }
             }
 
-            // 2. 通常の技能、または詳細技能の枠が埋まっていた場合の処理
             if (!found) {
                 const existingInputs = dynamicContainer.querySelectorAll('input[name="skill_val"]');
                 for (const input of existingInputs) {
                     const dataName = input.dataset.name || "";
-                    // 完全一致、または「技能名（）」という空枠フォーマットへの合致をチェック
                     if (dataName === sName || dataName === `${sName}（）`) {
                         input.value = sVal;
                         found = true;
@@ -291,7 +305,6 @@ Utils.domReady(async () => {
                 }
             }
 
-            // 3. 該当する枠が一切存在しない場合、オリジナル技能として追加
             if (!found) {
                 addCustomSkillRow(sName, sVal);
             }
@@ -302,7 +315,12 @@ Utils.domReady(async () => {
 
     if (btnImport && importArea) {
         btnImport.addEventListener('click', async () => {
-            await applyImportText(importArea.value);
+            try {
+                await applyImportText(importArea.value);
+            } catch (err) {
+                console.error(err);
+                Utils.showToast("インポートに失敗しました", "error");
+            }
         });
     }
 

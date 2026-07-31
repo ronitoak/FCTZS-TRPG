@@ -1,19 +1,33 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <script>
-      // 404になった（＝リポジトリ名が抜け落ちた）場合、
-      // 強制的にリポジトリ名付きのURLへ飛ばし直す
-      var segmentCount = 0;
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ページが見つかりません | FCTZS TRPG部</title>
+  <script>
+    // 旧 GitHub Pages（プロジェクトサイト）向けの救済のみ。
+    // Workers（fctzs.daruji.workers.dev）で同じリダイレクトをすると
+    // 存在しない /FCTZS-TRPG/ へ飛び、404 が無限ループする。
+    (function () {
+      var host = window.location.hostname;
+      var path = window.location.pathname || "/";
+      var isGitHubPages = /\.github\.io$/i.test(host);
+      if (!isGitHubPages) return;
+      if (path.indexOf("/FCTZS-TRPG") === 0) return;
       var l = window.location;
-      // access_tokenなどが含まれているハッシュを保持したまま移動
       l.replace(
-        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        '/FCTZS-TRPG/' + l.search + l.hash
+        l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "") +
+        "/FCTZS-TRPG/" + l.search + l.hash
       );
-    </script>
-  </head>
-  <body>
-    Redirecting...
-  </body>
+    })();
+  </script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>ページが見つかりません</h1>
+    <p>指定された URL のページはありません。</p>
+    <p><a href="./index.html">ホームへ戻る</a></p>
+  </div>
+</body>
 </html>

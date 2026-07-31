@@ -27,6 +27,7 @@ const COPY_DIRS = [
   "bbs",
   "character",
   "css",
+  "games",
   "img",
   "js",
   "patch-notes",
@@ -55,8 +56,14 @@ function walkHtml(directory, results = []) {
   return results;
 }
 
-function ensureSiteConfigScript(html, isRoot) {
-  const configSrc = isRoot ? "js/site-config.js" : "../js/site-config.js";
+function siteConfigSrcForRel(rel) {
+  const depth = rel.split("/").length - 1;
+  if (depth <= 0) return "js/site-config.js";
+  return `${"../".repeat(depth)}js/site-config.js`;
+}
+
+function ensureSiteConfigScript(html, rel) {
+  const configSrc = siteConfigSrcForRel(rel);
   if (html.includes("site-config.js")) return html;
   return html.replace(
     /(<script[^>]+src=["'][^"']*utils\.js["'][^>]*>\s*<\/script>)/i,
@@ -101,9 +108,8 @@ writeFileSync(join(dist, "js", "site-config.js"), siteConfig, "utf8");
 
 for (const htmlPath of walkHtml(dist)) {
   const rel = relative(dist, htmlPath).replace(/\\/g, "/");
-  const isRoot = !rel.includes("/");
   const original = readFileSync(htmlPath, "utf8");
-  const updated = ensureSiteConfigScript(original, isRoot);
+  const updated = ensureSiteConfigScript(original, rel);
   if (updated !== original) writeFileSync(htmlPath, updated, "utf8");
 }
 

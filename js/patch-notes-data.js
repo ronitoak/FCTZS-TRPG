@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-08-01",
+    type: "improvement",
+    title: "隠しページを追加",
+    detail: "ホーム画面で特定のキー操作をすると、特定のページに遷移できます。"
+  },
+  {
     date: "2026-07-29",
     type: "fix",
     title: "キャラ作成の外部データインポートを修正",

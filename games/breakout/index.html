@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ブロック崩し | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="breakout-page">
+      <header class="page-header">
+        <h1>ブロック崩し</h1>
+        <p class="u-muted">←→ または A·D、ポインタ／タッチでパドルを操作。スペースで開始・一時停止。</p>
+      </header>
+
+      <div class="breakout-hud" aria-live="polite">
+        <span>スコア: <strong id="breakout-score">0</strong></span>
+        <span>ハイスコア: <strong id="breakout-highscore">0</strong></span>
+        <span>残機: <strong id="breakout-lives">3</strong></span>
+      </div>
+
+      <div class="breakout-canvas-wrap">
+        <canvas id="breakout-canvas" width="480" height="640" aria-label="ブロック崩しゲーム画面"></canvas>
+      </div>
+
+      <div class="breakout-controls">
+        <button type="button" id="breakout-start-btn" class="btn-primary">開始</button>
+        <button type="button" id="breakout-pause-btn" class="btn-secondary">一時停止</button>
+        <button type="button" id="breakout-restart-btn" class="btn-secondary">リスタート</button>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="../../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../../js/init-supabase.js"></script>
+  <script src="../../js/site-config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/breakout.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../../");
+  </script>
+</body>
+</html>

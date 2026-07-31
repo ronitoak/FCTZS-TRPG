@@ -897,6 +897,50 @@ async function main() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", main);
+/**
+ * ホーム限定のイースターエッグ。Konami コマンド（↑↑↓↓←→←→BA）でブロック崩しへ遷移する。
+ * 入力欄フォーカス中は誤爆を避けるため無視する。
+ */
+function setupKonamiBreakoutEasterEgg() {
+  const sequence = [
+    "ArrowUp",
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowLeft",
+    "ArrowRight",
+    "KeyB",
+    "KeyA"
+  ];
+  let progress = 0;
+
+  function isTypingTarget(el) {
+    if (!(el instanceof Element)) return false;
+    const tag = el.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    return el.isContentEditable;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (isTypingTarget(document.activeElement)) return;
+    if (e.code === sequence[progress]) {
+      progress += 1;
+      if (progress >= sequence.length) {
+        progress = 0;
+        location.href = "./games/breakout/index.html";
+      }
+      return;
+    }
+    // シーケンス先頭と同じキーなら進捗を1に保つ（↑の連続など）
+    progress = e.code === sequence[0] ? 1 : 0;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupKonamiBreakoutEasterEgg();
+  main();
+});
 
 })();

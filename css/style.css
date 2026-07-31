@@ -2739,3 +2739,39 @@ dialog.modal::backdrop {
   border-radius: 0 4px 4px 0;
   font-size: 0.95rem;
 }
+
+/* ブロック崩しミニゲーム */
+.breakout-page {
+  margin-bottom: 2rem;
+}
+
+.breakout-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.breakout-canvas-wrap {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.breakout-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  touch-action: none;
+  cursor: none;
+}
+
+.breakout-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}

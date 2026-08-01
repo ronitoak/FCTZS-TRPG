@@ -25,15 +25,6 @@
   /** @type {Map<string, number>} */
   let finalSanByName = new Map();
 
-  /** 成功 ⊃ スペシャル ⊃ クリティカル / 失敗 ⊃ ファンブル */
-  const OUTCOME_MATCH = {
-    成功: ["成功", "スペシャル", "クリティカル"],
-    スペシャル: ["スペシャル", "クリティカル"],
-    クリティカル: ["クリティカル"],
-    失敗: ["失敗", "ファンブル"],
-    ファンブル: ["ファンブル"]
-  };
-
   function decodeEntities(text) {
     return String(text || "")
       .replace(/&nbsp;/gi, " ")
@@ -193,10 +184,8 @@
   function outcomeMatchesFilters(outcome, filters) {
     if (!filters.length) return true;
     if (!outcome) return false;
-    return filters.some((filter) => {
-      const allowed = OUTCOME_MATCH[filter];
-      return Array.isArray(allowed) && allowed.includes(outcome);
-    });
+    // 各フィルタは自分の結果のみ（包含なし）
+    return filters.includes(outcome);
   }
 
   function messageMatchesFilters(msg, tabs, chars, outcomeFilters) {

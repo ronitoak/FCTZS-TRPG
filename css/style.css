@@ -3008,6 +3008,12 @@ dialog.modal::backdrop {
   font-size: 1rem;
 }
 
+.tools-section-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .tools-hint {
   margin: 0;
   font-size: 0.8rem;
@@ -3046,6 +3052,25 @@ dialog.modal::backdrop {
   grid-template-columns: 1fr 72px 72px auto;
 }
 
+.tools-kv-row.tools-param-row {
+  grid-template-columns: 1fr 1fr auto auto;
+}
+
+.tools-command-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tools-kv-row.tools-command-row {
+  grid-template-columns: 1fr auto auto;
+}
+
+.tools-toggle-compact {
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
 .tools-panel-wide {
   max-width: 720px;
 }
@@ -3076,4 +3101,33 @@ dialog.modal::backdrop {
 .tools-toggle span {
   line-height: 1.3;
 }
+
+.tools-derived {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border, #dee2e6);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tools-derived > div {
+  margin: 0;
+}
+
+.tools-derived dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #6c757d);
+}
+
+.tools-derived dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 

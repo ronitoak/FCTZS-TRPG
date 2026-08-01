@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>オリジナル表 | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="tools-page">
+      <a class="tools-back" href="./index.html">← Tools</a>
+      <header class="page-header">
+        <h1>オリジナル表</h1>
+        <p class="u-muted">独自のダイス表を編集し、その場で振れます。下書きはブラウザに保存されます。</p>
+      </header>
+
+      <div class="tools-layout">
+        <div class="tools-panel">
+          <label>表タイトル
+            <input type="text" id="dice-title" value="オリジナル表" maxlength="80">
+          </label>
+          <label>ダイス
+            <select id="dice-sides">
+              <option value="6">1d6</option>
+              <option value="10">1d10</option>
+              <option value="20">1d20</option>
+              <option value="100" selected>1d100</option>
+            </select>
+          </label>
+          <div>
+            <div class="u-muted" style="margin-bottom:0.35rem;">出目（from〜to）と結果</div>
+            <div id="dice-rows" class="tools-dice-rows"></div>
+          </div>
+          <div class="tools-actions">
+            <button type="button" id="dice-add-row" class="btn-secondary">行を追加</button>
+            <button type="button" id="dice-fill" class="btn-secondary">面数で初期化</button>
+          </div>
+          <div class="tools-actions">
+            <button type="button" id="dice-roll" class="btn-primary">振る</button>
+            <button type="button" id="dice-save" class="btn-secondary">下書き保存</button>
+            <button type="button" id="dice-export" class="btn-secondary">テキストコピー</button>
+          </div>
+          <div id="dice-roll-result" class="tools-dice-roll" hidden>―</div>
+        </div>
+        <div class="tools-preview-box" style="align-items:stretch;">
+          <pre id="dice-preview" class="tools-result" aria-live="polite"></pre>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/tools-common.js"></script>
+  <script src="../js/tools-dice-table.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../");
+  </script>
+</body>
+</html>

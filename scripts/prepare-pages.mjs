@@ -35,7 +35,8 @@ const COPY_DIRS = [
   "recruit",
   "scenarios",
   "schedule",
-  "sessions"
+  "sessions",
+  "tools"
 ];
 
 const COPY_FILES = [

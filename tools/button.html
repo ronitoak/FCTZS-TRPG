@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>画像ボタン作成 | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="tools-page">
+      <a class="tools-back" href="./index.html">← Tools</a>
+      <header class="page-header">
+        <h1>画像ボタン作成</h1>
+        <p class="u-muted">背景画像（未指定時はデフォルト）に文字を載せたボタン画像を作ります。部屋や Discord 用です。</p>
+      </header>
+
+      <div class="tools-layout">
+        <div class="tools-panel">
+          <label>背景画像（任意）
+            <input type="file" id="btn-image" accept="image/*">
+          </label>
+          <div class="tools-actions">
+            <button type="button" id="btn-clear-image" class="btn-secondary">背景をデフォルトに戻す</button>
+          </div>
+          <label>幅
+            <input type="number" id="btn-width" value="320" min="80" max="1200">
+          </label>
+          <label>高さ
+            <input type="number" id="btn-height" value="96" min="40" max="600">
+          </label>
+          <label>文言
+            <input type="text" id="btn-text" value="ボタン" maxlength="80">
+          </label>
+          <label>フォント
+            <select id="btn-font">
+              <option value='"Hiragino Sans", "Noto Sans JP", sans-serif'>ゴシック</option>
+              <option value='"Hiragino Mincho ProN", "Noto Serif JP", serif'>明朝</option>
+              <option value='"Courier New", Courier, monospace'>等幅</option>
+              <option value="custom">カスタム（下で読込）</option>
+            </select>
+          </label>
+          <label>カスタムフォントファイル
+            <input type="file" id="btn-font-file" accept=".ttf,.otf,.woff,.woff2">
+          </label>
+          <label>フォントサイズ
+            <input type="number" id="btn-font-size" value="28" min="8" max="120">
+          </label>
+          <label>文字色
+            <input type="color" id="btn-text-color" value="#ffffff">
+          </label>
+          <label>横位置（%）
+            <input type="range" id="btn-pos-x" min="0" max="100" value="50">
+          </label>
+          <label>縦位置（%）
+            <input type="range" id="btn-pos-y" min="0" max="100" value="50">
+          </label>
+          <div class="tools-actions">
+            <button type="button" id="btn-download" class="btn-primary">PNGダウンロード</button>
+          </div>
+        </div>
+        <div class="tools-preview-box">
+          <canvas id="btn-canvas" width="320" height="96" aria-label="ボタンプレビュー"></canvas>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/tools-common.js"></script>
+  <script src="../js/tools-button.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../");
+  </script>
+</body>
+</html>

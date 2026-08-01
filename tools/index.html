@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tools | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="tools-hub">
+      <header class="page-header">
+        <h1>便利ツール</h1>
+        <p class="u-muted">セッション準備・GM向けの道具です。ログイン不要・画像やテキストは端末内のみで処理します。</p>
+      </header>
+
+      <div class="tools-card-grid">
+        <a class="tools-card" href="./npc-token.html">
+          <h2>NPCコマ作成</h2>
+          <p>画像に名前ラベルを重ねた正方形コマをPNGで書き出します。</p>
+        </a>
+        <a class="tools-card" href="./dice-table.html">
+          <h2>オリジナル表</h2>
+          <p>独自のダイス表を編集し、その場で振って結果を確認できます。</p>
+        </a>
+        <a class="tools-card" href="./ccfolia-log.html">
+          <h2>ココフォリアログ整形</h2>
+          <p>貼り付けた生ログを読みやすく整形し、コピーできます。</p>
+        </a>
+        <a class="tools-card" href="./button.html">
+          <h2>画像ボタン作成</h2>
+          <p>背景画像（またはデフォルト）に文字を載せたボタン画像を作ります。</p>
+        </a>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../");
+  </script>
+</body>
+</html>

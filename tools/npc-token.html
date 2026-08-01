@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NPCコマ作成 | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="tools-page">
+      <a class="tools-back" href="./index.html">← Tools</a>
+      <header class="page-header">
+        <h1>NPCコマ作成</h1>
+        <p class="u-muted">画像に名前ラベルを重ねた正方形コマを PNG で書き出します。</p>
+      </header>
+
+      <div class="tools-layout">
+        <div class="tools-panel">
+          <label>画像
+            <input type="file" id="npc-image" accept="image/*">
+          </label>
+          <label>名前
+            <input type="text" id="npc-name" value="NPC" maxlength="40">
+          </label>
+          <label>フィット
+            <select id="npc-fit">
+              <option value="cover">cover（塗りつぶし）</option>
+              <option value="contain">contain（全体表示）</option>
+            </select>
+          </label>
+          <label>サイズ
+            <select id="npc-size">
+              <option value="200">200 px</option>
+              <option value="280" selected>280 px</option>
+              <option value="400">400 px</option>
+            </select>
+          </label>
+          <label>ラベル位置
+            <select id="npc-label-pos">
+              <option value="bottom" selected>下</option>
+              <option value="top">上</option>
+            </select>
+          </label>
+          <label>文字サイズ
+            <input type="number" id="npc-font-size" value="22" min="10" max="72">
+          </label>
+          <label>文字色
+            <input type="color" id="npc-text-color" value="#ffffff">
+          </label>
+          <label class="tools-inline">
+            <input type="checkbox" id="npc-band" checked>
+            ラベル背景帯を付ける
+          </label>
+          <label>帯の色
+            <input type="color" id="npc-band-color" value="#000000">
+          </label>
+          <div class="tools-actions">
+            <button type="button" id="npc-download" class="btn-primary">PNGダウンロード</button>
+          </div>
+        </div>
+        <div class="tools-preview-box">
+          <canvas id="npc-canvas" width="280" height="280" aria-label="NPCコマプレビュー"></canvas>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/tools-common.js"></script>
+  <script src="../js/tools-npc-token.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../");
+  </script>
+</body>
+</html>

@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-08-01",
+    type: "feature",
+    title: "GM/PL向け便利ツールを追加",
+    detail: "ナビの Tools から、便利ツールを利用できます。"
+  },
+  {
+    date: "2026-08-01",
     type: "fix",
     title: "存在しないページで再読み込みが続く不具合を修正",
     detail: "公開成果物に無いパスへアクセスしたとき、404 ページが誤った URL へ飛ばして読み込みを繰り返すことがありました。"

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ココフォリアログ整形 | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="tools-page">
+      <a class="tools-back" href="./index.html">← Tools</a>
+      <header class="page-header">
+        <h1>ココフォリアログ整形</h1>
+        <p class="u-muted">生ログを貼り付けて整形し、コピーできます。完全互換ではなく実用向けの簡易整形です。</p>
+      </header>
+
+      <div class="tools-layout">
+        <div class="tools-panel">
+          <label>生ログ
+            <textarea id="log-input" placeholder="ココフォリアなどからコピーしたログを貼り付け"></textarea>
+          </label>
+          <label class="tools-inline">
+            <input type="checkbox" id="log-drop-system" checked>
+            システム行を除外
+          </label>
+          <label class="tools-inline">
+            <input type="checkbox" id="log-drop-dice" checked>
+            ダイス行を除外
+          </label>
+          <label class="tools-inline">
+            <input type="checkbox" id="log-normalize-speaker" checked>
+            話者名を正規化
+          </label>
+          <label>出力形式
+            <select id="log-format">
+              <option value="plain" selected>プレーン</option>
+              <option value="markdown">Markdown</option>
+            </select>
+          </label>
+          <div class="tools-actions">
+            <button type="button" id="log-format-btn" class="btn-primary">整形</button>
+            <button type="button" id="log-copy" class="btn-secondary">結果をコピー</button>
+            <button type="button" id="log-clear" class="btn-secondary">クリア</button>
+          </div>
+        </div>
+        <div class="tools-preview-box" style="align-items:stretch;">
+          <pre id="log-output" class="tools-result" aria-live="polite"></pre>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/tools-common.js"></script>
+  <script src="../js/tools-ccfolia-log.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../");
+  </script>
+</body>
+</html>

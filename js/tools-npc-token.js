@@ -154,12 +154,16 @@
   function calcDamageBonus(str, siz) {
     if (str == null || siz == null) return null;
     const sum = str + siz;
-    if (sum >= 2 && sum <= 12) return "-1d6";
-    if (sum >= 13 && sum <= 16) return "-1d4";
-    if (sum >= 17 && sum <= 24) return "±0";
-    if (sum >= 25 && sum <= 32) return "+1d4";
-    if (sum >= 33 && sum <= 40) return "+1d6";
-    return "―";
+    if (sum < 2 || sum > 999) return "―";
+    if (sum <= 12) return "-1d6";
+    if (sum <= 16) return "-1d4";
+    if (sum <= 24) return "±0";
+    if (sum <= 32) return "+1d4";
+    if (sum <= 40) return "+1d6";
+    if (sum <= 56) return "+2d6";
+    // 57 以降は 16 ごとに +1d6（57〜72=+3d6 … 最大 STR+SIZ=999）
+    const dice = 3 + Math.floor((sum - 57) / 16);
+    return `+${dice}d6`;
   }
 
   /** プリセット用: 1dN+DB の DB 部分 */

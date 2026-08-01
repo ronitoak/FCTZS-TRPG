@@ -1,123 +1,168 @@
-// NPCコマ作成：画像＋ラベルを Canvas で合成して PNG 出力
+// NPCコマ作成：ココフォリア Clipboard API（character JSON）の組み立て
 "use strict";
 
 (() => {
-  const canvas = document.getElementById("npc-canvas");
-  if (!(canvas instanceof HTMLCanvasElement)) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  /** @type {HTMLImageElement|null} */
-  let sourceImage = null;
+  const jsonPreviewEl = document.getElementById("npc-json-preview");
 
   const els = {
-    image: document.getElementById("npc-image"),
     name: document.getElementById("npc-name"),
-    fit: document.getElementById("npc-fit"),
-    size: document.getElementById("npc-size"),
-    labelPos: document.getElementById("npc-label-pos"),
-    fontSize: document.getElementById("npc-font-size"),
-    textColor: document.getElementById("npc-text-color"),
-    band: document.getElementById("npc-band"),
-    bandColor: document.getElementById("npc-band-color"),
-    download: document.getElementById("npc-download")
+    initiative: document.getElementById("npc-initiative"),
+    memo: document.getElementById("npc-memo"),
+    statusRows: document.getElementById("npc-status-rows"),
+    paramRows: document.getElementById("npc-param-rows"),
+    skillRows: document.getElementById("npc-skill-rows"),
+    copyJson: document.getElementById("npc-copy-json")
   };
 
-  function drawPlaceholder(size) {
-    ctx.fillStyle = "#d0d0d0";
-    ctx.fillRect(0, 0, size, size);
-    ctx.fillStyle = "#666";
-    ctx.font = "16px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("画像を選択", size / 2, size / 2);
+  function attr(value) {
+    return Utils.escapeHtml(value);
   }
 
-  function drawFittedImage(img, size, fit) {
-    const iw = img.naturalWidth || img.width;
-    const ih = img.naturalHeight || img.height;
-    let dw;
-    let dh;
-    let dx;
-    let dy;
-    if (fit === "contain") {
-      const scale = Math.min(size / iw, size / ih);
-      dw = iw * scale;
-      dh = ih * scale;
-      dx = (size - dw) / 2;
-      dy = (size - dh) / 2;
-      ctx.fillStyle = "#222";
-      ctx.fillRect(0, 0, size, size);
-    } else {
-      const scale = Math.max(size / iw, size / ih);
-      dw = iw * scale;
-      dh = ih * scale;
-      dx = (size - dw) / 2;
-      dy = (size - dh) / 2;
-    }
-    ctx.drawImage(img, dx, dy, dw, dh);
+  function bindRowEvents(container) {
+    container.querySelectorAll("input").forEach((input) => {
+      input.addEventListener("input", refreshJsonPreview);
+    });
+    container.querySelectorAll(".row-remove").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        btn.closest(".tools-kv-row")?.remove();
+        refreshJsonPreview();
+      });
+    });
   }
 
-  function render() {
-    const size = Number(els.size?.value) || 280;
-    canvas.width = size;
-    canvas.height = size;
-    ctx.clearRect(0, 0, size, size);
-
-    if (!sourceImage) {
-      drawPlaceholder(size);
-      return;
-    }
-
-    drawFittedImage(sourceImage, size, els.fit?.value || "cover");
-
-    const name = (els.name?.value || "").trim() || "NPC";
-    const fontSize = Math.max(10, Number(els.fontSize?.value) || 22);
-    const bandH = Math.round(fontSize * 1.8);
-    const atTop = els.labelPos?.value === "top";
-    const bandY = atTop ? 0 : size - bandH;
-
-    if (els.band?.checked) {
-      const color = els.bandColor?.value || "#000000";
-      ctx.fillStyle = color.length === 7 ? `${color}b3` : "rgba(0,0,0,0.7)";
-      // hex + alpha: simpler path
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = els.bandColor?.value || "#000000";
-      ctx.fillRect(0, bandY, size, bandH);
-      ctx.globalAlpha = 1;
-    }
-
-    ctx.fillStyle = els.textColor?.value || "#ffffff";
-    ctx.font = `bold ${fontSize}px "Hiragino Sans", "Noto Sans JP", sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(name, size / 2, bandY + bandH / 2, size - 12);
+  function appendStatusRow(item = { label: "", value: 0, max: 0 }) {
+    if (!els.statusRows) return;
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+      <div class="tools-kv-row tools-status-row">
+        <input type="text" class="st-label" placeholder="ラベル" value="${attr(item.label)}" aria-label="ステータス名">
+        <input type="number" class="st-value" placeholder="現在" value="${attr(item.value)}" aria-label="現在値">
+        <input type="number" class="st-max" placeholder="最大" value="${attr(item.max)}" aria-label="最大値">
+        <button type="button" class="btn-small btn-secondary row-remove">削除</button>
+      </div>`;
+    const row = wrap.firstElementChild;
+    if (!row) return;
+    els.statusRows.appendChild(row);
+    bindRowEvents(els.statusRows);
   }
 
-  els.image?.addEventListener("change", async () => {
-    const file = els.image.files?.[0];
-    if (!file) return;
-    try {
-      sourceImage = await ToolsCommon.readImageFile(file);
-      render();
-    } catch (err) {
-      Utils.showToast(err?.message || "画像読み込み失敗", "error");
+  function appendKvRow(container, item, placeholders) {
+    if (!container) return;
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+      <div class="tools-kv-row">
+        <input type="text" class="kv-label" placeholder="${placeholders.label}" value="${attr(item.label)}" aria-label="名前">
+        <input type="text" class="kv-value" placeholder="${placeholders.value}" value="${attr(item.value)}" aria-label="値">
+        <button type="button" class="btn-small btn-secondary row-remove">削除</button>
+      </div>`;
+    const row = wrap.firstElementChild;
+    if (!row) return;
+    container.appendChild(row);
+    bindRowEvents(container);
+  }
+
+  function collectStatus() {
+    if (!els.statusRows) return [];
+    return [...els.statusRows.querySelectorAll(".tools-status-row")].map((row) => {
+      const label = String(row.querySelector(".st-label")?.value || "").trim();
+      const value = Number(row.querySelector(".st-value")?.value);
+      const max = Number(row.querySelector(".st-max")?.value);
+      return {
+        label,
+        value: Number.isFinite(value) ? value : 0,
+        max: Number.isFinite(max) ? max : 0
+      };
+    }).filter((s) => s.label);
+  }
+
+  function collectLabelValues(container) {
+    if (!container) return [];
+    return [...container.querySelectorAll(".tools-kv-row")].map((row) => {
+      const label = String(row.querySelector(".kv-label")?.value || "").trim();
+      const value = String(row.querySelector(".kv-value")?.value || "").trim();
+      return { label, value };
+    }).filter((p) => p.label);
+  }
+
+  function buildSkillCommands(skills) {
+    return skills.map((s) => {
+      const n = Number(s.value);
+      if (Number.isFinite(n) && String(s.value).trim() !== "") {
+        return `1d100<=${n} 【${s.label}】`;
+      }
+      if (s.value) return `${s.value} 【${s.label}】`;
+      return `【${s.label}】`;
+    }).join("\n");
+  }
+
+  /**
+   * CCFOLIA Clipboard API:
+   * { kind: "character", data: Partial<Character> }
+   * iconUrl / faces / x / y / active は外部から設定しない。
+   */
+  function buildCcfoliaClipboardPayload() {
+    const name = String(els.name?.value || "").trim() || "NPC";
+    const initiative = Number(els.initiative?.value);
+    const memo = String(els.memo?.value || "");
+    const status = collectStatus();
+    const params = collectLabelValues(els.paramRows);
+    const skills = collectLabelValues(els.skillRows);
+
+    const paramMap = new Map();
+    params.forEach((p) => paramMap.set(p.label, p.value));
+    skills.forEach((s) => paramMap.set(s.label, s.value));
+    const mergedParams = [...paramMap.entries()].map(([label, value]) => ({ label, value }));
+
+    return {
+      kind: "character",
+      data: {
+        name,
+        memo,
+        initiative: Number.isFinite(initiative) ? initiative : 0,
+        externalUrl: "",
+        status,
+        params: mergedParams,
+        commands: buildSkillCommands(skills),
+        secret: false,
+        invisible: false,
+        hideStatus: false
+      }
+    };
+  }
+
+  function refreshJsonPreview() {
+    if (jsonPreviewEl) {
+      jsonPreviewEl.textContent = JSON.stringify(buildCcfoliaClipboardPayload(), null, 2);
     }
+  }
+
+  appendStatusRow({ label: "HP", value: 10, max: 10 });
+  appendStatusRow({ label: "MP", value: 10, max: 10 });
+  appendKvRow(els.paramRows, { label: "STR", value: "" }, { label: "STR など", value: "値" });
+  appendKvRow(els.paramRows, { label: "DEX", value: "" }, { label: "STR など", value: "値" });
+  appendKvRow(els.paramRows, { label: "INT", value: "" }, { label: "STR など", value: "値" });
+  appendKvRow(els.skillRows, { label: "", value: "" }, { label: "技能名", value: "技能値" });
+
+  document.getElementById("npc-add-status")?.addEventListener("click", () => {
+    appendStatusRow({ label: "", value: 0, max: 0 });
+    refreshJsonPreview();
+  });
+  document.getElementById("npc-add-param")?.addEventListener("click", () => {
+    appendKvRow(els.paramRows, { label: "", value: "" }, { label: "STR など", value: "値" });
+    refreshJsonPreview();
+  });
+  document.getElementById("npc-add-skill")?.addEventListener("click", () => {
+    appendKvRow(els.skillRows, { label: "", value: "" }, { label: "技能名", value: "技能値" });
+    refreshJsonPreview();
   });
 
-  ["input", "change"].forEach((ev) => {
-    [els.name, els.fit, els.size, els.labelPos, els.fontSize, els.textColor, els.band, els.bandColor]
-      .forEach((el) => el?.addEventListener(ev, render));
+  els.copyJson?.addEventListener("click", async () => {
+    await ToolsCommon.copyText(JSON.stringify(buildCcfoliaClipboardPayload()));
   });
 
-  els.download?.addEventListener("click", () => {
-    if (!sourceImage) {
-      Utils.showToast("先に画像を選んでください", "info");
-      return;
-    }
-    const name = (els.name?.value || "npc").trim().replace(/[\\/:*?"<>|]/g, "_") || "npc";
-    ToolsCommon.downloadCanvasPng(canvas, `${name}-token.png`);
+  [els.name, els.initiative, els.memo].forEach((el) => {
+    el?.addEventListener("input", refreshJsonPreview);
   });
 
-  render();
+  refreshJsonPreview();
 })();

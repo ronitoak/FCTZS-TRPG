@@ -16,55 +16,40 @@
       <a class="tools-back" href="./index.html">← Tools</a>
       <header class="page-header">
         <h1>NPCコマ作成</h1>
-        <p class="u-muted">画像に名前ラベルを重ねた正方形コマを PNG で書き出します。</p>
+        <p class="u-muted">ココフォリアに貼り付けできるキャラクター JSON を作ります。</p>
       </header>
 
       <div class="tools-layout">
         <div class="tools-panel">
-          <label>画像
-            <input type="file" id="npc-image" accept="image/*">
-          </label>
+          <h3 class="tools-section-title">基本</h3>
           <label>名前
-            <input type="text" id="npc-name" value="NPC" maxlength="40">
+            <input type="text" id="npc-name" value="NPC" maxlength="80">
           </label>
-          <label>フィット
-            <select id="npc-fit">
-              <option value="cover">cover（塗りつぶし）</option>
-              <option value="contain">contain（全体表示）</option>
-            </select>
+          <label>イニシアチブ
+            <input type="number" id="npc-initiative" value="0" step="1">
           </label>
-          <label>サイズ
-            <select id="npc-size">
-              <option value="200">200 px</option>
-              <option value="280" selected>280 px</option>
-              <option value="400">400 px</option>
-            </select>
+          <label>メモ
+            <textarea id="npc-memo" rows="3" placeholder="メモ（任意）"></textarea>
           </label>
-          <label>ラベル位置
-            <select id="npc-label-pos">
-              <option value="bottom" selected>下</option>
-              <option value="top">上</option>
-            </select>
-          </label>
-          <label>文字サイズ
-            <input type="number" id="npc-font-size" value="22" min="10" max="72">
-          </label>
-          <label>文字色
-            <input type="color" id="npc-text-color" value="#ffffff">
-          </label>
-          <label class="tools-inline">
-            <input type="checkbox" id="npc-band" checked>
-            ラベル背景帯を付ける
-          </label>
-          <label>帯の色
-            <input type="color" id="npc-band-color" value="#000000">
-          </label>
+
+          <h3 class="tools-section-title">ステータス <button type="button" id="npc-add-status" class="btn-small btn-secondary">行追加</button></h3>
+          <div id="npc-status-rows" class="tools-kv-rows" aria-label="ステータス一覧"></div>
+
+          <h3 class="tools-section-title">パラメータ <button type="button" id="npc-add-param" class="btn-small btn-secondary">行追加</button></h3>
+          <div id="npc-param-rows" class="tools-kv-rows" aria-label="パラメータ一覧"></div>
+
+          <h3 class="tools-section-title">技能値 <button type="button" id="npc-add-skill" class="btn-small btn-secondary">行追加</button></h3>
+          <p class="u-muted tools-hint">技能はパラメータにも載せ、チャットパレット（commands）へ判定コマンドも生成します。</p>
+          <div id="npc-skill-rows" class="tools-kv-rows" aria-label="技能一覧"></div>
+
           <div class="tools-actions">
-            <button type="button" id="npc-download" class="btn-primary">PNGダウンロード</button>
+            <button type="button" id="npc-copy-json" class="btn-primary">ココフォリア JSON をコピー</button>
           </div>
         </div>
-        <div class="tools-preview-box">
-          <canvas id="npc-canvas" width="280" height="280" aria-label="NPCコマプレビュー"></canvas>
+
+        <div class="tools-preview-box" style="align-items:stretch;">
+          <h3 class="tools-section-title">JSONプレビュー</h3>
+          <pre id="npc-json-preview" class="tools-result" aria-live="polite"></pre>
         </div>
       </div>
     </main>

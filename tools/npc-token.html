@@ -19,37 +19,49 @@
         <p class="u-muted">ココフォリアに貼り付けできるキャラクター JSON を作ります。</p>
       </header>
 
-      <div class="tools-layout">
-        <div class="tools-panel">
-          <h3 class="tools-section-title">基本</h3>
-          <label>名前
-            <input type="text" id="npc-name" value="NPC" maxlength="80">
+      <div class="tools-panel tools-panel-wide">
+        <label>名前
+          <input type="text" id="npc-name" value="NPC" maxlength="80">
+        </label>
+
+        <h3 class="tools-section-title">ステータス <button type="button" id="npc-add-status" class="btn-small btn-secondary">行追加</button></h3>
+        <div id="npc-status-rows" class="tools-kv-rows" aria-label="ステータス一覧"></div>
+
+        <h3 class="tools-section-title">パラメータ <button type="button" id="npc-add-param" class="btn-small btn-secondary">行追加</button></h3>
+        <div id="npc-param-rows" class="tools-kv-rows" aria-label="パラメータ一覧"></div>
+
+        <h3 class="tools-section-title">表示設定</h3>
+        <div class="tools-toggle-list">
+          <label class="tools-toggle">
+            <input type="checkbox" id="npc-secret">
+            <span>ステータスを非公開にする</span>
           </label>
-          <label>イニシアチブ
-            <input type="number" id="npc-initiative" value="0" step="1">
+          <label class="tools-toggle">
+            <input type="checkbox" id="npc-invisible">
+            <span>発言時キャラクターを表示しない</span>
           </label>
-          <label>メモ
-            <textarea id="npc-memo" rows="3" placeholder="メモ（任意）"></textarea>
+          <label class="tools-toggle">
+            <input type="checkbox" id="npc-hide-status">
+            <span>盤面キャラクター一覧に表示しない</span>
           </label>
-
-          <h3 class="tools-section-title">ステータス <button type="button" id="npc-add-status" class="btn-small btn-secondary">行追加</button></h3>
-          <div id="npc-status-rows" class="tools-kv-rows" aria-label="ステータス一覧"></div>
-
-          <h3 class="tools-section-title">パラメータ <button type="button" id="npc-add-param" class="btn-small btn-secondary">行追加</button></h3>
-          <div id="npc-param-rows" class="tools-kv-rows" aria-label="パラメータ一覧"></div>
-
-          <h3 class="tools-section-title">技能値 <button type="button" id="npc-add-skill" class="btn-small btn-secondary">行追加</button></h3>
-          <p class="u-muted tools-hint">技能はパラメータにも載せ、チャットパレット（commands）へ判定コマンドも生成します。</p>
-          <div id="npc-skill-rows" class="tools-kv-rows" aria-label="技能一覧"></div>
-
-          <div class="tools-actions">
-            <button type="button" id="npc-copy-json" class="btn-primary">ココフォリア JSON をコピー</button>
-          </div>
         </div>
 
-        <div class="tools-preview-box" style="align-items:stretch;">
-          <h3 class="tools-section-title">JSONプレビュー</h3>
-          <pre id="npc-json-preview" class="tools-result" aria-live="polite"></pre>
+        <h3 class="tools-section-title">コマンド</h3>
+        <div class="tools-actions">
+          <button type="button" id="npc-preset-1d100" class="btn-secondary">プリセット: 1d100</button>
+          <button type="button" id="npc-preset-ccb" class="btn-secondary">プリセット: CCB&lt;= 【技能】</button>
+        </div>
+        <label class="tools-toggle">
+          <input type="checkbox" id="npc-secret-dice">
+          <span>シークレットダイスにする</span>
+        </label>
+        <p class="u-muted tools-hint">オンのとき、すべてのコマンド行の先頭に <code>s</code> を付けます。</p>
+        <label>コマンド一覧
+          <textarea id="npc-commands" rows="10" placeholder="1行に1コマンド"></textarea>
+        </label>
+
+        <div class="tools-actions">
+          <button type="button" id="npc-copy-json" class="btn-primary">ココフォリア JSON をコピー</button>
         </div>
       </div>
     </main>

@@ -1,32 +1,31 @@
-// NPCコマ作成：ココフォリア Clipboard API（character JSON）の組み立て
+// NPCコマ作成：ココフォリア Clipboard API（character JSON）
 "use strict";
 
 (() => {
-  const jsonPreviewEl = document.getElementById("npc-json-preview");
-
   const els = {
     name: document.getElementById("npc-name"),
-    initiative: document.getElementById("npc-initiative"),
-    memo: document.getElementById("npc-memo"),
     statusRows: document.getElementById("npc-status-rows"),
     paramRows: document.getElementById("npc-param-rows"),
-    skillRows: document.getElementById("npc-skill-rows"),
+    secret: document.getElementById("npc-secret"),
+    invisible: document.getElementById("npc-invisible"),
+    hideStatus: document.getElementById("npc-hide-status"),
+    commands: document.getElementById("npc-commands"),
+    secretDice: document.getElementById("npc-secret-dice"),
     copyJson: document.getElementById("npc-copy-json")
   };
+
+  /** シークレットダイス ON 前の生コマンド（s 付与前） */
+  let rawCommands = "";
 
   function attr(value) {
     return Utils.escapeHtml(value);
   }
 
   function bindRowEvents(container) {
-    container.querySelectorAll("input").forEach((input) => {
-      input.addEventListener("input", refreshJsonPreview);
-    });
     container.querySelectorAll(".row-remove").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.onclick = () => {
         btn.closest(".tools-kv-row")?.remove();
-        refreshJsonPreview();
-      });
+      };
     });
   }
 
@@ -46,19 +45,19 @@
     bindRowEvents(els.statusRows);
   }
 
-  function appendKvRow(container, item, placeholders) {
-    if (!container) return;
+  function appendParamRow(item = { label: "", value: "" }) {
+    if (!els.paramRows) return;
     const wrap = document.createElement("div");
     wrap.innerHTML = `
       <div class="tools-kv-row">
-        <input type="text" class="kv-label" placeholder="${placeholders.label}" value="${attr(item.label)}" aria-label="名前">
-        <input type="text" class="kv-value" placeholder="${placeholders.value}" value="${attr(item.value)}" aria-label="値">
+        <input type="text" class="kv-label" placeholder="STR など" value="${attr(item.label)}" aria-label="パラメータ名">
+        <input type="text" class="kv-value" placeholder="値" value="${attr(item.value)}" aria-label="パラメータ値">
         <button type="button" class="btn-small btn-secondary row-remove">削除</button>
       </div>`;
     const row = wrap.firstElementChild;
     if (!row) return;
-    container.appendChild(row);
-    bindRowEvents(container);
+    els.paramRows.appendChild(row);
+    bindRowEvents(els.paramRows);
   }
 
   function collectStatus() {
@@ -75,94 +74,123 @@
     }).filter((s) => s.label);
   }
 
-  function collectLabelValues(container) {
-    if (!container) return [];
-    return [...container.querySelectorAll(".tools-kv-row")].map((row) => {
+  function collectParams() {
+    if (!els.paramRows) return [];
+    return [...els.paramRows.querySelectorAll(".tools-kv-row")].map((row) => {
       const label = String(row.querySelector(".kv-label")?.value || "").trim();
       const value = String(row.querySelector(".kv-value")?.value || "").trim();
       return { label, value };
     }).filter((p) => p.label);
   }
 
-  function buildSkillCommands(skills) {
-    return skills.map((s) => {
-      const n = Number(s.value);
-      if (Number.isFinite(n) && String(s.value).trim() !== "") {
-        return `1d100<=${n} 【${s.label}】`;
-      }
-      if (s.value) return `${s.value} 【${s.label}】`;
-      return `【${s.label}】`;
-    }).join("\n");
+  function stripSecretPrefix(line) {
+    const t = String(line || "");
+    // 行頭の s / S（ダイスシークレット）だけ外す。空白は維持しない
+    return t.replace(/^s(?=\S)/i, "");
   }
 
-  /**
-   * CCFOLIA Clipboard API:
-   * { kind: "character", data: Partial<Character> }
-   * iconUrl / faces / x / y / active は外部から設定しない。
-   */
+  function applySecretPrefix(line) {
+    const t = String(line || "").trimEnd();
+    if (!t.trim()) return t;
+    if (/^s(?=\S)/i.test(t)) return t;
+    return `s${t}`;
+  }
+
+  function syncCommandsFromRaw() {
+    if (!els.commands) return;
+    const lines = rawCommands.split("\n");
+    const next = els.secretDice?.checked
+      ? lines.map(applySecretPrefix).join("\n")
+      : lines.map(stripSecretPrefix).join("\n");
+    els.commands.value = next;
+  }
+
+  function captureRawFromTextarea() {
+    if (!els.commands) return;
+    // 表示中のテキストから s を除いたものを生データとして保持
+    rawCommands = els.commands.value
+      .split("\n")
+      .map(stripSecretPrefix)
+      .join("\n");
+  }
+
+  function appendPreset(commandLine) {
+    captureRawFromTextarea();
+    const base = String(commandLine || "");
+    if (!rawCommands.trim()) {
+      rawCommands = base;
+    } else {
+      rawCommands = `${rawCommands.replace(/\n+$/, "")}\n${base}`;
+    }
+    syncCommandsFromRaw();
+  }
+
+  function buildCommandsForExport() {
+    captureRawFromTextarea();
+    const lines = rawCommands.split("\n");
+    if (els.secretDice?.checked) {
+      return lines.map(applySecretPrefix).join("\n");
+    }
+    return lines.map(stripSecretPrefix).join("\n");
+  }
+
   function buildCcfoliaClipboardPayload() {
     const name = String(els.name?.value || "").trim() || "NPC";
-    const initiative = Number(els.initiative?.value);
-    const memo = String(els.memo?.value || "");
-    const status = collectStatus();
-    const params = collectLabelValues(els.paramRows);
-    const skills = collectLabelValues(els.skillRows);
-
-    const paramMap = new Map();
-    params.forEach((p) => paramMap.set(p.label, p.value));
-    skills.forEach((s) => paramMap.set(s.label, s.value));
-    const mergedParams = [...paramMap.entries()].map(([label, value]) => ({ label, value }));
-
     return {
       kind: "character",
       data: {
         name,
-        memo,
-        initiative: Number.isFinite(initiative) ? initiative : 0,
-        externalUrl: "",
-        status,
-        params: mergedParams,
-        commands: buildSkillCommands(skills),
-        secret: false,
-        invisible: false,
-        hideStatus: false
+        status: collectStatus(),
+        params: collectParams(),
+        commands: buildCommandsForExport(),
+        secret: Boolean(els.secret?.checked),
+        invisible: Boolean(els.invisible?.checked),
+        hideStatus: Boolean(els.hideStatus?.checked)
       }
     };
   }
 
-  function refreshJsonPreview() {
-    if (jsonPreviewEl) {
-      jsonPreviewEl.textContent = JSON.stringify(buildCcfoliaClipboardPayload(), null, 2);
-    }
-  }
+  // 初期ステータス
+  [
+    { label: "HP", value: 0, max: 0 },
+    { label: "MP", value: 0, max: 0 },
+    { label: "SAN", value: 0, max: 0 }
+  ].forEach(appendStatusRow);
 
-  appendStatusRow({ label: "HP", value: 10, max: 10 });
-  appendStatusRow({ label: "MP", value: 10, max: 10 });
-  appendKvRow(els.paramRows, { label: "STR", value: "" }, { label: "STR など", value: "値" });
-  appendKvRow(els.paramRows, { label: "DEX", value: "" }, { label: "STR など", value: "値" });
-  appendKvRow(els.paramRows, { label: "INT", value: "" }, { label: "STR など", value: "値" });
-  appendKvRow(els.skillRows, { label: "", value: "" }, { label: "技能名", value: "技能値" });
+  // 初期パラメータ
+  ["STR", "CON", "SIZ", "INT", "POW", "DEX", "APP", "EDU"].forEach((label) => {
+    appendParamRow({ label, value: "" });
+  });
 
   document.getElementById("npc-add-status")?.addEventListener("click", () => {
     appendStatusRow({ label: "", value: 0, max: 0 });
-    refreshJsonPreview();
   });
   document.getElementById("npc-add-param")?.addEventListener("click", () => {
-    appendKvRow(els.paramRows, { label: "", value: "" }, { label: "STR など", value: "値" });
-    refreshJsonPreview();
+    appendParamRow({ label: "", value: "" });
   });
-  document.getElementById("npc-add-skill")?.addEventListener("click", () => {
-    appendKvRow(els.skillRows, { label: "", value: "" }, { label: "技能名", value: "技能値" });
-    refreshJsonPreview();
+
+  document.getElementById("npc-preset-1d100")?.addEventListener("click", () => {
+    appendPreset("1d100");
+  });
+  document.getElementById("npc-preset-ccb")?.addEventListener("click", () => {
+    appendPreset("CCB<= 【技能】");
+  });
+
+  els.secretDice?.addEventListener("change", () => {
+    captureRawFromTextarea();
+    syncCommandsFromRaw();
+  });
+
+  els.commands?.addEventListener("input", () => {
+    // 編集中は表示どおりを取り込み、トグル／書き出し時に s を正しく付け外しできるよう生データを更新
+    captureRawFromTextarea();
+  });
+  els.commands?.addEventListener("blur", () => {
+    captureRawFromTextarea();
+    syncCommandsFromRaw();
   });
 
   els.copyJson?.addEventListener("click", async () => {
     await ToolsCommon.copyText(JSON.stringify(buildCcfoliaClipboardPayload()));
   });
-
-  [els.name, els.initiative, els.memo].forEach((el) => {
-    el?.addEventListener("input", refreshJsonPreview);
-  });
-
-  refreshJsonPreview();
 })();

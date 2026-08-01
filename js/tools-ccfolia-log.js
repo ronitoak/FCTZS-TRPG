@@ -2,8 +2,6 @@
 "use strict";
 
 (() => {
-  const OUTCOMES = ["成功", "スペシャル", "クリティカル", "失敗", "ファンブル"];
-
   const fileEl = document.getElementById("log-file");
   const fileNameEl = document.getElementById("log-file-name");
   const metaEl = document.getElementById("log-meta");
@@ -14,12 +12,24 @@
   const countEl = document.getElementById("log-count");
   const copyBtn = document.getElementById("log-copy");
 
-  /** @type {{ channel: string, speaker: string, body: string, kind: string, outcome: string|null, sanName: string|null, sanTo: number|null }[]} */
-  let messages = [];
+  /**
+   * 表示対象の判定ログのみ（1d100 / CCB<= / CC<=）
+   * @type {{ channel: string, speaker: string, body: string, outcome: string|null }[]}
+   */
+  let checkMessages = [];
   /** @type {string[]} */
   let characterNames = [];
   /** @type {Map<string, number>} */
   let finalSanByName = new Map();
+
+  /** 成功 ⊃ スペシャル ⊃ クリティカル / 失敗 ⊃ ファンブル */
+  const OUTCOME_MATCH = {
+    成功: ["成功", "スペシャル", "クリティカル"],
+    スペシャル: ["スペシャル", "クリティカル"],
+    クリティカル: ["クリティカル"],
+    失敗: ["失敗", "ファンブル"],
+    ファンブル: ["ファンブル"]
+  };
 
   function decodeEntities(text) {
     return String(text || "")
@@ -45,43 +55,40 @@
     ).trim();
   }
 
+  /** 表示対象の判定コマンド行か */
+  function isCheckRollBody(body) {
+    return /1d100|CCB<=|CC<=/i.test(String(body || ""));
+  }
+
   function detectOutcome(body) {
     const t = String(body || "");
+    // より具体的な結果を先に判定
+    if (/決定的成功|クリティカル/.test(t)) return "クリティカル";
     if (/スペシャル/.test(t)) return "スペシャル";
-    if (/クリティカル/.test(t)) return "クリティカル";
     if (/致命的失敗|ファンブル/.test(t)) return "ファンブル";
-    // 「成功数」は成功判定とは別扱い
     if (/失敗/.test(t) && !/成功数/.test(t)) return "失敗";
     if (/成功/.test(t) && !/成功数/.test(t)) return "成功";
     return null;
   }
 
   function parseSanChange(body) {
-    // [ 名前 ] SAN : 60 → 59
     const m = String(body || "").match(
       /\[\s*(.+?)\s*\]\s*SAN\s*:\s*(-?\d+)\s*[→➡]\s*(-?\d+)/i
     );
     if (!m) return null;
     return {
       name: normalizeName(m[1]),
-      from: Number(m[2]),
       to: Number(m[3])
     };
   }
 
-  function isDiceBody(body) {
-    const t = String(body || "");
-    return /(1[Dd]\d+|CCB|\d+B100|[＞>].*(成功|失敗|スペシャル|クリティカル|ファンブル|致命的)|ダメージ判定)/.test(t);
-  }
-
-  /**
-   * ココフォリア HTML エクスポートをメッセージ配列へ
-   */
   function parseCcfoliaHtml(html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const paragraphs = [...(doc.body?.children || [])].filter((el) => el.tagName === "P");
-    /** @type {typeof messages} */
-    const list = [];
+    /** @type {typeof checkMessages} */
+    const checks = [];
+    const sanMap = new Map();
+    const names = new Set();
 
     for (const p of paragraphs) {
       const spans = [...p.children].filter((el) => el.tagName === "SPAN");
@@ -94,82 +101,61 @@
       if (!speaker && !body) continue;
 
       const san = parseSanChange(body);
-      let kind = "speech";
-      let outcome = null;
-      if (san) {
-        kind = "san";
-      } else if (isDiceBody(body) || detectOutcome(body)) {
-        kind = "dice";
-        outcome = detectOutcome(body);
-      } else if (speaker.toLowerCase() === "system") {
-        kind = "system";
+      if (san && Number.isFinite(san.to)) {
+        sanMap.set(san.name, san.to);
+        names.add(san.name);
       }
 
-      list.push({
+      if (!isCheckRollBody(body)) continue;
+
+      const outcome = detectOutcome(body);
+      if (speaker && speaker.toLowerCase() !== "system") {
+        names.add(speaker);
+      }
+
+      checks.push({
         channel,
         speaker,
         body,
-        kind,
-        outcome,
-        sanName: san?.name || null,
-        sanTo: san && Number.isFinite(san.to) ? san.to : null
+        outcome
       });
     }
-    return list;
-  }
 
-  function rebuildCharacterIndex() {
-    const names = new Set();
-    finalSanByName = new Map();
-
-    for (const msg of messages) {
-      if (msg.speaker && msg.speaker.toLowerCase() !== "system") {
-        names.add(msg.speaker);
-      }
-      if (msg.kind === "san" && msg.sanName) {
-        names.add(msg.sanName);
-        finalSanByName.set(msg.sanName, msg.sanTo);
-      }
-    }
-
-    characterNames = [...names].sort((a, b) => a.localeCompare(b, "ja"));
+    return {
+      checkMessages: checks,
+      finalSanByName: sanMap,
+      characterNames: [...names].sort((a, b) => a.localeCompare(b, "ja"))
+    };
   }
 
   function selectedCharacters() {
     if (!charactersEl) return new Set(characterNames);
-    const checked = [...charactersEl.querySelectorAll('input[type="checkbox"]:checked')]
-      .map((el) => el.value);
-    return new Set(checked);
-  }
-
-  function selectedOutcomes() {
-    if (!outcomesEl) return new Set();
     return new Set(
-      [...outcomesEl.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value)
+      [...charactersEl.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value)
     );
   }
 
-  function messageMatchesFilters(msg, chars, outcomes) {
-    // キャラフィルタ
-    const relatedName = msg.kind === "san" ? msg.sanName : msg.speaker;
-    if (chars.size > 0) {
-      if (!relatedName || !chars.has(relatedName)) return false;
-    }
+  function selectedOutcomeFilters() {
+    if (!outcomesEl) return [];
+    return [...outcomesEl.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value);
+  }
 
-    // 判定結果フィルタ（何か選ばれているときだけダイス行に適用）
-    if (outcomes.size > 0) {
-      if (msg.kind !== "dice" || !msg.outcome || !outcomes.has(msg.outcome)) {
-        return false;
-      }
-    }
-    return true;
+  function outcomeMatchesFilters(outcome, filters) {
+    if (!filters.length) return true;
+    if (!outcome) return false;
+    return filters.some((filter) => {
+      const allowed = OUTCOME_MATCH[filter];
+      return Array.isArray(allowed) && allowed.includes(outcome);
+    });
+  }
+
+  function messageMatchesFilters(msg, chars, outcomeFilters) {
+    if (chars.size > 0 && !chars.has(msg.speaker)) return false;
+    return outcomeMatchesFilters(msg.outcome, outcomeFilters);
   }
 
   function formatMessage(msg) {
     const ch = msg.channel ? `[${msg.channel}] ` : "";
-    if (msg.kind === "san") {
-      return `${ch}system：${msg.body.replace(/\n/g, " ")}`;
-    }
     return `${ch}${msg.speaker}：${msg.body}`;
   }
 
@@ -201,7 +187,7 @@
       finalSanEl.innerHTML = `<p class="u-muted">SAN 変化の記録はありません。</p>`;
       return;
     }
-    const rows = [...finalSanByName.entries()]
+    finalSanEl.innerHTML = [...finalSanByName.entries()]
       .sort((a, b) => a[0].localeCompare(b[0], "ja"))
       .map(([name, san]) => `
         <div class="tools-log-san-row">
@@ -209,27 +195,26 @@
           <strong>${san}</strong>
         </div>`)
       .join("");
-    finalSanEl.innerHTML = rows;
   }
 
   function renderFiltered() {
     const chars = selectedCharacters();
-    const outcomes = selectedOutcomes();
-    const filtered = messages.filter((m) => messageMatchesFilters(m, chars, outcomes));
+    const outcomeFilters = selectedOutcomeFilters();
+    const filtered = checkMessages.filter((m) => messageMatchesFilters(m, chars, outcomeFilters));
     const text = filtered.map(formatMessage).join("\n\n");
     if (outputEl) {
       outputEl.textContent = text || "（条件に一致するログがありません）";
     }
     if (countEl) {
-      countEl.textContent = messages.length
-        ? `（${filtered.length} / ${messages.length} 件）`
+      countEl.textContent = checkMessages.length
+        ? `（${filtered.length} / ${checkMessages.length} 件）`
         : "";
     }
     if (copyBtn) copyBtn.disabled = !filtered.length;
   }
 
   function resetUi() {
-    messages = [];
+    checkMessages = [];
     characterNames = [];
     finalSanByName = new Map();
     if (metaEl) metaEl.hidden = true;
@@ -245,17 +230,19 @@
   }
 
   function loadHtml(html, fileName) {
-    messages = parseCcfoliaHtml(html);
-    rebuildCharacterIndex();
+    const parsed = parseCcfoliaHtml(html);
+    checkMessages = parsed.checkMessages;
+    finalSanByName = parsed.finalSanByName;
+    characterNames = parsed.characterNames;
     if (fileNameEl) fileNameEl.textContent = fileName || "読み込み済み";
     if (metaEl) metaEl.hidden = false;
     renderCharacters();
     renderFinalSan();
     renderFiltered();
-    if (!messages.length) {
-      Utils.showToast("ログメッセージを取得できませんでした", "info");
+    if (!checkMessages.length) {
+      Utils.showToast("1d100 / CCB<= / CC<= の判定ログがありませんでした", "info");
     } else {
-      Utils.showToast(`${messages.length} 件のログを読み込みました`, "success");
+      Utils.showToast(`${checkMessages.length} 件の判定ログを読み込みました`, "success");
     }
   }
 

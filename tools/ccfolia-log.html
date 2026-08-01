@@ -16,7 +16,7 @@
       <a class="tools-back" href="./index.html">← Tools</a>
       <header class="page-header">
         <h1>ココフォリアログ整形</h1>
-        <p class="u-muted">ココフォリアのログ HTML を読み込み、キャラクター／判定結果で絞り込みます。最終 SAN も一覧表示します。</p>
+        <p class="u-muted">ココフォリアのログ HTML を読み込み、<code>1d100</code> / <code>CCB&lt;=</code> / <code>CC&lt;=</code> の判定だけを表示・絞り込みます。最終 SAN も一覧表示します。</p>
       </header>
 
       <div class="tools-panel tools-panel-wide">
@@ -37,7 +37,7 @@
           <div id="log-final-san" class="tools-log-san" aria-live="polite"></div>
 
           <h3 class="tools-section-title">判定結果フィルタ</h3>
-          <p class="u-muted tools-hint">未選択のときは判定結果で絞り込みません。選択すると該当するダイス行だけ表示します。</p>
+          <p class="u-muted tools-hint">未選択のときは結果で絞り込みません。包含: 成功⊃スペシャル⊃クリティカル、失敗⊃ファンブル（決定的成功はクリティカル扱い）。</p>
           <div id="log-outcomes" class="tools-log-outcomes">
             <label class="tools-toggle"><input type="checkbox" value="成功"><span>成功</span></label>
             <label class="tools-toggle"><input type="checkbox" value="スペシャル"><span>スペシャル</span></label>

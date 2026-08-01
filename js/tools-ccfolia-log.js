@@ -79,7 +79,8 @@
     const t = String(body || "");
     // より具体的な結果を先に判定
     if (/決定的成功|クリティカル/.test(t)) return "クリティカル";
-    if (/スペシャル/.test(t)) return "スペシャル";
+    // 6版スペシャル / 7版イクストリーム成功は同列扱い
+    if (/イクストリーム成功|スペシャル/.test(t)) return "スペシャル";
     if (/致命的失敗|ファンブル/.test(t)) return "ファンブル";
     if (/失敗/.test(t) && !/成功数/.test(t)) return "失敗";
     if (/成功/.test(t) && !/成功数/.test(t)) return "成功";
@@ -159,7 +160,13 @@
     return {
       checkMessages: checks,
       finalSanByName: sanMap,
-      characterNames: [...names].sort((a, b) => a.localeCompare(b, "ja")),
+      // SAN 取得済みを先に、未取得を後ろ。同グループ内は名前順
+      characterNames: [...names].sort((a, b) => {
+        const aHas = sanMap.has(a) ? 0 : 1;
+        const bHas = sanMap.has(b) ? 0 : 1;
+        if (aHas !== bHas) return aHas - bHas;
+        return a.localeCompare(b, "ja");
+      }),
       tabNames: [...tabs].sort((a, b) => a.localeCompare(b, "ja"))
     };
   }

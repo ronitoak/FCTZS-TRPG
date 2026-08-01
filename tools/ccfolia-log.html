@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ココフォリアログ整形 | FCTZS TRPG部</title>
+  <title>ココフォリアログ抽出ツール | FCTZS TRPG部</title>
   <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
   <link rel="stylesheet" href="../css/style.css">
 </head>
@@ -15,8 +15,8 @@
     <main class="tools-page">
       <a class="tools-back" href="./index.html">← Tools</a>
       <header class="page-header">
-        <h1>ココフォリアログ整形</h1>
-        <p class="u-muted">ココフォリアのログ HTML を読み込み、<code>1d100</code> / <code>CCB&lt;=</code> / <code>CC&lt;=</code> の<strong>判定結果行</strong>だけを表示・絞り込みます（技能説明など文中の言及は除外）。最終 SAN も一覧表示します。</p>
+        <h1>ココフォリアログ抽出ツール</h1>
+        <p class="u-muted">ココフォリアのログ HTML を読み込み、判定結果行を表示・絞り込みます。最終 SAN も一覧表示します。</p>
       </header>
 
       <div class="tools-panel tools-panel-wide">
@@ -26,13 +26,6 @@
         <p id="log-file-name" class="u-muted tools-hint">未選択</p>
 
         <section id="log-meta" class="tools-log-meta" hidden>
-          <h3 class="tools-section-title">タブ</h3>
-          <div class="tools-actions tools-actions-start">
-            <button type="button" id="log-tab-all" class="btn-small btn-secondary">すべて選択</button>
-            <button type="button" id="log-tab-none" class="btn-small btn-secondary">すべて解除</button>
-          </div>
-          <div id="log-tabs" class="tools-log-outcomes" aria-label="タブ一覧"></div>
-
           <h3 class="tools-section-title">キャラクター一覧</h3>
           <div class="tools-actions tools-actions-start">
             <button type="button" id="log-char-all" class="btn-small btn-secondary">すべて選択</button>
@@ -40,14 +33,21 @@
           </div>
           <div id="log-characters" class="tools-log-characters" aria-label="キャラクター一覧"></div>
 
+          <h3 class="tools-section-title">タブ</h3>
+          <div class="tools-actions tools-actions-start">
+            <button type="button" id="log-tab-all" class="btn-small btn-secondary">すべて選択</button>
+            <button type="button" id="log-tab-none" class="btn-small btn-secondary">すべて解除</button>
+          </div>
+          <div id="log-tabs" class="tools-log-outcomes" aria-label="タブ一覧"></div>
+
           <h3 class="tools-section-title">最終 SAN</h3>
           <div id="log-final-san" class="tools-log-san" aria-live="polite"></div>
 
           <h3 class="tools-section-title">判定結果フィルタ</h3>
-          <p class="u-muted tools-hint">未選択のときは結果で絞り込みません。包含: 成功⊃スペシャル⊃クリティカル、失敗⊃ファンブル。決定的成功はクリティカル扱い。目標値なしの 1d100 は出目1〜5をクリティカル、96〜100をファンブルと判定します。</p>
+          <p class="u-muted tools-hint">未選択のときは全件表示。包含: 成功⊃スペシャル/イクストリーム⊃クリティカル、失敗⊃ファンブル。目標値なしの 1d100 は出目1〜5をクリティカル、96〜100をファンブルと判定します。</p>
           <div id="log-outcomes" class="tools-log-outcomes">
             <label class="tools-toggle"><input type="checkbox" value="成功"><span>成功</span></label>
-            <label class="tools-toggle"><input type="checkbox" value="スペシャル"><span>スペシャル</span></label>
+            <label class="tools-toggle"><input type="checkbox" value="スペシャル"><span>スペシャル/イクストリーム</span></label>
             <label class="tools-toggle"><input type="checkbox" value="クリティカル"><span>クリティカル</span></label>
             <label class="tools-toggle"><input type="checkbox" value="失敗"><span>失敗</span></label>
             <label class="tools-toggle"><input type="checkbox" value="ファンブル"><span>ファンブル</span></label>

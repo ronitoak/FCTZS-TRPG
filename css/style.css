@@ -2968,29 +2968,17 @@ dialog.modal::backdrop {
   word-break: break-word;
 }
 
-.tools-dice-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  max-height: 320px;
-  overflow: auto;
-}
-
-.tools-dice-row {
-  display: grid;
-  grid-template-columns: 56px 56px 1fr auto;
-  gap: 0.35rem;
+.tools-dice-item-row {
+  grid-template-columns: 2rem 1fr;
+  gap: 0.5rem;
   align-items: center;
 }
 
-.tools-dice-roll {
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background: #111;
-  color: #f2f2f2;
-  font-family: Consolas, "Courier New", monospace;
-  text-align: center;
+.tools-dice-item-index {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-muted, #6c757d);
 }
 
 .tools-back {

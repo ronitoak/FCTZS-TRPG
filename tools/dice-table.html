@@ -16,38 +16,29 @@
       <a class="tools-back" href="./index.html">← Tools</a>
       <header class="page-header">
         <h1>オリジナル表</h1>
-        <p class="u-muted">独自のダイス表を編集し、その場で振れます。下書きはブラウザに保存されます。</p>
+        <p class="u-muted">表タイトルと項目を入力し、<code>/roll-table</code> 形式のテキストを作成します。</p>
       </header>
 
       <div class="tools-layout">
         <div class="tools-panel">
+          <h3 class="tools-section-title">表情報</h3>
           <label>表タイトル
             <input type="text" id="dice-title" value="オリジナル表" maxlength="80">
           </label>
-          <label>ダイス
-            <select id="dice-sides">
-              <option value="6">1d6</option>
-              <option value="10">1d10</option>
-              <option value="20">1d20</option>
-              <option value="100" selected>1d100</option>
-            </select>
+          <label>項目数
+            <input type="number" id="dice-count" value="4" min="1" max="100" step="1">
           </label>
-          <div>
-            <div class="u-muted" style="margin-bottom:0.35rem;">出目（from〜to）と結果</div>
-            <div id="dice-rows" class="tools-dice-rows"></div>
-          </div>
+
+          <h3 class="tools-section-title">項目入力</h3>
+          <div id="dice-items" class="tools-kv-rows" aria-label="項目一覧"></div>
+
           <div class="tools-actions">
-            <button type="button" id="dice-add-row" class="btn-secondary">行を追加</button>
-            <button type="button" id="dice-fill" class="btn-secondary">面数で初期化</button>
+            <button type="button" id="dice-copy" class="btn-primary">テキストをコピー</button>
           </div>
-          <div class="tools-actions">
-            <button type="button" id="dice-roll" class="btn-primary">振る</button>
-            <button type="button" id="dice-save" class="btn-secondary">下書き保存</button>
-            <button type="button" id="dice-export" class="btn-secondary">テキストコピー</button>
-          </div>
-          <div id="dice-roll-result" class="tools-dice-roll" hidden>―</div>
         </div>
+
         <div class="tools-preview-box" style="align-items:stretch;">
+          <h3 class="tools-section-title">作成結果</h3>
           <pre id="dice-preview" class="tools-result" aria-live="polite"></pre>
         </div>
       </div>

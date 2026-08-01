@@ -2981,6 +2981,79 @@ dialog.modal::backdrop {
   color: var(--text-muted, #6c757d);
 }
 
+.tools-log-meta {
+  margin-top: 0.5rem;
+}
+
+.tools-log-characters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 240px;
+  overflow: auto;
+  padding: 0.5rem 0;
+}
+
+.tools-log-char {
+  display: grid !important;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.tools-log-char input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+}
+
+.tools-log-char-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tools-log-char-san {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6c757d);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tools-log-san {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.tools-log-san-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px solid var(--border, #dee2e6);
+}
+
+.tools-log-san-row strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.tools-log-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.tools-log-output-wrap {
+  margin-top: 1rem;
+}
+
 .tools-back {
   display: inline-block;
   margin-bottom: 0.75rem;

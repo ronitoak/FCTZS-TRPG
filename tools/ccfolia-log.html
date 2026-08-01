@@ -16,41 +16,46 @@
       <a class="tools-back" href="./index.html">← Tools</a>
       <header class="page-header">
         <h1>ココフォリアログ整形</h1>
-        <p class="u-muted">生ログを貼り付けて整形し、コピーできます。完全互換ではなく実用向けの簡易整形です。</p>
+        <p class="u-muted">ココフォリアのログ HTML を読み込み、キャラクター／判定結果で絞り込みます。最終 SAN も一覧表示します。</p>
       </header>
 
-      <div class="tools-layout">
-        <div class="tools-panel">
-          <label>生ログ
-            <textarea id="log-input" placeholder="ココフォリアなどからコピーしたログを貼り付け"></textarea>
-          </label>
-          <label class="tools-inline">
-            <input type="checkbox" id="log-drop-system" checked>
-            システム行を除外
-          </label>
-          <label class="tools-inline">
-            <input type="checkbox" id="log-drop-dice" checked>
-            ダイス行を除外
-          </label>
-          <label class="tools-inline">
-            <input type="checkbox" id="log-normalize-speaker" checked>
-            話者名を正規化
-          </label>
-          <label>出力形式
-            <select id="log-format">
-              <option value="plain" selected>プレーン</option>
-              <option value="markdown">Markdown</option>
-            </select>
-          </label>
-          <div class="tools-actions">
-            <button type="button" id="log-format-btn" class="btn-primary">整形</button>
-            <button type="button" id="log-copy" class="btn-secondary">結果をコピー</button>
-            <button type="button" id="log-clear" class="btn-secondary">クリア</button>
+      <div class="tools-panel tools-panel-wide">
+        <label>ログファイル
+          <input type="file" id="log-file" accept=".html,text/html">
+        </label>
+        <p id="log-file-name" class="u-muted tools-hint">未選択</p>
+
+        <section id="log-meta" class="tools-log-meta" hidden>
+          <h3 class="tools-section-title">キャラクター一覧</h3>
+          <div class="tools-actions tools-actions-start">
+            <button type="button" id="log-char-all" class="btn-small btn-secondary">すべて選択</button>
+            <button type="button" id="log-char-none" class="btn-small btn-secondary">すべて解除</button>
           </div>
+          <div id="log-characters" class="tools-log-characters" aria-label="キャラクター一覧"></div>
+
+          <h3 class="tools-section-title">最終 SAN</h3>
+          <div id="log-final-san" class="tools-log-san" aria-live="polite"></div>
+
+          <h3 class="tools-section-title">判定結果フィルタ</h3>
+          <p class="u-muted tools-hint">未選択のときは判定結果で絞り込みません。選択すると該当するダイス行だけ表示します。</p>
+          <div id="log-outcomes" class="tools-log-outcomes">
+            <label class="tools-toggle"><input type="checkbox" value="成功"><span>成功</span></label>
+            <label class="tools-toggle"><input type="checkbox" value="スペシャル"><span>スペシャル</span></label>
+            <label class="tools-toggle"><input type="checkbox" value="クリティカル"><span>クリティカル</span></label>
+            <label class="tools-toggle"><input type="checkbox" value="失敗"><span>失敗</span></label>
+            <label class="tools-toggle"><input type="checkbox" value="ファンブル"><span>ファンブル</span></label>
+          </div>
+        </section>
+
+        <div class="tools-actions">
+          <button type="button" id="log-copy" class="btn-primary" disabled>表示中のログをコピー</button>
+          <button type="button" id="log-clear" class="btn-secondary">クリア</button>
         </div>
-        <div class="tools-preview-box" style="align-items:stretch;">
-          <pre id="log-output" class="tools-result" aria-live="polite"></pre>
-        </div>
+      </div>
+
+      <div class="tools-preview-box tools-log-output-wrap" style="align-items:stretch;">
+        <h3 class="tools-section-title">表示ログ <span id="log-count" class="u-muted"></span></h3>
+        <pre id="log-output" class="tools-result" aria-live="polite">ログファイルを選択してください。</pre>
       </div>
     </main>
 

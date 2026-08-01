@@ -16,13 +16,16 @@
       <a class="tools-back" href="./index.html">← Tools</a>
       <header class="page-header">
         <h1>NPCコマ作成</h1>
-        <p class="u-muted">ココフォリアに貼り付けできるキャラクター JSON を作ります。パラメータ変更で HP / MP / SAN・イニシアチブを自動更新しますが、手編集もできます。</p>
+        <p class="u-muted">ココフォリアに貼り付けできるキャラクター JSON を作ります。</p>
       </header>
 
       <div class="tools-panel tools-panel-wide">
         <label>名前
           <input type="text" id="npc-name" value="NPC" maxlength="80">
         </label>
+
+        <h3 class="tools-section-title">ステータス <button type="button" id="npc-add-status" class="btn-small btn-secondary">行追加</button></h3>
+        <div id="npc-status-rows" class="tools-kv-rows" aria-label="ステータス一覧"></div>
 
         <h3 class="tools-section-title">
           パラメータ
@@ -31,24 +34,20 @@
             <button type="button" id="npc-add-param" class="btn-small btn-secondary">行追加</button>
           </span>
         </h3>
-        <p class="u-muted tools-hint">ダイス: EDU=3D6+3 ／ SIZ・INT=2D6+6 ／ その他=3D6</p>
+        <p class="u-muted tools-hint">ダイス: STR・CON・POW・DEX・APP=3D6 ／ SIZ・INT=2D6+6 ／ EDU=3D6+3</p>
         <div id="npc-param-rows" class="tools-kv-rows" aria-label="パラメータ一覧"></div>
 
-        <h3 class="tools-section-title">ステータス <button type="button" id="npc-add-status" class="btn-small btn-secondary">行追加</button></h3>
-        <p class="u-muted tools-hint">HP = ceil((CON+SIZ)/2)　／　MP = POW　／　SAN = POW×5（自動更新・編集可）</p>
-        <div id="npc-status-rows" class="tools-kv-rows" aria-label="ステータス一覧"></div>
-
         <h3 class="tools-section-title">表示項目</h3>
-        <label>イニシアチブ（DEX から自動更新・編集可）
-          <input type="number" id="npc-initiative" value="0" step="1">
-        </label>
-        <dl class="tools-derived">
-          <div>
-            <dt>ダメージボーナス</dt>
-            <dd id="npc-db-display">―</dd>
+        <div class="tools-derived tools-derived-inline">
+          <label class="tools-derived-field">
+            <span>イニシアチブ</span>
+            <input type="number" id="npc-initiative" value="0" step="1">
+          </label>
+          <div class="tools-derived-field">
+            <span>ダメージボーナス</span>
+            <strong id="npc-db-display">―</strong>
           </div>
-        </dl>
-        <p class="u-muted tools-hint">ダメージボーナスは STR+SIZ の表から算出（表示のみ）。イニシアチブは JSON の <code>initiative</code> に入ります。</p>
+        </div>
 
         <h3 class="tools-section-title">表示設定</h3>
         <div class="tools-toggle-list">
@@ -66,15 +65,19 @@
           </label>
         </div>
 
-        <h3 class="tools-section-title">
-          コマンド
-          <button type="button" id="npc-add-command" class="btn-small btn-secondary">行追加</button>
-        </h3>
-        <div class="tools-actions">
+        <h3 class="tools-section-title">コマンド</h3>
+        <div class="tools-actions tools-actions-wrap">
           <button type="button" id="npc-preset-1d100" class="btn-secondary">プリセット: 1d100</button>
           <button type="button" id="npc-preset-ccb" class="btn-secondary">プリセット: CCB&lt;= 【技能】</button>
+          <button type="button" id="npc-preset-1d3db" class="btn-secondary">プリセット: 1d3+DB</button>
+          <button type="button" id="npc-preset-1d4db" class="btn-secondary">プリセット: 1d4+DB</button>
+          <button type="button" id="npc-preset-1d6db" class="btn-secondary">プリセット: 1d6+DB</button>
+          <button type="button" id="npc-preset-resb" class="btn-secondary">プリセット: RESB(攻 - 受)</button>
+          <button type="button" id="npc-preset-param5" class="btn-secondary">プリセット: {能力}*5</button>
         </div>
-        <p class="u-muted tools-hint">各行の「秘密」をオンにすると、そのコマンド先頭に <code>s</code> を付けて書き出します。</p>
+        <div class="tools-actions tools-actions-start">
+          <button type="button" id="npc-add-command" class="btn-secondary">コマンド追加</button>
+        </div>
         <div id="npc-command-rows" class="tools-command-rows" aria-label="コマンド一覧"></div>
 
         <div class="tools-actions">

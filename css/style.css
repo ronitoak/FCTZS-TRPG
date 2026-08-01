@@ -3113,21 +3113,47 @@ dialog.modal::backdrop {
   background: #fff;
 }
 
-.tools-derived > div {
+.tools-derived-inline {
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+}
+
+@media (max-width: 560px) {
+  .tools-derived-inline {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tools-derived-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
   margin: 0;
 }
 
-.tools-derived dt {
-  margin: 0 0 0.2rem;
+.tools-derived-field > span {
   font-size: 0.8rem;
   color: var(--text-muted, #6c757d);
 }
 
-.tools-derived dd {
-  margin: 0;
+.tools-derived-field input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tools-derived-field strong {
   font-size: 1.25rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 2rem;
 }
 
+.tools-actions-wrap {
+  justify-content: flex-start;
+}
+
+.tools-actions-start {
+  justify-content: flex-start;
+  margin-top: 0.25rem;
+}
 

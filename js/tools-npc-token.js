@@ -2,6 +2,8 @@
 "use strict";
 
 (() => {
+  const INITIAL_PARAMS = ["STR", "CON", "POW", "DEX", "APP", "SIZ", "INT", "EDU"];
+
   const els = {
     name: document.getElementById("npc-name"),
     statusRows: document.getElementById("npc-status-rows"),
@@ -15,6 +17,9 @@
     copyJson: document.getElementById("npc-copy-json")
   };
 
+  /** 最新のダメージボーナス表示値（プリセット代入用） */
+  let currentDbLabel = "―";
+
   function attr(value) {
     return Utils.escapeHtml(value);
   }
@@ -27,7 +32,6 @@
     return sum;
   }
 
-  /** パラメータ名に応じたダイス式の結果 */
   function rollForParamLabel(label) {
     const key = String(label || "").trim().toUpperCase();
     if (key === "EDU") return rollDice(3, 6) + 3;
@@ -95,7 +99,7 @@
       <div class="tools-kv-row tools-param-row">
         <input type="text" class="kv-label" placeholder="STR など" value="${attr(item.label)}" aria-label="パラメータ名">
         <input type="text" class="kv-value" placeholder="値" value="${attr(item.value)}" aria-label="パラメータ値" inputmode="numeric">
-        <button type="button" class="btn-small btn-secondary param-dice" title="${hint} を振る">振</button>
+        <button type="button" class="btn-small btn-secondary param-dice" title="${hint} を振る">🎲</button>
         <button type="button" class="btn-small btn-secondary row-remove">削除</button>
       </div>`;
     const row = wrap.firstElementChild;
@@ -118,7 +122,7 @@
         <input type="text" class="cmd-text" placeholder="コマンド" value="${attr(item.text)}" aria-label="コマンド">
         <label class="tools-toggle tools-toggle-compact">
           <input type="checkbox" class="cmd-secret" ${item.secret ? "checked" : ""}>
-          <span>秘密</span>
+          <span>シークレットダイス</span>
         </label>
         <button type="button" class="btn-small btn-secondary row-remove">削除</button>
       </div>`;
@@ -158,6 +162,18 @@
     return "―";
   }
 
+  /** プリセット用: 1dN+DB の DB 部分 */
+  function dbSuffixForCommand() {
+    const db = currentDbLabel;
+    if (!db || db === "―" || db === "±0") return "";
+    return db;
+  }
+
+  function damageCommand(die) {
+    const suffix = dbSuffixForCommand();
+    return suffix ? `${die}${suffix}` : die;
+  }
+
   function setStatusByLabel(label, value) {
     if (!els.statusRows || value == null) return;
     const row = [...els.statusRows.querySelectorAll(".tools-status-row")].find((r) => {
@@ -189,8 +205,9 @@
     }
 
     const db = calcDamageBonus(str, siz);
+    currentDbLabel = db == null ? "―" : db;
     if (els.dbDisplay) {
-      els.dbDisplay.textContent = db == null ? "―" : db;
+      els.dbDisplay.textContent = currentDbLabel;
     }
   }
 
@@ -199,9 +216,7 @@
     els.paramRows.querySelectorAll(".tools-param-row, .tools-kv-row").forEach((row) => {
       const label = row.querySelector(".kv-label")?.value || "";
       const valueEl = row.querySelector(".kv-value");
-      if (!valueEl) return;
-      // ラベルが空の行はスキップ
-      if (!String(label).trim()) return;
+      if (!valueEl || !String(label).trim()) return;
       valueEl.value = String(rollForParamLabel(label));
     });
     recalculateDerived();
@@ -261,14 +276,15 @@
     };
   }
 
-  ["STR", "CON", "SIZ", "INT", "POW", "DEX", "APP", "EDU"].forEach((label) => {
-    appendParamRow({ label, value: "" });
-  });
   [
     { label: "HP", value: 0, max: 0 },
     { label: "MP", value: 0, max: 0 },
     { label: "SAN", value: 0, max: 0 }
   ].forEach((item) => appendStatusRow(item));
+
+  INITIAL_PARAMS.forEach((label) => {
+    appendParamRow({ label, value: "" });
+  });
 
   document.getElementById("npc-add-status")?.addEventListener("click", () => {
     appendStatusRow({ label: "", value: 0, max: 0 });
@@ -286,6 +302,23 @@
   });
   document.getElementById("npc-preset-ccb")?.addEventListener("click", () => {
     appendCommandRow({ text: "CCB<= 【技能】", secret: false });
+  });
+  document.getElementById("npc-preset-1d3db")?.addEventListener("click", () => {
+    appendCommandRow({ text: damageCommand("1d3"), secret: false });
+  });
+  document.getElementById("npc-preset-1d4db")?.addEventListener("click", () => {
+    appendCommandRow({ text: damageCommand("1d4"), secret: false });
+  });
+  document.getElementById("npc-preset-1d6db")?.addEventListener("click", () => {
+    appendCommandRow({ text: damageCommand("1d6"), secret: false });
+  });
+  document.getElementById("npc-preset-resb")?.addEventListener("click", () => {
+    appendCommandRow({ text: "RESB(攻 - 受)", secret: false });
+  });
+  document.getElementById("npc-preset-param5")?.addEventListener("click", () => {
+    INITIAL_PARAMS.forEach((p) => {
+      appendCommandRow({ text: `{${p}} * 5`, secret: false });
+    });
   });
 
   els.copyJson?.addEventListener("click", async () => {

@@ -7,9 +7,9 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-08-01",
-    type: "feature",
-    title: "GM/PL向け便利ツールを追加",
-    detail: "ナビの Tools から、便利ツールを利用できます。"
+    type: "improvement",
+    title: "GM/PL向け便利ツールを試作中",
+    detail: ""
   },
   {
     date: "2026-08-01",

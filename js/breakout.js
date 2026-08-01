@@ -1,26 +1,36 @@
-// クラシックなブロック崩し。ログイン・API 非依存。ハイスコアのみ localStorage。
+// クラシックなブロック崩し（ピクセル／モノクロ見た目）。ログイン・API 非依存。
 "use strict";
 
 (() => {
   const HIGH_SCORE_KEY = "fctzs-breakout-highscore";
-  const CANVAS_W = 480;
-  const CANVAS_H = 640;
-  const PADDLE_W = 80;
-  const PADDLE_H = 12;
-  const PADDLE_SPEED = 7;
-  const BALL_R = 6;
-  const BALL_SPEED = 4.2;
+  // 低解像度で描き、CSS でドット拡大する
+  const CANVAS_W = 240;
+  const CANVAS_H = 320;
+  const PADDLE_W = 40;
+  const PADDLE_H = 4;
+  const PADDLE_SPEED = 3.5;
+  const BALL_SIZE = 4;
+  const BALL_SPEED = 2.1;
   const INITIAL_LIVES = 3;
   const BRICK_ROWS = 6;
   const BRICK_COLS = 10;
-  const BRICK_TOP = 60;
-  const BRICK_GAP = 3;
-  const BRICK_COLORS = ["#c0392b", "#e67e22", "#f1c40f", "#27ae60", "#2980b9", "#8e44ad"];
+  const BRICK_TOP = 28;
+  const BRICK_GAP = 2;
+  // 上段ほど明るく、モノクロ階調のみ
+  const BRICK_SHADES = ["#f0f0f0", "#c8c8c8", "#a0a0a0", "#787878", "#505050", "#383838"];
+  const COL = {
+    bg: "#0a0a0a",
+    fg: "#f0f0f0",
+    mid: "#808080",
+    dim: "#404040",
+    overlay: "rgba(0, 0, 0, 0.72)"
+  };
 
   const canvas = document.getElementById("breakout-canvas");
   if (!canvas || !(canvas instanceof HTMLCanvasElement)) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
 
   const scoreEl = document.getElementById("breakout-score");
   const highEl = document.getElementById("breakout-highscore");
@@ -35,6 +45,7 @@
   let lives = INITIAL_LIVES;
   let highScore = loadHighScore();
   let rafId = 0;
+  let overlayBlink = 0;
 
   const keys = { left: false, right: false };
   let pointerX = null;
@@ -43,20 +54,25 @@
     w: PADDLE_W,
     h: PADDLE_H,
     x: (CANVAS_W - PADDLE_W) / 2,
-    y: CANVAS_H - 40
+    y: CANVAS_H - 20
   };
 
   const ball = {
     x: CANVAS_W / 2,
-    y: CANVAS_H - 60,
-    r: BALL_R,
+    y: CANVAS_H - 30,
+    r: BALL_SIZE / 2,
+    size: BALL_SIZE,
     vx: 0,
     vy: 0,
     stuck: true
   };
 
-  /** @type {{ x: number, y: number, w: number, h: number, alive: boolean, color: string, points: number }[]} */
+  /** @type {{ x: number, y: number, w: number, h: number, alive: boolean, shade: string, points: number }[]} */
   let bricks = [];
+
+  function snap(n) {
+    return Math.round(n);
+  }
 
   function loadHighScore() {
     const n = Number(localStorage.getItem(HIGH_SCORE_KEY));
@@ -78,18 +94,19 @@
 
   function buildBricks() {
     const totalGapX = BRICK_GAP * (BRICK_COLS + 1);
-    const brickW = (CANVAS_W - totalGapX) / BRICK_COLS;
-    const brickH = 18;
+    const brickW = Math.floor((CANVAS_W - totalGapX) / BRICK_COLS);
+    const brickH = 8;
+    const offsetX = Math.floor((CANVAS_W - (brickW * BRICK_COLS + BRICK_GAP * (BRICK_COLS - 1))) / 2);
     bricks = [];
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
         bricks.push({
-          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+          x: offsetX + col * (brickW + BRICK_GAP),
           y: BRICK_TOP + row * (brickH + BRICK_GAP),
           w: brickW,
           h: brickH,
           alive: true,
-          color: BRICK_COLORS[row % BRICK_COLORS.length],
+          shade: BRICK_SHADES[row % BRICK_SHADES.length],
           points: (BRICK_ROWS - row) * 10
         });
       }
@@ -98,7 +115,7 @@
 
   function resetBall() {
     ball.x = paddle.x + paddle.w / 2;
-    ball.y = paddle.y - ball.r - 2;
+    ball.y = paddle.y - ball.size - 1;
     ball.vx = 0;
     ball.vy = 0;
     ball.stuck = true;
@@ -123,6 +140,16 @@
     draw();
   }
 
+  function stopLoop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+  }
+
+  function startIdleLoop() {
+    stopLoop();
+    rafId = requestAnimationFrame(loop);
+  }
+
   function startGame() {
     if (state === "playing") return;
     if (state === "won" || state === "lost") {
@@ -131,6 +158,7 @@
     if (state === "ready" || state === "paused") {
       state = "playing";
       if (ball.stuck) launchBall();
+      stopLoop();
       loop();
     }
   }
@@ -138,14 +166,7 @@
   function pauseGame() {
     if (state !== "playing") return;
     state = "paused";
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = 0;
-    draw();
-  }
-
-  function togglePause() {
-    if (state === "playing") pauseGame();
-    else if (state === "paused" || state === "ready") startGame();
+    startIdleLoop();
   }
 
   function movePaddle() {
@@ -158,7 +179,7 @@
     paddle.x = Math.max(0, Math.min(CANVAS_W - paddle.w, paddle.x));
     if (ball.stuck) {
       ball.x = paddle.x + paddle.w / 2;
-      ball.y = paddle.y - ball.r - 2;
+      ball.y = paddle.y - ball.size - 1;
     }
   }
 
@@ -171,10 +192,11 @@
   }
 
   function bounceOffBrick(brick) {
-    const overlapLeft = (ball.x + ball.r) - brick.x;
-    const overlapRight = (brick.x + brick.w) - (ball.x - ball.r);
-    const overlapTop = (ball.y + ball.r) - brick.y;
-    const overlapBottom = (brick.y + brick.h) - (ball.y - ball.r);
+    const half = ball.size / 2;
+    const overlapLeft = (ball.x + half) - brick.x;
+    const overlapRight = (brick.x + brick.w) - (ball.x - half);
+    const overlapTop = (ball.y + half) - brick.y;
+    const overlapBottom = (brick.y + brick.h) - (ball.y - half);
     const minOverlapX = Math.min(overlapLeft, overlapRight);
     const minOverlapY = Math.min(overlapTop, overlapBottom);
     if (minOverlapX < minOverlapY) {
@@ -190,22 +212,23 @@
 
     ball.x += ball.vx;
     ball.y += ball.vy;
+    const half = ball.size / 2;
 
-    if (ball.x - ball.r <= 0) {
-      ball.x = ball.r;
+    if (ball.x - half <= 0) {
+      ball.x = half;
       ball.vx = Math.abs(ball.vx);
-    } else if (ball.x + ball.r >= CANVAS_W) {
-      ball.x = CANVAS_W - ball.r;
+    } else if (ball.x + half >= CANVAS_W) {
+      ball.x = CANVAS_W - half;
       ball.vx = -Math.abs(ball.vx);
     }
-    if (ball.y - ball.r <= 0) {
-      ball.y = ball.r;
+    if (ball.y - half <= 0) {
+      ball.y = half;
       ball.vy = Math.abs(ball.vy);
     }
 
     if (
       ball.vy > 0 &&
-      circleRectCollision(ball.x, ball.y, ball.r, paddle.x, paddle.y, paddle.w, paddle.h)
+      circleRectCollision(ball.x, ball.y, half, paddle.x, paddle.y, paddle.w, paddle.h)
     ) {
       const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
       const clamped = Math.max(-1, Math.min(1, hit));
@@ -213,12 +236,12 @@
       const speed = Math.hypot(ball.vx, ball.vy) || BALL_SPEED;
       ball.vx = Math.cos(angle) * speed;
       ball.vy = Math.sin(angle) * speed;
-      ball.y = paddle.y - ball.r - 1;
+      ball.y = paddle.y - half - 1;
     }
 
     for (const brick of bricks) {
       if (!brick.alive) continue;
-      if (!circleRectCollision(ball.x, ball.y, ball.r, brick.x, brick.y, brick.w, brick.h)) continue;
+      if (!circleRectCollision(ball.x, ball.y, half, brick.x, brick.y, brick.w, brick.h)) continue;
       brick.alive = false;
       score += brick.points;
       bounceOffBrick(brick);
@@ -234,7 +257,7 @@
       return;
     }
 
-    if (ball.y - ball.r > CANVAS_H) {
+    if (ball.y - half > CANVAS_H) {
       lives -= 1;
       updateHud();
       if (lives <= 0) {
@@ -246,46 +269,86 @@
     }
   }
 
-  function drawOverlay(text) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 28px sans-serif";
+  function fillPixelRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(snap(x), snap(y), Math.max(1, snap(w)), Math.max(1, snap(h)));
+  }
+
+  function drawScanlines() {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+    for (let y = 0; y < CANVAS_H; y += 2) {
+      ctx.fillRect(0, y, CANVAS_W, 1);
+    }
+  }
+
+  function drawPixelText(text, x, y, size) {
+    ctx.fillStyle = COL.fg;
+    ctx.font = `bold ${size}px "Courier New", Courier, monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, CANVAS_W / 2, CANVAS_H / 2);
-    ctx.font = "16px sans-serif";
-    ctx.fillText("スペースまたは「開始」で続行", CANVAS_W / 2, CANVAS_H / 2 + 36);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillText(text, snap(x), snap(y));
+  }
+
+  function drawOverlay(main, sub) {
+    ctx.fillStyle = COL.overlay;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // 点滅でレトロ感
+    const show = Math.floor(overlayBlink / 30) % 2 === 0;
+    if (show) {
+      drawPixelText(main, CANVAS_W / 2, CANVAS_H / 2 - 6, 14);
+      if (sub) {
+        ctx.fillStyle = COL.mid;
+        ctx.font = `10px "Courier New", Courier, monospace`;
+        ctx.fillText(sub, snap(CANVAS_W / 2), snap(CANVAS_H / 2 + 14));
+      }
+    }
+  }
+
+  function drawFrame() {
+    // 1px 枠
+    ctx.strokeStyle = COL.fg;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, CANVAS_W - 1, CANVAS_H - 1);
   }
 
   function draw() {
+    ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = "#1a1a2e";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    fillPixelRect(0, 0, CANVAS_W, CANVAS_H, COL.bg);
 
     for (const brick of bricks) {
       if (!brick.alive) continue;
-      ctx.fillStyle = brick.color;
-      ctx.fillRect(brick.x, brick.y, brick.w, brick.h);
+      fillPixelRect(brick.x, brick.y, brick.w, brick.h, brick.shade);
+      // ハイライト／影でドット感
+      fillPixelRect(brick.x, brick.y, brick.w, 1, COL.fg);
+      fillPixelRect(brick.x, brick.y + brick.h - 1, brick.w, 1, COL.dim);
     }
 
-    ctx.fillStyle = "#ecf0f1";
-    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    // パドル（白＋下辺の影）
+    fillPixelRect(paddle.x, paddle.y, paddle.w, paddle.h, COL.fg);
+    fillPixelRect(paddle.x, paddle.y + paddle.h - 1, paddle.w, 1, COL.mid);
 
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
+    // 正方形ボール
+    const half = ball.size / 2;
+    fillPixelRect(ball.x - half, ball.y - half, ball.size, ball.size, COL.fg);
 
-    if (state === "ready") drawOverlay("READY");
-    else if (state === "paused") drawOverlay("PAUSED");
-    else if (state === "won") drawOverlay("CLEAR!");
-    else if (state === "lost") drawOverlay("GAME OVER");
+    drawScanlines();
+    drawFrame();
+
+    if (state === "ready") drawOverlay("READY", "SPACE / START");
+    else if (state === "paused") drawOverlay("PAUSED", "SPACE / START");
+    else if (state === "won") drawOverlay("CLEAR", "SPACE / START");
+    else if (state === "lost") drawOverlay("GAME OVER", "SPACE / START");
   }
 
   function loop() {
+    overlayBlink += 1;
     if (state !== "playing") {
       draw();
+      if (state === "ready" || state === "paused" || state === "won" || state === "lost") {
+        rafId = requestAnimationFrame(loop);
+      }
       return;
     }
     update();
@@ -354,9 +417,8 @@
   });
   pauseBtn?.addEventListener("click", pauseGame);
   restartBtn?.addEventListener("click", () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = 0;
     resetGame();
+    startIdleLoop();
   });
 
   window.addEventListener("keydown", onKeyDown);
@@ -374,4 +436,5 @@
   }, { passive: false });
 
   resetGame();
+  startIdleLoop();
 })();

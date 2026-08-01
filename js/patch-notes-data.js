@@ -7,10 +7,17 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-08-01",
+    type: "improvement",
+    title: "隠しミニゲームの見た目を調整",
+    detail: "ブロック崩しを低解像度のピクセル表示とモノクロ階調に変更しました。"
+  },
+  {
+    date: "2026-08-01",
     type: "fix",
     title: "存在しないページで再読み込みが続く不具合を修正",
     detail: "公開成果物に無いパスへアクセスしたとき、404 ページが誤った URL へ飛ばして読み込みを繰り返すことがありました。"
   },
+
   {
     date: "2026-08-01",
     type: "improvement",

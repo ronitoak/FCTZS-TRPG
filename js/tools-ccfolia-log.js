@@ -55,9 +55,21 @@
     ).trim();
   }
 
-  /** 表示対象の判定コマンド行か */
+  /**
+   * 表示対象の判定コマンド行か。
+   * 技能説明文中の「1d100発」「スペシャル成功時」などは除外し、
+   * ダイスボット結果（＞ を含む実判定）だけを残す。
+   */
   function isCheckRollBody(body) {
-    return /1d100|CCB<=|CC<=/i.test(String(body || ""));
+    const t = String(body || "");
+    // ココフォリアの判定結果行はほぼ必ず全角「＞」を含む
+    if (!/[＞>]/.test(t)) return false;
+    if (/CCB<=\s*\d+/i.test(t)) return true;
+    // CCB 以外の CC<=（直前が英字でない）
+    if (/(^|[^A-Za-z])CC<=\s*\d+/i.test(t)) return true;
+    // 1d100 / 1D100。ただし「1d100発」のような文言は除外
+    if (/1[Dd]100(?!発)/.test(t)) return true;
+    return false;
   }
 
   function detectOutcome(body) {

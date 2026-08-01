@@ -5,6 +5,7 @@
   const fileEl = document.getElementById("log-file");
   const fileNameEl = document.getElementById("log-file-name");
   const metaEl = document.getElementById("log-meta");
+  const tabsEl = document.getElementById("log-tabs");
   const charactersEl = document.getElementById("log-characters");
   const finalSanEl = document.getElementById("log-final-san");
   const outcomesEl = document.getElementById("log-outcomes");
@@ -17,6 +18,8 @@
    * @type {{ channel: string, speaker: string, body: string, outcome: string|null }[]}
    */
   let checkMessages = [];
+  /** @type {string[]} */
+  let tabNames = [];
   /** @type {string[]} */
   let characterNames = [];
   /** @type {Map<string, number>} */
@@ -80,6 +83,23 @@
     if (/致命的失敗|ファンブル/.test(t)) return "ファンブル";
     if (/失敗/.test(t) && !/成功数/.test(t)) return "失敗";
     if (/成功/.test(t) && !/成功数/.test(t)) return "成功";
+
+    // 単なる 1d100（目標値なし）: 出目 1〜5 クリティカル、96〜100 ファンブル
+    const isPlainD100 =
+      /1[Dd]100/.test(t) &&
+      !/1[Dd]100\s*<=/.test(t) &&
+      !/CCB<=\s*\d+/i.test(t) &&
+      !/(^|[^A-Za-z])CC<=\s*\d+/i.test(t);
+    if (isPlainD100) {
+      const rolls = [...t.matchAll(/[＞>]\s*(\d+)/g)];
+      if (rolls.length) {
+        const n = Number(rolls[rolls.length - 1][1]);
+        if (Number.isFinite(n)) {
+          if (n <= 5) return "クリティカル";
+          if (n >= 96) return "ファンブル";
+        }
+      }
+    }
     return null;
   }
 
@@ -101,6 +121,7 @@
     const checks = [];
     const sanMap = new Map();
     const names = new Set();
+    const tabs = new Set();
 
     for (const p of paragraphs) {
       const spans = [...p.children].filter((el) => el.tagName === "SPAN");
@@ -111,6 +132,8 @@
       const speaker = normalizeName(htmlToText(spans[1].innerHTML));
       const body = htmlToText(spans[2].innerHTML);
       if (!speaker && !body) continue;
+
+      if (channel) tabs.add(channel);
 
       const san = parseSanChange(body);
       if (san && Number.isFinite(san.to)) {
@@ -136,8 +159,16 @@
     return {
       checkMessages: checks,
       finalSanByName: sanMap,
-      characterNames: [...names].sort((a, b) => a.localeCompare(b, "ja"))
+      characterNames: [...names].sort((a, b) => a.localeCompare(b, "ja")),
+      tabNames: [...tabs].sort((a, b) => a.localeCompare(b, "ja"))
     };
+  }
+
+  function selectedTabs() {
+    if (!tabsEl) return new Set(tabNames);
+    return new Set(
+      [...tabsEl.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value)
+    );
   }
 
   function selectedCharacters() {
@@ -161,7 +192,8 @@
     });
   }
 
-  function messageMatchesFilters(msg, chars, outcomeFilters) {
+  function messageMatchesFilters(msg, tabs, chars, outcomeFilters) {
+    if (tabs.size > 0 && !tabs.has(msg.channel || "")) return false;
     if (chars.size > 0 && !chars.has(msg.speaker)) return false;
     return outcomeMatchesFilters(msg.outcome, outcomeFilters);
   }
@@ -169,6 +201,23 @@
   function formatMessage(msg) {
     const ch = msg.channel ? `[${msg.channel}] ` : "";
     return `${ch}${msg.speaker}：${msg.body}`;
+  }
+
+  function renderTabs() {
+    if (!tabsEl) return;
+    if (!tabNames.length) {
+      tabsEl.innerHTML = `<p class="u-muted">タブを取得できませんでした。</p>`;
+      return;
+    }
+    tabsEl.innerHTML = tabNames.map((tab) => `
+      <label class="tools-toggle">
+        <input type="checkbox" value="${Utils.escapeHtml(tab)}" checked>
+        <span>${Utils.escapeHtml(tab)}</span>
+      </label>
+    `).join("");
+    tabsEl.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      input.addEventListener("change", renderFiltered);
+    });
   }
 
   function renderCharacters() {
@@ -210,9 +259,12 @@
   }
 
   function renderFiltered() {
+    const tabs = selectedTabs();
     const chars = selectedCharacters();
     const outcomeFilters = selectedOutcomeFilters();
-    const filtered = checkMessages.filter((m) => messageMatchesFilters(m, chars, outcomeFilters));
+    const filtered = checkMessages.filter((m) =>
+      messageMatchesFilters(m, tabs, chars, outcomeFilters)
+    );
     const text = filtered.map(formatMessage).join("\n\n");
     if (outputEl) {
       outputEl.textContent = text || "（条件に一致するログがありません）";
@@ -227,9 +279,11 @@
 
   function resetUi() {
     checkMessages = [];
+    tabNames = [];
     characterNames = [];
     finalSanByName = new Map();
     if (metaEl) metaEl.hidden = true;
+    if (tabsEl) tabsEl.innerHTML = "";
     if (charactersEl) charactersEl.innerHTML = "";
     if (finalSanEl) finalSanEl.innerHTML = "";
     if (outputEl) outputEl.textContent = "ログファイルを選択してください。";
@@ -246,8 +300,10 @@
     checkMessages = parsed.checkMessages;
     finalSanByName = parsed.finalSanByName;
     characterNames = parsed.characterNames;
+    tabNames = parsed.tabNames;
     if (fileNameEl) fileNameEl.textContent = fileName || "読み込み済み";
     if (metaEl) metaEl.hidden = false;
+    renderTabs();
     renderCharacters();
     renderFinalSan();
     renderFiltered();
@@ -274,6 +330,19 @@
     input.addEventListener("change", renderFiltered);
   });
 
+  document.getElementById("log-tab-all")?.addEventListener("click", () => {
+    tabsEl?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+      el.checked = true;
+    });
+    renderFiltered();
+  });
+  document.getElementById("log-tab-none")?.addEventListener("click", () => {
+    tabsEl?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+      el.checked = false;
+    });
+    renderFiltered();
+  });
+
   document.getElementById("log-char-all")?.addEventListener("click", () => {
     charactersEl?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
       el.checked = true;
@@ -286,6 +355,7 @@
     });
     renderFiltered();
   });
+
 
   copyBtn?.addEventListener("click", async () => {
     const text = outputEl?.textContent || "";

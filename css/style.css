@@ -3486,6 +3486,80 @@ dialog.modal::backdrop {
   background: #edf2f7;
 }
 
+.room-zip-app .initiative-field {
+  flex: 0 0 140px;
+}
+
+.room-zip-app .char-block {
+  margin-top: 10px;
+}
+
+.room-zip-app .char-block-head {
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.room-zip-app .char-block-head strong {
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.room-zip-app .kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.room-zip-app .kv-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+}
+
+.room-zip-app .kv-row.status-row {
+  grid-template-columns: 1fr 72px 72px auto;
+}
+
+.room-zip-app .kv-row.param-row {
+  grid-template-columns: 1fr 1fr auto;
+}
+
+.room-zip-app .kv-row input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  color: var(--text-main);
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.room-zip-app .char-flags {
+  margin: 10px 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.room-zip-app .char-flags label {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .room-zip-app .kv-row.status-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .room-zip-app .kv-row.status-row .button {
+    grid-column: 1 / -1;
+  }
+
+  .room-zip-app .kv-row.param-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .room-zip-app .divider {
   border: none;
   border-top: 1px solid var(--border-color, #e2e8f0);

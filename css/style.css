@@ -3227,3 +3227,292 @@ dialog.modal::backdrop {
   margin-top: 0.25rem;
 }
 
+/* 試作品警告（部屋zip等） */
+.tools-prototype-warn {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--danger-color, #e53e3e);
+  border-radius: var(--radius, 8px);
+  background: #fff5f5;
+  color: var(--danger-color, #e53e3e);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* ココフォリア部屋zip作成（standalone UI をサイト配色に合わせる） */
+.room-zip-app {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  color: var(--text-main);
+}
+
+.room-zip-app > header {
+  display: none;
+}
+
+.room-zip-app .panel {
+  background: #fafafa;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.room-zip-app .panel h2 {
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #ccc;
+  font-size: 1.05rem;
+}
+
+.room-zip-app .drop-zone {
+  border: 1.5px dashed var(--border-color, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  padding: 22px 16px;
+  text-align: center;
+  background: #fff;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.room-zip-app .drop-zone.dragover {
+  border-color: var(--primary-color, #3182ce);
+  background: #ebf8ff;
+}
+
+.room-zip-app .drop-zone p {
+  margin: 6px 0;
+  color: var(--text-muted, #666);
+}
+
+.room-zip-app .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.room-zip-app .button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: #fff;
+  color: var(--text-main);
+  border-radius: 4px;
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.room-zip-app .button:hover {
+  background: #f7fafc;
+}
+
+.room-zip-app .button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.room-zip-app .button.primary {
+  background: var(--primary-color, #3182ce);
+  border-color: var(--primary-color, #3182ce);
+  color: #fff;
+}
+
+.room-zip-app .button.primary:hover {
+  background: var(--primary-hover, #2b6cb0);
+}
+
+.room-zip-app .button.secondary {
+  background: transparent;
+}
+
+.room-zip-app .button.danger {
+  border-color: color-mix(in srgb, var(--danger-color, #e53e3e) 50%, var(--border-color, #e2e8f0));
+  color: var(--danger-color, #e53e3e);
+}
+
+.room-zip-app .advanced {
+  margin-top: 12px;
+  color: var(--text-muted, #666);
+  font-size: 0.9rem;
+}
+
+.room-zip-app .advanced summary {
+  cursor: pointer;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.room-zip-app .status {
+  margin: 0;
+  color: var(--text-muted, #666);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.room-zip-app .status strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.room-zip-app .status.warn {
+  color: #c05621;
+}
+
+.room-zip-app .mode-group {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.room-zip-app .mode-group label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.room-zip-app .scene-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.room-zip-app .scene-table th,
+.room-zip-app .scene-table td {
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  padding: 8px 6px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.room-zip-app .scene-table th {
+  color: var(--text-muted, #666);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.room-zip-app .scene-table img {
+  width: 64px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #edf2f7;
+  display: block;
+}
+
+.room-zip-app .scene-table input[type="text"],
+.room-zip-app .scene-table input[type="number"],
+.room-zip-app .scene-table select,
+.room-zip-app .size-defaults input[type="number"],
+.room-zip-app .size-defaults select,
+.room-zip-app .field input[type="text"],
+.room-zip-app .field textarea,
+.room-zip-app .advanced textarea,
+.room-zip-app .card input[type="text"],
+.room-zip-app .card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  color: var(--text-main);
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.room-zip-app .scene-table input[type="number"].order-input {
+  width: 72px;
+  min-width: 72px;
+}
+
+.room-zip-app .scene-table input[type="number"].size-input {
+  width: 64px;
+  min-width: 64px;
+}
+
+.room-zip-app .size-defaults label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted, #666);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.room-zip-app .size-defaults input[type="number"] {
+  width: 64px;
+}
+
+.room-zip-app .stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.room-zip-app .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted, #666);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.room-zip-app .card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.room-zip-app .card {
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+.room-zip-app .char-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #edf2f7;
+}
+
+.room-zip-app .divider {
+  border: none;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  margin: 4px 0;
+}
+
+.room-zip-app .hint {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted, #666);
+  line-height: 1.45;
+}
+
+.room-zip-app .existing {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted, #666);
+  max-height: 160px;
+  overflow: auto;
+}
+
+.room-zip-app .existing li {
+  margin: 2px 0;
+}
+
+.room-zip-app .empty {
+  color: var(--text-muted, #666);
+  font-size: 0.9rem;
+}
+

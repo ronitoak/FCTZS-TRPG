@@ -7,6 +7,12 @@
 window.PATCH_NOTES = Object.freeze([
   {
     date: "2026-08-09",
+    type: "fix",
+    title: "Discord通知のランダムキャラクターアイコンを修正",
+    detail: "画像の参照先が旧GitHubパスのままだったため、セッション前日通知・募集満員通知でキャラ名・アイコンが差し替わらない不具合を修正しました。"
+  },
+  {
+    date: "2026-08-09",
     type: "feature",
     title: "Tools をヘッダーに追加",
     detail: "画面上部ナビから便利ツール一覧へ移動できるようにしました。画像ボタン作成ツールは削除しました。"

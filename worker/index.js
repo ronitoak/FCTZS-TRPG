@@ -9,16 +9,32 @@ function resolveSiteUrl(env) {
   const raw = env?.SITE_URL || DEFAULT_SITE_URL;
   return String(raw).replace(/\/+$/, "");
 }
-const GITHUB_IMAGE_BASE_URL = "https://github.com/ronitoak/FCTZS-TRPG/blob/main/img";
 const DISCORD_API_BASE_URL = "https://discord.com/api/v10";
 const DISCORD_DEFAULT_NAME = "右坂 弦介";
-const DISCORD_SESSION_DEFAULT_AVATAR_URL = `${GITHUB_IMAGE_BASE_URL}/scenario/c-001.png?raw=true`;
-const DISCORD_CHARACTER_DEFAULT_AVATAR_URL = `${GITHUB_IMAGE_BASE_URL}/character/c-001.png?raw=true`;
+// フロント（js/utils.js / site-config）と同じ R2 公開ベース。env 未設定時のフォールバック。
+const DEFAULT_R2_PUBLIC_URL = "https://pub-b7f067c04745438680b7ed7adebbba6b.r2.dev";
 const DISCORD_COLORS = Object.freeze({
   sessionNotice: 15158332,
   recruitment: 3447003,
   recruitmentFulfilled: 3066993
 });
+
+function resolveR2PublicUrl(env) {
+  const raw = env?.R2_PUBLIC_URL || DEFAULT_R2_PUBLIC_URL;
+  return String(raw).replace(/\/+$/, "");
+}
+
+function discordCharacterDefaultAvatarUrl(env) {
+  return `${resolveR2PublicUrl(env)}/_default/character_default.png`;
+}
+
+function discordScenarioDefaultImageUrl(env) {
+  return `${resolveR2PublicUrl(env)}/_default/scenario_default.webp`;
+}
+
+function isHttpUrl(value) {
+  return typeof value === "string" && /^https?:\/\//i.test(value.trim());
+}
 
 const SUPABASE_TABLES = Object.freeze({
   comments: "comments",
@@ -604,10 +620,10 @@ async function sendDiscordNotification(content, embed, env, webhookUrl, customUs
   });
 }
 
-// Discord通知の表示名候補だけに用途を絞り、キャラクターのIDと名前を軽量取得する。
+// Discord通知の表示名候補だけに用途を絞り、キャラクターのID・名前・画像URLを軽量取得する。
 async function getCharacterList(env) {
   try {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characters}?select=id,name`, {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLES.characters}?select=id,name,image_url`, {
       headers: {
         apikey: env.SUPABASE_ANON_KEY,
         Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`
@@ -623,30 +639,72 @@ async function getCharacterList(env) {
   return [];
 }
 
-/**
- * 通知ごとに一度だけランダム選択し、画像が存在する場合だけキャラ名・画像へ差し替える。
- * フォールバック画像は通知種別で異なるため引数で受け、従来payloadを維持する。
- */
-async function resolveDiscordCharacterIdentity(characters, defaultAvatarUrl) {
-  let customName = DISCORD_DEFAULT_NAME;
-  let customAvatar = defaultAvatarUrl;
-  let randomChar = null;
+/** Discord avatar_url 用に、公開画像URLが到達可能かを確認する。 */
+async function isReachableImageUrl(url) {
+  try {
+    const head = await fetch(url, { method: "HEAD" });
+    if (head.ok) return true;
+    // 一部オリジンは HEAD 非対応のため、先頭1バイトだけ GET で再確認する。
+    if (head.status === 405 || head.status === 501) {
+      const get = await fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-0" }
+      });
+      return get.ok || get.status === 206;
+    }
+    return false;
+  } catch (err) {
+    console.error("画像チェックエラー:", err);
+    return false;
+  }
+}
 
-  if (characters.length > 0) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    randomChar = characters[randomIndex];
+/** DBの image_url を優先し、無ければ R2 の convention パスを候補にする。 */
+function characterImageCandidates(character, env) {
+  const urls = [];
+  if (isHttpUrl(character?.image_url)) {
+    urls.push(String(character.image_url).trim());
+  }
+  if (character?.id) {
+    urls.push(`${resolveR2PublicUrl(env)}/character/${character.id}.png`);
+  }
+  return [...new Set(urls)];
+}
+
+/**
+ * 通知ごとにランダム選択し、画像が存在する場合だけキャラ名・画像へ差し替える。
+ * 画像未到達のキャラを引いた場合は数回まで別キャラを試す。
+ */
+async function resolveDiscordCharacterIdentity(characters, defaultAvatarUrl, env) {
+  const customName = DISCORD_DEFAULT_NAME;
+  const customAvatar = defaultAvatarUrl;
+
+  if (!Array.isArray(characters) || characters.length === 0) {
+    return { customName, customAvatar };
   }
 
-  if (randomChar) {
-    const targetUrl = `${GITHUB_IMAGE_BASE_URL}/character/${randomChar.id}.png?raw=true`;
-    try {
-      const imgCheck = await fetch(targetUrl, { method: 'HEAD' });
-      if (imgCheck.ok) {
-        customName = randomChar.name;
-        customAvatar = targetUrl;
+  const maxAttempts = Math.min(5, characters.length);
+  const tried = new Set();
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    let index = Math.floor(Math.random() * characters.length);
+    let guard = 0;
+    while (tried.has(index) && guard < characters.length) {
+      index = Math.floor(Math.random() * characters.length);
+      guard += 1;
+    }
+    tried.add(index);
+
+    const randomChar = characters[index];
+    if (!randomChar) continue;
+
+    for (const targetUrl of characterImageCandidates(randomChar, env)) {
+      if (await isReachableImageUrl(targetUrl)) {
+        return {
+          customName: randomChar.name || DISCORD_DEFAULT_NAME,
+          customAvatar: targetUrl
+        };
       }
-    } catch (err) {
-      console.error("画像チェックエラー:", err);
     }
   }
 
@@ -772,7 +830,8 @@ async function notifyScheduledSessions(env) {
 
               const { customName, customAvatar } = await resolveDiscordCharacterIdentity(
                 availableCharacters,
-                DISCORD_SESSION_DEFAULT_AVATAR_URL
+                discordCharacterDefaultAvatarUrl(env),
+                env
               );
 
               // --- Discordへ送信 ---
@@ -2857,17 +2916,26 @@ async function recruited(data, env) {
     // 1. 募集者名とシナリオ名をIDから取得する (sbFetchを使用)
     const [playerRes, scenarioRes] = await Promise.all([
       sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.players}?player_id=eq.${data.owner_player_id}&select=player_name`),
-      data.scenario_id ? sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.scenarios}?id=eq.${data.scenario_id}&select=id,title`) : Promise.resolve(null)
+      data.scenario_id ? sbFetch(env, null, `/rest/v1/${SUPABASE_TABLES.scenarios}?id=eq.${data.scenario_id}&select=id,title,image_url`) : Promise.resolve(null)
     ]);
 
     const playerData = playerRes.res.ok ? JSON.parse(playerRes.text) : [];
     const scenarioData = (scenarioRes && scenarioRes.res.ok) ? JSON.parse(scenarioRes.text) : [];
 
     const scenarioId = data.scenario_id || "default";
-    const scenarioImageUrl = `${GITHUB_IMAGE_BASE_URL}/scenario/${scenarioId}.png?raw=true`;
+    const scenarioRow = scenarioData[0] || null;
+    let scenarioImageUrl = discordScenarioDefaultImageUrl(env);
+    if (isHttpUrl(scenarioRow?.image_url)) {
+      scenarioImageUrl = String(scenarioRow.image_url).trim();
+    } else if (scenarioId && scenarioId !== "default") {
+      const candidate = `${resolveR2PublicUrl(env)}/scenario/${scenarioId}.png`;
+      if (await isReachableImageUrl(candidate)) {
+        scenarioImageUrl = candidate;
+      }
+    }
 
     const recruiterName = playerData[0]?.player_name || data.owner_player_id || "不明な募集者";
-    const scenarioTitle = scenarioData[0]?.title || data.scenario_id || "シナリオ未設定";
+    const scenarioTitle = scenarioRow?.title || data.scenario_id || "シナリオ未設定";
 
     const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
     const count = data.target_count;
@@ -2973,7 +3041,8 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
           const availableCharacters = await getCharacterList(env);
           const { customName, customAvatar } = await resolveDiscordCharacterIdentity(
             availableCharacters,
-            DISCORD_CHARACTER_DEFAULT_AVATAR_URL
+            discordCharacterDefaultAvatarUrl(env),
+            env
           );
 
           // ⑤ Discordへ通知

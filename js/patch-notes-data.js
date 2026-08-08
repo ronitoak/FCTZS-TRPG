@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-08-09",
+    type: "feature",
+    title: "Tools をヘッダーに追加",
+    detail: "画面上部ナビから便利ツール一覧へ移動できるようにしました。画像ボタン作成ツールは削除しました。"
+  },
+  {
     date: "2026-08-01",
     type: "improvement",
     title: "GM/PL向け便利ツールを試作中",

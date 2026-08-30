@@ -536,7 +536,6 @@ function resolveRunPlayerIds(run, playersByRun) {
 
 /**
  * 卓の参加者か（GM または run_players）。
- * 感想の閲覧 Phase1 用。
  */
 async function isRunParticipant(env, playerId, run) {
   if (!playerId || !run?.id) return false;
@@ -546,33 +545,158 @@ async function isRunParticipant(env, playerId, run) {
   return resolveRunPlayerIds(run, playersByRun).some(id => String(id) === pid);
 }
 
+function normalizeScenarioTitleKey(title) {
+  return String(title || "")
+    .trim()
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+async function fetchScenarioBrief(env, scenarioId) {
+  if (!scenarioId) return null;
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.scenarios}?select=id,title&id=eq.${encodeURIComponent(scenarioId)}&limit=1`
+  );
+  if (!res.ok) return null;
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+
 /**
- * 感想を閲覧できるか（卓に紐づく行）。
- * Phase1: 卓参加者 / 自分が書いた投稿
- * Phase2（先々）: 同シナリオの部内通過・部活外通過もここに足す
+ * 部活外通過履歴が当該シナリオに相当するか。
+ * linked_scenario_id / scenario_id があれば ID 一致、なければタイトル一致。
  */
-async function canViewImpressions(env, playerId, run, impression = null) {
+function externalPassedMatchesScenario(externalRows, scenarioId, scenarioTitle) {
+  const sid = String(scenarioId || "");
+  const titleKey = normalizeScenarioTitleKey(scenarioTitle);
+  for (const item of externalRows || []) {
+    if (!item || typeof item !== "object") continue;
+    const linked = String(item.linked_scenario_id || item.scenario_id || "").trim();
+    if (linked && linked === sid) return true;
+    if (titleKey && normalizeScenarioTitleKey(item.title) === titleKey) return true;
+  }
+  return false;
+}
+
+async function fetchExternalPassedScenarios(env, playerId) {
+  if (!playerId) return [];
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.playerProfiles}?select=external_passed_scenarios&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+  );
+  if (!res.ok) return [];
+  const rows = JSON.parse(text);
+  const raw = Array.isArray(rows) && rows[0] ? rows[0].external_passed_scenarios : null;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** 所有キャラの character_scenarios に当該シナリオがあるか（部内通過の別経路）。 */
+async function hasCharacterScenarioPass(env, playerId, scenarioId) {
+  if (!playerId || !scenarioId) return false;
+  const { res: charRes, text: charText } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.characters}?select=id&player_id=eq.${encodeURIComponent(playerId)}`
+  );
+  if (!charRes.ok) return false;
+  const chars = JSON.parse(charText) || [];
+  const charIds = chars.map(c => c?.id).filter(Boolean).map(String);
+  if (charIds.length === 0) return false;
+  const encoded = charIds.map(encodeURIComponent).join(",");
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.characterScenarios}?select=character_id&scenario_id=eq.${encodeURIComponent(scenarioId)}&character_id=in.(${encoded})&limit=1`
+  );
+  if (!res.ok) return false;
+  const rows = JSON.parse(text) || [];
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+/**
+ * シナリオ通過済みか（感想閲覧 Phase2）。
+ * - 同シナリオのいずれかの卓の GM / PL
+ * - 所有キャラの通過履歴（character_scenarios）
+ * - 部活外通過（ID またはタイトル一致）
+ */
+async function hasPassedScenario(env, playerId, scenarioId, options = {}) {
+  if (!playerId || !scenarioId) return false;
+
+  if (options.hasAnyRunParticipation === true) return true;
+
+  const runs = Array.isArray(options.runs) ? options.runs : null;
+  if (runs) {
+    for (const run of runs) {
+      if (await isRunParticipant(env, playerId, run)) return true;
+    }
+  } else {
+    const { res, text } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.runs}?select=id,gm_id,scenario_id&scenario_id=eq.${encodeURIComponent(scenarioId)}`
+    );
+    if (res.ok) {
+      const loaded = JSON.parse(text) || [];
+      for (const run of loaded) {
+        if (await isRunParticipant(env, playerId, run)) return true;
+      }
+    }
+  }
+
+  if (await hasCharacterScenarioPass(env, playerId, scenarioId)) return true;
+
+  const scenario = options.scenario || await fetchScenarioBrief(env, scenarioId);
+  const externalRows = options.externalRows != null
+    ? options.externalRows
+    : await fetchExternalPassedScenarios(env, playerId);
+  if (externalPassedMatchesScenario(externalRows, scenarioId, scenario?.title)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * 感想を閲覧できるか。
+ * 投稿者本人、またはシナリオ通過済み（Phase2: 部内卓・キャラ通過・部活外）。
+ */
+async function canViewImpressions(env, playerId, run, impression = null, passedScenario = null) {
   if (!playerId) return false;
   if (impression && String(impression.author_player_id || "") === String(playerId)) {
     return true;
   }
-  // Phase2 差し込み予定:
-  // if (await hasPassedScenario(env, playerId, run?.scenario_id)) return true;
-  return isRunParticipant(env, playerId, run);
+  if (passedScenario === true) return true;
+  if (passedScenario === false) {
+    return isRunParticipant(env, playerId, run);
+  }
+  if (await isRunParticipant(env, playerId, run)) return true;
+  return hasPassedScenario(env, playerId, run?.scenario_id);
 }
 
 /**
  * 卓なし（シナリオ単位）感想の閲覧。
- * Phase1: そのシナリオのいずれかの卓の参加者 / 投稿者本人
- * Phase2: 部活外通過もここに足す
+ * 投稿者本人、またはシナリオ通過済み。
  */
-async function canViewScenarioOnlyImpression(env, playerId, scenarioId, hasAnyRunParticipation, impression = null) {
+async function canViewScenarioOnlyImpression(
+  env,
+  playerId,
+  scenarioId,
+  passedScenario,
+  impression = null
+) {
   if (!playerId) return false;
   if (impression && String(impression.author_player_id || "") === String(playerId)) {
     return true;
   }
-  // Phase2: if (await hasPassedScenario(env, playerId, scenarioId)) return true;
-  return Boolean(hasAnyRunParticipation);
+  return Boolean(passedScenario);
 }
 
 async function fetchRunBrief(env, runId) {
@@ -588,13 +712,8 @@ async function fetchRunBrief(env, runId) {
 
 async function fetchScenarioExists(env, scenarioId) {
   if (!scenarioId) return false;
-  const { res, text } = await sbServiceFetch(
-    env,
-    `/rest/v1/${SUPABASE_TABLES.scenarios}?select=id&id=eq.${encodeURIComponent(scenarioId)}&limit=1`
-  );
-  if (!res.ok) return false;
-  const rows = JSON.parse(text);
-  return Array.isArray(rows) && rows.length > 0;
+  const brief = await fetchScenarioBrief(env, scenarioId);
+  return Boolean(brief);
 }
 
 async function fetchPlayerDisplayName(env, playerId) {
@@ -1591,19 +1710,27 @@ async function handleGet(request, env, url) {
         if (!res.ok) return jsonErr("Impressions lookup failed", res.status, { detail: text });
         const rows = JSON.parse(text) || [];
         const isParticipant = await isRunParticipant(env, callerPlayerId, run);
+        const passedScenario = await hasPassedScenario(env, callerPlayerId, run.scenario_id, {
+          hasAnyRunParticipation: isParticipant
+        });
+        const canViewAll = isParticipant || passedScenario;
         const visible = [];
         for (const row of rows) {
-          if (isParticipant || await canViewImpressions(env, callerPlayerId, run, row)) {
+          if (await canViewImpressions(env, callerPlayerId, run, row, passedScenario)) {
             visible.push(row);
           }
         }
         return jsonOk({
           items: visible,
-          can_view_all: isParticipant,
+          can_view_all: canViewAll,
+          passed_scenario: passedScenario,
           can_post: true,
           run: { id: run.id, title: run.title, scenario_id: run.scenario_id, status: run.status }
         });
       }
+
+      const scenario = await fetchScenarioBrief(env, scenarioId);
+      if (!scenario) return jsonErr("Scenario not found", 404);
 
       const { res: runRes, text: runText } = await sbServiceFetch(
         env,
@@ -1628,6 +1755,13 @@ async function handleGet(request, env, url) {
       }
       const participantSet = new Set(participantRunIds);
       const hasAnyRunParticipation = participantSet.size > 0;
+      const externalRows = await fetchExternalPassedScenarios(env, callerPlayerId);
+      const passedScenario = await hasPassedScenario(env, callerPlayerId, scenarioId, {
+        runs,
+        hasAnyRunParticipation,
+        scenario,
+        externalRows
+      });
 
       const visible = [];
       for (const row of rows) {
@@ -1640,7 +1774,7 @@ async function handleGet(request, env, url) {
             env,
             callerPlayerId,
             scenarioId,
-            hasAnyRunParticipation,
+            passedScenario,
             row
           )) {
             visible.push({
@@ -1654,7 +1788,11 @@ async function handleGet(request, env, url) {
 
         const run = runMap.get(rowRunId);
         if (!run) continue;
-        if (participantSet.has(rowRunId) || String(row.author_player_id) === String(callerPlayerId)) {
+        if (
+          passedScenario
+          || participantSet.has(rowRunId)
+          || String(row.author_player_id) === String(callerPlayerId)
+        ) {
           visible.push({
             ...row,
             run_title: run.title || run.id,
@@ -1673,7 +1811,8 @@ async function handleGet(request, env, url) {
           is_participant: participantSet.has(String(r.id))
         })),
         can_post: true,
-        can_view_scenario_only: hasAnyRunParticipation
+        can_view_scenario_only: passedScenario,
+        passed_scenario: passedScenario
       });
     }
 

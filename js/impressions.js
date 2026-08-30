@@ -41,7 +41,7 @@
     root.innerHTML = `
       <section class="impressions" id="impressions-section">
         <h2>感想</h2>
-        <p class="impressions__hint u-muted">この卓の参加者だけが他の人の感想を読めます。ネタバレは既定で隠します。公開コメント欄とは別です。</p>
+        <p class="impressions__hint u-muted">この卓の参加者、または同シナリオの通過者（部内・部活外）が感想を読めます。ネタバレは既定で隠します。公開コメント欄とは別です。</p>
         <div class="impressions__msg" aria-live="polite"></div>
         <div class="impressions__form-wrap"></div>
         <ul class="impressions__list"></ul>
@@ -67,8 +67,8 @@
 
         if (!data?.can_view_all) {
           msg.textContent = items.length
-            ? "参加者以外のため、自分が書いた感想のみ表示しています。"
-            : "この卓の参加者ではありません。投稿はできますが、他の人の感想は参加者になるまで見えません。";
+            ? "この卓の未参加・未通過のため、自分が書いた感想のみ表示しています。"
+            : "この卓の参加者／同シナリオ通過者ではありません。投稿はできますが、他の人の感想は通過後に見えます。";
         } else {
           msg.textContent = "";
         }
@@ -154,7 +154,7 @@
     root.innerHTML = `
       <section class="impressions" id="impressions-section">
         <h2>感想</h2>
-        <p class="impressions__hint u-muted">参加した卓の感想と、卓なし（部活外など）の感想が表示されます。投稿時に卓を選ぶか、「卓なし」を選べます。他者の感想は参加者（卓なし分はいずれかの卓の参加者）のみ。</p>
+        <p class="impressions__hint u-muted">通過済み（部内の卓参加・キャラ通過履歴・部活外登録）の人に感想が表示されます。投稿時に卓を選ぶか、「卓なし」を選べます。</p>
         <div class="impressions__msg" aria-live="polite"></div>
         <div class="impressions__form-wrap"></div>
         <ul class="impressions__list"></ul>

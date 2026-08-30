@@ -1071,6 +1071,8 @@ const emotions = ["自己顕示(欲望)", "所有(欲望)", "本能(欲望)", "�
           system: String(item.system || "").trim(),
           note: String(item.note || "").trim()
         };
+        const linked = String(item.linked_scenario_id || item.scenario_id || "").trim();
+        if (linked) row.linked_scenario_id = linked;
         if (withId) {
           row.id = String(item.id || createExternalPassedId());
         }

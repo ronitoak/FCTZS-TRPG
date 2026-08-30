@@ -153,7 +153,7 @@ Web 実装: [`js/home.js`](../js/home.js) の `resolvePlayerLinkBanner`。
 | GET | `/api/impressions?scenario_id=` | Bearer + 名簿連携 | 参加卓＋自分の投稿＋卓なし分（閲覧可なら）。`runs` メタ付き |
 | POST | `/api/impressions` | Bearer + 名簿連携 | `{ run_id?, scenario_id?, body, is_spoiler? }`。卓ありは `run_id`、卓なし（部活外等）は `scenario_id` のみ。既定 `is_spoiler=true` |
 
-閲覧判定は Worker の `canViewImpressions` / `canViewScenarioOnlyImpression`（Phase1: GM・`run_players`・投稿者本人。卓なしは「同シナリオのいずれかの卓の参加者」または本人）。Phase2 で部活外通過を追加予定。HOME 新着・作成通知の対象外。SQL: [`sql/impressions.sql`](./sql/impressions.sql)。
+閲覧判定は Worker の `hasPassedScenario`（部内: いずれかの卓の GM/PL、所有キャラの `character_scenarios`、部活外: `external_passed_scenarios` の `linked_scenario_id`/`scenario_id` またはタイトル一致）。投稿者本人は常に自分の投稿を閲覧可。HOME 新着・作成通知の対象外。SQL: [`sql/impressions.sql`](./sql/impressions.sql)。
 
 環境変数:
 

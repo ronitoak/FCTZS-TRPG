@@ -95,8 +95,27 @@
                 </div>
 
                 <div class="form-group">
-                    <label>募集人数</label>
-                    <input type="number" name="target_count" required min="1" max="10" value="1" class="form-control">
+                    <label>募集人数（下限）</label>
+                    <input type="number" name="min_count" required min="1" max="100" value="1" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>募集人数（上限）</label>
+                    <input type="number" name="target_count" required min="1" max="100" value="1" class="form-control">
+                    <small class="u-muted">一覧では「2-4人」のように表示されます。上限は最大100人です。</small>
+                </div>
+
+                <div class="form-group">
+                    <label>募集方式</label>
+                    <select name="selection_mode" required class="form-control">
+                        <option value="first_come" selected>先着（定員で自動満員）</option>
+                        <option value="lottery">抽選（締切後に抽選可能）</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>応募締切</label>
+                    <input type="datetime-local" name="deadline" id="recruit-deadline" required class="form-control">
                 </div>
 
                 <div class="form-group">

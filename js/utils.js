@@ -1285,6 +1285,33 @@ const emotions = ["自己顕示(欲望)", "所有(欲望)", "本能(欲望)", "�
     }
   }
 
+  /** 募集人数表示（下限-上限）。target_count を上限として扱う。 */
+  function formatRecruitCapacity(recruit) {
+    const max = Math.max(1, Number(recruit?.target_count) || 1);
+    const minRaw = Number(recruit?.min_count);
+    const min = Number.isFinite(minRaw) && minRaw >= 1 ? Math.min(minRaw, max) : max;
+    if (min === max) return `${max}人`;
+    return `${min}-${max}人`;
+  }
+
+  function formatRecruitDeadline(deadline) {
+    if (!deadline) return "未設定";
+    const d = new Date(deadline);
+    if (Number.isNaN(d.getTime())) return "未設定";
+    return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  }
+
+  function recruitSelectionModeLabel(mode) {
+    return String(mode || "first_come") === "lottery" ? "抽選" : "先着";
+  }
+
+  function isRecruitDeadlinePassed(recruit, now = new Date()) {
+    if (!recruit?.deadline) return false;
+    const d = new Date(recruit.deadline);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.getTime() <= now.getTime();
+  }
+
   // ---------- Export ----------
   window.Utils = Object.freeze({
     // Constants
@@ -1298,6 +1325,8 @@ const emotions = ["自己顕示(欲望)", "所有(欲望)", "本能(欲望)", "�
     escapeHtml, renderMultilineText, renderLink, sanitizeUrlForAttr,
     // Scenario trends
     getTrendTagsHtml, calculateMatchScore, getMatchPresentation,
+    // Recruit helpers
+    formatRecruitCapacity, formatRecruitDeadline, recruitSelectionModeLabel, isRecruitDeadlinePassed,
     // Render
     renderHeader, initAuthAndHeader, loginWithDiscord, logout,
     renderCalendar, renderAvailabilityGrid, collectAvailabilityChanges, getAvailabilityStatusSymbol,

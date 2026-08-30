@@ -152,6 +152,7 @@
 | recruitment_applicants     | player_id                 | 2         | text                     | NO          | table | PK複合                          |
 | recruitment_applicants     | created_at                | 3         | timestamp with time zone | YES         | table |                               |
 | recruitment_applicants     | user_id                   | 4         | uuid                     | YES         | table |                               |
+| recruitment_applicants     | is_selected               | 5         | boolean                  | YES         | table | 抽選結果（当選/落選）              |
 | recruitment_list           | id                        | 1         | text                     | YES         | view  | 軽量ビュー                         |
 | recruitment_list           | owner_player_id           | 2         | text                     | YES         | view  |                               |
 | recruitment_list           | owner_player_name         | 3         | text                     | YES         | view  |                               |
@@ -159,21 +160,29 @@
 | recruitment_list           | scenario_title            | 5         | text                     | YES         | view  |                               |
 | recruitment_list           | scenario_image_url        | 6         | text                     | YES         | view  |                               |
 | recruitment_list           | recruit_role              | 7         | text                     | YES         | view  |                               |
-| recruitment_list           | target_count              | 8         | integer                  | YES         | view  |                               |
-| recruitment_list           | memo                      | 9         | text                     | YES         | view  |                               |
-| recruitment_list           | status                    | 10        | text                     | YES         | view  |                               |
-| recruitment_list           | created_at                | 11        | timestamp with time zone | YES         | view  |                               |
-| recruitment_list           | applicant_count           | 12        | integer                  | YES         | view  |                               |
+| recruitment_list           | target_count              | 8         | integer                  | YES         | view  | 上限人数                        |
+| recruitment_list           | min_count                 | 9         | integer                  | YES         | view  | 下限人数                        |
+| recruitment_list           | deadline                  | 10        | timestamp with time zone | YES         | view  | 応募締切                        |
+| recruitment_list           | selection_mode            | 11        | text                     | YES         | view  | first_come / lottery           |
+| recruitment_list           | lottery_drawn_at          | 12        | timestamp with time zone | YES         | view  |                               |
+| recruitment_list           | memo                      | 13        | text                     | YES         | view  |                               |
+| recruitment_list           | status                    | 14        | text                     | YES         | view  |                               |
+| recruitment_list           | created_at                | 15        | timestamp with time zone | YES         | view  |                               |
+| recruitment_list           | applicant_count           | 16        | integer                  | YES         | view  |                               |
 | recruitments               | id                        | 1         | text                     | NO          | table | PK                            |
 | recruitments               | owner_player_id           | 2         | text                     | NO          | table |                               |
 | recruitments               | scenario_id               | 3         | text                     | YES         | table |                               |
 | recruitments               | recruit_role              | 4         | text                     | NO          | table | GM/PL                         |
-| recruitments               | target_count              | 5         | integer                  | NO          | table |                               |
-| recruitments               | memo                      | 6         | text                     | YES         | table |                               |
-| recruitments               | status                    | 7         | text                     | NO          | table |                               |
-| recruitments               | created_at                | 8         | timestamp with time zone | YES         | table |                               |
-| recruitments               | updated_at                | 9         | timestamp with time zone | YES         | table |                               |
-| recruitments               | user_id                   | 10        | uuid                     | YES         | table |                               |
+| recruitments               | target_count              | 5         | integer                  | NO          | table | 上限人数                        |
+| recruitments               | min_count                 | 6         | integer                  | NO          | table | 下限人数 DEFAULT 1              |
+| recruitments               | deadline                  | 7         | timestamp with time zone | NO          | table | 応募締切                        |
+| recruitments               | selection_mode            | 8         | text                     | NO          | table | first_come / lottery           |
+| recruitments               | lottery_drawn_at          | 9         | timestamp with time zone | YES         | table | 抽選実行時刻                     |
+| recruitments               | memo                      | 10        | text                     | YES         | table |                               |
+| recruitments               | status                    | 11        | text                     | NO          | table | open/fulfilled/closed         |
+| recruitments               | created_at                | 12        | timestamp with time zone | YES         | table |                               |
+| recruitments               | updated_at                | 13        | timestamp with time zone | YES         | table |                               |
+| recruitments               | user_id                   | 14        | uuid                     | YES         | table |                               |
 | run_characters             | run_id                    | 1         | text                     | NO          | table | junction PK複合                 |
 | run_characters             | character_id              | 2         | text                     | NO          | table | junction PK複合                 |
 | run_characters             | sort_order                | 3         | integer                  | NO          | table | 配列順序を保持                       |

@@ -8,22 +8,28 @@
 
 Discord側に「参加希望」ボタンを生成し、ボタン押下時にDiscordからWorkerへインタラクション（Interaction API）を戻して自動応募（参加登録）を処理する。
 
-応募者が目標人数に達したことを検知すると、募集ステータスを自動的に「満員 (fulfilled)」へ更新し、募集主宛てにDiscordでメンション付き完了通知を送信する。
+作成時に応募締切・人数（下限〜上限）・方式（先着 / 抽選）を指定する。
 
-データの自動クリーンアップ: 定期実行（Cron）により、1ヶ月以上経過した古い募集データを自動削除する。
+先着: 応募が上限人数に達するとステータスを「満員 (fulfilled)」へ更新し、募集主宛てにDiscordで完了通知を送信する。
+
+抽選: 締切まで応募を受け付ける。締切後（または手動締切後）に応募が上限を超えている場合、募集主が Web から抽選を実行できる（当選者は is_selected=true）。
+
+Cron: 期限（deadline）を過ぎた open 募集を closed にする。1ヶ月経過での自動削除は行わない。
 
 4.2. 画面イメージ（UI構成要素）
 募集一覧画面:
 
-現在エントリー中の募集スレッドの一覧（ステータスが open（募集中）か fulfilled（満員）か等）。
+現在エントリー中の募集スレッドの一覧（open / fulfilled / closed 等）。
 
-対象シナリオ、募集役割（PL/GM）、現在の応募人数 / 目標人数、募集主名を表示。
+対象シナリオ、募集役割（PL/GM）、応募人数 / 人数レンジ（例: 2-4人）、方式、締切、募集主名を表示。
 
 募集詳細・登録画面:
 
-新規募集登録用のフォーム（シナリオ選択、役割セレクト、目標人数、特記事項メモ等の入力項目）。
+新規募集フォーム（シナリオ、役割、下限・上限人数、先着/抽選、応募締切、メモ）。
 
-募集に対する「参加希望（応募）」ボタン。また、既に応募しているプレイヤーの一覧を表示するエリア。
+応募／取消ボタン、応募者一覧（抽選後は当選・落選表示）。
+
+募集主向け: 締切、抽選、締切延長、削除。
 
 4.3. データ構造（データベース設計）
 recruitments テーブル（募集の親データ）
@@ -32,14 +38,25 @@ id,text,NO,募集ID（主キー）
 owner_player_id,text,NO,募集を立ち上げたプレイヤーID（外部キー）
 scenario_id,text,YES,対象のシナリオID（外部キー）
 recruit_role,text,NO,募集する役割（PL または GM）
-target_count,integer,NO,目標募集人数
-status,text,NO,募集状況（open / fulfilled）
-memo,text,YES,募集に際しての日程候補や要件などのメモ
-created_at,timestamp with tz,YES,自動クリーンアップの条件（1ヶ月）判定に使用
+min_count,integer,NO,募集人数の下限（表示用。1以上かつ target_count 以下）
+target_count,integer,NO,募集人数の上限（定員）
+deadline,timestamptz,NO,応募締切
+selection_mode,text,NO,first_come（先着）または lottery（抽選）
+lottery_drawn_at,timestamptz,YES,抽選実行時刻
+status,text,NO,募集状況（open / fulfilled / closed）
+memo,text,YES,日程候補や要件などのメモ
+created_at,timestamp with tz,YES,作成日時
 
 recruitment_applicants テーブル（応募したプレイヤー：子データ）
 カラム名,データ型,Nullable,説明
 recruitment_id,text,NO,対象の募集ID（複合主キー、ON DELETE CASCADE）
 player_id,text,NO,応募（立候補）したプレイヤーID（複合主キー）
+is_selected,boolean,YES,抽選結果（当選 true / 落選 false。未抽選は NULL）
+created_at,timestamptz,YES,応募日時
 
+API:
+POST /api/recruitments … 作成（deadline / min_count / selection_mode 必須系）
+POST /api/recruitments/draw … 募集主のみ。lottery 募集の抽選
+POST /api/recruitment_applicants … 応募（先着は満員時 409）
 
+スキーマ変更 SQL: docs/sql/recruitments_deadline_lottery.sql

@@ -60,7 +60,7 @@ posts     … なりきりチャット投稿
 | 卓 ↔ キャラクター | **書込み**: Worker が `run_characters` のみ洗替。**読取**: junction のみ（応答キー `characters` は互換） |
 | キャラ ↔ シナリオ | プレイ履歴・紐付け（`character_scenarios`） |
 | プレイヤー ↔ シナリオ（気になる） | `scenario_interests`。初回ON時に GM可能登録者へ DM |
-| 募集 | GM/PL募集。応募は `recruitment_applicants` |
+| 募集 | GM/PL募集。人数レンジ・締切・先着/抽選。応募は `recruitment_applicants`（抽選結果は `is_selected`） |
 
 ---
 

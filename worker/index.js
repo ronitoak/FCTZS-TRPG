@@ -157,7 +157,7 @@ const RUN_LIST_SELECT = "id,title,scenario_id,gm_id,status,image_url,updated_at"
 const SESSION_LIST_SELECT = "id,run_id,start,status,title";
 const PLAYER_LIST_SELECT = "player_id,player_name,user_id,discord_id";
 const SCENARIO_LIST_SELECT = "id,title,system,author,image_url,updated_at,trend_story_chaos,trend_avatar_clear,trend_harmony_active,min_players,max_players,play_time_minutes,lost_rate";
-const RECRUITMENT_LIST_SELECT = "id,owner_player_id,owner_player_name,scenario_id,scenario_title,scenario_image_url,recruit_role,target_count,memo,status,created_at,applicant_count";
+const RECRUITMENT_LIST_SELECT = "id,owner_player_id,owner_player_name,scenario_id,scenario_title,scenario_image_url,recruit_role,target_count,min_count,deadline,selection_mode,lottery_drawn_at,memo,status,created_at,applicant_count";
 const SCENARIO_SUMMARY_SELECT = `${SCENARIO_LIST_SELECT},run_count`;
 const PLAYER_DETAIL_SUMMARY_SELECT = "player_id,player_name,memo,icon_url,profile_text,tier_list_first,tier_list_second,tier_list_third,desire_avatar,desire_story,desire_clear,desire_chaos,desire_active,desire_harmony,character_count";
 
@@ -918,7 +918,7 @@ export default {
 
 async function runScheduledTasks(env) {
   await notifyScheduledSessions(env);
-  await deleteExpiredRecruitments(env);
+  await closeExpiredRecruitments(env);
 }
 
 async function notifyScheduledSessions(env) {
@@ -941,7 +941,7 @@ async function notifyScheduledSessions(env) {
 
           if (!Array.isArray(upcomingSessions) || upcomingSessions.length === 0) {
             console.log("本日の予定セッションはありません。");
-            // 通知対象がなくても、別責務である期限切れ募集の削除は継続させる。
+            // 通知対象がなくても、別責務である期限切れ募集のクローズは継続させる。
           } else {
             // --- セッション情報から卓情報を取得 ---
             const runIds = [...new Set(upcomingSessions.map(s => s.run_id).filter(Boolean))];
@@ -1050,35 +1050,86 @@ async function notifyScheduledSessions(env) {
       }
 }
 
-async function deleteExpiredRecruitments(env) {
-      // ==========================================
-      // ---- 2. 1ヶ月経過した募集の自動削除 ----
-      // ==========================================
-      try {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+async function closeExpiredRecruitments(env) {
+  // 募集期限を過ぎた open を closed にする（自動削除は行わない）。
+  try {
+    const nowIso = encodeURIComponent(new Date().toISOString());
+    const { res, text } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.recruitments}?status=eq.open&deadline=lt.${nowIso}&select=id`
+    );
+    if (!res.ok) {
+      console.warn("期限切れ募集の取得に失敗:", text);
+      return;
+    }
+    const rows = JSON.parse(text) || [];
+    if (rows.length === 0) return;
 
-        // ISO日時の記号がPostgREST条件として誤解釈されないよう、クエリ値をエンコードする。
-        const thresholdISO = encodeURIComponent(oneMonthAgo.toISOString());
-
-        const { res: fetchOldRes, text: fetchOldText } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitments}?created_at=lt.${thresholdISO}&select=id`);
-
-        if (fetchOldRes.ok) {
-          const oldRecruits = JSON.parse(fetchOldText);
-
-          if (oldRecruits && oldRecruits.length > 0) {
-            const oldIds = oldRecruits.map(r => r.id);
-            const deleteIdsQuery = `(${oldIds.map(id => encodeURIComponent(id)).join(',')})`;
-
-            await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=in.${deleteIdsQuery}`, { method: 'DELETE' });
-            await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitments}?id=in.${deleteIdsQuery}`, { method: 'DELETE' });
-
-            console.log(`${oldRecruits.length}件の募集を自動削除しました。`);
-          }
-        }
-      } catch (err) {
-        console.error("募集の自動削除エラー:", err);
+    const ids = rows.map(r => r.id).filter(Boolean);
+    const idsQuery = `(${ids.map(id => encodeURIComponent(id)).join(",")})`;
+    const { res: patchRes, text: patchText } = await sbServiceFetch(
+      env,
+      `/rest/v1/${SUPABASE_TABLES.recruitments}?id=in.${idsQuery}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: { status: "closed" }
       }
+    );
+    if (!patchRes.ok) {
+      console.warn("期限切れ募集のクローズに失敗:", patchText);
+      return;
+    }
+    console.log(`${ids.length}件の募集を期限切れで締め切りました。`);
+  } catch (err) {
+    console.error("募集期限クローズエラー:", err);
+  }
+}
+
+function normalizeRecruitSelectionMode(value) {
+  return String(value || "").trim() === "lottery" ? "lottery" : "first_come";
+}
+
+function formatRecruitCapacityText(minCount, targetCount) {
+  const max = Math.max(1, Number(targetCount) || 1);
+  const minRaw = Number(minCount);
+  const min = Number.isFinite(minRaw) && minRaw >= 1 ? Math.min(minRaw, max) : max;
+  if (min === max) return `${max}人`;
+  return `${min}-${max}人`;
+}
+
+function shuffleInPlace(array) {
+  for (let i = array.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = array[i];
+    array[i] = array[j];
+    array[j] = tmp;
+  }
+  return array;
+}
+
+async function fetchRecruitmentForApply(env, recruitmentId) {
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}&select=id,owner_player_id,scenario_id,target_count,min_count,deadline,selection_mode,lottery_drawn_at,status&limit=1`
+  );
+  if (!res.ok) return { error: text, status: res.status, recruit: null };
+  const rows = JSON.parse(text) || [];
+  return { recruit: rows[0] || null };
+}
+
+function assertRecruitmentAcceptingApplicants(recruit) {
+  if (!recruit) return { ok: false, status: 404, message: "Recruitment not found" };
+  if (recruit.status !== "open") {
+    return { ok: false, status: 409, message: "Recruitment is not open" };
+  }
+  if (recruit.deadline) {
+    const deadline = new Date(recruit.deadline);
+    if (!Number.isNaN(deadline.getTime()) && deadline.getTime() <= Date.now()) {
+      return { ok: false, status: 409, message: "Recruitment deadline has passed" };
+    }
+  }
+  return { ok: true };
 }
 
 // 共通のヘッダー設定
@@ -2861,19 +2912,59 @@ async function handlePost(request, env, ctx, url) {
           detail: "players.user_id（Auth UUID）または players.discord_id（Discord snowflake）とログイン情報が紐づいていません"
         });
       }
-      const recruitPayload = Array.isArray(body)
-        ? body.map(row => ({ ...row, owner_player_id: callerPlayerId }))
-        : { ...body, owner_player_id: callerPlayerId };
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: recruitPayload });
+
+      const rawRows = Array.isArray(body) ? body : [body];
+      const recruitPayload = [];
+      for (const row of rawRows) {
+        const targetCount = Number(row?.target_count);
+        const minCountRaw = row?.min_count != null ? Number(row.min_count) : targetCount;
+        const minCount = Number.isFinite(minCountRaw) ? minCountRaw : targetCount;
+        const selectionMode = normalizeRecruitSelectionMode(row?.selection_mode);
+        const deadlineRaw = row?.deadline != null ? String(row.deadline).trim() : "";
+        if (!Number.isFinite(targetCount) || targetCount < 1 || targetCount > 100) {
+          return jsonErr("target_count must be 1-100", 400);
+        }
+        if (!Number.isFinite(minCount) || minCount < 1 || minCount > targetCount) {
+          return jsonErr("min_count must be 1..target_count", 400);
+        }
+        if (!deadlineRaw) {
+          return jsonErr("deadline required", 400);
+        }
+        const deadlineDate = new Date(deadlineRaw);
+        if (Number.isNaN(deadlineDate.getTime())) {
+          return jsonErr("Invalid deadline", 400);
+        }
+        if (deadlineDate.getTime() <= Date.now()) {
+          return jsonErr("deadline must be in the future", 400);
+        }
+
+        recruitPayload.push({
+          ...row,
+          owner_player_id: callerPlayerId,
+          target_count: targetCount,
+          min_count: minCount,
+          selection_mode: selectionMode,
+          deadline: deadlineDate.toISOString(),
+          status: row?.status || "open"
+        });
+      }
+
+      const { res, text } = await sbFetch(
+        env,
+        request,
+        `/rest/v1/${SUPABASE_TABLES.recruitments}`,
+        { method: "POST", headers: { Prefer: "return=representation" }, body: recruitPayload }
+      );
       if (res.ok) {
         const insertedData = JSON.parse(text);
         const record = Array.isArray(insertedData) ? insertedData[0] : insertedData;
-        ctx.waitUntil(recruited({ ...record, ...(Array.isArray(body) ? body[0] : body), owner_player_id: callerPlayerId }, env));
+        const sourceRow = recruitPayload[0] || {};
+        ctx.waitUntil(recruited({ ...record, ...sourceRow, owner_player_id: callerPlayerId }, env));
         const actor = await resolveActorForNotify(env, callerPlayerId);
         const siteUrl = resolveSiteUrl(env);
         scheduleCreateNotify(ctx, env, {
           kindLabel: "募集",
-          title: record?.scenario_title || body?.scenario_title || record?.scenario_id || "（シナリオ未設定）",
+          title: record?.scenario_title || sourceRow?.scenario_title || record?.scenario_id || "（シナリオ未設定）",
           actorPlayerId: actor.actorPlayerId,
           actorName: actor.actorName,
           detailUrl: record?.id
@@ -2882,6 +2973,87 @@ async function handlePost(request, env, ctx, url) {
         });
       }
       return proxyJson(res, text);
+    }
+
+    if (url.pathname === "/api/recruitments/draw") {
+      if (!callerPlayerId) {
+        return jsonErr("Player mapping required", 403);
+      }
+      const recruitmentId = body?.recruitment_id != null
+        ? String(body.recruitment_id).trim()
+        : (body?.id != null ? String(body.id).trim() : "");
+      if (!recruitmentId) return jsonErr("recruitment_id required", 400);
+
+      const { recruit } = await fetchRecruitmentForApply(env, recruitmentId);
+      if (!recruit) return jsonErr("Recruitment not found", 404);
+      if (String(recruit.owner_player_id) !== String(callerPlayerId)) {
+        return jsonErr("Forbidden", 403);
+      }
+      if (normalizeRecruitSelectionMode(recruit.selection_mode) !== "lottery") {
+        return jsonErr("Not a lottery recruitment", 400);
+      }
+      if (recruit.lottery_drawn_at) {
+        return jsonErr("Lottery already drawn", 409);
+      }
+      if (recruit.status === "open") {
+        await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}`,
+          { method: "PATCH", headers: { Prefer: "return=minimal" }, body: { status: "closed" } }
+        );
+      } else if (recruit.status !== "closed") {
+        return jsonErr("Recruitment must be closed before lottery", 409);
+      }
+
+      const { res: appRes, text: appText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&select=player_id,created_at`
+      );
+      if (!appRes.ok) return jsonErr("Applicants lookup failed", appRes.status, { detail: appText });
+      const applicants = JSON.parse(appText) || [];
+      const capacity = Math.max(1, Number(recruit.target_count) || 1);
+      if (applicants.length <= capacity) {
+        for (const a of applicants) {
+          await sbServiceFetch(
+            env,
+            `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&player_id=eq.${encodeURIComponent(a.player_id)}`,
+            { method: "PATCH", headers: { Prefer: "return=minimal" }, body: { is_selected: true } }
+          );
+        }
+      } else {
+        const shuffled = shuffleInPlace([...applicants]);
+        const winners = new Set(shuffled.slice(0, capacity).map(a => String(a.player_id)));
+        for (const a of applicants) {
+          await sbServiceFetch(
+            env,
+            `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&player_id=eq.${encodeURIComponent(a.player_id)}`,
+            {
+              method: "PATCH",
+              headers: { Prefer: "return=minimal" },
+              body: { is_selected: winners.has(String(a.player_id)) }
+            }
+          );
+        }
+      }
+
+      const drawnAt = new Date().toISOString();
+      await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}`,
+        {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: { status: "fulfilled", lottery_drawn_at: drawnAt }
+        }
+      );
+
+      return jsonOk({
+        ok: true,
+        recruitment_id: recruitmentId,
+        capacity,
+        applicant_count: applicants.length,
+        lottery_drawn_at: drawnAt
+      });
     }
 
     if (url.pathname === "/api/recruitment_applicants") {
@@ -2893,12 +3065,35 @@ async function handlePost(request, env, ctx, url) {
       const applicantPayload = Array.isArray(body)
         ? body.map(row => ({ ...row, player_id: callerPlayerId }))
         : { ...body, player_id: callerPlayerId };
-      const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: applicantPayload });
-      if (res.ok) {
-        const payload = Array.isArray(applicantPayload) ? applicantPayload[0] : applicantPayload;
-        if (payload.recruitment_id || payload.recruit_id) {
-          ctx.waitUntil(checkAndNotifyIfFulfilled(payload.recruitment_id || payload.recruit_id, env));
+      const first = Array.isArray(applicantPayload) ? applicantPayload[0] : applicantPayload;
+      const recruitmentId = first?.recruitment_id || first?.recruit_id;
+      if (!recruitmentId) return jsonErr("recruitment_id required", 400);
+
+      const { recruit } = await fetchRecruitmentForApply(env, recruitmentId);
+      const gate = assertRecruitmentAcceptingApplicants(recruit);
+      if (!gate.ok) return jsonErr(gate.message, gate.status);
+
+      if (normalizeRecruitSelectionMode(recruit.selection_mode) === "first_come") {
+        const { res: countRes, text: countText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&select=player_id`
+        );
+        if (countRes.ok) {
+          const existing = JSON.parse(countText) || [];
+          if (existing.length >= Number(recruit.target_count || 0)) {
+            return jsonErr("Recruitment is full", 409);
+          }
         }
+      }
+
+      const { res, text } = await sbFetch(
+        env,
+        request,
+        `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`,
+        { method: "POST", headers: { Prefer: "return=representation" }, body: applicantPayload }
+      );
+      if (res.ok) {
+        ctx.waitUntil(checkAndNotifyIfFulfilled(recruitmentId, env));
       }
       return proxyJson(res, text);
     }
@@ -3273,6 +3468,24 @@ async function registerParticipant(recruitmentId, discordUser, env) {
       throw new Error("PLAYER_NOT_FOUND");
     }
 
+    const { recruit } = await fetchRecruitmentForApply(env, recruitmentId);
+    const gate = assertRecruitmentAcceptingApplicants(recruit);
+    if (!gate.ok) {
+      throw new Error(gate.message);
+    }
+    if (normalizeRecruitSelectionMode(recruit.selection_mode) === "first_come") {
+      const { res: countRes, text: countText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&select=player_id`
+      );
+      if (countRes.ok) {
+        const existing = JSON.parse(countText) || [];
+        if (existing.length >= Number(recruit.target_count || 0)) {
+          throw new Error("Recruitment is full");
+        }
+      }
+    }
+
     // 2. recruitment_applicants テーブルへ登録（インサート）
     const { res, text: insertText } = await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}`, {
       method: "POST",
@@ -3329,9 +3542,13 @@ async function recruited(data, env) {
     const scenarioTitle = scenarioRow?.title || data.scenario_id || "シナリオ未設定";
 
     const role = data.recruit_role === 'PL' ? 'プレイヤー(PL)' : 'ゲームマスター(GM)';
-    const count = data.target_count;
+    const capacityText = formatRecruitCapacityText(data.min_count, data.target_count);
+    const modeLabel = normalizeRecruitSelectionMode(data.selection_mode) === "lottery" ? "抽選" : "先着";
+    const deadlineText = data.deadline
+      ? new Date(data.deadline).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+      : "未設定";
     const memo = data.memo || "詳細情報なし";
-    const detailUrl = `${resolveSiteUrl(env)}/recruit/index.html`;
+    const detailUrl = `${resolveSiteUrl(env)}/recruit/detail.html?id=${encodeURIComponent(data.id)}`;
 
     // 2. Discordへ通知 (Bot Tokenを使用するためここは直接fetch)
     await fetch(`${DISCORD_API_BASE_URL}/channels/${env.RECRUIT_CHANNEL_ID}/messages`, {
@@ -3345,7 +3562,7 @@ async function recruited(data, env) {
         embeds: [{
             image: { url: scenarioImageUrl },
             title: `【${role}募集】${scenarioTitle}`,
-            description: `**【募集主】\n- ${recruiterName}**\n**【募集人数】**\n- ${count}人\n**【メモ】**\n${memo}`,
+            description: `**【募集主】**\n- ${recruiterName}\n**【募集人数】**\n- ${capacityText}\n**【方式】**\n- ${modeLabel}\n**【締切】**\n- ${deadlineText}\n**【メモ】**\n${memo}`,
             color: DISCORD_COLORS.recruitment,
             url: detailUrl,
         }],
@@ -3376,13 +3593,11 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
   if (!recruitmentId) return;
 
   try {
-    // 1. 募集の「目標人数」「ステータス」「募集主」「シナリオ」を取得
     const { res: recruitRes, text: recruitText } = await sbServiceFetch(
       env,
-      `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}&select=target_count,owner_player_id,scenario_id,status`
+      `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}&select=target_count,min_count,owner_player_id,scenario_id,status,selection_mode,deadline`
     );
 
-    // 2. 現在の応募者リストを取得
     const { res: applicantsRes, text: applicantsText } = await sbServiceFetch(
       env,
       `/rest/v1/${SUPABASE_TABLES.recruitmentApplicants}?recruitment_id=eq.${encodeURIComponent(recruitmentId)}&select=player_id`
@@ -3394,17 +3609,19 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
 
       if (recruits.length > 0) {
         const recruit = recruits[0];
+        const mode = normalizeRecruitSelectionMode(recruit.selection_mode);
+
+        // 抽選モードは人数到達では満員にしない（締切後に抽選）。
+        if (mode !== "first_come") return;
 
         // 再通知を防ぐため、募集中から初めて定員へ到達した場合だけ状態更新と通知を行う。
         if (recruit.status === "open" && applicants.length >= recruit.target_count) {
 
-          // ① ステータスを「満員 (fulfilled)」に自動更新 (PATCH)
           await sbServiceFetch(env, `/rest/v1/${SUPABASE_TABLES.recruitments}?id=eq.${encodeURIComponent(recruitmentId)}`, {
             method: 'PATCH',
             body: { status: "fulfilled" }
           });
 
-          // ② 募集主のDiscord IDを取得
           let ownerDiscordId = null;
           const { res: playerRes, text: playerText } = await sbServiceFetch(
             env,
@@ -3415,7 +3632,6 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
             if (players.length > 0) ownerDiscordId = players[0].discord_id;
           }
 
-          // ③ シナリオ名を取得
           let scenarioTitle = "未定・オリジナル";
           if (recruit.scenario_id) {
             const { res: scRes, text: scenarioText } = await sbServiceFetch(
@@ -3428,7 +3644,6 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
             }
           }
 
-          // ④ ランダムキャラの取得とアイコン判定
           const availableCharacters = await getCharacterList(env);
           const { customName, customAvatar } = await resolveDiscordCharacterIdentity(
             availableCharacters,
@@ -3436,14 +3651,14 @@ async function checkAndNotifyIfFulfilled(recruitmentId, env) {
             env
           );
 
-          // ⑤ Discordへ通知
           const mention = ownerDiscordId ? `<@${ownerDiscordId}>` : `(募集主様)`;
+          const capacityText = formatRecruitCapacityText(recruit.min_count, recruit.target_count);
           await sendDiscordNotification(
             `${mention}\n🎉 **募集が満員になりました！**`,
             {
               title: `✅ 募集満員：${scenarioTitle}`,
-              description: `目標人数（${recruit.target_count}人）に達したため、募集ステータスを「満員」に自動更新しました！\n詳細画面のコメント欄などで、メンバーと日程の調整を進めてください。`,
-              color: DISCORD_COLORS.recruitmentFulfilled // 緑色
+              description: `先着で定員（${capacityText}）に達したため、募集ステータスを「満員」に自動更新しました！\n詳細画面のコメント欄などで、メンバーと日程の調整を進めてください。`,
+              color: DISCORD_COLORS.recruitmentFulfilled
             },
             env,
             env.DISCORD_WEBHOOK_URL,

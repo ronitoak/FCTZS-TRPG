@@ -64,9 +64,9 @@ async function loadRecruitments() {
         [allRecruitments, allApplicants] = await Promise.all([
             Utils.apiGetWithFallback(
                 "recruitment_list?order=created_at.desc",
-                "recruitments?select=id,owner_player_id,scenario_id,recruit_role,target_count,memo,status,created_at&order=created_at.desc"
+                "recruitments?select=id,owner_player_id,scenario_id,recruit_role,target_count,min_count,deadline,selection_mode,lottery_drawn_at,memo,status,created_at&order=created_at.desc"
             ),
-            Utils.apiGet("recruitment_applicants?select=recruitment_id,player_id")
+            Utils.apiGet("recruitment_applicants?select=recruitment_id,player_id,is_selected")
         ]);
 
         renderRecruitments();
@@ -81,8 +81,12 @@ function renderRecruitments() {
     const container = document.getElementById("recruit-list-container");
     container.innerHTML = "";
 
-    // 募集中、または満員のものを表示（取り下げられたものは隠す）
-    const activeRecruitments = allRecruitments.filter(r => r.status === "open" || r.status === "fulfilled");
+    // 募集中・満員・抽選待ち（締切済み）を表示
+    const activeRecruitments = allRecruitments.filter(r => {
+        if (r.status === "open" || r.status === "fulfilled") return true;
+        if (r.status === "closed" && String(r.selection_mode) === "lottery" && !r.lottery_drawn_at) return true;
+        return false;
+    });
 
     if (activeRecruitments.length === 0) {
         container.innerHTML = "<p class='u-muted' style='text-align: center; padding: 40px 0;'>現在、募集はありません。<br>右上のボタンから新しく募集を立ててみましょう！</p>";
@@ -102,7 +106,25 @@ function renderRecruitments() {
 
         const applicantsForThis = allApplicants.filter(a => a.recruitment_id === recruit.id);
         const currentCount = applicantsForThis.length;
-        const isFulfilled = recruit.status === "fulfilled" || currentCount >= recruit.target_count;
+        const capacityLabel = Utils.formatRecruitCapacity(recruit);
+        const modeLabel = Utils.recruitSelectionModeLabel(recruit.selection_mode);
+        const isFulfilled = recruit.status === "fulfilled";
+        const isLotteryPending = recruit.status === "closed"
+            && String(recruit.selection_mode) === "lottery"
+            && !recruit.lottery_drawn_at
+            && currentCount > Number(recruit.target_count || 0);
+        let progressLabel = `${currentCount} / ${capacityLabel}`;
+        let progressColor = "inherit";
+        if (isFulfilled) {
+            progressLabel = "満員御礼！";
+            progressColor = "var(--success-color)";
+        } else if (isLotteryPending) {
+            progressLabel = `抽選待ち ${currentCount} / ${capacityLabel}`;
+            progressColor = "#c05621";
+        } else if (recruit.status === "open" && String(recruit.selection_mode) !== "lottery" && currentCount >= Number(recruit.target_count || 0)) {
+            progressLabel = "満員御礼！";
+            progressColor = "var(--success-color)";
+        }
 
         // カードDOMの生成
         const card = document.createElement("div");
@@ -132,8 +154,8 @@ function renderRecruitments() {
             ${match.badgeHtml}
             <div class="recruit-header">
                 <span class="recruit-role-badge">${recruit.recruit_role === 'GM' ? 'GM募集' : 'PL募集'}</span>
-                <span class="recruit-progress" style="color: ${isFulfilled ? 'var(--success-color)' : 'inherit'}">
-                    ${isFulfilled ? '満員御礼！' : `${currentCount} / ${recruit.target_count} 人`}
+                <span class="recruit-progress" style="color: ${progressColor}">
+                    ${progressLabel}
                 </span>
             </div>
             <img class="scenario-detail-cover"
@@ -145,6 +167,8 @@ function renderRecruitments() {
             ${trendTagsHtml}
             <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">
                 募集主: <strong>${Utils.escapeHtml(ownerName)}</strong>
+                ／ ${Utils.escapeHtml(modeLabel)}
+                ／ 締切: ${Utils.escapeHtml(Utils.formatRecruitDeadline(recruit.deadline))}
             </div>
             ${recruit.memo ? `<div style="background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 0.9rem; white-space: pre-wrap; border: 1px solid var(--border-color); margin-top: 8px;">${Utils.escapeHtml(recruit.memo)}</div>` : ''}
 
@@ -212,6 +236,14 @@ function renderRecruitments() {
 
 // 5. 募集作成モーダルの制御
 document.getElementById("btn-open-recruit-modal")?.addEventListener("click", () => {
+    const deadlineInput = document.getElementById("recruit-deadline");
+    if (deadlineInput && !deadlineInput.value) {
+        const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16);
+        deadlineInput.value = local;
+    }
     document.getElementById("recruit-modal")?.showModal();
 });
 
@@ -221,17 +253,33 @@ window.addEventListener("click", (e) => {
     }
 });
 
-// 6. 募集フォーム of 送信
+// 6. 募集フォームの送信
 document.getElementById("recruit-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const btn = e.target.querySelector("button[type='submit']");
 
+    const minCount = parseInt(fd.get("min_count"), 10);
+    const targetCount = parseInt(fd.get("target_count"), 10);
+    const deadlineLocal = String(fd.get("deadline") || "").trim();
+    if (!Number.isFinite(minCount) || !Number.isFinite(targetCount) || minCount < 1 || targetCount < minCount) {
+        Utils.showToast("募集人数の下限・上限を確認してください", "error");
+        return;
+    }
+    if (!deadlineLocal) {
+        Utils.showToast("応募締切を指定してください", "error");
+        return;
+    }
+    const deadlineIso = new Date(deadlineLocal).toISOString();
+
     const payload = {
         owner_player_id: fd.get("owner_player_id"),
         recruit_role: fd.get("recruit_role"),
-        scenario_id: fd.get("scenario_id") || null, // 空ならnullにして未定扱い
-        target_count: parseInt(fd.get("target_count"), 10),
+        scenario_id: fd.get("scenario_id") || null,
+        min_count: minCount,
+        target_count: targetCount,
+        selection_mode: fd.get("selection_mode") || "first_come",
+        deadline: deadlineIso,
         memo: fd.get("memo")
     };
 
@@ -241,7 +289,7 @@ document.getElementById("recruit-form")?.addEventListener("submit", async (e) =>
         await Utils.apiPost("recruitments", [payload]);
         Utils.showToast("募集を作成しました！", "success");
         document.getElementById("recruit-modal")?.close();
-        e.target.reset(); // フォームの中身を空にする
+        e.target.reset();
         await loadRecruitments();
     } catch (err) {
         console.error(err);

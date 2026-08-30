@@ -490,6 +490,7 @@ JOIN public.sessions AS s ON s.run_id = rc.run_id
 GROUP BY rc.character_id;
 
 -- 募集一覧カードに必要な列と名称・応募数だけを返す。
+-- 最新定義は docs/sql/recruitments_deadline_lottery.sql を正とする。
 CREATE OR REPLACE VIEW public.recruitment_list
 WITH (security_invoker = true)
 AS
@@ -502,6 +503,10 @@ SELECT
   s.image_url AS scenario_image_url,
   r.recruit_role,
   r.target_count,
+  r.min_count,
+  r.deadline,
+  r.selection_mode,
+  r.lottery_drawn_at,
   r.memo,
   r.status,
   r.created_at,
@@ -519,6 +524,10 @@ GROUP BY
   s.image_url,
   r.recruit_role,
   r.target_count,
+  r.min_count,
+  r.deadline,
+  r.selection_mode,
+  r.lottery_drawn_at,
   r.memo,
   r.status,
   r.created_at;
@@ -658,7 +667,7 @@ COMMIT;
 ### B-2. API互換に必要なフィールド
 
 - `character_last_session`: `character_id`, `last_session_start` を維持する。
-- `recruitment_list`: 現行カードの `id`, `owner_player_id`, `scenario_id`, `recruit_role`, `target_count`, `memo`, `status`, `created_at` に加え、`owner_player_name`, `scenario_title`, `scenario_image_url`, `applicant_count` を返す。応募者名一覧が必要な詳細画面は従来APIを維持する。
+- `recruitment_list`: 現行カードの `id`, `owner_player_id`, `scenario_id`, `recruit_role`, `target_count`, `min_count`, `deadline`, `selection_mode`, `lottery_drawn_at`, `memo`, `status`, `created_at` に加え、`owner_player_name`, `scenario_title`, `scenario_image_url`, `applicant_count` を返す。応募者名一覧が必要な詳細画面は従来APIを維持する。
 - `scenario_summary`: 現行 `scenario_list` の一覧表示列と `run_count` を返す。詳細用の `description`, `notes` は一覧レスポンスに含めない。
 - `recent_comments_with_names`: 現行コメントの `id`, `created_at`, `target_type`, `target_id`, `author`, `body` と `target_name` を返す。`target_type` は `run/recruitment/scenario/character/player/session/post` を扱い、`session.target_id` はrun IDとして扱う。
 - `player_detail_summary`: `player_id`, `player_name`, `memo`、表示に必要なプロフィール列、`character_count` のみ。キャラクター、卓、セッション、予定の巨大JSON集約は行わない。

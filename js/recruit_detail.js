@@ -1,12 +1,13 @@
 "use strict";
 
-// 募集本体と応募者を詳細表示へ統合し、参加・取消・募集削除の整合性を保つ。
+// 募集本体と応募者を詳細表示へ統合し、参加・取消・締切・抽選・募集削除の整合性を保つ。
 (() => {
 
 let currentRecruit = null;
 let allPlayers = [];
 let allScenarios = [];
 let currentApplicants = [];
+let currentUserPlayer = null;
 
 async function main() {
     await Utils.initAuthAndHeader('common-nav', '../');
@@ -56,28 +57,42 @@ function renderDetail() {
 
     const scenarioObj = allScenarios.find(s => String(s.id) === String(currentRecruit.scenario_id));
     const scenarioName = scenarioObj ? scenarioObj.title : "未定・オリジナル";
-    
-    // 画像パスの生成（シナリオIDがあればその画像、なければデフォルト）
-    const scenarioImage = scenarioObj 
-        ? Utils.getScenarioCoverPath(scenarioObj.id, scenarioObj.image_url) 
+
+    const scenarioImage = scenarioObj
+        ? Utils.getScenarioCoverPath(scenarioObj.id, scenarioObj.image_url)
         : Utils.DEFAULT_SCENARIO_COVER;
     const fallback = Utils.DEFAULT_SCENARIO_COVER;
 
-    const applicantNames = currentApplicants.map(app => {
-        const pObj = allPlayers.find(p => p.player_id === app.player_id);
-        return pObj ? pObj.player_name : app.player_id;
-    });
-
     const isGMWanted = currentRecruit.recruit_role === "GM";
-    const roleBadge = isGMWanted ? `<span class="recruit-role-badge" style="background:#fff5f5; color:#c53030; border: 1px solid #fc8181; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">GM募集</span>` : `<span class="recruit-role-badge" style="background:#ebf8ff; color:#2b6cb0; border: 1px solid #90cdf4; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">PL募集</span>`;
-    
+    const roleBadge = isGMWanted
+        ? `<span class="recruit-role-badge" style="background:#fff5f5; color:#c53030; border: 1px solid #fc8181; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">GM募集</span>`
+        : `<span class="recruit-role-badge" style="background:#ebf8ff; color:#2b6cb0; border: 1px solid #90cdf4; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold;">PL募集</span>`;
+
     let statusText = "募集中";
     if (currentRecruit.status === "fulfilled") statusText = "満員";
-    if (currentRecruit.status === "closed") statusText = "終了";
+    if (currentRecruit.status === "closed") statusText = "締切";
+
+    const capacityLabel = Utils.formatRecruitCapacity(currentRecruit);
+    const modeLabel = Utils.recruitSelectionModeLabel(currentRecruit.selection_mode);
+    const deadlineLabel = Utils.formatRecruitDeadline(currentRecruit.deadline);
+    const deadlinePassed = Utils.isRecruitDeadlinePassed(currentRecruit);
+    const canApply = currentRecruit.status === "open" && !deadlinePassed;
+    const needsLottery = String(currentRecruit.selection_mode) === "lottery"
+        && !currentRecruit.lottery_drawn_at
+        && (currentRecruit.status === "closed" || deadlinePassed)
+        && currentApplicants.length > Number(currentRecruit.target_count || 0);
 
     const trendTagsHtml = scenarioObj ? Utils.getTrendTagsHtml(scenarioObj) : "";
 
-    // シナリオ詳細に完全に準拠したHTML構造
+    const applicantTags = currentApplicants.map(app => {
+        const pObj = allPlayers.find(p => p.player_id === app.player_id);
+        const name = pObj ? pObj.player_name : app.player_id;
+        let suffix = "";
+        if (app.is_selected === true) suffix = "（当選）";
+        if (app.is_selected === false) suffix = "（落選）";
+        return `<span class="tag" style="display: inline-block; background: var(--bg-color); padding: 4px 10px; border-radius: 12px; margin: 4px; border: 1px solid var(--border-color);">${Utils.escapeHtml(name + suffix)}</span>`;
+    }).join("");
+
     root.innerHTML = `
       <header class="scenario-detail-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h1 class="scenario-detail-title">${Utils.escapeHtml(scenarioName)}</h1>
@@ -86,7 +101,7 @@ function renderDetail() {
 
       <div class="detail-next-actions" aria-label="次の操作">
         <span class="detail-next-actions-label">次にやること</span>
-        ${currentRecruit.status === "open"
+        ${canApply
           ? `<button type="button" class="btn-primary" onclick="document.getElementById('btn-apply')?.click()">応募する</button>`
           : `<span class="u-muted">現在は応募を受け付けていません</span>`}
         <a class="btn-secondary" href="#recruit-manage">募集を管理</a>
@@ -107,7 +122,9 @@ function renderDetail() {
                 <div><strong>シナリオ</strong> ${scenarioObj ? `<a class="session-detail-link" href="../scenarios/detail.html?id=${encodeURIComponent(currentRecruit.scenario_id)}">${Utils.escapeHtml(scenarioName ?? currentRecruit.scenario_id)}</a>` : "（不明）"}</div>
                 <div><strong>募集主:</strong> ${Utils.escapeHtml(ownerName)}</div>
                 <div><strong>募集状態:</strong> ${Utils.escapeHtml(statusText)}</div>
-                <div><strong>募集人数:</strong> ${currentRecruit.target_count}人 （現在の応募: ${currentApplicants.length}人）</div>
+                <div><strong>募集人数:</strong> ${Utils.escapeHtml(capacityLabel)} （現在の応募: ${currentApplicants.length}人）</div>
+                <div><strong>方式:</strong> ${Utils.escapeHtml(modeLabel)}</div>
+                <div><strong>応募締切:</strong> ${Utils.escapeHtml(deadlineLabel)}</div>
             </div>
             ${trendTagsHtml}
             <div class="scenario-base-info">
@@ -119,7 +136,7 @@ function renderDetail() {
       <section class="scenario-detail-section">
         <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--border-color, #eee); padding-bottom: 8px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
             <h2 class="scenario-detail-h2" style="margin: 0; border: none; padding: 0;">現在の応募者</h2>
-            
+
             <div class="input-group" style="display: flex; gap: 8px; align-items: center; margin: 0;">
                 <span id="action-player-label" class="u-muted" style="font-size: 0.9em;"></span>
                 <button type="button" id="btn-apply" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">応募する</button>
@@ -128,9 +145,7 @@ function renderDetail() {
         </div>
 
         <div class="scenario-detail-characters">
-            ${applicantNames.length > 0 
-                ? applicantNames.map(name => `<span class="tag" style="display: inline-block; background: var(--bg-color); padding: 4px 10px; border-radius: 12px; margin: 4px; border: 1px solid var(--border-color);">${Utils.escapeHtml(name)}</span>`).join('') 
-                : '<p class="scenario-detail-muted"><small>まだ応募はありません</small></p>'}
+            ${applicantTags || '<p class="scenario-detail-muted"><small>まだ応募はありません</small></p>'}
         </div>
       </section>
 
@@ -138,12 +153,19 @@ function renderDetail() {
         <fieldset class="form-section" style="border: 1px solid #fc8181; background: #fff5f5; padding: 15px;">
             <legend style="color: #c53030; font-weight: bold;">募集の管理（募集主用）</legend>
             <p style="font-size: 0.9em; margin-bottom: 10px; color: #666;">
-                ※募集開始から1ヶ月経過すると自動削除されます。延長する場合は下のボタンを押してください。<br>
+                ※応募締切を過ぎると自動で締め切ります（削除はしません）。<br>
+                ※抽選募集は締切後、応募が上限を超えている場合に抽選できます。<br>
                 ※募集を完全に中止・削除する場合は「削除する」を押してください。
             </p>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <button type="button" id="btn-extend-recruit" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">募集期間を延長する</button>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px;">
+                <button type="button" id="btn-close-recruit" class="btn-secondary" style="padding: 6px 12px; font-size: 0.95em;">募集を締め切る</button>
+                <button type="button" id="btn-draw-lottery" class="btn-primary" style="padding: 6px 12px; font-size: 0.95em;" ${needsLottery ? "" : "disabled"}>抽選する</button>
+                <button type="button" id="btn-extend-recruit" class="btn-primary btn-join" style="padding: 6px 12px; font-size: 0.95em;">締切を延長する</button>
                 <button type="button" id="btn-delete-recruit" class="btn-cancel" style="padding: 6px 12px; font-size: 0.95em;">この募集を削除する</button>
+            </div>
+            <div class="form-group" style="margin: 0; max-width: 320px;">
+                <label for="extend-deadline">延長後の締切</label>
+                <input type="datetime-local" id="extend-deadline" class="form-control">
             </div>
         </fieldset>
       </section>
@@ -151,14 +173,16 @@ function renderDetail() {
 }
 
 async function setupActionForms() {
-    // 応募はログイン中の自分（Auth UUID / Discord ID → player_id）だけを使う。他人のplayer_id選択は廃止。
     const { session, player: me } = await Utils.getCurrentUserPlayerContext({
       players: allPlayers,
       loadProfile: false
     });
+    currentUserPlayer = me || null;
     const label = document.getElementById("action-player-label");
     const applyBtn = document.getElementById("btn-apply");
     const cancelBtn = document.getElementById("btn-cancel-apply");
+    const deadlinePassed = Utils.isRecruitDeadlinePassed(currentRecruit);
+    const canApply = currentRecruit.status === "open" && !deadlinePassed;
 
     if (!session) {
       if (label) label.textContent = "応募にはDiscordログインが必要です";
@@ -171,14 +195,21 @@ async function setupActionForms() {
     } else if (label) {
       label.textContent = `応募者: ${me.player_name}`;
     }
+    if (applyBtn && !canApply) applyBtn.disabled = true;
+
+    const extendInput = document.getElementById("extend-deadline");
+    if (extendInput) {
+        const base = currentRecruit.deadline ? new Date(currentRecruit.deadline) : new Date();
+        const next = new Date(Math.max(base.getTime(), Date.now()) + 7 * 24 * 60 * 60 * 1000);
+        extendInput.value = new Date(next.getTime() - next.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
 
     document.getElementById("btn-apply")?.addEventListener("click", async () => {
         if (!me?.player_id) {
           Utils.showToast("ログイン中のプレイヤーを解決できません。", "error");
           return;
         }
-
-        if (currentRecruit.status !== "open") {
+        if (!canApply) {
           Utils.showToast("この募集は現在受け付けていません。", "error");
           return;
         }
@@ -191,7 +222,6 @@ async function setupActionForms() {
         btn.disabled = true;
 
         try {
-            // player_id は Worker が JWT から解決して上書きする。
             await Utils.apiPost("recruitment_applicants", [{
                 recruitment_id: currentRecruit.id
             }]);
@@ -235,15 +265,14 @@ async function setupActionForms() {
     // 募集の削除ボタン
     document.getElementById("btn-delete-recruit")?.addEventListener("click", async () => {
         if (!confirm("本当にこの募集を削除（中止）しますか？")) return;
-        
+
         const btn = document.getElementById("btn-delete-recruit");
         btn.disabled = true;
 
         try {
-            // 応募者は各本人所有のため直接削除せず、募集削除時のFK CASCADEへ任せる。
             await Utils.apiDelete("recruitments", `id=eq.${currentRecruit.id}`);
             Utils.showToast("募集を削除しました。", "success");
-            location.href = "./index.html"; 
+            location.href = "./index.html";
         } catch (err) {
             console.error(err);
             Utils.showToast("削除に失敗しました。特設サイト関連に報告してください。", "error");
@@ -251,31 +280,64 @@ async function setupActionForms() {
         }
     });
 
-// ==========================================
-// 募集の延長ボタン
-// ==========================================
-document.getElementById("btn-extend-recruit")?.addEventListener("click", async () => {
-    if (!confirm("募集期限を今日からさらに1ヶ月後まで延長しますか？")) return;
-    
-    const btn = document.getElementById("btn-extend-recruit");
-    btn.disabled = true;
+    document.getElementById("btn-close-recruit")?.addEventListener("click", async () => {
+        if (!confirm("この募集を締め切りますか？")) return;
+        try {
+            await Utils.apiPatch("recruitments", { status: "closed" }, `id=eq.${currentRecruit.id}`);
+            Utils.showToast("募集を締め切りました。", "success");
+            location.reload();
+        } catch (err) {
+            console.error(err);
+            Utils.showToast("締め切りに失敗しました: " + err.message, "error");
+        }
+    });
 
-    try {
-        // 現在時刻を取得し、ISO形式（Supabaseが保存できる形式）に変換
-        const nowIso = new Date().toISOString();
-        
-        // created_at を現在時刻で上書き（PATCH）
-        await Utils.apiPatch("recruitments", { created_at: nowIso }, `id=eq.${currentRecruit.id}`);
-        
-        Utils.showToast("募集期間を延長しました！", "success");
-        location.reload();
-    } catch (err) {
-        console.error(err);
-        Utils.showToast("延長に失敗しました。コンソールを確認してください。", "error");
-        btn.disabled = false;
-    }
-});
+    document.getElementById("btn-draw-lottery")?.addEventListener("click", async () => {
+        if (!confirm("抽選を実行します。よろしいですか？")) return;
+        const btn = document.getElementById("btn-draw-lottery");
+        btn.disabled = true;
+        try {
+            await Utils.apiPost("recruitments/draw", { recruitment_id: currentRecruit.id });
+            Utils.showToast("抽選が完了しました。", "success");
+            location.reload();
+        } catch (err) {
+            console.error(err);
+            Utils.showToast("抽選に失敗しました: " + err.message, "error");
+            btn.disabled = false;
+        }
+    });
 
+    // 募集の延長ボタン
+    document.getElementById("btn-extend-recruit")?.addEventListener("click", async () => {
+        const local = document.getElementById("extend-deadline")?.value;
+        if (!local) {
+            Utils.showToast("延長後の締切を指定してください", "error");
+            return;
+        }
+        const iso = new Date(local).toISOString();
+        if (new Date(iso).getTime() <= Date.now()) {
+            Utils.showToast("締切は未来の日時にしてください", "error");
+            return;
+        }
+        if (!confirm("応募締切を延長しますか？")) return;
+
+        const btn = document.getElementById("btn-extend-recruit");
+        btn.disabled = true;
+
+        try {
+            const patch = { deadline: iso };
+            if (currentRecruit.status === "closed" && !currentRecruit.lottery_drawn_at) {
+                patch.status = "open";
+            }
+            await Utils.apiPatch("recruitments", patch, `id=eq.${currentRecruit.id}`);
+            Utils.showToast("締切を延長しました！", "success");
+            location.reload();
+        } catch (err) {
+            console.error(err);
+            Utils.showToast("延長に失敗しました。", "error");
+            btn.disabled = false;
+        }
+    });
 }
 
 Utils.domReady(main);

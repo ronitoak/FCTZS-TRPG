@@ -46,8 +46,9 @@
 | Method | Path | 注意 |
 |--------|------|------|
 | POST | `/api/comments` | author はサーバー側で上書きしうる |
-| POST | `/api/recruitments` | `owner_player_id` はサーバー解決 |
-| POST | `/api/recruitment_applicants` | `player_id` はサーバー解決 |
+| POST | `/api/recruitments` | `owner_player_id` はサーバー解決。`min_count` / `target_count` / `deadline` / `selection_mode`（`first_come`\|`lottery`）必須系 |
+| POST | `/api/recruitments/draw` | 募集主のみ。抽選募集の抽選実行（`{ recruitment_id }`） |
+| POST | `/api/recruitment_applicants` | `player_id` はサーバー解決。先着は満員・期限切れで 409 |
 | POST | `/api/player_availability` | 自分の `player_id` のみ |
 | POST | `/api/player_availability/session_block` | 卓メンバー検証後に参加者予定を NG |
 | POST | `/api/upload` | multipart。画像 MIME / 5MB / type 制限。任意の `replace_url`（自バケットの旧公開URL）があれば put 成功後に旧オブジェクトを削除（`_default/` は除外）。応答 `{ url, replaced }` |

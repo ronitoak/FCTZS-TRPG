@@ -179,7 +179,7 @@ function renderMyRecruitments(container, recruitments, applicants, scenariosById
       <li>
         <a href="./recruit/detail.html?id=${encodeURIComponent(recruitment.id)}">${title}</a>
         <span class="dashboard-status dashboard-status--${Utils.escapeHtml(recruitment.status || "unknown")}">${Utils.escapeHtml(status)}</span>
-        <small>${currentCount} / ${Number(recruitment.target_count) || 0}人</small>
+        <small>${currentCount} / ${Utils.escapeHtml(Utils.formatRecruitCapacity(recruitment))}</small>
       </li>
     `;
   }).join("")}</ul>`;

@@ -40,7 +40,10 @@ ALTER TABLE public.recruitment_applicants
   ADD COLUMN IF NOT EXISTS is_selected boolean;
 
 -- 3. 一覧ビュー更新
-CREATE OR REPLACE VIEW public.recruitment_list
+-- CREATE OR REPLACE では列の挿入・並べ替えができないため、一度 DROP して作り直す。
+DROP VIEW IF EXISTS public.recruitment_list;
+
+CREATE VIEW public.recruitment_list
 WITH (security_invoker = true)
 AS
 SELECT

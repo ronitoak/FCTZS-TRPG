@@ -55,6 +55,7 @@ test("Workerは既存APIルートを互換入口として維持する", () => {
     "/api/character_skill_list",
     "/api/character_attributes",
     "/api/posts",
+    "/api/impressions",
     "/api/upload",
     "/api/character_full",
     "/api/player_availability/session_block"

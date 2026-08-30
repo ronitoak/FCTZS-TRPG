@@ -1,6 +1,6 @@
 # Worker API 契約（Web / Flutter 共通正本）
 
-最終更新: 2026-07-29  
+最終更新: 2026-08-30  
 実装: [`worker/index.js`](../worker/index.js)  
 静的契約テスト: [`tests/contracts.test.cjs`](../tests/contracts.test.cjs)
 
@@ -144,6 +144,16 @@ Web 実装: [`js/home.js`](../js/home.js) の `resolvePlayerLinkBanner`。
 | なりきりチャット | `POST /api/posts` |
 
 メッセージ内容: 種別・名前（タイトル）・追加者（プレイヤー名と ID）・詳細 URL（ある場合）。
+
+### 感想（impressions）
+
+| Method | Path | 認証 | 内容 |
+|--------|------|------|------|
+| GET | `/api/impressions?run_id=` | Bearer + 名簿連携 | 卓の感想。参加者は全件、非参加者は自分の投稿のみ |
+| GET | `/api/impressions?scenario_id=` | Bearer + 名簿連携 | 参加卓＋自分の投稿＋卓なし分（閲覧可なら）。`runs` メタ付き |
+| POST | `/api/impressions` | Bearer + 名簿連携 | `{ run_id?, scenario_id?, body, is_spoiler? }`。卓ありは `run_id`、卓なし（部活外等）は `scenario_id` のみ。既定 `is_spoiler=true` |
+
+閲覧判定は Worker の `canViewImpressions` / `canViewScenarioOnlyImpression`（Phase1: GM・`run_players`・投稿者本人。卓なしは「同シナリオのいずれかの卓の参加者」または本人）。Phase2 で部活外通過を追加予定。HOME 新着・作成通知の対象外。SQL: [`sql/impressions.sql`](./sql/impressions.sql)。
 
 環境変数:
 

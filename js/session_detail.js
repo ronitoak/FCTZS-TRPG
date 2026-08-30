@@ -101,6 +101,12 @@ async function main() {
     setFormInitialValues();
 
     Comments.mount("comments-root", "session", run_id);
+    Impressions.mountForRun("impressions-root", run_id);
+    if (location.hash === "#impressions-root") {
+      requestAnimationFrame(() => {
+        document.getElementById("impressions-root")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   } catch (e) {
     console.error(e);
     root.innerHTML = "<p>読み込みに失敗しました</p>";
@@ -123,7 +129,7 @@ function renderCompletionGuide(allSessions, run) {
         guideArea.innerHTML = `
             <div class="alert-completion" style="background: #f0fff4; border: 1px solid #c6f6d5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
                 <p style="margin: 0 0 10px 0; color: #2f855a; font-weight: bold; font-size: 1.1rem;">🎉 全ての予定セッションが完了しています</p>
-                <p style="font-size: 0.9rem; margin-bottom: 15px; color: #4a5568;">この物語は完結しましたか？</p>
+                <p style="font-size: 0.9rem; margin-bottom: 15px; color: #4a5568;">この物語は完結しましたか？完結後は下の「感想」欄にも残せます。</p>
                 <button id="btn-complete-run" class="btn-primary" style="background-color: #38a169; border: none; padding: 10px 20px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">
                     物語が完結した
                 </button>
@@ -142,7 +148,8 @@ function renderCompletionGuide(allSessions, run) {
             try {
                 // Workers経由でステータスのみ更新（PATCH）
                 await Utils.apiPatch("runs", { status: 'done' }, `id=eq.${run.id}`);
-                Utils.showToast("物語が完結しました。お疲れ様でした。", "success");
+                Utils.showToast("物語が完結しました。感想欄に残してみてください。", "success");
+                location.hash = "impressions-root";
                 location.reload();
             } catch (e) {
                 console.error(e);

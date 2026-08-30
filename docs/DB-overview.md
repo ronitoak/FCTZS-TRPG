@@ -1,6 +1,6 @@
 # FCTZS-TRPG データベース概要
 
-最終更新: 2026-07-21  
+最終更新: 2026-08-30  
 関連ファイル: [`DB_info.txt`](./DB_info.txt)（列の機械可読一覧）、[`database-optimization.md`](./database-optimization.md)（移行・検証SQL）、[`security-checklist.md`](./security-checklist.md)（RLS/GRANT監査）、[`platform-roadmap.md`](./platform-roadmap.md) / [`api-contract.md`](./api-contract.md)（公開基盤・API正本）、[`junction-read-progress.md`](./junction-read-progress.md)  
 ファイル名: `DB-overview.md`（GitHub Pages / ツール互換のため ASCII 名）
 
@@ -10,7 +10,7 @@
 
 ## 1. ひとことで言うと
 
-TRPGコミュニティ向けの会員・キャラクター・シナリオ・卓（ラン）・セッション・募集・コメントを管理するDBです。
+TRPGコミュニティ向けの会員・キャラクター・シナリオ・卓（ラン）・セッション・募集・コメント・感想を管理するDBです。
 
 - **読み取り**は公開寄り（一覧・詳細の参照）
 - **書き込み**は所有者（`user_id` / Auth）単位のRLS
@@ -45,6 +45,7 @@ recruitments ── recruitment_applicants
   scenarios / players
 
 comments  … 任意対象 (run / session / recruitment / scenario / character / player / post)
+impressions … 卓単位の感想（参加者限定閲覧）
 posts     … なりきりチャット投稿
 ```
 
@@ -83,6 +84,7 @@ posts     … なりきりチャット投稿
 | **recruitments** | 募集投稿 |
 | **recruitment_applicants** | 募集への応募 |
 | **comments** | 各画面へのコメント |
+| **impressions** | 卓（run）またはシナリオ単位の感想。`run_id` NULL 可。閲覧は参加者限定（Worker判定） |
 | **posts** | なりきりチャット投稿 |
 | **system_attributes** | システム別属性マスタ |
 | **system_skill_bases** | システム別スキル基礎値マスタ |

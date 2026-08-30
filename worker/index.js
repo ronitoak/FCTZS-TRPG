@@ -38,6 +38,7 @@ function isHttpUrl(value) {
 
 const SUPABASE_TABLES = Object.freeze({
   comments: "comments",
+  impressions: "impressions",
   characters: "characters",
   characterScenarios: "character_scenarios",
   characterAttributes: "character_attributes",
@@ -531,6 +532,80 @@ function resolveRunPlayerIds(run, playersByRun) {
   const runId = String(run.id || "");
   const fromJunction = playersByRun?.get(runId);
   return Array.isArray(fromJunction) ? fromJunction : [];
+}
+
+/**
+ * 卓の参加者か（GM または run_players）。
+ * 感想の閲覧 Phase1 用。
+ */
+async function isRunParticipant(env, playerId, run) {
+  if (!playerId || !run?.id) return false;
+  const pid = String(playerId);
+  if (run.gm_id != null && String(run.gm_id) === pid) return true;
+  const playersByRun = await fetchPlayerIdsByRunIds(env, [run.id]);
+  return resolveRunPlayerIds(run, playersByRun).some(id => String(id) === pid);
+}
+
+/**
+ * 感想を閲覧できるか（卓に紐づく行）。
+ * Phase1: 卓参加者 / 自分が書いた投稿
+ * Phase2（先々）: 同シナリオの部内通過・部活外通過もここに足す
+ */
+async function canViewImpressions(env, playerId, run, impression = null) {
+  if (!playerId) return false;
+  if (impression && String(impression.author_player_id || "") === String(playerId)) {
+    return true;
+  }
+  // Phase2 差し込み予定:
+  // if (await hasPassedScenario(env, playerId, run?.scenario_id)) return true;
+  return isRunParticipant(env, playerId, run);
+}
+
+/**
+ * 卓なし（シナリオ単位）感想の閲覧。
+ * Phase1: そのシナリオのいずれかの卓の参加者 / 投稿者本人
+ * Phase2: 部活外通過もここに足す
+ */
+async function canViewScenarioOnlyImpression(env, playerId, scenarioId, hasAnyRunParticipation, impression = null) {
+  if (!playerId) return false;
+  if (impression && String(impression.author_player_id || "") === String(playerId)) {
+    return true;
+  }
+  // Phase2: if (await hasPassedScenario(env, playerId, scenarioId)) return true;
+  return Boolean(hasAnyRunParticipation);
+}
+
+async function fetchRunBrief(env, runId) {
+  if (!runId) return null;
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,scenario_id,status&id=eq.${encodeURIComponent(runId)}&limit=1`
+  );
+  if (!res.ok) return null;
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+
+async function fetchScenarioExists(env, scenarioId) {
+  if (!scenarioId) return false;
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.scenarios}?select=id&id=eq.${encodeURIComponent(scenarioId)}&limit=1`
+  );
+  if (!res.ok) return false;
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function fetchPlayerDisplayName(env, playerId) {
+  if (!playerId) return null;
+  const { res, text } = await sbServiceFetch(
+    env,
+    `/rest/v1/${SUPABASE_TABLES.players}?select=player_name&player_id=eq.${encodeURIComponent(playerId)}&limit=1`
+  );
+  if (!res.ok) return null;
+  const rows = JSON.parse(text);
+  return Array.isArray(rows) && rows[0]?.player_name ? String(rows[0].player_name) : null;
 }
 
 /**
@@ -1489,6 +1564,119 @@ async function handleGet(request, env, url) {
       return proxyJson(res, text);
     }
 
+    // ---- Impressions（参加者限定閲覧） ----
+    if (request.method === "GET" && url.pathname === "/api/impressions") {
+      const callerPlayerId = await resolveCallerPlayerId(request, env);
+      if (!callerPlayerId) {
+        return jsonErr("Player mapping required", 403);
+      }
+
+      const runId = url.searchParams.get("run_id");
+      const scenarioId = url.searchParams.get("scenario_id");
+      if (!runId && !scenarioId) {
+        return jsonErr("run_id or scenario_id required", 400);
+      }
+      if (runId && scenarioId) {
+        return jsonErr("Specify only one of run_id or scenario_id", 400);
+      }
+
+      if (runId) {
+        const run = await fetchRunBrief(env, runId);
+        if (!run) return jsonErr("Run not found", 404);
+
+        const { res, text } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.impressions}?select=*&run_id=eq.${encodeURIComponent(runId)}&order=created_at.asc`
+        );
+        if (!res.ok) return jsonErr("Impressions lookup failed", res.status, { detail: text });
+        const rows = JSON.parse(text) || [];
+        const isParticipant = await isRunParticipant(env, callerPlayerId, run);
+        const visible = [];
+        for (const row of rows) {
+          if (isParticipant || await canViewImpressions(env, callerPlayerId, run, row)) {
+            visible.push(row);
+          }
+        }
+        return jsonOk({
+          items: visible,
+          can_view_all: isParticipant,
+          can_post: true,
+          run: { id: run.id, title: run.title, scenario_id: run.scenario_id, status: run.status }
+        });
+      }
+
+      const { res: runRes, text: runText } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,scenario_id,status&scenario_id=eq.${encodeURIComponent(scenarioId)}`
+      );
+      if (!runRes.ok) return jsonErr("Runs lookup failed", runRes.status, { detail: runText });
+      const runs = JSON.parse(runText) || [];
+      const runMap = new Map(runs.map(r => [String(r.id), r]));
+
+      const { res, text } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.impressions}?select=*&scenario_id=eq.${encodeURIComponent(scenarioId)}&order=created_at.desc`
+      );
+      if (!res.ok) return jsonErr("Impressions lookup failed", res.status, { detail: text });
+      const rows = JSON.parse(text) || [];
+
+      const participantRunIds = [];
+      for (const run of runs) {
+        if (await isRunParticipant(env, callerPlayerId, run)) {
+          participantRunIds.push(String(run.id));
+        }
+      }
+      const participantSet = new Set(participantRunIds);
+      const hasAnyRunParticipation = participantSet.size > 0;
+
+      const visible = [];
+      for (const row of rows) {
+        const rowRunId = row.run_id != null && String(row.run_id).trim() !== ""
+          ? String(row.run_id)
+          : null;
+
+        if (!rowRunId) {
+          if (await canViewScenarioOnlyImpression(
+            env,
+            callerPlayerId,
+            scenarioId,
+            hasAnyRunParticipation,
+            row
+          )) {
+            visible.push({
+              ...row,
+              run_title: null,
+              scope: "scenario"
+            });
+          }
+          continue;
+        }
+
+        const run = runMap.get(rowRunId);
+        if (!run) continue;
+        if (participantSet.has(rowRunId) || String(row.author_player_id) === String(callerPlayerId)) {
+          visible.push({
+            ...row,
+            run_title: run.title || run.id,
+            scope: "run"
+          });
+        }
+      }
+
+      return jsonOk({
+        items: visible,
+        participant_run_ids: participantRunIds,
+        runs: runs.map(r => ({
+          id: r.id,
+          title: r.title,
+          status: r.status,
+          is_participant: participantSet.has(String(r.id))
+        })),
+        can_post: true,
+        can_view_scenario_only: hasAnyRunParticipation
+      });
+    }
+
 
         // ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
@@ -2232,6 +2420,70 @@ async function handlePost(request, env, ctx, url) {
       }
       const { res, text } = await sbFetch(env, request, `/rest/v1/${SUPABASE_TABLES.comments}`, { method: "POST", headers: { "Prefer": "return=representation" }, body: [commentBody] });
       return proxyJson(res, text);
+    }
+
+    // ---- Impressions ----
+    if (url.pathname === "/api/impressions") {
+      const authUser = await getAuthenticatedUser(request, env);
+      if (!authUser?.id || !callerPlayerId) {
+        return jsonErr("Player mapping required", 403);
+      }
+
+      const runId = body?.run_id != null ? String(body.run_id).trim() : "";
+      const scenarioIdRaw = body?.scenario_id != null ? String(body.scenario_id).trim() : "";
+      const rawBody = body?.body != null ? String(body.body) : "";
+      const trimmedBody = rawBody.trim();
+      if (!trimmedBody) return jsonErr("body required", 400);
+      if (trimmedBody.length > 4000) return jsonErr("body too long", 400);
+      if (!runId && !scenarioIdRaw) {
+        return jsonErr("run_id or scenario_id required", 400);
+      }
+
+      let scenarioId = "";
+      let resolvedRunId = null;
+
+      if (runId) {
+        const run = await fetchRunBrief(env, runId);
+        if (!run) return jsonErr("Run not found", 404);
+        if (!run.scenario_id) return jsonErr("Run has no scenario_id", 400);
+        if (scenarioIdRaw && scenarioIdRaw !== String(run.scenario_id)) {
+          return jsonErr("scenario_id does not match run", 400);
+        }
+        scenarioId = String(run.scenario_id);
+        resolvedRunId = runId;
+      } else {
+        if (!(await fetchScenarioExists(env, scenarioIdRaw))) {
+          return jsonErr("Scenario not found", 404);
+        }
+        scenarioId = scenarioIdRaw;
+        resolvedRunId = null;
+      }
+
+      const authorName = (await fetchPlayerDisplayName(env, callerPlayerId)) || callerPlayerId;
+      const isSpoiler = body?.is_spoiler === false || body?.is_spoiler === "false" ? false : true;
+
+      const row = {
+        run_id: resolvedRunId,
+        scenario_id: scenarioId,
+        user_id: authUser.id,
+        author_player_id: callerPlayerId,
+        author: authorName,
+        body: trimmedBody,
+        is_spoiler: isSpoiler
+      };
+
+      const { res, text } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.impressions}`,
+        {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: [row]
+        }
+      );
+      if (!res.ok) return jsonErr("Impression create failed", res.status, { detail: text });
+      const created = JSON.parse(text);
+      return jsonOk(Array.isArray(created) ? created[0] : created, 201);
     }
 
     // ---- Characters (一括作成) ----

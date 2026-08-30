@@ -79,6 +79,15 @@
 | comments                   | body                      | 5         | text                     | NO          | table |                               |
 | comments                   | created_at                | 6         | timestamp with time zone | NO          | table |                               |
 | comments                   | user_id                   | 7         | uuid                     | YES         | table |                               |
+| impressions                | id                        | 1         | uuid                     | NO          | table | PK                            |
+| impressions                | run_id                    | 2         | text                     | YES         | table | 卓ID（NULL可＝シナリオ単位）         |
+| impressions                | scenario_id               | 3         | text                     | NO          | table | 冗長保持（一覧用）                  |
+| impressions                | user_id                   | 4         | uuid                     | NO          | table | Auth                          |
+| impressions                | author_player_id          | 5         | text                     | NO          | table | 名簿ID                         |
+| impressions                | author                    | 6         | text                     | NO          | table | 表示名                          |
+| impressions                | body                      | 7         | text                     | NO          | table | 本文                           |
+| impressions                | is_spoiler                | 8         | boolean                  | NO          | table | 既定true                       |
+| impressions                | created_at                | 9         | timestamp with time zone | NO          | table |                               |
 | player_availability        | player_id                 | 1         | text                     | NO          | table | PK複合                          |
 | player_availability        | target_date               | 2         | date                     | NO          | table | PK複合                          |
 | player_availability        | time_slot                 | 3         | text                     | NO          | table | PK複合                          |

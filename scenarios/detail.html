@@ -101,6 +101,8 @@
                 </form>
             </div>
         </dialog>
+        <!-- 感想：impressions.js（参加者限定） -->
+        <div id="impressions-root"></div>
         <!-- コメント欄：comments.js の描画先 -->
         <div id="comments-root"></div>
         <footer>
@@ -113,8 +115,13 @@
     <script src="../js/site-config.js"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/scenario_detail.js"></script>
+    <script src="../js/impressions.js"></script>
     <script src="../js/comments.js"></script>
     <script>
+        const scenarioIdForImpressions = Utils.getQueryParam("id");
+        if (scenarioIdForImpressions) {
+          Impressions.mountForScenario("impressions-root", scenarioIdForImpressions);
+        }
         Comments.mount("comments-root", "scenario");
     </script>
 

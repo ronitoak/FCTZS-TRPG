@@ -1498,6 +1498,127 @@ dialog.modal::backdrop {
     font-style: italic;
 }
 
+/* 感想（参加者限定） */
+.impressions {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+.impressions h2 {
+    margin-top: 0;
+}
+
+.impressions__hint {
+    font-size: 0.85rem;
+    margin: 0 0 0.75rem;
+}
+
+.impressions__msg {
+    min-height: 1.2em;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted, #666);
+    font-size: 0.9rem;
+}
+
+.impressions__warn {
+    color: var(--danger-color, #e53e3e);
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.impressions__form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius, 8px);
+    background: #fafafa;
+}
+
+.impressions__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.impressions__row label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.impressions__row textarea,
+.impressions__row select {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 4px;
+}
+
+.impressions__check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.impressions__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.impressions__list li {
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius, 8px);
+    background: #fff;
+}
+
+.impressions__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: baseline;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted, #666);
+}
+
+.impressions__meta strong {
+    color: var(--text-main, #333);
+}
+
+.impressions__badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    background: #fff5f5;
+    color: var(--danger-color, #e53e3e);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.impressions__body {
+    color: #4a5568;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+.impressions__empty {
+    border: none !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+}
+
 /* トップページ新着コメント */
 .top-comments {
     list-style: none;

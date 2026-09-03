@@ -56,6 +56,33 @@ body {
 .top-nav a { color: var(--text-main); text-decoration: none; margin: 0 10px; }
 .top-nav a:hover { text-decoration: underline; }
 
+.site-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.85rem;
+    margin: 0.75rem 0 1.25rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--radius, 8px);
+    background: #fafafa;
+    font-size: 0.92rem;
+}
+
+.site-menu-label {
+    color: var(--text-muted, #666);
+    font-weight: 600;
+}
+
+.site-menu a {
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.site-menu a:hover {
+    text-decoration: underline;
+}
+
 h1, h2 { 
     border-bottom: 2px solid #ccc;
     padding-bottom: 8px; 

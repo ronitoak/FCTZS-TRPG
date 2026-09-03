@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-09-03",
+    type: "improvement",
+    title: "ヘッダーナビを主要7項目に整理",
+    detail: "常時表示は Home / Characters / Sessions / Scenarios / Recruit / Schedule / なりチャ。Players・Impressions・Tools・使い方はホームの「その他」メニューへ移しました。"
+  },
+  {
     date: "2026-08-30",
     type: "feature",
     title: "募集に期限・人数レンジ・先着/抽選を追加",

@@ -681,12 +681,9 @@ const emotions = ["自己顕示(欲望)", "所有(欲望)", "本能(欲望)", "�
       { href: 'character/index.html', label: 'Characters' },
       { href: 'sessions/index.html', label: 'Sessions' },
       { href: 'scenarios/index.html', label: 'Scenarios' },
-      { href: 'schedule/index.html', label: 'Schedule' },
       { href: 'recruit/index.html', label: 'Recruit' },
-      { href: 'player/index.html', label: 'Players' },
-      { href: 'bbs/index.html', label: 'なりチャ' },
-      { href: 'tools/index.html', label: 'Tools' },
-      { href: 'docs.html', label: '使い方' }
+      { href: 'schedule/index.html', label: 'Schedule' },
+      { href: 'bbs/index.html', label: 'なりチャ' }
     ];
 
     const currentPath = window.location.pathname;

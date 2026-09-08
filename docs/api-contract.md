@@ -143,6 +143,7 @@ Web 実装: [`js/home.js`](../js/home.js) の `resolvePlayerLinkBanner`。
 | セッション | `POST /api/sessions` |
 | 募集 | `POST /api/recruitments` |
 | なりきりチャット | `POST /api/posts` |
+| 感想 | `POST /api/impressions` |
 
 メッセージ内容: 種別・名前（タイトル）・追加者（プレイヤー名と ID）・詳細 URL（ある場合）。
 
@@ -152,9 +153,10 @@ Web 実装: [`js/home.js`](../js/home.js) の `resolvePlayerLinkBanner`。
 |--------|------|------|------|
 | GET | `/api/impressions?run_id=` | Bearer + 名簿連携 | 卓の感想。参加者は全件、非参加者は自分の投稿のみ |
 | GET | `/api/impressions?scenario_id=` | Bearer + 名簿連携 | 参加卓＋自分の投稿＋卓なし分（閲覧可なら）。`runs` メタ付き |
-| POST | `/api/impressions` | Bearer + 名簿連携 | `{ run_id?, scenario_id?, body, is_spoiler? }`。卓ありは `run_id`、卓なし（部活外等）は `scenario_id` のみ。既定 `is_spoiler=true` |
+| GET | `/api/impressions/feed` | Bearer + 名簿連携 | 一覧用フィード。任意で `scenario_id` / `author_player_id` / `limit`（最大100） |
+| POST | `/api/impressions` | Bearer + 名簿連携 | `{ run_id?, scenario_id?, body, is_spoiler? }`。卓ありは `run_id`、卓なし（部活外等）は `scenario_id` のみ。既定 `is_spoiler=true`。作成通知あり |
 
-閲覧判定は Worker の `hasPassedScenario`（部内: いずれかの卓の GM/PL、所有キャラの `character_scenarios`、部活外: `external_passed_scenarios` の `linked_scenario_id`/`scenario_id` またはタイトル一致）。投稿者本人は常に自分の投稿を閲覧可。HOME 新着・作成通知の対象外。SQL: [`sql/impressions.sql`](./sql/impressions.sql)。
+閲覧判定は Worker の `hasPassedScenario`（部内: いずれかの卓の GM/PL、所有キャラの `character_scenarios`、部活外: `external_passed_scenarios` の `linked_scenario_id`/`scenario_id` またはタイトル一致）。投稿者本人は常に自分の投稿を閲覧可。画面: `impressions/index.html`。SQL: [`sql/impressions.sql`](./sql/impressions.sql)。
 
 環境変数:
 

@@ -84,7 +84,7 @@ posts     … なりきりチャット投稿
 | **recruitments** | 募集投稿 |
 | **recruitment_applicants** | 募集への応募 |
 | **comments** | 各画面へのコメント |
-| **impressions** | 卓（run）またはシナリオ単位の感想。`run_id` NULL 可。閲覧は参加者限定（Worker判定） |
+| **impressions** | 卓（run）またはシナリオ単位の感想。`run_id` NULL 可。閲覧は参加者／通過者限定（Worker判定）。一覧は `impressions/` |
 | **posts** | なりきりチャット投稿 |
 | **system_attributes** | システム別属性マスタ |
 | **system_skill_bases** | システム別スキル基礎値マスタ |

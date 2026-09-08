@@ -1867,6 +1867,139 @@ async function handleGet(request, env, url) {
       });
     }
 
+    // 感想フィード（一覧ページ用）。閲覧可能な投稿だけを返す。
+    if (request.method === "GET" && url.pathname === "/api/impressions/feed") {
+      const callerPlayerId = await resolveCallerPlayerId(request, env);
+      if (!callerPlayerId) {
+        return jsonErr("Player mapping required", 403);
+      }
+
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 100);
+      const fetchLimit = Math.min(limit * 4, 200);
+      const filterScenarioId = url.searchParams.get("scenario_id");
+      const filterAuthorId = url.searchParams.get("author_player_id");
+
+      const queryParts = [
+        "select=*",
+        "order=created_at.desc",
+        `limit=${fetchLimit}`
+      ];
+      if (filterScenarioId) {
+        queryParts.push(`scenario_id=eq.${encodeURIComponent(filterScenarioId)}`);
+      }
+      if (filterAuthorId) {
+        queryParts.push(`author_player_id=eq.${encodeURIComponent(filterAuthorId)}`);
+      }
+
+      const { res, text } = await sbServiceFetch(
+        env,
+        `/rest/v1/${SUPABASE_TABLES.impressions}?${queryParts.join("&")}`
+      );
+      if (!res.ok) return jsonErr("Impressions lookup failed", res.status, { detail: text });
+      const rows = JSON.parse(text) || [];
+
+      const runIds = [...new Set(rows.map(r => r.run_id).filter(Boolean).map(String))];
+      const scenarioIds = [...new Set(rows.map(r => r.scenario_id).filter(Boolean).map(String))];
+
+      const runMap = new Map();
+      if (runIds.length > 0) {
+        const encoded = runIds.map(encodeURIComponent).join(",");
+        const { res: runRes, text: runText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.runs}?select=id,title,gm_id,scenario_id,status&id=in.(${encoded})`
+        );
+        if (runRes.ok) {
+          for (const run of JSON.parse(runText) || []) {
+            runMap.set(String(run.id), run);
+          }
+        }
+      }
+
+      const scenarioTitleMap = new Map();
+      if (scenarioIds.length > 0) {
+        const encoded = scenarioIds.map(encodeURIComponent).join(",");
+        const { res: scRes, text: scText } = await sbServiceFetch(
+          env,
+          `/rest/v1/${SUPABASE_TABLES.scenarios}?select=id,title&id=in.(${encoded})`
+        );
+        if (scRes.ok) {
+          for (const sc of JSON.parse(scText) || []) {
+            scenarioTitleMap.set(String(sc.id), sc.title || sc.id);
+          }
+        }
+      }
+
+      const externalRows = await fetchExternalPassedScenarios(env, callerPlayerId);
+      const passedCache = new Map();
+
+      async function isPassed(scenarioId) {
+        const key = String(scenarioId || "");
+        if (!key) return false;
+        if (passedCache.has(key)) return passedCache.get(key);
+        const value = await hasPassedScenario(env, callerPlayerId, key, {
+          scenario: scenarioTitleMap.has(key)
+            ? { id: key, title: scenarioTitleMap.get(key) }
+            : null,
+          externalRows
+        });
+        passedCache.set(key, value);
+        return value;
+      }
+
+      const visible = [];
+      for (const row of rows) {
+        if (visible.length >= limit) break;
+
+        const rowRunId = row.run_id != null && String(row.run_id).trim() !== ""
+          ? String(row.run_id)
+          : null;
+        const scenarioId = String(row.scenario_id || "");
+        const isOwn = String(row.author_player_id || "") === String(callerPlayerId);
+
+        if (rowRunId) {
+          const run = runMap.get(rowRunId);
+          if (!run && !isOwn) continue;
+          const passed = scenarioId ? await isPassed(scenarioId) : false;
+          if (!isOwn && !(await canViewImpressions(env, callerPlayerId, run, row, passed))) {
+            continue;
+          }
+          visible.push({
+            ...row,
+            scenario_title: scenarioTitleMap.get(scenarioId) || scenarioId || null,
+            run_title: run?.title || rowRunId,
+            scope: "run"
+          });
+          continue;
+        }
+
+        const passed = scenarioId ? await isPassed(scenarioId) : false;
+        if (!isOwn && !(await canViewScenarioOnlyImpression(
+          env,
+          callerPlayerId,
+          scenarioId,
+          passed,
+          row
+        ))) {
+          continue;
+        }
+        visible.push({
+          ...row,
+          scenario_title: scenarioTitleMap.get(scenarioId) || scenarioId || null,
+          run_title: null,
+          scope: "scenario"
+        });
+      }
+
+      return jsonOk({
+        items: visible,
+        can_post: true,
+        limit,
+        filters: {
+          scenario_id: filterScenarioId || null,
+          author_player_id: filterAuthorId || null
+        }
+      });
+    }
 
         // ---- Characters ----
     if (request.method === "GET" && url.pathname === "/api/characters") {
@@ -2672,8 +2805,25 @@ async function handlePost(request, env, ctx, url) {
         }
       );
       if (!res.ok) return jsonErr("Impression create failed", res.status, { detail: text });
-      const created = JSON.parse(text);
-      return jsonOk(Array.isArray(created) ? created[0] : created, 201);
+      const createdRows = JSON.parse(text);
+      const created = Array.isArray(createdRows) ? createdRows[0] : createdRows;
+
+      const actor = await resolveActorForNotify(env, callerPlayerId);
+      const siteUrl = resolveSiteUrl(env);
+      const scenarioBrief = await fetchScenarioBrief(env, scenarioId);
+      const scenarioTitle = scenarioBrief?.title || scenarioId;
+      scheduleCreateNotify(ctx, env, {
+        kindLabel: "感想",
+        title: scenarioTitle,
+        actorPlayerId: actor.actorPlayerId,
+        actorName: actor.actorName,
+        extraLine: resolvedRunId
+          ? `卓: ${resolvedRunId}`
+          : "卓なし（シナリオ単位）",
+        detailUrl: `${siteUrl}/impressions/index.html?scenario_id=${encodeURIComponent(scenarioId)}`
+      });
+
+      return jsonOk(created, 201);
     }
 
     // ---- Characters (一括作成) ----

@@ -36,6 +36,7 @@ const COPY_DIRS = [
   "scenarios",
   "schedule",
   "sessions",
+  "impressions",
   "tools"
 ];
 

@@ -57,6 +57,7 @@ test("Workerは既存APIルートを互換入口として維持する", () => {
     "/api/character_attributes",
     "/api/posts",
     "/api/impressions",
+    "/api/impressions/feed",
     "/api/upload",
     "/api/character_full",
     "/api/player_availability/session_block"
@@ -273,6 +274,7 @@ test("主要作成の成功時に管理者向けDiscord通知を送る", () => {
   assert.match(workerSource, /kindLabel: "セッション"/);
   assert.match(workerSource, /kindLabel: "募集"/);
   assert.match(workerSource, /kindLabel: "なりきりチャット"/);
+  assert.match(workerSource, /kindLabel: "感想"/);
   assert.match(workerSource, /DISCORD_USE_TEST_WEBHOOK/);
 });
 
@@ -326,6 +328,7 @@ test("主要画面のDOM描画先は維持される", () => {
     "scenarios/detail.html": ["scenario-detail", "comments-root"],
     "sessions/detail.html": ["session-detail", "comments-root"],
     "recruit/index.html": ["recruit-list-container"],
+    "impressions/index.html": ["impressions-list", "impressions-form-root"],
     "player/detail.html": ["player-detail-root", "availability-modal"],
     "schedule/index.html": ["calendar-grid", "compare-modal"]
   };

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Impressions | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+    <h1>感想</h1>
+    <p>通過したシナリオの感想を一覧・投稿できます。ネタバレは既定で隠します。卓詳細・シナリオ詳細の感想欄と同じデータです。</p>
+
+    <div class="search-filter-panel">
+      <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">検索・絞り込み</h3>
+      <div class="filter-controls" style="margin-bottom: 0;">
+        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 180px;">
+          <label for="filter-scenario" style="display: block; font-weight: bold; margin-bottom: 5px;">シナリオ</label>
+          <select id="filter-scenario" class="form-control" style="width: 100%;">
+            <option value="">すべて</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 160px;">
+          <label for="filter-author" style="display: block; font-weight: bold; margin-bottom: 5px;">投稿者</label>
+          <select id="filter-author" class="form-control" style="width: 100%;">
+            <option value="">すべて</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <details class="impressions-post-details" id="impressions-post-details">
+      <summary>感想を投稿</summary>
+      <div id="impressions-form-msg" class="impressions__msg" aria-live="polite"></div>
+      <div id="impressions-form-root"></div>
+    </details>
+
+    <section class="impressions impressions--page" style="margin-top: 28px;">
+      <h2>感想一覧</h2>
+      <div id="impressions-list-msg" class="impressions__msg" aria-live="polite"></div>
+      <ul id="impressions-list" class="impressions__list"></ul>
+    </section>
+
+    <footer>
+      <hr />
+      <small><a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/impressions.js"></script>
+  <script src="../js/impressions-page.js"></script>
+</body>
+</html>

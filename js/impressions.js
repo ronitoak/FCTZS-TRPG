@@ -284,5 +284,11 @@
     await refresh();
   }
 
-  window.Impressions = { mountForRun, mountForScenario };
+  window.Impressions = {
+    mountForRun,
+    mountForScenario,
+    formatBodyHtml,
+    bindSpoilerButtons,
+    loginPromptHtml
+  };
 })();

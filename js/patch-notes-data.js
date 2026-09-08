@@ -18,6 +18,12 @@ window.PATCH_NOTES = Object.freeze([
     detail: "常時表示は Home / Characters / Sessions / Scenarios / Recruit / Schedule / なりチャ。Players・Impressions・Tools・使い方はホームの「その他」メニューへ移しました。"
   },
   {
+    date: "2026-09-03",
+    type: "feature",
+    title: "感想ページを追加",
+    detail: "感想の一覧・投稿・シナリオ／投稿者フィルタが使えるページを追加しました。感想投稿は他の作成と同様、管理者向け Discord 通知の対象になります。"
+  },
+  {
     date: "2026-08-30",
     type: "feature",
     title: "募集に期限・人数レンジ・先着/抽選を追加",

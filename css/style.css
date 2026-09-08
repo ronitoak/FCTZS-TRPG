@@ -3738,3 +3738,294 @@ dialog.modal::backdrop {
   font-size: 0.9rem;
 }
 
+/* セッションボード：全画面の自由パネル作業領域 */
+body.session-board-page {
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.session-board-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--container-bg);
+  padding: 4px 8px 0;
+}
+
+.session-board-page .top-nav {
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.session-board-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.session-board-toolbar {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+.session-board-toolbar-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.session-board-title {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 1.2rem;
+}
+
+.session-board-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.session-board-hint {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+}
+
+.session-board-workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+  overflow: auto;
+  background: #ececec;
+  border: 1px solid var(--border-color);
+}
+
+.session-board-chrome-restore {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 10000;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+body.session-board-page--focus {
+  padding: 0;
+}
+
+body.session-board-page--focus .top-nav,
+body.session-board-page--focus .session-board-toolbar {
+  display: none;
+}
+
+body.session-board-page--focus .session-board-shell {
+  padding: 0;
+}
+
+body.session-board-page--focus .session-board-workspace {
+  border: none;
+}
+
+.session-board-empty {
+  margin: 2rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.session-board-panel {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  min-height: 160px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+
+.session-board-panel.is-dragging iframe,
+.session-board-panel.is-resizing iframe {
+  pointer-events: none;
+}
+
+.session-board-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #f7f7f7;
+  border-bottom: 1px solid var(--border-color);
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.session-board-type {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.session-board-heading {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-board-close {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.session-board-close:hover {
+  color: var(--danger-color);
+}
+
+.session-board-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px;
+}
+
+.session-board-body--pdf {
+  padding: 0;
+  display: flex;
+}
+
+.session-board-pdf {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #525252;
+}
+
+.session-board-pdf-fallback {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.session-board-pdf-fallback[hidden] {
+  display: none;
+}
+
+.session-board-pdf-name {
+  margin: 0;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.session-board-memo {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  resize: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.session-board-section-title {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.session-board-section + .session-board-section {
+  margin-top: 12px;
+}
+
+.session-board-muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.session-board-resize {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  z-index: 2;
+}
+
+.session-board-resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+.session-board-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.session-board-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.session-board-resize-se { bottom: 0; right: 0; cursor: nwse-resize; }
+
+.session-board-modal {
+  max-width: 640px;
+}
+
+.session-board-filter-label {
+  display: block;
+  margin: 8px 0 12px;
+  font-size: 0.9rem;
+}
+
+.session-board-pick-list {
+  max-height: 50vh;
+  overflow: auto;
+  margin: 0 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.session-board-pick-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.session-board-pick-item:last-child {
+  border-bottom: none;
+}
+
+.session-board-pick-item:hover {
+  background: #f0f7ff;
+}
+
+.session-board-pick-meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+

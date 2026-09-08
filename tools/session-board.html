@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>セッションボード | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="session-board-page">
+  <div class="session-board-shell">
+    <nav id="common-nav" class="top-nav"></nav>
+
+    <main class="session-board-main">
+      <header class="session-board-toolbar">
+        <div class="session-board-toolbar-row">
+          <a class="tools-back" href="./index.html">← Tools</a>
+          <h1 class="session-board-title">セッションボード</h1>
+        </div>
+        <div class="session-board-actions">
+          <button type="button" id="sb-add-pdf" class="btn-secondary">PDFを追加</button>
+          <button type="button" id="sb-assign-pdf" class="btn-secondary">PDFを割り当て</button>
+          <button type="button" id="sb-add-char" class="btn-secondary">キャラを追加</button>
+          <button type="button" id="sb-add-memo" class="btn-secondary">メモを追加</button>
+          <button type="button" id="sb-add-from-run" class="btn-secondary">卓から並べる</button>
+          <button type="button" id="sb-export" class="btn-primary">JSONを書き出す</button>
+          <button type="button" id="sb-import" class="btn-secondary">JSONを読み込む</button>
+          <button type="button" id="sb-toggle-chrome" class="btn-secondary">画面を広げる</button>
+        </div>
+        <p class="u-muted session-board-hint">リロードすると消えます。JSON には配置とファイル名だけ保存します。PDF 本体は入らないので、再開時に同じファイルを選び直してください。</p>
+      </header>
+
+      <div id="session-board" class="session-board-workspace" aria-label="セッションボード作業領域">
+        <p id="sb-empty" class="session-board-empty">パネルを追加してください。</p>
+      </div>
+    </main>
+  </div>
+
+  <button type="button" id="sb-show-chrome" class="btn-primary session-board-chrome-restore" hidden>メニューを表示</button>
+
+  <input type="file" id="sb-pdf-input" accept="application/pdf" hidden>
+  <input type="file" id="sb-pdf-assign-input" accept="application/pdf" multiple hidden>
+  <input type="file" id="sb-json-input" accept="application/json,.json" hidden>
+
+  <dialog id="sb-char-modal" class="modal">
+    <div class="modal-content session-board-modal">
+      <h3>キャラクターを追加</h3>
+      <label class="session-board-filter-label">検索
+        <input type="search" id="sb-char-filter" class="form-control" placeholder="名前・PL・システム">
+      </label>
+      <div id="sb-char-list" class="session-board-pick-list" aria-label="キャラクター一覧"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal>閉じる</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="sb-run-modal" class="modal">
+    <div class="modal-content session-board-modal">
+      <h3>卓から並べる</h3>
+      <label class="session-board-filter-label">検索
+        <input type="search" id="sb-run-filter" class="form-control" placeholder="卓タイトル">
+      </label>
+      <div id="sb-run-list" class="session-board-pick-list" aria-label="卓一覧"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" data-close-modal>閉じる</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/tools-session-board.js"></script>
+</body>
+</html>

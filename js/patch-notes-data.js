@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-09-08",
+    type: "feature",
+    title: "セッションボードを追加",
+    detail: "Tools に、PDF・複数キャラの能力値／技能・メモを自由パネルで1画面に並べるセッションボードを追加しました。作業状態は JSON ファイルで書き出し・読み込みできます。"
+  },
+  {
     date: "2026-09-03",
     type: "improvement",
     title: "ヘッダーナビを主要7項目に整理",

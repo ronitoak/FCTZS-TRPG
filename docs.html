@@ -15,11 +15,11 @@
     <main class="user-guide">
       <header class="page-header">
         <h1>使い方ガイド</h1>
-        <p class="u-muted"><a href="https://amzn.to/4g69QgX">FCTZS TRPG</a>部の特設サイトの使い方です。募集・キャラ・卓・予定調整などを Web で一元管理できます。</p>
+        <p class="u-muted"><a href="https://amzn.to/4g69QgX">FCTZS TRPG</a>部の特設サイトの使い方です。募集・キャラ・卓・予定調整・便利ツールなどを Web で一元管理できます。</p>
       </header>
 
       <section class="user-guide-intro">
-        <p><strong>このサイトでできること:</strong> Discord ログイン、プレイヤー名簿との連携、キャラクター／シナリオ／卓の管理、予定入力と照合、募集、感想、コメント・なりきりチャット。</p>
+        <p><strong>このサイトでできること:</strong> Discord ログイン、プレイヤー名簿との連携、キャラクター／シナリオ／卓の管理、予定入力と照合、募集、感想、コメント・なりきりチャット、セッション準備向けの便利ツール。</p>
       </section>
 
       <nav class="user-guide-toc" aria-label="目次">
@@ -35,6 +35,7 @@
           <li><a href="#recruit">募集</a></li>
           <li><a href="#players">プレイヤー詳細</a></li>
           <li><a href="#comments">コメント・感想・なりきりチャット</a></li>
+          <li><a href="#tools">便利ツール（Tools）</a></li>
           <li><a href="#faq">よくあること</a></li>
           <li><a href="#dev">開発者向け</a></li>
         </ol>
@@ -166,7 +167,7 @@
         <h2>8. 募集</h2>
         <h3>新規募集（GM向け）</h3>
         <ol>
-          <li>「Recruit」→「新規募集」でシナリオ・役割・目標人数・メモを設定して公開します。</li>
+          <li>「Recruit」→「新規募集」でシナリオ・役割・人数（下限〜上限）・方式（先着／抽選）・応募締切・メモを設定して公開します。</li>
           <li>公開すると Discord の募集チャンネルに案内が投稿されます。</li>
         </ol>
         <h3>参加とキャンセル（PL向け）</h3>
@@ -174,7 +175,13 @@
           <li><strong>Discord:</strong> 募集メッセージの「参加希望」ボタン。</li>
           <li><strong>Web:</strong> 募集詳細でログイン中の自分として応募／取消。</li>
         </ul>
-        <p>目標人数に達すると募集は「満員」になり、募集主へ Discord 通知が送られます。</p>
+        <ul>
+          <li><strong>先着:</strong> 上限人数に達すると「満員」になり、募集主へ Discord 通知が送られます。</li>
+          <li><strong>抽選:</strong> 締切まで応募を受け付け、締切後に応募が上限を超えていれば募集主が抽選できます。</li>
+        </ul>
+        <div class="note">
+          期限切れは自動削除せず、締め切りのみです。
+        </div>
       </section>
 
       <section id="players">
@@ -193,25 +200,43 @@
       <section id="comments">
         <h2>10. コメント・感想・なりきりチャット</h2>
         <ul>
-          <li><strong>コメント:</strong> 各詳細画面や HOME の新着コメントでやり取りを残せます。</li>
-          <li><strong>感想:</strong> ホーム「その他」の Impressions、および卓／シナリオ詳細の感想欄。通過済みの人向け。一覧・投稿・シナリオ／投稿者フィルタあり。ネタバレは既定で隠します。</li>
+          <li><strong>コメント:</strong> 各詳細画面や HOME の新着コメントで気軽なやり取りができます（公開）。</li>
+          <li><strong>感想:</strong> ホーム「その他」の Impressions、および卓詳細・シナリオ詳細の「感想」欄。一覧・投稿・シナリオ／投稿者フィルタがあります。<strong>通過済みの人</strong>（その卓の参加者、同シナリオの別卓参加、キャラ通過履歴、部活外登録）が他の人の感想を読めます。シナリオ詳細／感想ページでは卓なし（部活外など）でも投稿できます。ネタバレは既定で隠します。Discord ログインと名簿連携が必要です。</li>
           <li><strong>なりきりチャット:</strong> 自分のキャラクター名義で掲示板に投稿できます（他人のキャラでは投稿不可）。</li>
         </ul>
       </section>
 
+      <section id="tools">
+        <h2>11. 便利ツール（Tools）</h2>
+        <p>ホーム「その他」の <a href="./tools/index.html">Tools</a> から開けます。PDF やログ、ZIP などはブラウザ内だけで処理します。</p>
+        <ul>
+          <li><strong>NPCコマ作成:</strong> 名前・ステータス・パラメータ・コマンドから、ココフォリアへ貼る JSON を作ります。</li>
+          <li><strong>オリジナル表:</strong> 表タイトルと項目から <code>/roll-table</code> テキストを作ります。</li>
+          <li><strong>ココフォリアログ抽出:</strong> ログ HTML を読み込み、判定結果や最終 SAN を絞り込み／コピーします。</li>
+          <li><strong>ココフォリア部屋zip作成:</strong> シーン・ノート・キャラを流し込んだ部屋 ZIP を作成します（試作・自己責任）。</li>
+          <li><strong>セッションボード:</strong> PDF・複数キャラの能力値／技能・メモを 1 画面に並べます。リロードで消えるので、続きは JSON 書き出しを使います。JSON に PDF 本体は入りません。</li>
+        </ul>
+        <div class="note">
+          各ツールの手順は Tools 一覧の「説明書まとめ」と <a href="./tools/guide.html">Tools 説明書</a> にあります。セッションボードのキャラ参照は Discord ログインと名簿連携を推奨します。
+        </div>
+      </section>
+
       <section id="faq">
-        <h2>11. よくあること</h2>
+        <h2>12. よくあること</h2>
         <ul>
           <li><strong>ログインしたが個人画面が出ない:</strong> 名簿未連携です。ホーム上部のバナーから自分の名前で連携してください。</li>
           <li><strong>名簿に自分の名前が無い:</strong> 管理者にプレイヤー追加を依頼してください。</li>
           <li><strong>Discord ID がコピーできない／取れない:</strong> Logout → Discord Login をやり直してください。</li>
           <li><strong>予定カレンダーが赤い:</strong> その日の予定が未入力です。日付を選んで昼／夜を入力してください。</li>
           <li><strong>気になるを押しても DM が来ない:</strong> すでに ON だった場合や、そのシナリオに GM可能登録者がいない場合は通知されません（新規 ON 時のみ）。</li>
+          <li><strong>セッションボードをリロードしたら消えた:</strong> 作業内容は端末に残りません。「JSONを書き出す」してから読み込んでください。PDF は同じファイルを選び直します。</li>
+          <li><strong>セッションボードにキャラが出ない:</strong> Discord ログインとプレイヤー連携を確認してください。</li>
+          <li><strong>部屋zipの内容が想定と違う:</strong> 試作です。書き出した ZIP は自分で確認し、自己責任で使ってください。</li>
         </ul>
       </section>
 
       <section id="dev">
-        <h2>12. 開発者向け</h2>
+        <h2>13. 開発者向け</h2>
         <p>スキーマ・API・運用手順は次を参照してください。</p>
         <ul>
           <li><a href="./docs/DB-overview.md">DB概要</a> / <a href="./docs/DB_info.txt">列一覧（DB_info）</a></li>

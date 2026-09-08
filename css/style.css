@@ -2888,6 +2888,11 @@ dialog.modal::backdrop {
   font-size: 0.95rem;
 }
 
+.user-guide .tools-prototype-warn {
+  text-align: left;
+  font-size: 1rem;
+}
+
 /* ブロック崩しミニゲーム（ピクセル／モノクロ） */
 .breakout-page {
   margin-bottom: 2rem;
@@ -3023,6 +3028,66 @@ dialog.modal::backdrop {
   margin: 0;
   font-size: 0.9rem;
   color: var(--text-muted, #6c757d);
+}
+
+.tools-guide-summary {
+  margin-top: 2.5rem;
+}
+
+.tools-guide-summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.tools-guide-summary-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.tools-guide-summary-lead {
+  margin: 0 0 1rem;
+}
+
+.tools-guide-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.tools-guide-item {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border, #dee2e6);
+  border-radius: 8px;
+  background: var(--surface, #f8f9fa);
+}
+
+.tools-guide-item h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.tools-guide-item p {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.tools-guide-item p:last-child {
+  margin-bottom: 0;
+}
+
+.tools-page-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.tools-page-links .tools-back {
+  margin-bottom: 0;
 }
 
 .tools-layout {

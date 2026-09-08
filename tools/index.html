@@ -15,7 +15,7 @@
     <main class="tools-hub">
       <header class="page-header">
         <h1>便利ツール</h1>
-        <p class="u-muted">セッション準備・進行向けの道具です。PDF やテキストは端末内で処理します。セッションボードのキャラ参照はログイン推奨です。</p>
+        <p class="u-muted">セッション準備・進行向けの道具です。PDF やテキストは端末内で処理します。セッションボードのキャラ参照はログイン推奨です。詳しい手順は <a href="./guide.html">Tools 説明書</a> を参照してください。</p>
       </header>
 
       <div class="tools-card-grid">
@@ -40,11 +40,46 @@
           <p>PDF・複数キャラの能力値／技能・メモを1画面に並べます。作業状態は JSON で書き出せます（PDF 本体は含みません）。</p>
         </a>
       </div>
+
+      <section class="tools-guide-summary" aria-labelledby="tools-guide-summary-title">
+        <div class="tools-guide-summary-head">
+          <h2 id="tools-guide-summary-title">説明書まとめ</h2>
+          <a href="./guide.html">詳しい使い方を見る</a>
+        </div>
+        <p class="u-muted tools-guide-summary-lead">各ツールの要点です。手順の詳細は説明書の該当節へどうぞ。</p>
+        <div class="tools-guide-list">
+          <article class="tools-guide-item">
+            <h3>NPCコマ作成</h3>
+            <p>名前・ステータス・パラメータ・コマンドから、ココフォリアへ貼るキャラクター JSON を作ります。パラメータは 6 版想定のダイスも振れます。ログイン不要で、処理は端末内です。</p>
+            <p><a href="./npc-token.html">開く</a> ／ <a href="./guide.html#npc-token">説明書</a></p>
+          </article>
+          <article class="tools-guide-item">
+            <h3>オリジナル表</h3>
+            <p>表タイトルと項目から <code>/roll-table</code> 形式のテキストを作り、コピーしてココフォリアに貼ります。項目数は 1〜100 です。ログイン不要で、処理は端末内です。</p>
+            <p><a href="./dice-table.html">開く</a> ／ <a href="./guide.html#dice-table">説明書</a></p>
+          </article>
+          <article class="tools-guide-item">
+            <h3>ココフォリアログ抽出ツール</h3>
+            <p>ログ HTML を読み込み、キャラ・タブ・判定結果で絞り込みます。最終 SAN も一覧表示し、表示中の行をコピーできます。ログイン不要で、処理は端末内です。</p>
+            <p><a href="./ccfolia-log.html">開く</a> ／ <a href="./guide.html#ccfolia-log">説明書</a></p>
+          </article>
+          <article class="tools-guide-item">
+            <h3>ココフォリア部屋zip作成</h3>
+            <p>内蔵テンプレ（または手元の ZIP）へシーン・ノート・キャラを流し込み、部屋 ZIP を書き出します。試作のため内容は自分で確認し、自己責任で使ってください。処理は端末内です。</p>
+            <p><a href="./room-zip.html">開く</a> ／ <a href="./guide.html#room-zip">説明書</a></p>
+          </article>
+          <article class="tools-guide-item">
+            <h3>セッションボード</h3>
+            <p>PDF・複数キャラの能力値／技能・メモを自由パネルで並べます。リロードで消えるので、続きは JSON 書き出しを。JSON に PDF 本体は入りません。終了済み卓は「卓から並べる」に出ません。キャラ参照はログイン推奨です。</p>
+            <p><a href="./session-board.html">開く</a> ／ <a href="./guide.html#session-board">説明書</a></p>
+          </article>
+        </div>
+      </section>
     </main>
 
     <footer>
       <hr />
-      <small><a href="../index.html">Back to Home</a></small>
+      <small><a href="./guide.html">Tools 説明書</a> ／ <a href="../index.html">Back to Home</a></small>
     </footer>
   </div>
 

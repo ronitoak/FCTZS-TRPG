@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tools 説明書 | FCTZS TRPG部</title>
+  <link rel="icon" href="https://github.com/ronitoak/FCTZS-TRPG/blob/main/img/favicon.ico?raw=true" type="image/png">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav id="common-nav" class="top-nav"></nav>
+    <hr />
+
+    <main class="user-guide tools-guide">
+      <a class="tools-back" href="./index.html">← Tools</a>
+      <header class="page-header">
+        <h1>Tools 説明書</h1>
+        <p class="u-muted">セッション準備・進行向けの便利ツールの使い方です。サイト全体の案内は <a href="../docs.html">使い方ガイド</a> を参照してください。</p>
+      </header>
+
+      <section class="user-guide-intro">
+        <p>Tools はホーム「その他」の <a href="./index.html">Tools</a> から開けます。PDF・ログ・ZIP などはブラウザ内だけで処理します。サーバーへアップロードしません。</p>
+      </section>
+
+      <nav class="user-guide-toc" aria-label="目次">
+        <h2>目次</h2>
+        <ol>
+          <li><a href="#overview">共通の注意</a></li>
+          <li><a href="#npc-token">NPCコマ作成</a></li>
+          <li><a href="#dice-table">オリジナル表</a></li>
+          <li><a href="#ccfolia-log">ココフォリアログ抽出ツール</a></li>
+          <li><a href="#room-zip">ココフォリア部屋zip作成</a></li>
+          <li><a href="#session-board">セッションボード</a></li>
+        </ol>
+      </nav>
+
+      <section id="overview">
+        <h2>1. 共通の注意</h2>
+        <ul>
+          <li>NPCコマ・オリジナル表・ログ抽出・部屋zipは、ログインしなくても使えます。</li>
+          <li>セッションボードのキャラ参照と「卓から並べる」は、Discord ログインと名簿連携があると確実です。</li>
+          <li>入力内容は原則としてこの端末の画面上だけです。ページを閉じたりリロードしたりすると消えます（セッションボードは JSON で書き出せます）。</li>
+        </ul>
+      </section>
+
+      <section id="npc-token">
+        <h2>2. NPCコマ作成</h2>
+        <p>ココフォリアに貼り付けできるキャラクター JSON を作ります。</p>
+        <ol>
+          <li>名前を入力します。</li>
+          <li>ステータス（HP など）を行追加して、現在値・最大値を入れます。</li>
+          <li>パラメータ（STR など）を入力します。「ダイス」や「一括ダイス」で 6 版想定の出目を振れます（STR・CON・POW・DEX・APP は 3D6、SIZ・INT は 2D6+6、EDU は 3D6+3）。</li>
+          <li>イニシアチブを必要なら手入力します。ダメージボーナスは STR+SIZ から自動表示されます。</li>
+          <li>表示設定（ステータス非公開、発言時非表示、盤面一覧に出さない）を選びます。</li>
+          <li>コマンドはプリセットから足すか、自分で追加します。</li>
+          <li>「ココフォリア JSON をコピー」を押し、ココフォリアへ貼り付けます。</li>
+        </ol>
+      </section>
+
+      <section id="dice-table">
+        <h2>3. オリジナル表</h2>
+        <p>ココフォリアの <code>/roll-table</code> 形式テキストを作ります。</p>
+        <ol>
+          <li>表タイトルと項目数（1〜100）を決めます。</li>
+          <li>各項目の文言を入力します。右側に作成結果がリアルタイムで出ます。</li>
+          <li>「テキストをコピー」を押し、ココフォリアのチャットへ貼り付けます。</li>
+        </ol>
+        <div class="note">
+          出力は <code>/roll-table</code>、タイトル、<code>1D項目数</code>、<code>1:内容</code> という行です。空の項目も番号だけ残ります。
+        </div>
+      </section>
+
+      <section id="ccfolia-log">
+        <h2>4. ココフォリアログ抽出ツール</h2>
+        <p>ココフォリアから書き出したログ HTML を読み、判定結果行を絞り込みます。</p>
+        <ol>
+          <li>「ログファイル」から HTML を選びます。処理は端末内です。</li>
+          <li>出てきたキャラクター・タブから、見たいものだけ残します。</li>
+          <li>判定結果フィルタ（成功／スペシャル／クリティカル／失敗／ファンブル）でさらに絞ります。未選択なら全件です。</li>
+          <li>最終 SAN は、ログ時点の各キャラの値を一覧表示します。</li>
+          <li>「表示中のログをコピー」で、今見えている行をテキストとして取れます。</li>
+        </ol>
+        <div class="note">
+          目標値なしの 1d100 は、出目 1〜5 をクリティカル、96〜100 をファンブルと判定します。
+        </div>
+      </section>
+
+      <section id="room-zip">
+        <h2>5. ココフォリア部屋zip作成</h2>
+        <p class="tools-prototype-warn" role="note">試作品です。書き出した ZIP の内容は自分で確認し、自己責任で使ってください。</p>
+        <p>空ルームのテンプレートへ、シーン・ノート・キャラを流し込んで部屋 ZIP を書き出します。ファイルはブラウザ内だけで処理されます。</p>
+        <ol>
+          <li><strong>テンプレート:</strong> 内蔵テンプレのまま使うか、手元の部屋 ZIP を選びます。</li>
+          <li><strong>シーン:</strong> 背景画像を選び、差し替えまたは追記します。サイズや収め方は一覧から調整できます。</li>
+          <li><strong>シナリオテキスト:</strong> ノートを 1 件ずつ、または <code>---</code> 区切りで一括追加します。</li>
+          <li><strong>キャラクター:</strong> 名前から追加し、ステータス・パラメータ・アイコン・チャットパレットなどを編集します。</li>
+          <li>「ZIPを書き出す」でダウンロードします。</li>
+        </ol>
+        <div class="note">
+          差し替えは既存の該当データを置き換え、追記は足します。クリアするとその欄の追加分を捨てます。
+        </div>
+      </section>
+
+      <section id="session-board">
+        <h2>6. セッションボード</h2>
+        <p>シナリオ PDF・複数キャラの能力値／技能・メモを、自由なパネルとして 1 画面に並べます。セッション中の参照用です。</p>
+        <h3>パネルの操作</h3>
+        <ul>
+          <li>タイトルバーをドラッグして移動、四隅をドラッグしてリサイズします。</li>
+          <li>クリックしたパネルが前面に来ます。× で閉じます。</li>
+          <li><strong>PDFを追加:</strong> 手元の PDF をパネルで開きます。</li>
+          <li><strong>キャラを追加:</strong> サイトに登録したキャラから選びます。表示するのは能力値と技能だけです（画像・プロフィール・登録メモは出しません）。</li>
+          <li><strong>メモを追加:</strong> その場のメモ用テキストです。</li>
+          <li><strong>卓から並べる:</strong> 進行中・計画中の卓の参加キャラをまとめて追加します。終了済みの卓は出ません。</li>
+        </ul>
+        <h3>画面を広げる</h3>
+        <p>「画面を広げる」で上部ナビとツールバーを隠します。右上の「メニューを表示」または Esc で戻ります。</p>
+        <h3>JSON の書き出し／読み込み</h3>
+        <ul>
+          <li>リロードやタブを閉じると作業内容は消えます。続きから使うときは「JSONを書き出す」してください。</li>
+          <li>JSON に入るのはパネル位置・メモ本文・キャラ ID・PDF の<strong>ファイル名</strong>だけです。PDF 本体・ファイルサイズ・更新日時は入りません。</li>
+          <li>読み込み後、PDF パネルは同じファイルを選び直します。パネルの「このPDFを選び直す」か、ツールバーの「PDFを割り当て」でファイル名が一致するものを割り当てます。</li>
+        </ul>
+        <div class="note">
+          キャラ一覧が出ないときは、Discord ログインとプレイヤー連携を確認してください。
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <hr />
+      <small><a href="./index.html">Tools 一覧</a> ／ <a href="../docs.html">サイトの使い方</a> ／ <a href="../index.html">Back to Home</a></small>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/init-supabase.js"></script>
+  <script src="../js/site-config.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    Utils.initAuthAndHeader("common-nav", "../");
+  </script>
+</body>
+</html>

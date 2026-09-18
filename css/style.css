@@ -3649,6 +3649,20 @@ dialog.modal::backdrop {
   min-width: 64px;
 }
 
+.room-zip-app .scene-bg-cell {
+  min-width: 160px;
+}
+
+.room-zip-app .scene-bg-cell select {
+  width: 100%;
+  display: block;
+}
+
+.room-zip-app .scene-bg-cell .button {
+  margin-top: 6px;
+  width: 100%;
+}
+
 .room-zip-app .size-defaults label {
   display: flex;
   gap: 6px;

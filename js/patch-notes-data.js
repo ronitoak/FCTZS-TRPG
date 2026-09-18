@@ -6,6 +6,12 @@
 //   improvement … インフラ・内部改善など。詳細ページのみ（トップ非表示）
 window.PATCH_NOTES = Object.freeze([
   {
+    date: "2026-09-18",
+    type: "feature",
+    title: "部屋zipでシーンの背景を指定できるようにした",
+    detail: "ココフォリア部屋zip作成で、各シーンの背景を「前景と同じ」「背景なし」「別画像」から選べるようにしました。追加した画像は前景になり、背景の初期値は前景と同じです。"
+  },
+  {
     date: "2026-09-08",
     type: "feature",
     title: "Tools の説明書を追加",
